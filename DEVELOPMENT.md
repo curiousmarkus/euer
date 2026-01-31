@@ -2,45 +2,50 @@
 
 ## Übersicht
 
-EÜR ist ein CLI-Tool zur Verwaltung der Einnahmenüberschussrechnung für Kleinunternehmer. Es ersetzt eine Excel-basierte Lösung durch eine SQLite-Datenbank mit vollständigem Audit-Trail.
+EÜR ist ein CLI-Tool zur Verwaltung der Einnahmenüberschussrechnung für Kleinunternehmer (§19 UStG). Es ersetzt eine Excel-basierte Lösung durch eine SQLite-Datenbank mit vollständigem Audit-Trail.
 
 **Zielgruppe:** Coding Agents / LLMs, die Buchungen per CLI verwalten.
 
 ---
 
-## Architektur
-
-### Dateien
+## Projektstruktur
 
 ```
 euer/
-├── euer.py           # Haupt-CLI (Single-File, ~1200 Zeilen)
-├── euer.db           # SQLite-Datenbank (nach init)
-├── exports/          # Export-Verzeichnis für CSV/XLSX
-├── requirements.txt  # openpyxl (nur für XLSX-Export)
-├── spec.md           # Ursprüngliche Spezifikation
-├── README.md         # Schnellstart für Agents
-└── DEVELOPMENT.md    # Diese Datei
+├── euer.py              # Haupt-CLI (Single-File, ~1600 Zeilen)
+├── euer.db              # SQLite-Datenbank (nach init)
+├── exports/             # Export-Verzeichnis für CSV/XLSX
+├── requirements.txt     # openpyxl (optional, für XLSX-Export)
+├── skills/
+│   └── euer-buchhaltung/
+│       └── SKILL.md     # AI-Agent Anleitung
+├── specs/
+│   ├── 001-init.md      # Ursprüngliche Spezifikation
+│   ├── 002-receipts.md  # Beleg-Management
+│   └── 003-modularization.md  # Zukünftige Modularisierung
+├── README.md            # Schnellstart & Open-Source-Info
+└── DEVELOPMENT.md       # Diese Datei
 ```
 
-### Design-Entscheidungen
+---
+
+## Design-Entscheidungen
 
 | Entscheidung | Begründung |
 |--------------|------------|
-| Single-File CLI | Einfach zu verstehen und zu deployen |
+| Single-File CLI | Einfach zu verstehen, deployen, AI-Agent-freundlich |
 | SQLite | Keine Installation, Datei = Backup, Standard-Library |
 | Kein ORM | Direktes SQL ist transparenter für einfaches Schema |
 | argparse | Standard-Library, keine externe Dependency |
 | Hash-basierte Duplikate | Idempotente Imports, gleiche Transaktion nicht doppelt |
 | Audit-Log in Python | Mehr Kontrolle als DB-Trigger, Quell-Kontext möglich |
+| TOML-Config | Standard-Library ab Python 3.11 (`tomllib`) |
 
 ---
 
 ## Datenbank-Schema
 
 ### Tabelle: `categories`
-
-EÜR-Kategorien für konsistente Zuordnung.
 
 ```sql
 CREATE TABLE categories (
@@ -51,7 +56,7 @@ CREATE TABLE categories (
 );
 ```
 
-**Seed-Kategorien (bei init):**
+**Seed-Kategorien:**
 
 | Name | EÜR-Zeile | Typ |
 |------|-----------|-----|
@@ -77,7 +82,7 @@ CREATE TABLE expenses (
     amount_eur REAL NOT NULL,     -- Betrag in EUR (negativ!)
     account TEXT,                 -- Bankkonto
     foreign_amount TEXT,          -- z.B. "26.60 USD"
-    notes TEXT,                   -- Bemerkung
+    notes TEXT,
     vat_amount REAL,              -- Reverse-Charge USt (19%)
     created_at TIMESTAMP,
     hash TEXT UNIQUE NOT NULL     -- Duplikat-Erkennung
@@ -118,15 +123,27 @@ CREATE TABLE audit_log (
 
 ---
 
-## Hash-Berechnung (Duplikat-Erkennung)
+## Konfiguration
 
-```python
-def compute_hash(date: str, vendor_or_source: str, amount_eur: float, receipt_name: str = "") -> str:
-    data = f"{date}|{vendor_or_source}|{amount_eur:.2f}|{receipt_name or ''}"
-    return hashlib.sha256(data.encode('utf-8')).hexdigest()
+### Config-Datei
+
+Pfad: `~/.config/euer/config.toml`
+
+```toml
+[receipts]
+expenses = "/pfad/zu/ausgaben-belege"
+income = "/pfad/zu/einnahmen-belege"
 ```
 
-**Wichtig:** Der Hash wird aus Datum + Vendor/Source + Betrag + Belegname berechnet. Bei erneutem Import der gleichen Transaktion wird diese als Duplikat erkannt und übersprungen.
+### Beleg-Struktur
+
+Belege werden in Jahres-Unterordnern erwartet:
+
+```
+<base>/<Jahr>/<Belegname>
+```
+
+Beispiel: `/pfad/zu/ausgaben-belege/2026/2026-01-15_Render.pdf`
 
 ---
 
@@ -140,24 +157,16 @@ def compute_hash(date: str, vendor_or_source: str, amount_eur: float, receipt_na
 
 ### Reverse Charge (RC)
 
-Bei Ausgaben an ausländische Anbieter (z.B. US-SaaS) gilt Reverse Charge:
-- Der Empfänger muss die USt selbst abführen
-- 19% des Netto-Betrags als USt-VA (Umsatzsteuer-Voranmeldung)
+Bei Ausgaben an ausländische Anbieter ohne deutsche USt:
 
-**CLI-Nutzung:**
 ```bash
-# Automatisch 19% berechnen
-python euer.py add expense --date 2026-01-20 --vendor "OpenAI" \
-    --category "Laufende EDV-Kosten" --amount -20.00 --foreign "20.00 USD" --rc
-
-# Manuell angeben
-python euer.py add expense ... --vat 3.80
+python3 euer.py add expense --date 2026-01-20 --vendor "OpenAI" \
+    --category "Laufende EDV-Kosten" --amount -20.00 --rc
 ```
 
-**Wann --rc verwenden:**
-- Rechnung ohne deutsche USt
-- Anbieter im EU-Ausland oder Drittland
-- Beispiele: OpenAI, Render, Vercel, AWS, GitHub, etc.
+Berechnet automatisch 19% USt für die USt-Voranmeldung.
+
+**Typische RC-Anbieter:** OpenAI, Anthropic, Render, Vercel, AWS, GitHub, Stripe
 
 ---
 
@@ -166,182 +175,90 @@ python euer.py add expense ... --vat 3.80
 ### Globale Optionen
 
 ```bash
-python euer.py [--db PFAD] <command>
+python3 euer.py [--db PFAD] <command>
 ```
-
-| Option | Default | Beschreibung |
-|--------|---------|--------------|
-| `--db` | `./euer.db` | Pfad zur Datenbank |
 
 ### Commands
 
-#### `init`
+| Command | Beschreibung |
+|---------|--------------|
+| `init` | Datenbank initialisieren |
+| `add expense` | Ausgabe hinzufügen |
+| `add income` | Einnahme hinzufügen |
+| `list expenses` | Ausgaben anzeigen |
+| `list income` | Einnahmen anzeigen |
+| `list categories` | Kategorien anzeigen |
+| `update expense <id>` | Ausgabe aktualisieren |
+| `update income <id>` | Einnahme aktualisieren |
+| `delete expense <id>` | Ausgabe löschen |
+| `delete income <id>` | Einnahme löschen |
+| `export` | CSV/XLSX-Export |
+| `summary` | Jahres-Zusammenfassung |
+| `audit <id>` | Änderungshistorie |
+| `config show` | Konfiguration anzeigen |
+| `receipt check` | Fehlende Belege prüfen |
+| `receipt open <id>` | Beleg öffnen |
 
-```bash
-python euer.py init
-```
-
-- Erstellt Datenbank und Schema (IF NOT EXISTS)
-- Seeded Kategorien (nur wenn leer)
-- Erstellt `exports/` Verzeichnis
-- **Idempotent** - kann mehrfach aufgerufen werden
+### Wichtige Argumente
 
 #### `add expense`
-
-```bash
-python euer.py add expense \
-    --date 2026-01-15 \
-    --vendor "Render" \
-    --category "Laufende EDV-Kosten" \
-    --amount -15.50 \
-    [--account "N26"] \
-    [--foreign "15.00 USD"] \
-    [--receipt "statement-2026-01.pdf"] \
-    [--notes "Hosting Jan 2026"] \
-    [--vat 2.95] \
-    [--rc]
-```
 
 | Argument | Required | Beschreibung |
 |----------|----------|--------------|
 | `--date` | Ja | YYYY-MM-DD |
 | `--vendor` | Ja | Lieferant/Zweck |
-| `--category` | Ja | Kategorie-Name (case-insensitive) |
-| `--amount` | Ja | Betrag in EUR (**negativ für Ausgaben!**) |
-| `--account` | Nein | Bankkonto (N26, Sparkasse, etc.) |
-| `--foreign` | Nein | Fremdwährungsbetrag (z.B. "15.00 USD") |
-| `--receipt` | Nein | Belegname (nur Dateiname) |
+| `--category` | Ja | Kategorie-Name |
+| `--amount` | Ja | Betrag in EUR (**negativ!**) |
+| `--account` | Nein | Bankkonto |
+| `--foreign` | Nein | Fremdwährung (z.B. "15.00 USD") |
+| `--receipt` | Nein | Belegname |
 | `--notes` | Nein | Bemerkung |
-| `--vat` | Nein | USt-VA Betrag (manuell) |
-| `--rc` | Nein | Reverse-Charge: berechnet 19% USt automatisch |
+| `--rc` | Nein | Reverse-Charge (19% USt) |
+| `--vat` | Nein | USt-Betrag (manuell) |
 
 #### `add income`
 
-```bash
-python euer.py add income \
-    --date 2026-01-20 \
-    --source "Kunde ABC" \
-    --category "Umsatzsteuerpflichtige Betriebseinnahmen" \
-    --amount 1500.00 \
-    [--foreign "1600.00 USD"] \
-    [--receipt "Rechnung_001.pdf"] \
-    [--notes "Projekt XYZ"]
+| Argument | Required | Beschreibung |
+|----------|----------|--------------|
+| `--date` | Ja | YYYY-MM-DD |
+| `--source` | Ja | Kunde/Quelle |
+| `--category` | Ja | Kategorie-Name |
+| `--amount` | Ja | Betrag in EUR (**positiv!**) |
+| `--receipt` | Nein | Belegname |
+
+---
+
+## Hash-Berechnung
+
+```python
+def compute_hash(date, vendor_or_source, amount_eur, receipt_name=""):
+    data = f"{date}|{vendor_or_source}|{amount_eur:.2f}|{receipt_name or ''}"
+    return hashlib.sha256(data.encode('utf-8')).hexdigest()
 ```
 
-#### `list expenses`
-
-```bash
-python euer.py list expenses \
-    [--year 2026] \
-    [--month 1] \
-    [--category "Laufende EDV-Kosten"] \
-    [--format table|csv]
-```
-
-#### `list income`
-
-```bash
-python euer.py list income [--year] [--month] [--category] [--format]
-```
-
-#### `list categories`
-
-```bash
-python euer.py list categories [--type expense|income]
-```
-
-#### `update expense <id>`
-
-```bash
-python euer.py update expense 42 \
-    [--date ...] [--vendor ...] [--category ...] [--amount ...] \
-    [--account ...] [--foreign ...] [--receipt ...] [--notes ...] [--vat ...]
-```
-
-- Nur angegebene Felder werden aktualisiert
-- Hash wird neu berechnet
-- Audit-Log: UPDATE mit old_data + new_data
-
-#### `update income <id>`
-
-```bash
-python euer.py update income 42 [--date ...] [--source ...] ...
-```
-
-#### `delete expense <id>`
-
-```bash
-python euer.py delete expense 42 [--force]
-```
-
-- Ohne `--force`: Zeigt Transaktion und fragt nach Bestätigung
-- Audit-Log: DELETE mit old_data
-
-#### `delete income <id>`
-
-```bash
-python euer.py delete income 42 [--force]
-```
-
-#### `export`
-
-```bash
-python euer.py export \
-    [--year 2026] \
-    [--format csv|xlsx] \
-    [--output ./exports/]
-```
-
-- CSV: UTF-8 mit BOM (Excel-kompatibel)
-- XLSX: benötigt openpyxl
-
-**Output:**
-- `EÜR_2026_Ausgaben.csv/xlsx`
-- `EÜR_2026_Einnahmen.csv/xlsx`
-
-#### `summary`
-
-```bash
-python euer.py summary [--year 2026]
-```
-
-Zeigt:
-- Ausgaben nach Kategorie (mit EÜR-Zeile)
-- Reverse-Charge USt-Summe (für USt-VA)
-- Einnahmen nach Kategorie
-- Gewinn/Verlust
-
-#### `audit <id>`
-
-```bash
-python euer.py audit 42 [--table expenses|income]
-```
-
-Zeigt Änderungshistorie für einen Datensatz.
+Ermöglicht idempotente Imports - gleiche Transaktion wird als Duplikat erkannt.
 
 ---
 
 ## Erweiterung
 
-### Neue Kategorie hinzufügen
+### Neue Kategorie
 
 ```sql
 INSERT INTO categories (name, eur_line, type) VALUES ('Neue Kategorie', 99, 'expense');
 ```
 
-Oder in `SEED_CATEGORIES` in `euer.py` ergänzen und DB neu initialisieren.
+Oder in `SEED_CATEGORIES` ergänzen und DB neu initialisieren.
 
-### Schema-Änderungen
-
-1. Backup erstellen: `cp euer.db euer.db.backup`
-2. `ALTER TABLE` für einfache Änderungen
-3. Für komplexe Migrationen: Neues Script schreiben
-
-### Neuen Command hinzufügen
+### Neuen Command
 
 1. Funktion `cmd_<name>(args)` implementieren
 2. Parser in `main()` hinzufügen
 3. `set_defaults(func=cmd_<name>)`
+
+### Modularisierung
+
+Siehe `specs/003-modularization.md` für den Plan zur Aufteilung in Module (wenn >2500 Zeilen).
 
 ---
 
@@ -349,36 +266,15 @@ Oder in `SEED_CATEGORIES` in `euer.py` ergänzen und DB neu initialisieren.
 
 - **Single-User:** Keine Concurrent-Write-Unterstützung
 - **Keine Undo-Funktion:** Nur über Audit-Log rekonstruierbar
-- **Kategorien:** Müssen vorab existieren (kein Auto-Create)
-- **XLSX-Export:** Benötigt openpyxl (`pip install openpyxl`)
-
----
-
-## Typische Workflows
-
-### Monatliche Buchung (Agent)
-
-1. Kontoauszug/Belege lesen
-2. Pro Transaktion: `add expense` oder `add income`
-3. Bei RC-Ausgaben: `--rc` Flag verwenden
-4. Prüfung: `list expenses --year --month`
-
-### Quartalsabschluss
-
-1. `summary --year` für Übersicht
-2. `export --format csv` für Steuerberater
-3. USt-VA aus Summary für Finanzamt
-
-### Korrektur
-
-1. `list expenses` um ID zu finden
-2. `update expense <id> --amount -25.00`
-3. `audit <id>` zur Verifizierung
+- **Kategorien:** Müssen vorab existieren
+- **XLSX-Export:** Benötigt `pip install openpyxl`
 
 ---
 
 ## Referenzen
 
-- [spec.md](spec.md) - Ursprüngliche Spezifikation
-- [README.md](README.md) - Schnellstart
-- Kategorisierungs-Regeln: `/Users/markus/dev/ItsMe/Mein Gewerbe/Organisatorisches/EÜR Kategorisierung.md`
+- [README.md](README.md) - Schnellstart & Open-Source-Info
+- [specs/001-init.md](specs/001-init.md) - Ursprüngliche Spezifikation
+- [specs/002-receipts.md](specs/002-receipts.md) - Beleg-Management
+- [specs/003-modularization.md](specs/003-modularization.md) - Modularisierungs-Plan
+- [skills/euer-buchhaltung/SKILL.md](skills/euer-buchhaltung/SKILL.md) - AI-Agent Skill

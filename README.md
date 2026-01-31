@@ -1,22 +1,57 @@
 # EÜR - Einnahmenüberschussrechnung
 
-SQLite-basierte Buchhaltung für Kleinunternehmer (§19 UStG).
+SQLite-basierte Buchhaltung für deutsche Kleinunternehmer (§19 UStG).
+
+**AI-Agent-ready**: Dieses CLI-Tool ist so gestaltet, dass Coding Agents (OpenCode, Claude, Cursor, etc.) deine Buchhaltung selbstständig pflegen können.
+
+## Warum dieses Tool?
+
+- **Keine Excel-Sheets mehr** - Saubere SQLite-Datenbank mit Audit-Trail
+- **Agent-freundlich** - Klare CLI-Struktur, die LLMs verstehen
+- **Beleg-Validierung** - Automatische Prüfung ob Belege existieren
+- **EÜR-konform** - Kategorien mit korrekten EÜR-Zeilennummern
+- **Keine Dependencies** - Python 3.11+ Standard-Library (openpyxl optional für XLSX)
+
+## Installation
+
+```bash
+git clone https://github.com/yourusername/euer.git
+cd euer
+python3 euer.py init
+```
+
+## AI-Agent Setup
+
+Kopiere den Skill in dein Projekt oder global:
+
+```bash
+# Projekt-spezifisch
+cp -r skills/euer-buchhaltung .opencode/skill/
+
+# Oder global
+cp -r skills/euer-buchhaltung ~/.config/opencode/skill/
+```
+
+Dann kann dein Agent Anweisungen wie diese verstehen:
+- "Buche die Render-Rechnung vom Januar"
+- "Zeig mir die Ausgaben für 2026"
+- "Prüfe ob alle Belege vorhanden sind"
 
 ## Schnellstart
 
 ```bash
 # Datenbank initialisieren (einmalig)
-python euer.py init
+python3 euer.py init
 
 # Kategorien anzeigen
-python euer.py list categories
+python3 euer.py list categories
 ```
 
 ## Ausgaben erfassen
 
 ```bash
 # Standard-Ausgabe
-python euer.py add expense \
+python3 euer.py add expense \
     --date 2026-01-15 \
     --vendor "1und1" \
     --category "Telekommunikation" \
@@ -24,13 +59,13 @@ python euer.py add expense \
     --account "Sparkasse Giro"
 
 # Ausgabe mit Reverse-Charge (ausländischer Anbieter, berechnet 19% USt)
-python euer.py add expense \
+python3 euer.py add expense \
     --date 2026-01-04 \
     --vendor "RENDER.COM" \
     --category "Laufende EDV-Kosten" \
     --amount -22.71 \
     --foreign "26.60 USD" \
-    --receipt "statement-2026-01.pdf" \
+    --receipt "2026-01-04_Render.pdf" \
     --rc
 ```
 
@@ -42,7 +77,7 @@ python euer.py add expense \
 ## Einnahmen erfassen
 
 ```bash
-python euer.py add income \
+python3 euer.py add income \
     --date 2026-01-20 \
     --source "Kunde ABC" \
     --category "Umsatzsteuerpflichtige Betriebseinnahmen" \
@@ -54,41 +89,41 @@ python euer.py add income \
 
 ```bash
 # Ausgaben (mit Filter)
-python euer.py list expenses --year 2026
-python euer.py list expenses --year 2026 --month 1
-python euer.py list expenses --category "Laufende EDV-Kosten"
+python3 euer.py list expenses --year 2026
+python3 euer.py list expenses --year 2026 --month 1
+python3 euer.py list expenses --category "Laufende EDV-Kosten"
 
 # Einnahmen
-python euer.py list income --year 2026
+python3 euer.py list income --year 2026
 
 # Zusammenfassung (Kategorien + Gewinn/Verlust + USt-VA)
-python euer.py summary --year 2026
+python3 euer.py summary --year 2026
 ```
 
 ## Korrigieren & Löschen
 
 ```bash
 # Einzelne Felder aktualisieren
-python euer.py update expense 42 --amount -25.00 --notes "Korrigiert"
+python3 euer.py update expense 42 --amount -25.00 --notes "Korrigiert"
 
 # Löschen (mit Bestätigung)
-python euer.py delete expense 42
+python3 euer.py delete expense 42
 
 # Löschen ohne Rückfrage
-python euer.py delete expense 42 --force
+python3 euer.py delete expense 42 --force
 
 # Änderungshistorie prüfen
-python euer.py audit 42 --table expenses
+python3 euer.py audit 42 --table expenses
 ```
 
 ## Export
 
 ```bash
 # CSV (immer verfügbar)
-python euer.py export --year 2026 --format csv
+python3 euer.py export --year 2026 --format csv
 
 # XLSX (benötigt: pip install openpyxl)
-python euer.py export --year 2026 --format xlsx
+python3 euer.py export --year 2026 --format xlsx
 ```
 
 Erzeugt: `exports/EÜR_2026_Ausgaben.csv` und `exports/EÜR_2026_Einnahmen.csv`
@@ -111,21 +146,21 @@ Belege werden in Jahres-Unterordnern erwartet: `<base>/<Jahr>/<Belegname>`
 
 ```bash
 # Konfiguration anzeigen
-python euer.py config show
+python3 euer.py config show
 ```
 
 ### Beleg-Prüfung
 
 ```bash
 # Alle Transaktionen prüfen (aktuelles Jahr)
-python euer.py receipt check
+python3 euer.py receipt check
 
 # Bestimmtes Jahr prüfen
-python euer.py receipt check --year 2025
+python3 euer.py receipt check --year 2025
 
 # Nur Ausgaben oder Einnahmen prüfen
-python euer.py receipt check --type expense
-python euer.py receipt check --type income
+python3 euer.py receipt check --type expense
+python3 euer.py receipt check --type income
 ```
 
 Bei `add` und `update` wird automatisch gewarnt, wenn ein angegebener Beleg nicht gefunden wird.
@@ -134,10 +169,10 @@ Bei `add` und `update` wird automatisch gewarnt, wenn ein angegebener Beleg nich
 
 ```bash
 # Beleg einer Ausgabe öffnen
-python euer.py receipt open 12
+python3 euer.py receipt open 12
 
 # Beleg einer Einnahme öffnen
-python euer.py receipt open 5 --table income
+python3 euer.py receipt open 5 --table income
 ```
 
 ## Verfügbare Kategorien
@@ -154,8 +189,27 @@ python euer.py receipt open 5 --table income
 | income | Sonstige betriebsfremde Einnahme | - |
 | income | Umsatzsteuerpflichtige Betriebseinnahmen | 14 |
 
+## Projektstruktur
+
+```
+euer/
+├── euer.py              # CLI-Tool
+├── euer.db              # SQLite-Datenbank
+├── exports/             # CSV/XLSX-Exporte
+├── skills/
+│   └── euer-buchhaltung/
+│       └── SKILL.md     # AI-Agent Anleitung
+├── specs/               # Feature-Spezifikationen
+└── README.md
+```
+
 ## Dokumentation
 
 - [DEVELOPMENT.md](DEVELOPMENT.md) - Entwicklerdokumentation, Schema, Erweiterung
 - [specs/001-init.md](specs/001-init.md) - Ursprüngliche Spezifikation
 - [specs/002-receipts.md](specs/002-receipts.md) - Beleg-Management Spezifikation
+- [skills/euer-buchhaltung/SKILL.md](skills/euer-buchhaltung/SKILL.md) - AI-Agent Skill
+
+## Lizenz
+
+MIT
