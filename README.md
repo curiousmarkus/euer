@@ -93,6 +93,53 @@ python euer.py export --year 2026 --format xlsx
 
 Erzeugt: `exports/EÜR_2026_Ausgaben.csv` und `exports/EÜR_2026_Einnahmen.csv`
 
+## Beleg-Verwaltung
+
+Belege können mit Transaktionen verknüpft und validiert werden.
+
+### Konfiguration
+
+Erstelle `~/.config/euer/config.toml`:
+
+```toml
+[receipts]
+expenses = "/pfad/zu/ausgaben-belege"
+income = "/pfad/zu/einnahmen-belege"
+```
+
+Belege werden in Jahres-Unterordnern erwartet: `<base>/<Jahr>/<Belegname>`
+
+```bash
+# Konfiguration anzeigen
+python euer.py config show
+```
+
+### Beleg-Prüfung
+
+```bash
+# Alle Transaktionen prüfen (aktuelles Jahr)
+python euer.py receipt check
+
+# Bestimmtes Jahr prüfen
+python euer.py receipt check --year 2025
+
+# Nur Ausgaben oder Einnahmen prüfen
+python euer.py receipt check --type expense
+python euer.py receipt check --type income
+```
+
+Bei `add` und `update` wird automatisch gewarnt, wenn ein angegebener Beleg nicht gefunden wird.
+
+### Beleg öffnen
+
+```bash
+# Beleg einer Ausgabe öffnen
+python euer.py receipt open 12
+
+# Beleg einer Einnahme öffnen
+python euer.py receipt open 5 --table income
+```
+
 ## Verfügbare Kategorien
 
 | Typ | Kategorie | EÜR-Zeile |
@@ -110,4 +157,5 @@ Erzeugt: `exports/EÜR_2026_Ausgaben.csv` und `exports/EÜR_2026_Einnahmen.csv`
 ## Dokumentation
 
 - [DEVELOPMENT.md](DEVELOPMENT.md) - Entwicklerdokumentation, Schema, Erweiterung
-- [spec.md](spec.md) - Ursprüngliche Spezifikation
+- [specs/001-init.md](specs/001-init.md) - Ursprüngliche Spezifikation
+- [specs/002-receipts.md](specs/002-receipts.md) - Beleg-Management Spezifikation

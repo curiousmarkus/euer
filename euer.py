@@ -11,8 +11,11 @@ import csv
 import hashlib
 import json
 import os
+import platform
 import sqlite3
+import subprocess
 import sys
+import tomllib
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -32,6 +35,7 @@ except ImportError:
 DEFAULT_DB_PATH = Path(__file__).parent / "euer.db"
 DEFAULT_EXPORT_DIR = Path(__file__).parent / "exports"
 DEFAULT_USER = "markus"
+CONFIG_PATH = Path.home() / ".config" / "euer" / "config.toml"
 
 # Seed-Kategorien für init
 SEED_CATEGORIES = [
@@ -188,6 +192,67 @@ def row_to_dict(row: sqlite3.Row) -> dict:
     return dict(row)
 
 
+def load_config() -> dict:
+    """Lädt Config, gibt leeres Dict zurück wenn nicht vorhanden."""
+    if not CONFIG_PATH.exists():
+        return {}
+    with open(CONFIG_PATH, "rb") as f:
+        return tomllib.load(f)
+
+
+def resolve_receipt_path(
+    receipt_name: str,
+    date: str,  # YYYY-MM-DD
+    receipt_type: str,  # 'expenses' oder 'income'
+    config: dict,
+) -> tuple[Path | None, list[Path]]:
+    """
+    Sucht Beleg-Datei.
+
+    Returns:
+        (found_path, checked_paths)
+        found_path ist None wenn nicht gefunden
+    """
+    base = config.get("receipts", {}).get(receipt_type, "")
+    if not base:
+        return (None, [])
+
+    base_path = Path(base)
+    year = date[:4]  # "2026" aus "2026-01-15"
+
+    # Reihenfolge: Erst Jahres-Ordner, dann Basis
+    candidates = [
+        base_path / year / receipt_name,
+        base_path / receipt_name,
+    ]
+
+    for path in candidates:
+        if path.exists():
+            return (path, candidates)
+
+    return (None, candidates)
+
+
+def warn_missing_receipt(
+    receipt_name: str | None,
+    date: str,
+    receipt_type: str,  # 'expenses' oder 'income'
+    config: dict,
+) -> None:
+    """Gibt Warnung aus wenn Beleg nicht gefunden wird."""
+    if not receipt_name:
+        return
+
+    found_path, checked_paths = resolve_receipt_path(
+        receipt_name, date, receipt_type, config
+    )
+
+    if found_path is None and checked_paths:
+        print(f"! Beleg '{receipt_name}' nicht gefunden:", file=sys.stderr)
+        for p in checked_paths:
+            print(f"  - {p}", file=sys.stderr)
+
+
 # =============================================================================
 # Commands
 # =============================================================================
@@ -303,6 +368,10 @@ def cmd_add_expense(args):
         f"Ausgabe #{record_id} hinzugefügt: {args.vendor} {format_amount(args.amount)} EUR{vat_info}"
     )
 
+    # Beleg-Warnung (nach erfolgreicher Transaktion)
+    config = load_config()
+    warn_missing_receipt(args.receipt, args.date, "expenses", config)
+
 
 def cmd_add_income(args):
     """Fügt eine Einnahme hinzu."""
@@ -371,6 +440,10 @@ def cmd_add_income(args):
     print(
         f"Einnahme #{record_id} hinzugefügt: {args.source} {format_amount(args.amount)} EUR"
     )
+
+    # Beleg-Warnung (nach erfolgreicher Transaktion)
+    config = load_config()
+    warn_missing_receipt(args.receipt, args.date, "income", config)
 
 
 def cmd_list_expenses(args):
@@ -662,6 +735,10 @@ def cmd_update_expense(args):
 
     print(f"Ausgabe #{args.id} aktualisiert.")
 
+    # Beleg-Warnung (nach erfolgreicher Transaktion)
+    config = load_config()
+    warn_missing_receipt(new_receipt, new_date, "expenses", config)
+
 
 def cmd_update_income(args):
     """Aktualisiert eine Einnahme."""
@@ -729,6 +806,10 @@ def cmd_update_income(args):
     conn.close()
 
     print(f"Einnahme #{args.id} aktualisiert.")
+
+    # Beleg-Warnung (nach erfolgreicher Transaktion)
+    config = load_config()
+    warn_missing_receipt(new_receipt, new_date, "income", config)
 
 
 def cmd_delete_expense(args):
@@ -1110,6 +1191,198 @@ def cmd_audit(args):
         print()
 
 
+def cmd_config_show(args):
+    """Zeigt aktuelle Konfiguration."""
+    print("EÜR Konfiguration")
+    print("=================")
+    print()
+    print(f"Config-Datei: {CONFIG_PATH}", end="")
+
+    if not CONFIG_PATH.exists():
+        print(" (nicht vorhanden)")
+        print()
+        print("Erstelle Config mit:")
+        print()
+        print("  mkdir -p ~/.config/euer")
+        print("  cat > ~/.config/euer/config.toml << 'EOF'")
+        print("  [receipts]")
+        print('  expenses = "/pfad/zu/ausgaben-belege"')
+        print('  income = "/pfad/zu/einnahmen-belege"')
+        print("  EOF")
+        return
+
+    print()
+    print()
+
+    config = load_config()
+    receipts = config.get("receipts", {})
+
+    print("[receipts]")
+    expenses_path = receipts.get("expenses", "")
+    income_path = receipts.get("income", "")
+    print(f"  expenses = {expenses_path or '(nicht gesetzt)'}")
+    print(f"  income   = {income_path or '(nicht gesetzt)'}")
+
+
+def cmd_receipt_check(args):
+    """Prüft alle Transaktionen auf fehlende Belege."""
+    config = load_config()
+    receipts_config = config.get("receipts", {})
+
+    if not receipts_config.get("expenses") and not receipts_config.get("income"):
+        print("Fehler: Keine Beleg-Pfade konfiguriert.", file=sys.stderr)
+        print("Siehe: euer config show", file=sys.stderr)
+        sys.exit(1)
+
+    db_path = Path(args.db)
+    conn = get_db_connection(db_path)
+
+    year = args.year or datetime.now().year
+    print(f"Beleg-Prüfung {year}")
+    print("=" * 50)
+    print()
+
+    missing_count = {"expenses": 0, "income": 0}
+    total_count = {"expenses": 0, "income": 0}
+
+    # Ausgaben prüfen
+    if args.type in (None, "expense") and receipts_config.get("expenses"):
+        expenses = conn.execute(
+            """SELECT e.id, e.date, e.vendor, e.receipt_name
+               FROM expenses e
+               WHERE strftime('%Y', e.date) = ?
+               ORDER BY e.date, e.id""",
+            (str(year),),
+        ).fetchall()
+
+        missing_expenses = []
+        for r in expenses:
+            total_count["expenses"] += 1
+            if not r["receipt_name"]:
+                missing_expenses.append(
+                    (r["id"], r["date"], r["vendor"], "(kein Beleg)")
+                )
+                missing_count["expenses"] += 1
+            else:
+                found_path, _ = resolve_receipt_path(
+                    r["receipt_name"], r["date"], "expenses", config
+                )
+                if found_path is None:
+                    missing_expenses.append(
+                        (r["id"], r["date"], r["vendor"], r["receipt_name"])
+                    )
+                    missing_count["expenses"] += 1
+
+        print("Fehlende Belege (Ausgaben):")
+        if missing_expenses:
+            for eid, date, vendor, receipt in missing_expenses:
+                print(f"  #{eid:<4} {date}  {vendor[:20]:<20}  {receipt}")
+        else:
+            print("  (keine)")
+        print()
+
+    # Einnahmen prüfen
+    if args.type in (None, "income") and receipts_config.get("income"):
+        income_rows = conn.execute(
+            """SELECT i.id, i.date, i.source, i.receipt_name
+               FROM income i
+               WHERE strftime('%Y', i.date) = ?
+               ORDER BY i.date, i.id""",
+            (str(year),),
+        ).fetchall()
+
+        missing_income = []
+        for r in income_rows:
+            total_count["income"] += 1
+            if not r["receipt_name"]:
+                missing_income.append((r["id"], r["date"], r["source"], "(kein Beleg)"))
+                missing_count["income"] += 1
+            else:
+                found_path, _ = resolve_receipt_path(
+                    r["receipt_name"], r["date"], "income", config
+                )
+                if found_path is None:
+                    missing_income.append(
+                        (r["id"], r["date"], r["source"], r["receipt_name"])
+                    )
+                    missing_count["income"] += 1
+
+        print("Fehlende Belege (Einnahmen):")
+        if missing_income:
+            for iid, date, source, receipt in missing_income:
+                print(f"  #{iid:<4} {date}  {source[:20]:<20}  {receipt}")
+        else:
+            print("  (keine)")
+        print()
+
+    conn.close()
+
+    # Zusammenfassung
+    print("Zusammenfassung:")
+    if args.type in (None, "expense") and receipts_config.get("expenses"):
+        print(
+            f"  Ausgaben: {missing_count['expenses']} von {total_count['expenses']} ohne gültigen Beleg"
+        )
+    if args.type in (None, "income") and receipts_config.get("income"):
+        print(
+            f"  Einnahmen: {missing_count['income']} von {total_count['income']} ohne gültigen Beleg"
+        )
+
+    # Exit-Code 1 wenn Belege fehlen
+    if missing_count["expenses"] > 0 or missing_count["income"] > 0:
+        sys.exit(1)
+
+
+def cmd_receipt_open(args):
+    """Öffnet den Beleg einer Transaktion."""
+    config = load_config()
+    db_path = Path(args.db)
+    conn = get_db_connection(db_path)
+
+    table = args.table
+    if table == "expenses":
+        row = conn.execute(
+            "SELECT date, receipt_name FROM expenses WHERE id = ?", (args.id,)
+        ).fetchone()
+        entity_name = "Ausgabe"
+    else:
+        row = conn.execute(
+            "SELECT date, receipt_name FROM income WHERE id = ?", (args.id,)
+        ).fetchone()
+        entity_name = "Einnahme"
+
+    conn.close()
+
+    if not row:
+        print(f"Fehler: {entity_name} #{args.id} nicht gefunden.", file=sys.stderr)
+        sys.exit(1)
+
+    if not row["receipt_name"]:
+        print(f"Fehler: {entity_name} #{args.id} hat keinen Beleg.", file=sys.stderr)
+        sys.exit(1)
+
+    found_path, checked_paths = resolve_receipt_path(
+        row["receipt_name"], row["date"], table, config
+    )
+
+    if found_path is None:
+        print(f"Fehler: Beleg '{row['receipt_name']}' nicht gefunden:", file=sys.stderr)
+        for p in checked_paths:
+            print(f"  - {p}", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"Öffne: {found_path}")
+
+    # Plattform-spezifisch öffnen
+    if platform.system() == "Darwin":
+        subprocess.run(["open", str(found_path)])
+    elif platform.system() == "Linux":
+        subprocess.run(["xdg-open", str(found_path)])
+    else:
+        # Windows
+        os.startfile(str(found_path))  # type: ignore
+
+
 # =============================================================================
 # Hauptprogramm
 # =============================================================================
@@ -1272,6 +1545,45 @@ def main():
         help="Tabelle (default: expenses)",
     )
     audit_parser.set_defaults(func=cmd_audit)
+
+    # --- config ---
+    config_parser = subparsers.add_parser("config", help="Konfiguration verwalten")
+    config_subparsers = config_parser.add_subparsers(dest="action", required=True)
+
+    # config show
+    config_show_parser = config_subparsers.add_parser(
+        "show", help="Zeigt aktuelle Konfiguration"
+    )
+    config_show_parser.set_defaults(func=cmd_config_show)
+
+    # --- receipt ---
+    receipt_parser = subparsers.add_parser("receipt", help="Beleg-Verwaltung")
+    receipt_subparsers = receipt_parser.add_subparsers(dest="action", required=True)
+
+    # receipt check
+    receipt_check_parser = receipt_subparsers.add_parser(
+        "check", help="Prüft Transaktionen auf fehlende Belege"
+    )
+    receipt_check_parser.add_argument(
+        "--year", type=int, help="Jahr (default: aktuelles)"
+    )
+    receipt_check_parser.add_argument(
+        "--type", choices=["expense", "income"], help="Nur diesen Typ prüfen"
+    )
+    receipt_check_parser.set_defaults(func=cmd_receipt_check)
+
+    # receipt open
+    receipt_open_parser = receipt_subparsers.add_parser(
+        "open", help="Öffnet Beleg einer Transaktion"
+    )
+    receipt_open_parser.add_argument("id", type=int, help="Transaktions-ID")
+    receipt_open_parser.add_argument(
+        "--table",
+        choices=["expenses", "income"],
+        default="expenses",
+        help="Tabelle (default: expenses)",
+    )
+    receipt_open_parser.set_defaults(func=cmd_receipt_open)
 
     args = parser.parse_args()
     args.func(args)
