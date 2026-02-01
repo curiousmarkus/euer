@@ -5,7 +5,7 @@ Guidelines for AI coding agents working in this repository.
 ## Project Overview
 
 EÜR (Einnahmenüberschussrechnung) - SQLite-based bookkeeping CLI for German freelancers.
-Modular Python CLI (Package `euercli`), no external dependencies except optional `openpyxl`.
+Modular Python CLI (package `euercli`), no external dependencies except optional `openpyxl`.
 
 ## Build & Run Commands
 
@@ -26,21 +26,12 @@ euer list categories
 # Test with custom database
 euer --db test.db init
 euer --db test.db list expenses
-
-# Excel migration (requires openpyxl)
-python3 migrate_excel.py <excel_file> [--db euer.db] [--dry-run]
 ```
 
-### No Test Framework
-
-This project currently has no automated tests. Test manually:
+### Tests
 
 ```bash
-# Test a new feature
-euer init
-euer add expense --date 2026-01-15 --vendor "Test" --category "Arbeitsmittel" --amount -10.00
-euer list expenses --year 2026
-euer delete expense 1 --force
+python -m unittest discover -s tests
 ```
 
 ### Linting (Optional)
@@ -203,17 +194,21 @@ euer/
 ├── euercli/             # Core package
 │   ├── cli.py           # CLI parser/dispatch
 │   └── schema.py        # DB schema + seeds
-├── euer.db              # SQLite database
+├── tests/               # CLI integration tests
 ├── exports/             # CSV/XLSX exports
 ├── skills/              # AI agent skills
-├── specs/               # Feature specifications
-├── README.md            # User documentation
-├── DEVELOPMENT.md       # Technical reference
+├── specs/               # Feature specs + backlog items
+├── README.md            # Project overview
+├── USER_GUIDE.md        # User documentation
+├── DEVELOPMENT.md       # Developer documentation
+├── TESTING.md           # Test strategy
 └── AGENTS.md            # This file
 ```
 
 ## Key References
 
 - Skill for agents: `skills/euer-buchhaltung/SKILL.md`
-- DB schema: `technical-documentation/DEVELOPMENT.md` or `SCHEMA` in `euercli/schema.py`
-- Future modularization: `specs/003-modularization.md`
+- DB schema: `euercli/schema.py`
+- Developer guide: `DEVELOPMENT.md`
+- User guide: `USER_GUIDE.md`
+- Incomplete import design note: `technical-documentation/INCOMPLETE_ENTRIES_APPROACH.md`

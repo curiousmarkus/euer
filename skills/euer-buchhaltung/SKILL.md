@@ -21,6 +21,11 @@ Falls das CLI nicht installiert ist, geht auch:
 python -m euercli <command>
 ```
 
+### Datenbank & Config
+
+- Standard‑DB: `euer.db` im Projekt (oder via `--db PFAD`).
+- Config: `~/.config/euer/config.toml` (Beleg‑Pfade, Export‑Verzeichnis, Steuer‑Modus).
+
 ## Verfügbare Commands
 
 ### Ausgaben
@@ -140,6 +145,11 @@ Der Betrag (`--amount`) entspricht immer dem tatsächlichen **Zahlfluss auf dem 
 ### Steuermodus (Config)
 
 Das Verhalten hängt von der Konfiguration ab (`~/.config/euer/config.toml`):
+
+```toml
+[tax]
+mode = "small_business"  # oder "standard"
+```
 
 1.  **Kleinunternehmer (`mode = "small_business"`)**:
     *   Ausgaben werde brutto als Kosten erfasst.

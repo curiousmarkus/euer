@@ -1,5 +1,8 @@
 # Modularisierung - Spezifikation
 
+## Status
+**Implemented** (2026-02-01)
+
 ## Zusammenfassung
 
 Plan zur Aufteilung der CLI in ein `euercli`-Package.
