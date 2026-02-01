@@ -129,6 +129,12 @@ CREATE TABLE audit_log (
 
 Pfad: `~/.config/euer/config.toml`
 
+Interaktive Ersteinrichtung:
+
+```bash
+python3 euer.py setup
+```
+
 ```toml
 [receipts]
 expenses = "/pfad/zu/ausgaben-belege"
@@ -182,6 +188,7 @@ python3 euer.py [--db PFAD] <command>
 
 | Command | Beschreibung |
 |---------|--------------|
+| `setup` | Interaktive Ersteinrichtung (Beleg-Pfade) |
 | `init` | Datenbank initialisieren |
 | `add expense` | Ausgabe hinzufügen |
 | `add income` | Einnahme hinzufügen |
@@ -259,6 +266,23 @@ Oder in `SEED_CATEGORIES` ergänzen und DB neu initialisieren.
 ### Modularisierung
 
 Siehe `specs/003-modularization.md` für den Plan zur Aufteilung in Module (wenn >2500 Zeilen).
+
+---
+
+## Tests
+
+Die Tests liegen in `tests/` und werden als CLI-Integrationstests ausgeführt.
+Details zur Strategie in [TESTING.md](TESTING.md).
+
+```bash
+python -m unittest discover -s tests
+```
+
+Optional (mit `openpyxl`):
+
+```bash
+python3 euer.py export --format xlsx
+```
 
 ---
 

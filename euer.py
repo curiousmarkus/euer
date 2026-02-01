@@ -200,6 +200,77 @@ def load_config() -> dict:
         return tomllib.load(f)
 
 
+def toml_escape(value: str) -> str:
+    """Escaped String für TOML."""
+    return value.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def toml_format_value(value: object) -> str:
+    """Formatiert einfache TOML-Werte."""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, float):
+        return f"{value}"
+    if isinstance(value, str):
+        return f"\"{toml_escape(value)}\""
+    if isinstance(value, list):
+        inner = ", ".join(toml_format_value(v) for v in value)
+        return f"[{inner}]"
+    return f"\"{toml_escape(str(value))}\""
+
+
+def dump_toml(config: dict) -> str:
+    """Erzeugt TOML aus einer flachen Config-Struktur."""
+    lines = []
+    for section, value in config.items():
+        if isinstance(value, dict):
+            lines.append(f"[{section}]")
+            for key, val in value.items():
+                lines.append(f"{key} = {toml_format_value(val)}")
+            lines.append("")
+        else:
+            lines.append(f"{section} = {toml_format_value(value)}")
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def save_config(config: dict) -> None:
+    """Schreibt Config nach ~/.config/euer/config.toml."""
+    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+        f.write(dump_toml(config))
+
+
+def prompt_path(label: str, default: str | None) -> str:
+    """Fragt interaktiv einen Pfad ab."""
+    prompt = f"{label}"
+    if default:
+        prompt += f" [{default}]"
+    prompt += ": "
+    try:
+        value = input(prompt).strip()
+    except EOFError:
+        print("\nAbgebrochen.", file=sys.stderr)
+        sys.exit(1)
+    if not value and default is not None:
+        return default
+    return value
+
+
+def normalize_receipt_path(value: str) -> str:
+    """Normalisiert Pfad-Eingaben."""
+    if not value:
+        return ""
+    cleaned = value
+    if (
+        (cleaned.startswith('"') and cleaned.endswith('"'))
+        or (cleaned.startswith("'") and cleaned.endswith("'"))
+    ):
+        cleaned = cleaned[1:-1]
+    return str(Path(cleaned).expanduser())
+
+
 def resolve_receipt_path(
     receipt_name: str,
     date: str,  # YYYY-MM-DD
@@ -287,6 +358,47 @@ def cmd_init(args):
 
     conn.close()
     print("Fertig.")
+
+
+def cmd_setup(args):
+    """Interaktive Ersteinrichtung."""
+    print("Willkommen! Konfiguriere deine EÜR...")
+    print()
+
+    config = load_config()
+    receipts_config = dict(config.get("receipts", {}))
+
+    expenses_input = prompt_path(
+        "Beleg-Pfad für Ausgaben", receipts_config.get("expenses")
+    )
+    income_input = prompt_path(
+        "Beleg-Pfad für Einnahmen", receipts_config.get("income")
+    )
+
+    expenses_path = normalize_receipt_path(expenses_input)
+    income_path = normalize_receipt_path(income_input)
+
+    receipts_config["expenses"] = expenses_path
+    receipts_config["income"] = income_path
+    config["receipts"] = receipts_config
+
+    ordered_config = {"receipts": receipts_config}
+    for key, value in config.items():
+        if key != "receipts":
+            ordered_config[key] = value
+
+    save_config(ordered_config)
+
+    print()
+    print(f"Konfiguration gespeichert: {CONFIG_PATH}")
+    print()
+    print("[receipts]")
+    print(f"  expenses = {expenses_path or '(nicht gesetzt)'}")
+    print(f"  income   = {income_path or '(nicht gesetzt)'}")
+
+    for path in (expenses_path, income_path):
+        if path and not Path(path).exists():
+            print(f"! Hinweis: Pfad existiert nicht: {path}", file=sys.stderr)
 
 
 def cmd_add_expense(args):
@@ -1203,6 +1315,10 @@ def cmd_config_show(args):
         print()
         print("Erstelle Config mit:")
         print()
+        print("  euer setup")
+        print()
+        print("Oder manuell:")
+        print()
         print("  mkdir -p ~/.config/euer")
         print("  cat > ~/.config/euer/config.toml << 'EOF'")
         print("  [receipts]")
@@ -1404,6 +1520,12 @@ def main():
     # --- init ---
     init_parser = subparsers.add_parser("init", help="Initialisiert die Datenbank")
     init_parser.set_defaults(func=cmd_init)
+
+    # --- setup ---
+    setup_parser = subparsers.add_parser(
+        "setup", help="Interaktive Ersteinrichtung"
+    )
+    setup_parser.set_defaults(func=cmd_setup)
 
     # --- add ---
     add_parser = subparsers.add_parser("add", help="Fügt Transaktion hinzu")

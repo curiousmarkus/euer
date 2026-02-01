@@ -20,6 +20,19 @@ cd euer
 python3 euer.py init
 ```
 
+## Ersteinrichtung (Onboarding)
+
+```bash
+# Datenbank initialisieren (einmalig)
+python3 euer.py init
+
+# Interaktive Konfiguration der Beleg-Pfade
+python3 euer.py setup
+
+# Konfiguration prüfen
+python3 euer.py config show
+```
+
 ## AI-Agent Setup
 
 Kopiere den Skill in dein Projekt oder global:
@@ -42,6 +55,9 @@ Dann kann dein Agent Anweisungen wie diese verstehen:
 ```bash
 # Datenbank initialisieren (einmalig)
 python3 euer.py init
+
+# Beleg-Pfade konfigurieren (optional, aber empfohlen)
+python3 euer.py setup
 
 # Kategorien anzeigen
 python3 euer.py list categories
@@ -134,7 +150,13 @@ Belege können mit Transaktionen verknüpft und validiert werden.
 
 ### Konfiguration
 
-Erstelle `~/.config/euer/config.toml`:
+Empfohlen: `euer setup` (interaktiver Wizard).
+
+```bash
+python3 euer.py setup
+```
+
+Oder manuell: `~/.config/euer/config.toml`:
 
 ```toml
 [receipts]
@@ -206,9 +228,16 @@ euer/
 ## Dokumentation
 
 - [DEVELOPMENT.md](DEVELOPMENT.md) - Entwicklerdokumentation, Schema, Erweiterung
+- [TESTING.md](TESTING.md) - Teststrategie & Ausführung
 - [specs/001-init.md](specs/001-init.md) - Ursprüngliche Spezifikation
 - [specs/002-receipts.md](specs/002-receipts.md) - Beleg-Management Spezifikation
 - [skills/euer-buchhaltung/SKILL.md](skills/euer-buchhaltung/SKILL.md) - AI-Agent Skill
+
+## Tests
+
+```bash
+python3 -m unittest discover -s tests
+```
 
 ## Lizenz
 
