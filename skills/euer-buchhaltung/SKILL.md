@@ -34,9 +34,10 @@ python3 euer.py add expense \
 
 # Ausgaben anzeigen
 python3 euer.py list expenses [--year YYYY] [--month MM] [--category "..."]
+# Zeigt RC-Flag und USt-VA Betrag an, falls vorhanden.
 
 # Ausgabe aktualisieren
-python3 euer.py update expense <ID> [--date ...] [--vendor ...] [--amount ...] ...
+python3 euer.py update expense <ID> [--date ...] [--vendor ...] [--amount ...] [--rc] ...
 
 # Ausgabe löschen
 python3 euer.py delete expense <ID> [--force]
@@ -153,6 +154,33 @@ Nur diese Kategorien sind verfügbar:
 |-----------|-----------|
 | Sonstige betriebsfremde Einnahme | - |
 | Umsatzsteuerpflichtige Betriebseinnahmen | 14 |
+
+### Datenmodell (Interpretation der Spalten)
+
+#### Ausgaben (expenses)
+| Spalte | Bedeutung | Format / Hinweis |
+|--------|-----------|------------------|
+| `id` | Eindeutige ID | Automatisch vergeben |
+| `date` | Buchungsdatum | `YYYY-MM-DD` |
+| `vendor` | Lieferant | Name des Anbieters |
+| `category` | Kategorie | Name der Ausgabenkategorie |
+| `amount_eur`| Bruttobetrag | **Immer negativ** (z.B. -10.00) |
+| `rc` | Reverse-Charge | `X` markiert Steuerpflicht aus dem Ausland |
+| `vat_amount`| USt-VA Betrag | Steuerschuld für das Finanzamt (positiv) |
+| `account` | Konto | Verwendetes Bankkonto/Zahlart |
+| `receipt_name`| Belegdatei | Name der PDF/JPG Datei |
+| `notes` | Notizen | Optionale Bemerkungen |
+
+#### Einnahmen (income)
+| Spalte | Bedeutung | Format / Hinweis |
+|--------|-----------|------------------|
+| `id` | Eindeutige ID | Automatisch vergeben |
+| `date` | Buchungsdatum | `YYYY-MM-DD` |
+| `source` | Kunde/Quelle | Wer hat gezahlt? |
+| `category` | Kategorie | Name der Einnahmenkategorie |
+| `amount_eur`| Bruttobetrag | **Immer positiv** (z.B. 1500.00) |
+| `receipt_name`| Belegdatei | Name der Rechnungsdatei |
+| `notes` | Notizen | Optionale Bemerkungen |
 
 ### Belegnamen
 

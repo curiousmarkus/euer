@@ -74,6 +74,7 @@ CREATE TABLE IF NOT EXISTS expenses (
     account TEXT,
     foreign_amount TEXT,
     notes TEXT,
+    is_rc INTEGER NOT NULL DEFAULT 0,
     vat_amount REAL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     hash TEXT UNIQUE NOT NULL
@@ -110,6 +111,7 @@ CREATE TABLE IF NOT EXISTS incomplete_entries (
     foreign_amount TEXT,
     receipt_name TEXT,
     notes TEXT,
+    is_rc INTEGER NOT NULL DEFAULT 0,
     vat_amount REAL,
     raw_data TEXT,
     missing_fields TEXT,
@@ -627,9 +629,9 @@ def cmd_import(args):
                 cursor = conn.execute(
                     """INSERT INTO incomplete_entries
                        (type, date, party, category_name, amount_eur, account,
-                        foreign_amount, receipt_name, notes, vat_amount,
+                        foreign_amount, receipt_name, notes, is_rc, vat_amount,
                         raw_data, missing_fields)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (
                         row_type or "unknown",
                         str(date) if date else None,
@@ -640,6 +642,7 @@ def cmd_import(args):
                         str(foreign_amount) if foreign_amount else None,
                         str(receipt_name) if receipt_name else None,
                         str(notes) if notes else None,
+                        1 if rc else 0,
                         vat_amount,
                         json.dumps(normalized["raw_data"], ensure_ascii=False),
                         json.dumps(missing_fields, ensure_ascii=False),
@@ -662,6 +665,7 @@ def cmd_import(args):
                         "foreign_amount": str(foreign_amount) if foreign_amount else None,
                         "receipt_name": str(receipt_name) if receipt_name else None,
                         "notes": str(notes) if notes else None,
+                        "is_rc": 1 if rc else 0,
                         "vat_amount": vat_amount,
                         "missing_fields": missing_fields,
                     },
@@ -689,8 +693,8 @@ def cmd_import(args):
             cursor = conn.execute(
                 """INSERT INTO expenses 
                    (receipt_name, date, vendor, category_id, amount_eur, account,
-                    foreign_amount, notes, vat_amount, hash)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    foreign_amount, notes, is_rc, vat_amount, hash)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     receipt_name,
                     str(date),
@@ -700,6 +704,7 @@ def cmd_import(args):
                     account,
                     foreign_amount,
                     notes,
+                    1 if rc else 0,
                     vat_amount,
                     tx_hash,
                 ),
@@ -716,6 +721,7 @@ def cmd_import(args):
                 "account": account,
                 "foreign_amount": foreign_amount,
                 "notes": notes,
+                "is_rc": 1 if rc else 0,
                 "vat_amount": vat_amount,
             }
             log_audit(conn, "expenses", record_id, "INSERT", new_data=new_data)
@@ -890,8 +896,8 @@ def cmd_add_expense(args):
     cursor = conn.execute(
         """INSERT INTO expenses 
            (receipt_name, date, vendor, category_id, amount_eur, account, 
-            foreign_amount, notes, vat_amount, hash)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            foreign_amount, notes, is_rc, vat_amount, hash)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             args.receipt,
             args.date,
@@ -901,6 +907,7 @@ def cmd_add_expense(args):
             args.account,
             args.foreign,
             args.notes,
+            1 if args.rc else 0,
             vat_amount,
             tx_hash,
         ),
@@ -918,6 +925,7 @@ def cmd_add_expense(args):
         "account": args.account,
         "foreign_amount": args.foreign,
         "notes": args.notes,
+        "is_rc": 1 if args.rc else 0,
         "vat_amount": vat_amount,
     }
     log_audit(conn, "expenses", record_id, "INSERT", new_data=new_data)
@@ -1016,7 +1024,7 @@ def cmd_list_expenses(args):
     query = """
         SELECT e.id, e.date, e.vendor, c.name as category, c.eur_line,
                e.amount_eur, e.account, e.receipt_name, e.foreign_amount, 
-               e.notes, e.vat_amount
+               e.notes, e.is_rc, e.vat_amount
         FROM expenses e
         JOIN categories c ON e.category_id = c.id
         WHERE 1=1
@@ -1076,14 +1084,14 @@ def cmd_list_expenses(args):
             print("Keine Ausgaben gefunden.")
             return
 
-        # Check if any row has VAT
-        has_vat = any(r["vat_amount"] for r in rows)
+        # Check if any row has VAT or RC
+        has_vat = any(r["vat_amount"] or r["is_rc"] for r in rows)
 
         if has_vat:
             print(
-                f"{'ID':<5} {'Datum':<12} {'Lieferant':<20} {'Kategorie':<25} {'EUR':>10} {'USt-VA':>8} {'Konto':<10}"
+                f"{'ID':<5} {'Datum':<12} {'Lieferant':<20} {'Kategorie':<25} {'EUR':>10} {'RC':<3} {'USt-VA':>8} {'Konto':<10}"
             )
-            print("-" * 95)
+            print("-" * 100)
         else:
             print(
                 f"{'ID':<5} {'Datum':<12} {'Lieferant':<20} {'Kategorie':<30} {'EUR':>10} {'Konto':<12}"
@@ -1098,8 +1106,9 @@ def cmd_list_expenses(args):
             )
             if has_vat:
                 vat_str = f"{r['vat_amount']:.2f}" if r["vat_amount"] else ""
+                rc_str = "X" if r["is_rc"] else ""
                 print(
-                    f"{r['id']:<5} {r['date']:<12} {r['vendor'][:20]:<20} {cat_str[:25]:<25} {r['amount_eur']:>10.2f} {vat_str:>8} {(r['account'] or ''):<10}"
+                    f"{r['id']:<5} {r['date']:<12} {r['vendor'][:20]:<20} {cat_str[:25]:<25} {r['amount_eur']:>10.2f} {rc_str:<3} {vat_str:>8} {(r['account'] or ''):<10}"
                 )
                 if r["vat_amount"]:
                     vat_total += r["vat_amount"]
@@ -1108,9 +1117,9 @@ def cmd_list_expenses(args):
                     f"{r['id']:<5} {r['date']:<12} {r['vendor'][:20]:<20} {cat_str[:30]:<30} {r['amount_eur']:>10.2f} {(r['account'] or ''):<12}"
                 )
             total += r["amount_eur"]
-        print("-" * 95)
+        print("-" * (100 if has_vat else 95))
         if has_vat:
-            print(f"{'GESAMT':<64} {total:>10.2f} {vat_total:>8.2f}")
+            print(f"{'GESAMT':<68} {total:>10.2f}     {vat_total:>8.2f}")
         else:
             print(f"{'GESAMT':<69} {total:>10.2f}")
 
@@ -1241,6 +1250,11 @@ def cmd_update_expense(args):
     new_foreign = args.foreign if args.foreign is not None else row["foreign_amount"]
     new_notes = args.notes if args.notes is not None else row["notes"]
     new_vat = args.vat if args.vat is not None else row["vat_amount"]
+    new_rc = (1 if args.rc else 0) if args.rc else row["is_rc"]
+
+    # Automatisches vat_amount bei RC Update wenn bisher 0/None
+    if new_rc and not new_vat:
+        new_vat = round(abs(new_amount) * 0.19, 2)
 
     # Kategorie
     if args.category:
@@ -1261,7 +1275,7 @@ def cmd_update_expense(args):
     conn.execute(
         """UPDATE expenses SET
            receipt_name = ?, date = ?, vendor = ?, category_id = ?, amount_eur = ?,
-           account = ?, foreign_amount = ?, notes = ?, vat_amount = ?, hash = ?
+           account = ?, foreign_amount = ?, notes = ?, is_rc = ?, vat_amount = ?, hash = ?
            WHERE id = ?""",
         (
             new_receipt,
@@ -1272,6 +1286,7 @@ def cmd_update_expense(args):
             new_account,
             new_foreign,
             new_notes,
+            new_rc,
             new_vat,
             new_hash,
             args.id,
@@ -1288,6 +1303,7 @@ def cmd_update_expense(args):
         "account": new_account,
         "foreign_amount": new_foreign,
         "notes": new_notes,
+        "is_rc": new_rc,
         "vat_amount": new_vat,
     }
     log_audit(conn, "expenses", args.id, "UPDATE", old_data=old_data, new_data=new_data)
@@ -1469,7 +1485,7 @@ def cmd_export(args):
     # Ausgaben laden
     expenses = conn.execute(
         """SELECT e.receipt_name, e.date, e.vendor, c.name as category, c.eur_line,
-                  e.amount_eur, e.account, e.foreign_amount, e.notes, e.vat_amount
+                  e.amount_eur, e.account, e.foreign_amount, e.notes, e.is_rc, e.vat_amount
            FROM expenses e
            JOIN categories c ON e.category_id = c.id
            WHERE strftime('%Y', e.date) = ?
@@ -1505,6 +1521,7 @@ def cmd_export(args):
                     "Konto",
                     "Fremdwährung",
                     "Bemerkung",
+                    "RC",
                     "USt-VA",
                 ]
             )
@@ -1524,6 +1541,7 @@ def cmd_export(args):
                         r["account"] or "",
                         r["foreign_amount"] or "",
                         r["notes"] or "",
+                        "X" if r["is_rc"] else "",
                         f"{r['vat_amount']:.2f}" if r["vat_amount"] else "",
                     ]
                 )
@@ -1586,6 +1604,7 @@ def cmd_export(args):
                 "Konto",
                 "Fremdwährung",
                 "Bemerkung",
+                "RC",
                 "USt-VA",
             ]
         )
@@ -1603,6 +1622,7 @@ def cmd_export(args):
                     r["account"] or "",
                     r["foreign_amount"] or "",
                     r["notes"] or "",
+                    "X" if r["is_rc"] else "",
                     r["vat_amount"] if r["vat_amount"] else None,
                 ]
             )
@@ -1680,7 +1700,7 @@ def cmd_summary(args):
     rc_vat = conn.execute(
         """SELECT SUM(vat_amount) as total
            FROM expenses
-           WHERE strftime('%Y', date) = ? AND vat_amount IS NOT NULL""",
+           WHERE strftime('%Y', date) = ? AND is_rc = 1""",
         (str(year),),
     ).fetchone()
     rc_vat_total = rc_vat["total"] if rc_vat["total"] else 0.0
@@ -2078,6 +2098,11 @@ def main():
     upd_exp_parser.add_argument("--receipt", help="Neuer Belegname")
     upd_exp_parser.add_argument("--notes", help="Neue Bemerkung")
     upd_exp_parser.add_argument("--vat", type=float, help="Neuer USt-VA Betrag")
+    upd_exp_parser.add_argument(
+        "--rc",
+        action="store_true",
+        help="Reverse-Charge: setzt Flag und berechnet ggf. 19%% USt",
+    )
     upd_exp_parser.set_defaults(func=cmd_update_expense)
 
     # update income

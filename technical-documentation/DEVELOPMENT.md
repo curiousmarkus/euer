@@ -83,6 +83,7 @@ CREATE TABLE expenses (
     account TEXT,                 -- Bankkonto
     foreign_amount TEXT,          -- z.B. "26.60 USD"
     notes TEXT,
+    is_rc INTEGER NOT NULL DEFAULT 0, -- Reverse-Charge Flag (0 oder 1)
     vat_amount REAL,              -- Reverse-Charge USt (19%)
     created_at TIMESTAMP,
     hash TEXT UNIQUE NOT NULL     -- Duplikat-Erkennung
@@ -135,6 +136,7 @@ CREATE TABLE incomplete_entries (
     foreign_amount TEXT,
     receipt_name TEXT,
     notes TEXT,
+    is_rc INTEGER NOT NULL DEFAULT 0,
     vat_amount REAL,
     raw_data TEXT,                -- JSON
     missing_fields TEXT,          -- JSON-Liste
@@ -191,7 +193,7 @@ python3 euer.py add expense --date 2026-01-20 --vendor "OpenAI" \
     --category "Laufende EDV-Kosten" --amount -20.00 --rc
 ```
 
-Berechnet automatisch 19% USt für die USt-Voranmeldung.
+Berechnet automatisch 19% USt für die USt-Voranmeldung und speichert dies explizit im `is_rc` Feld sowie den Betrag in `vat_amount`.
 
 **Typische RC-Anbieter:** OpenAI, Anthropic, Render, Vercel, AWS, GitHub, Stripe
 
