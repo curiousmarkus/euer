@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-CLI = [sys.executable, str(REPO_ROOT / "euer.py")]
+CLI = [sys.executable, "-m", "euercli"]
 
 
 class EuerCLITestCase(unittest.TestCase):
@@ -293,12 +293,13 @@ class EuerCLITestCase(unittest.TestCase):
     def test_config_show_when_missing(self):
         result = self.run_cli(["config", "show"], check=True)
         self.assertIn("nicht vorhanden", result.stdout)
-        self.assertIn("euer setup", result.stdout)
+        self.assertIn("python -m euercli setup", result.stdout)
 
     def test_setup_writes_config(self):
         expenses_dir = self.root / "receipts" / "expenses"
         income_dir = self.root / "receipts" / "income"
-        input_data = f"{expenses_dir}\n{income_dir}\n"
+        export_dir = self.root / "exports"
+        input_data = f"{expenses_dir}\n{income_dir}\n{export_dir}\n"
 
         result = self.run_cli(["setup"], input=input_data, check=True)
         self.assertIn("Konfiguration gespeichert", result.stdout)
@@ -308,6 +309,8 @@ class EuerCLITestCase(unittest.TestCase):
         self.assertIn("[receipts]", content)
         self.assertIn(f'expenses = "{expenses_dir}"', content)
         self.assertIn(f'income = "{income_dir}"', content)
+        self.assertIn("[exports]", content)
+        self.assertIn(f'directory = "{export_dir}"', content)
 
     def test_receipt_check_requires_config(self):
         result = self.run_cli(["receipt", "check"])

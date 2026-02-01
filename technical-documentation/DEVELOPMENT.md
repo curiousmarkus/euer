@@ -12,7 +12,11 @@ EÜR ist ein CLI-Tool zur Verwaltung der Einnahmenüberschussrechnung für Klein
 
 ```
 euer/
-├── euer.py              # Haupt-CLI (Single-File, ~1600 Zeilen)
+├── euer.py              # CLI-Wrapper
+├── euercli/             # Core Package
+│   ├── cli.py           # CLI-Parser + Dispatch
+│   ├── schema.py        # DB-Schema + Seed-Daten
+│   └── commands/        # Command-Module
 ├── euer.db              # SQLite-Datenbank (nach init)
 ├── exports/             # Export-Verzeichnis für CSV/XLSX
 ├── requirements.txt     # openpyxl (optional, für XLSX-Export)
@@ -24,7 +28,7 @@ euer/
 │   ├── 002-receipts.md  # Beleg-Management
 │   └── 003-modularization.md  # Zukünftige Modularisierung
 ├── README.md            # Schnellstart & Open-Source-Info
-└── DEVELOPMENT.md       # Diese Datei
+└── technical-documentation/DEVELOPMENT.md  # Diese Datei
 ```
 
 ---
@@ -33,7 +37,7 @@ euer/
 
 | Entscheidung | Begründung |
 |--------------|------------|
-| Single-File CLI | Einfach zu verstehen, deployen, AI-Agent-freundlich |
+| Modulares Paket | Bessere Wartbarkeit, klare Abhängigkeiten, testbar |
 | SQLite | Keine Installation, Datei = Backup, Standard-Library |
 | Kein ORM | Direktes SQL ist transparenter für einfaches Schema |
 | argparse | Standard-Library, keine externe Dependency |
@@ -158,7 +162,7 @@ Pfad: `~/.config/euer/config.toml`
 Interaktive Ersteinrichtung:
 
 ```bash
-python3 euer.py setup
+python -m euercli setup
 ```
 
 ```toml
@@ -192,7 +196,7 @@ Beispiel: `/pfad/zu/ausgaben-belege/2026/2026-01-15_Render.pdf`
 Bei Ausgaben an ausländische Anbieter ohne deutsche USt:
 
 ```bash
-python3 euer.py add expense --date 2026-01-20 --vendor "OpenAI" \
+python -m euercli add expense --date 2026-01-20 --vendor "OpenAI" \
     --category "Laufende EDV-Kosten" --amount -20.00 --rc
 ```
 
@@ -207,7 +211,7 @@ Berechnet automatisch 19% USt für die USt-Voranmeldung und speichert dies expli
 ### Globale Optionen
 
 ```bash
-python3 euer.py [--db PFAD] <command>
+python -m euercli [--db PFAD] <command>
 ```
 
 ### Commands
@@ -336,7 +340,7 @@ python -m unittest discover -s tests
 Optional (mit `openpyxl`):
 
 ```bash
-python3 euer.py export --format xlsx
+python -m euercli export --format xlsx
 ```
 
 ---

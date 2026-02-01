@@ -17,20 +17,20 @@ SQLite-basierte Buchhaltung für deutsche Kleinunternehmer (§19 UStG).
 ```bash
 git clone https://github.com/yourusername/euer.git
 cd euer
-python3 euer.py init
+python -m euercli init
 ```
 
 ## Ersteinrichtung (Onboarding)
 
 ```bash
 # Datenbank initialisieren (einmalig)
-python3 euer.py init
+python -m euercli init
 
-# Interaktive Konfiguration der Beleg-Pfade
-python3 euer.py setup
+# Interaktive Konfiguration der Beleg-Pfade + Export-Verzeichnis
+python -m euercli setup
 
 # Konfiguration prüfen
-python3 euer.py config show
+python -m euercli config show
 ```
 
 ## AI-Agent Setup
@@ -54,20 +54,20 @@ Dann kann dein Agent Anweisungen wie diese verstehen:
 
 ```bash
 # Datenbank initialisieren (einmalig)
-python3 euer.py init
+python -m euercli init
 
 # Beleg-Pfade konfigurieren (optional, aber empfohlen)
-python3 euer.py setup
+python -m euercli setup
 
 # Kategorien anzeigen
-python3 euer.py list categories
+python -m euercli list categories
 ```
 
 ## Ausgaben erfassen
 
 ```bash
 # Standard-Ausgabe
-python3 euer.py add expense \
+python -m euercli add expense \
     --date 2026-01-15 \
     --vendor "1und1" \
     --category "Telekommunikation" \
@@ -75,7 +75,7 @@ python3 euer.py add expense \
     --account "Sparkasse Giro"
 
 # Ausgabe mit Reverse-Charge (ausländischer Anbieter, berechnet 19% USt)
-python3 euer.py add expense \
+python -m euercli add expense \
     --date 2026-01-04 \
     --vendor "RENDER.COM" \
     --category "Laufende EDV-Kosten" \
@@ -93,7 +93,7 @@ python3 euer.py add expense \
 ## Einnahmen erfassen
 
 ```bash
-python3 euer.py add income \
+python -m euercli add income \
     --date 2026-01-20 \
     --source "Kunde ABC" \
     --category "Umsatzsteuerpflichtige Betriebseinnahmen" \
@@ -105,44 +105,45 @@ python3 euer.py add income \
 
 ```bash
 # Ausgaben (mit Filter)
-python3 euer.py list expenses --year 2026
-python3 euer.py list expenses --year 2026 --month 1
-python3 euer.py list expenses --category "Laufende EDV-Kosten"
+python -m euercli list expenses --year 2026
+python -m euercli list expenses --year 2026 --month 1
+python -m euercli list expenses --category "Laufende EDV-Kosten"
 
 # Einnahmen
-python3 euer.py list income --year 2026
+python -m euercli list income --year 2026
 
 # Zusammenfassung (Kategorien + Gewinn/Verlust + USt-VA)
-python3 euer.py summary --year 2026
+python -m euercli summary --year 2026
 ```
 
 ## Korrigieren & Löschen
 
 ```bash
 # Einzelne Felder aktualisieren
-python3 euer.py update expense 42 --amount -25.00 --notes "Korrigiert"
+python -m euercli update expense 42 --amount -25.00 --notes "Korrigiert"
 
 # Löschen (mit Bestätigung)
-python3 euer.py delete expense 42
+python -m euercli delete expense 42
 
 # Löschen ohne Rückfrage
-python3 euer.py delete expense 42 --force
+python -m euercli delete expense 42 --force
 
 # Änderungshistorie prüfen
-python3 euer.py audit 42 --table expenses
+python -m euercli audit 42 --table expenses
 ```
 
 ## Export
 
 ```bash
 # CSV (immer verfügbar)
-python3 euer.py export --year 2026 --format csv
+python -m euercli export --year 2026 --format csv
 
 # XLSX (benötigt: pip install openpyxl)
-python3 euer.py export --year 2026 --format xlsx
+python -m euercli export --year 2026 --format xlsx
 ```
 
-Erzeugt: `exports/EÜR_2026_Ausgaben.csv` und `exports/EÜR_2026_Einnahmen.csv`
+Erzeugt standardmäßig in `exports.directory` (Config) oder `./exports`:
+`EÜR_2026_Ausgaben.csv` und `EÜR_2026_Einnahmen.csv`
 
 ## Bulk-Import (Bankauszug / AI-Agent)
 
@@ -151,7 +152,7 @@ als "incomplete" gespeichert und können später korrigiert werden.
 Fehlender `type` wird aus dem Vorzeichen von `amount_eur` abgeleitet.
 
 ```bash
-python3 euer.py import --file import.csv --format csv
+python -m euercli import --file import.csv --format csv
 ```
 
 Beispiel CSV:
@@ -166,8 +167,8 @@ income,2026-01-12,Client A,Umsatzsteuerpflichtige Betriebseinnahmen,200.00,Rechn
 ### Unvollständige Einträge anzeigen
 
 ```bash
-python3 euer.py incomplete list
-python3 euer.py incomplete list --format csv
+python -m euercli incomplete list
+python -m euercli incomplete list --format csv
 ```
 
 ## Beleg-Verwaltung
@@ -179,7 +180,7 @@ Belege können mit Transaktionen verknüpft und validiert werden.
 Empfohlen: `euer setup` (interaktiver Wizard).
 
 ```bash
-python3 euer.py setup
+python -m euercli setup
 ```
 
 Oder manuell: `~/.config/euer/config.toml`:
@@ -194,21 +195,21 @@ Belege werden in Jahres-Unterordnern erwartet: `<base>/<Jahr>/<Belegname>`
 
 ```bash
 # Konfiguration anzeigen
-python3 euer.py config show
+python -m euercli config show
 ```
 
 ### Beleg-Prüfung
 
 ```bash
 # Alle Transaktionen prüfen (aktuelles Jahr)
-python3 euer.py receipt check
+python -m euercli receipt check
 
 # Bestimmtes Jahr prüfen
-python3 euer.py receipt check --year 2025
+python -m euercli receipt check --year 2025
 
 # Nur Ausgaben oder Einnahmen prüfen
-python3 euer.py receipt check --type expense
-python3 euer.py receipt check --type income
+python -m euercli receipt check --type expense
+python -m euercli receipt check --type income
 ```
 
 Bei `add` und `update` wird automatisch gewarnt, wenn ein angegebener Beleg nicht gefunden wird.
@@ -217,10 +218,10 @@ Bei `add` und `update` wird automatisch gewarnt, wenn ein angegebener Beleg nich
 
 ```bash
 # Beleg einer Ausgabe öffnen
-python3 euer.py receipt open 12
+python -m euercli receipt open 12
 
 # Beleg einer Einnahme öffnen
-python3 euer.py receipt open 5 --table income
+python -m euercli receipt open 5 --table income
 ```
 
 ## Verfügbare Kategorien
@@ -241,7 +242,10 @@ python3 euer.py receipt open 5 --table income
 
 ```
 euer/
-├── euer.py              # CLI-Tool
+├── euer.py              # CLI-Wrapper (Entry-Point)
+├── euercli/             # Python-Package
+│   ├── cli.py           # CLI-Parser + Dispatch
+│   └── commands/        # Command-Implementierungen
 ├── euer.db              # SQLite-Datenbank
 ├── exports/             # CSV/XLSX-Exporte
 ├── skills/

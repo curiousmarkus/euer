@@ -74,7 +74,7 @@ consistent with the rest of the system.
 ### Import
 
 ```
-python3 euer.py import --file import.csv --format csv
+python -m euercli import --file import.csv --format csv
 ```
 
 - Inserts complete rows into `expenses` / `income`.
@@ -84,8 +84,8 @@ python3 euer.py import --file import.csv --format csv
 ### Incomplete List
 
 ```
-python3 euer.py incomplete list
-python3 euer.py incomplete list --format csv
+python -m euercli incomplete list
+python -m euercli incomplete list --format csv
 ```
 
 Shows missing fields (pretty-printed) to help operators fix entries quickly.

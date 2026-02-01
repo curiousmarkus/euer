@@ -12,7 +12,7 @@ Dieses Skill ermöglicht die Verwaltung einer Einnahmenüberschussrechnung (EÜR
 Das CLI befindet sich im Projektverzeichnis:
 
 ```bash
-python3 euer.py <command>
+python -m euercli <command>
 ```
 
 ## Verfügbare Commands
@@ -21,7 +21,7 @@ python3 euer.py <command>
 
 ```bash
 # Ausgabe hinzufügen
-python3 euer.py add expense \
+python -m euercli add expense \
     --date YYYY-MM-DD \
     --vendor "Lieferant" \
     --category "Kategorie" \
@@ -34,21 +34,21 @@ python3 euer.py add expense \
     [--rc]  # Reverse-Charge für ausländische Anbieter
 
 # Ausgaben anzeigen
-python3 euer.py list expenses [--year YYYY] [--month MM] [--category "..."]
+python -m euercli list expenses [--year YYYY] [--month MM] [--category "..."]
 # Zeigt RC-Flag, USt (Output) und VorSt (Input) an, falls vorhanden.
 
 # Ausgabe aktualisieren
-python3 euer.py update expense <ID> [--date ...] [--vendor ...] [--amount ...] [--rc] ...
+python -m euercli update expense <ID> [--date ...] [--vendor ...] [--amount ...] [--rc] ...
 
 # Ausgabe löschen
-python3 euer.py delete expense <ID> [--force]
+python -m euercli delete expense <ID> [--force]
 ```
 
 ### Einnahmen
 
 ```bash
 # Einnahme hinzufügen
-python3 euer.py add income \
+python -m euercli add income \
     --date YYYY-MM-DD \
     --source "Kunde/Quelle" \
     --category "Kategorie" \
@@ -59,41 +59,41 @@ python3 euer.py add income \
     [--vat 285.00]  # Ausgewiesener Umsatzsteuer-Betrag bei Regelbesteuerung (nicht %)
 
 # Einnahmen anzeigen
-python3 euer.py list income [--year YYYY] [--month MM]
+python -m euercli list income [--year YYYY] [--month MM]
 
 # Einnahme aktualisieren
-python3 euer.py update income <ID> [--date ...] [--source ...] [--amount ...] ...
+python -m euercli update income <ID> [--date ...] [--source ...] [--amount ...] ...
 
 # Einnahme löschen
-python3 euer.py delete income <ID> [--force]
+python -m euercli delete income <ID> [--force]
 ```
 
 ### Übersicht & Export
 
 ```bash
 # Zusammenfassung (Kategorien + Gewinn/Verlust)
-python3 euer.py summary [--year YYYY]
+python -m euercli summary [--year YYYY]
 
 # Export als CSV oder XLSX
-python3 euer.py export [--year YYYY] [--format csv|xlsx]
+python -m euercli export [--year YYYY] [--format csv|xlsx]
 
 # Kategorien anzeigen
-python3 euer.py list categories [--type expense|income]
+python -m euercli list categories [--type expense|income]
 
 # Audit-Log für Transaktion
-python3 euer.py audit <ID> [--table expenses|income]
+python -m euercli audit <ID> [--table expenses|income]
 ```
 
 ### Bulk-Import
 
 ```bash
 # Import von CSV oder JSONL
-python3 euer.py import --file import.csv --format csv
-python3 euer.py import --file import.jsonl --format jsonl
+python -m euercli import --file import.csv --format csv
+python -m euercli import --file import.jsonl --format jsonl
 
 # Unvollständige Einträge anzeigen
-python3 euer.py incomplete list
-python3 euer.py incomplete list --format csv
+python -m euercli incomplete list
+python -m euercli incomplete list --format csv
 ```
 
 Hinweis:
@@ -110,13 +110,13 @@ Workflow:
 
 ```bash
 # Konfiguration anzeigen
-python3 euer.py config show
+python -m euercli config show
 
 # Fehlende Belege prüfen
-python3 euer.py receipt check [--year YYYY] [--type expense|income]
+python -m euercli receipt check [--year YYYY] [--type expense|income]
 
 # Beleg öffnen
-python3 euer.py receipt open <ID> [--table expenses|income]
+python -m euercli receipt open <ID> [--table expenses|income]
 ```
 
 ## Wichtige Regeln
@@ -224,29 +224,29 @@ Belege werden in Jahres-Unterordnern erwartet:
 
 ### Monatliche Buchung
 
-1. Prüfe bestehende Einträge: `python3 euer.py list expenses --year 2026 --month 1`
+1. Prüfe bestehende Einträge: `python -m euercli list expenses --year 2026 --month 1`
 2. Buche neue Ausgaben mit `add expense`
 3. Buche neue Einnahmen mit `add income`
-4. Prüfe Belege: `python3 euer.py receipt check --year 2026`
+4. Prüfe Belege: `python -m euercli receipt check --year 2026`
 
 ### Jahresabschluss
 
-1. Zusammenfassung anzeigen: `python3 euer.py summary --year 2026`
-2. Export erstellen: `python3 euer.py export --year 2026 --format xlsx`
-3. Beleg-Vollständigkeit prüfen: `python3 euer.py receipt check --year 2026`
+1. Zusammenfassung anzeigen: `python -m euercli summary --year 2026`
+2. Export erstellen: `python -m euercli export --year 2026 --format xlsx`
+3. Beleg-Vollständigkeit prüfen: `python -m euercli receipt check --year 2026`
 
 ### Korrektur
 
-1. Eintrag finden: `python3 euer.py list expenses --year 2026`
-2. Aktualisieren: `python3 euer.py update expense <ID> --amount -XX.XX`
-3. Historie prüfen: `python3 euer.py audit <ID>`
+1. Eintrag finden: `python -m euercli list expenses --year 2026`
+2. Aktualisieren: `python -m euercli update expense <ID> --amount -XX.XX`
+3. Historie prüfen: `python -m euercli audit <ID>`
 
 ## Beispiele
 
 ### SaaS-Ausgabe buchen (Render)
 
 ```bash
-python3 euer.py add expense \
+python -m euercli add expense \
     --date 2026-01-04 \
     --vendor "RENDER.COM" \
     --category "Laufende EDV-Kosten" \
@@ -259,7 +259,7 @@ python3 euer.py add expense \
 ### Kundenrechnung buchen
 
 ```bash
-python3 euer.py add income \
+python -m euercli add income \
     --date 2026-01-20 \
     --source "Kunde ABC GmbH" \
     --category "Umsatzsteuerpflichtige Betriebseinnahmen" \
@@ -270,7 +270,7 @@ python3 euer.py add income \
 ### Telefon-Rechnung buchen
 
 ```bash
-python3 euer.py add expense \
+python -m euercli add expense \
     --date 2026-01-15 \
     --vendor "1und1" \
     --category "Telekommunikation" \

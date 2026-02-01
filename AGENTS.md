@@ -5,24 +5,24 @@ Guidelines for AI coding agents working in this repository.
 ## Project Overview
 
 EÜR (Einnahmenüberschussrechnung) - SQLite-based bookkeeping CLI for German freelancers.
-Single-file Python CLI (~1600 lines), no external dependencies except optional `openpyxl`.
+Modular Python CLI (Package `euercli`), no external dependencies except optional `openpyxl`.
 
 ## Build & Run Commands
 
 ```bash
 # Initialize database (creates euer.db + exports/)
-python3 euer.py init
+python -m euercli init
 
 # Run CLI
-python3 euer.py <command>
+python -m euercli <command>
 
 # Test CLI works
-python3 euer.py --help
-python3 euer.py list categories
+python -m euercli --help
+python -m euercli list categories
 
 # Test with custom database
-python3 euer.py --db test.db init
-python3 euer.py --db test.db list expenses
+python -m euercli --db test.db init
+python -m euercli --db test.db list expenses
 
 # Excel migration (requires openpyxl)
 python3 migrate_excel.py <excel_file> [--db euer.db] [--dry-run]
@@ -34,18 +34,18 @@ This project currently has no automated tests. Test manually:
 
 ```bash
 # Test a new feature
-python3 euer.py init
-python3 euer.py add expense --date 2026-01-15 --vendor "Test" --category "Arbeitsmittel" --amount -10.00
-python3 euer.py list expenses --year 2026
-python3 euer.py delete expense 1 --force
+python -m euercli init
+python -m euercli add expense --date 2026-01-15 --vendor "Test" --category "Arbeitsmittel" --amount -10.00
+python -m euercli list expenses --year 2026
+python -m euercli delete expense 1 --force
 ```
 
 ### Linting (Optional)
 
 ```bash
 # If ruff is installed
-ruff check euer.py
-ruff format euer.py
+ruff check euer.py euercli
+ruff format euer.py euercli
 ```
 
 ---
@@ -197,8 +197,10 @@ print(f"{row['id']:<5} {row['date']:<12} {row['vendor'][:20]:<20} {row['amount_e
 
 ```
 euer/
-├── euer.py              # Main CLI (all commands)
-├── migrate_excel.py     # Excel import script
+├── euer.py              # CLI wrapper
+├── euercli/             # Core package
+│   ├── cli.py           # CLI parser/dispatch
+│   └── schema.py        # DB schema + seeds
 ├── euer.db              # SQLite database
 ├── exports/             # CSV/XLSX exports
 ├── skills/              # AI agent skills
@@ -211,5 +213,5 @@ euer/
 ## Key References
 
 - Skill for agents: `skills/euer-buchhaltung/SKILL.md`
-- DB schema: `DEVELOPMENT.md` or `SCHEMA` constant in `euer.py`
+- DB schema: `technical-documentation/DEVELOPMENT.md` or `SCHEMA` in `euercli/schema.py`
 - Future modularization: `specs/003-modularization.md`

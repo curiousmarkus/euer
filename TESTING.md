@@ -8,7 +8,7 @@
 
 ## Testansatz
 
-- **CLI-Integrationstests (Standard-Library `unittest`)**: Die Tests rufen `euer.py`
+- **CLI-Integrationstests (Standard-Library `unittest`)**: Die Tests rufen `python -m euercli`
   per Subprocess auf und prüfen Exit-Codes sowie die wichtigsten Ausgaben.
 - **Isolierte Umgebung**: Jede Test-Run nutzt ein temporäres `HOME` und eine
   eigene SQLite-DB (`--db`), damit die lokale Konfiguration unberührt bleibt.
@@ -42,5 +42,5 @@ python -m unittest discover -s tests
 Optional (mit `openpyxl` installiert):
 
 ```bash
-python3 euer.py export --year 2026 --format xlsx
+python -m euercli export --year 2026 --format xlsx
 ```
