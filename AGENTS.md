@@ -10,19 +10,22 @@ Modular Python CLI (Package `euercli`), no external dependencies except optional
 ## Build & Run Commands
 
 ```bash
+# Install (dev, for console script)
+python -m pip install -e .
+
 # Initialize database (creates euer.db + exports/)
-python -m euercli init
+euer init
 
 # Run CLI
-python -m euercli <command>
+euer <command>
 
 # Test CLI works
-python -m euercli --help
-python -m euercli list categories
+euer --help
+euer list categories
 
 # Test with custom database
-python -m euercli --db test.db init
-python -m euercli --db test.db list expenses
+euer --db test.db init
+euer --db test.db list expenses
 
 # Excel migration (requires openpyxl)
 python3 migrate_excel.py <excel_file> [--db euer.db] [--dry-run]
@@ -34,18 +37,18 @@ This project currently has no automated tests. Test manually:
 
 ```bash
 # Test a new feature
-python -m euercli init
-python -m euercli add expense --date 2026-01-15 --vendor "Test" --category "Arbeitsmittel" --amount -10.00
-python -m euercli list expenses --year 2026
-python -m euercli delete expense 1 --force
+euer init
+euer add expense --date 2026-01-15 --vendor "Test" --category "Arbeitsmittel" --amount -10.00
+euer list expenses --year 2026
+euer delete expense 1 --force
 ```
 
 ### Linting (Optional)
 
 ```bash
 # If ruff is installed
-ruff check euer.py euercli
-ruff format euer.py euercli
+ruff check euercli
+ruff format euercli
 ```
 
 ---
@@ -197,7 +200,6 @@ print(f"{row['id']:<5} {row['date']:<12} {row['vendor'][:20]:<20} {row['amount_e
 
 ```
 euer/
-├── euer.py              # CLI wrapper
 ├── euercli/             # Core package
 │   ├── cli.py           # CLI parser/dispatch
 │   └── schema.py        # DB schema + seeds

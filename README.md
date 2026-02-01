@@ -17,20 +17,21 @@ SQLite-basierte Buchhaltung für deutsche Kleinunternehmer (§19 UStG).
 ```bash
 git clone https://github.com/yourusername/euer.git
 cd euer
-python -m euercli init
+python -m pip install -e .
+euer init
 ```
 
 ## Ersteinrichtung (Onboarding)
 
 ```bash
 # Datenbank initialisieren (einmalig)
-python -m euercli init
+euer init
 
 # Interaktive Konfiguration der Beleg-Pfade + Export-Verzeichnis
-python -m euercli setup
+euer setup
 
 # Konfiguration prüfen
-python -m euercli config show
+euer config show
 ```
 
 ## AI-Agent Setup
@@ -54,20 +55,20 @@ Dann kann dein Agent Anweisungen wie diese verstehen:
 
 ```bash
 # Datenbank initialisieren (einmalig)
-python -m euercli init
+euer init
 
 # Beleg-Pfade konfigurieren (optional, aber empfohlen)
-python -m euercli setup
+euer setup
 
 # Kategorien anzeigen
-python -m euercli list categories
+euer list categories
 ```
 
 ## Ausgaben erfassen
 
 ```bash
 # Standard-Ausgabe
-python -m euercli add expense \
+euer add expense \
     --date 2026-01-15 \
     --vendor "1und1" \
     --category "Telekommunikation" \
@@ -75,7 +76,7 @@ python -m euercli add expense \
     --account "Sparkasse Giro"
 
 # Ausgabe mit Reverse-Charge (ausländischer Anbieter, berechnet 19% USt)
-python -m euercli add expense \
+euer add expense \
     --date 2026-01-04 \
     --vendor "RENDER.COM" \
     --category "Laufende EDV-Kosten" \
@@ -93,7 +94,7 @@ python -m euercli add expense \
 ## Einnahmen erfassen
 
 ```bash
-python -m euercli add income \
+euer add income \
     --date 2026-01-20 \
     --source "Kunde ABC" \
     --category "Umsatzsteuerpflichtige Betriebseinnahmen" \
@@ -105,41 +106,41 @@ python -m euercli add income \
 
 ```bash
 # Ausgaben (mit Filter)
-python -m euercli list expenses --year 2026
-python -m euercli list expenses --year 2026 --month 1
-python -m euercli list expenses --category "Laufende EDV-Kosten"
+euer list expenses --year 2026
+euer list expenses --year 2026 --month 1
+euer list expenses --category "Laufende EDV-Kosten"
 
 # Einnahmen
-python -m euercli list income --year 2026
+euer list income --year 2026
 
 # Zusammenfassung (Kategorien + Gewinn/Verlust + USt-VA)
-python -m euercli summary --year 2026
+euer summary --year 2026
 ```
 
 ## Korrigieren & Löschen
 
 ```bash
 # Einzelne Felder aktualisieren
-python -m euercli update expense 42 --amount -25.00 --notes "Korrigiert"
+euer update expense 42 --amount -25.00 --notes "Korrigiert"
 
 # Löschen (mit Bestätigung)
-python -m euercli delete expense 42
+euer delete expense 42
 
 # Löschen ohne Rückfrage
-python -m euercli delete expense 42 --force
+euer delete expense 42 --force
 
 # Änderungshistorie prüfen
-python -m euercli audit 42 --table expenses
+euer audit 42 --table expenses
 ```
 
 ## Export
 
 ```bash
 # CSV (immer verfügbar)
-python -m euercli export --year 2026 --format csv
+euer export --year 2026 --format csv
 
 # XLSX (benötigt: pip install openpyxl)
-python -m euercli export --year 2026 --format xlsx
+euer export --year 2026 --format xlsx
 ```
 
 Erzeugt standardmäßig in `exports.directory` (Config) oder `./exports`:
@@ -152,7 +153,7 @@ als "incomplete" gespeichert und können später korrigiert werden.
 Fehlender `type` wird aus dem Vorzeichen von `amount_eur` abgeleitet.
 
 ```bash
-python -m euercli import --file import.csv --format csv
+euer import --file import.csv --format csv
 ```
 
 Beispiel CSV:
@@ -167,8 +168,8 @@ income,2026-01-12,Client A,Umsatzsteuerpflichtige Betriebseinnahmen,200.00,Rechn
 ### Unvollständige Einträge anzeigen
 
 ```bash
-python -m euercli incomplete list
-python -m euercli incomplete list --format csv
+euer incomplete list
+euer incomplete list --format csv
 ```
 
 ## Beleg-Verwaltung
@@ -180,7 +181,7 @@ Belege können mit Transaktionen verknüpft und validiert werden.
 Empfohlen: `euer setup` (interaktiver Wizard).
 
 ```bash
-python -m euercli setup
+euer setup
 ```
 
 Oder manuell: `~/.config/euer/config.toml`:
@@ -195,21 +196,21 @@ Belege werden in Jahres-Unterordnern erwartet: `<base>/<Jahr>/<Belegname>`
 
 ```bash
 # Konfiguration anzeigen
-python -m euercli config show
+euer config show
 ```
 
 ### Beleg-Prüfung
 
 ```bash
 # Alle Transaktionen prüfen (aktuelles Jahr)
-python -m euercli receipt check
+euer receipt check
 
 # Bestimmtes Jahr prüfen
-python -m euercli receipt check --year 2025
+euer receipt check --year 2025
 
 # Nur Ausgaben oder Einnahmen prüfen
-python -m euercli receipt check --type expense
-python -m euercli receipt check --type income
+euer receipt check --type expense
+euer receipt check --type income
 ```
 
 Bei `add` und `update` wird automatisch gewarnt, wenn ein angegebener Beleg nicht gefunden wird.
@@ -218,10 +219,10 @@ Bei `add` und `update` wird automatisch gewarnt, wenn ein angegebener Beleg nich
 
 ```bash
 # Beleg einer Ausgabe öffnen
-python -m euercli receipt open 12
+euer receipt open 12
 
 # Beleg einer Einnahme öffnen
-python -m euercli receipt open 5 --table income
+euer receipt open 5 --table income
 ```
 
 ## Verfügbare Kategorien
@@ -242,7 +243,6 @@ python -m euercli receipt open 5 --table income
 
 ```
 euer/
-├── euer.py              # CLI-Wrapper (Entry-Point)
 ├── euercli/             # Python-Package
 │   ├── cli.py           # CLI-Parser + Dispatch
 │   └── commands/        # Command-Implementierungen
@@ -267,6 +267,14 @@ euer/
 
 ```bash
 python3 -m unittest discover -s tests
+
+## Hinweis
+
+Falls du das CLI nicht installiert hast, kannst du alternativ nutzen:
+
+```bash
+python -m euercli <command>
+```
 ```
 
 ## Lizenz

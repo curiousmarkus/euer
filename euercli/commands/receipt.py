@@ -16,7 +16,7 @@ def cmd_receipt_check(args):
 
     if not receipts_config.get("expenses") and not receipts_config.get("income"):
         print("Fehler: Keine Beleg-Pfade konfiguriert.", file=sys.stderr)
-        print("Siehe: python -m euercli config show", file=sys.stderr)
+        print("Siehe: euer config show", file=sys.stderr)
         sys.exit(1)
 
     db_path = Path(args.db)
@@ -133,7 +133,7 @@ def cmd_receipt_open(args):
 
     if not receipts_config.get("expenses") and not receipts_config.get("income"):
         print("Fehler: Keine Beleg-Pfade konfiguriert.", file=sys.stderr)
-        print("Siehe: python -m euercli config show", file=sys.stderr)
+        print("Siehe: euer config show", file=sys.stderr)
         sys.exit(1)
 
     db_path = Path(args.db)

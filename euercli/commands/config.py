@@ -14,6 +14,8 @@ def cmd_config_show(args):
         print()
         print("Erstelle Config mit:")
         print()
+        print("  euer setup")
+        print("  # oder")
         print("  python -m euercli setup")
         print()
         print("Oder manuell:")

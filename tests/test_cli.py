@@ -293,7 +293,7 @@ class EuerCLITestCase(unittest.TestCase):
     def test_config_show_when_missing(self):
         result = self.run_cli(["config", "show"], check=True)
         self.assertIn("nicht vorhanden", result.stdout)
-        self.assertIn("python -m euercli setup", result.stdout)
+        self.assertIn("euer setup", result.stdout)
 
     def test_setup_writes_config(self):
         expenses_dir = self.root / "receipts" / "expenses"

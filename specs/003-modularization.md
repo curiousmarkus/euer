@@ -2,28 +2,33 @@
 
 ## Zusammenfassung
 
-Plan zur Aufteilung von `euer.py` in Module, wenn die Codebasis >2500 Zeilen erreicht oder andere Trigger erfüllt sind.
+Plan zur Aufteilung der CLI in ein `euercli`-Package.
 
 **Autor:** Markus Keller  
 **Zielgruppe:** Coding Agent / LLM  
-**Stand:** 2026-01-31  
-**Status:** Geplant (nicht aktiv)
+**Stand:** 2026-02-01  
+**Status:** Implementiert
+
+**Hinweis (2026-02-01):** Modularisierung ist umgesetzt. Das CLI läuft über das
+Console-Script `euer` (via `pyproject.toml`) oder alternativ `python -m euercli`.
+`euer.py` wurde entfernt.
 
 ---
 
-## Trigger für Modularisierung
+## Trigger für Modularisierung (historisch)
 
-Modularisieren wenn EINES dieser Kriterien erfüllt:
+Modularisierung wurde am 2026-02-01 durchgeführt (explizite Entscheidung durch Maintainer).
+Diese Kriterien galten als mögliche Auslöser:
 
 - [ ] `euer.py` überschreitet 2500 Zeilen
 - [ ] Mehr als 1 aktiver Entwickler
 - [ ] Komponenten sollen in anderen Projekten wiederverwendet werden
 - [ ] Test-Coverage wird durch Monolith erschwert
-- [ ] Explizite Entscheidung durch Maintainer
+- [x] Explizite Entscheidung durch Maintainer
 
 ---
 
-## Aktuelle Struktur (Stand: ~1600 Zeilen)
+## Historische Struktur (vor Modularisierung)
 
 ```
 euer.py
@@ -56,33 +61,37 @@ euer.py
 
 ---
 
-## Ziel-Struktur
+## Ziel-Struktur (umgesetzt)
 
 ```
 euer/
-├── euer.py                  # Entry-point (nur CLI-Parser + main)
-├── euer/
-│   ├── __init__.py          # Package, exportiert VERSION
+├── pyproject.toml           # Console-Script: euer -> euercli.cli:main
+├── euercli/
+│   ├── __init__.py          # VERSION
+│   ├── __main__.py          # python -m euercli
+│   ├── cli.py               # CLI-Parser + Dispatch
+│   ├── constants.py         # DEFAULT_* + CONFIG_PATH
+│   ├── schema.py            # SQL-Schema & Seed-Daten
 │   ├── db.py                # Datenbank-Funktionen
 │   ├── config.py            # Config & Beleg-Pfade
-│   ├── schema.py            # SQL-Schema & Seed-Daten
 │   ├── utils.py             # Formatierung, Hashing
+│   ├── importers.py         # Import-Parsing
 │   └── commands/
 │       ├── __init__.py      # Exportiert alle cmd_* Funktionen
 │       ├── init.py          # cmd_init
+│       ├── setup.py         # cmd_setup
+│       ├── import_data.py   # cmd_import
+│       ├── incomplete.py    # cmd_incomplete_list
 │       ├── add.py           # cmd_add_expense, cmd_add_income
 │       ├── list.py          # cmd_list_expenses, cmd_list_income, cmd_list_categories
 │       ├── update.py        # cmd_update_expense, cmd_update_income
 │       ├── delete.py        # cmd_delete_expense, cmd_delete_income
-│       ├── export.py        # cmd_export, cmd_summary
+│       ├── export.py        # cmd_export
+│       ├── summary.py       # cmd_summary
 │       ├── audit.py         # cmd_audit
-│       └── receipt.py       # cmd_config_show, cmd_receipt_check, cmd_receipt_open
+│       ├── config.py        # cmd_config_show
+│       └── receipt.py       # cmd_receipt_check, cmd_receipt_open
 ├── tests/
-│   ├── __init__.py
-│   ├── test_db.py
-│   ├── test_config.py
-│   └── test_commands/
-│       └── ...
 ├── skills/
 ├── specs/
 └── README.md
@@ -92,7 +101,7 @@ euer/
 
 ## Modul-Aufteilung
 
-### `euer/db.py`
+### `euercli/db.py`
 
 Datenbank-Operationen, keine CLI-Abhängigkeit.
 
@@ -105,7 +114,7 @@ get_category_name_with_line(conn, category_id) -> str
 row_to_dict(row) -> dict
 ```
 
-### `euer/config.py`
+### `euercli/config.py`
 
 Konfiguration und Beleg-Verwaltung.
 
@@ -119,7 +128,7 @@ resolve_receipt_path(receipt_name, date, receipt_type, config) -> tuple[Path | N
 warn_missing_receipt(receipt_name, date, receipt_type, config) -> None
 ```
 
-### `euer/schema.py`
+### `euercli/schema.py`
 
 SQL-Schema und Seed-Daten.
 
@@ -127,12 +136,12 @@ SQL-Schema und Seed-Daten.
 # Konstanten
 SCHEMA = """..."""
 SEED_CATEGORIES = [...]
-DEFAULT_DB_PATH = Path(__file__).parent.parent / "euer.db"
-DEFAULT_EXPORT_DIR = Path(__file__).parent.parent / "exports"
+DEFAULT_DB_PATH = <project_root> / "euer.db"
+DEFAULT_EXPORT_DIR = <project_root> / "exports"
 DEFAULT_USER = "markus"
 ```
 
-### `euer/utils.py`
+### `euercli/utils.py`
 
 Reine Utility-Funktionen ohne Seiteneffekte.
 
@@ -141,16 +150,16 @@ compute_hash(date, vendor_or_source, amount_eur, receipt_name) -> str
 format_amount(amount: float) -> str
 ```
 
-### `euer/commands/*.py`
+### `euercli/commands/*.py`
 
 Jede Datei enthält verwandte Commands.
 
 ```python
-# Beispiel: euer/commands/add.py
-from euer.db import get_db_connection, log_audit, get_category_id
-from euer.config import load_config, warn_missing_receipt
-from euer.utils import compute_hash, format_amount
-from euer.schema import DEFAULT_DB_PATH
+# Beispiel: euercli/commands/add.py
+from euercli.db import get_db_connection, log_audit, get_category_id
+from euercli.config import load_config, warn_missing_receipt
+from euercli.utils import compute_hash, format_amount
+from euercli.constants import DEFAULT_DB_PATH
 
 def cmd_add_expense(args):
     ...
@@ -159,70 +168,49 @@ def cmd_add_income(args):
     ...
 ```
 
-### `euer.py` (Entry-Point)
+### CLI Entry-Point (Console Script + Module)
 
-Nur noch CLI-Parser und Dispatch.
+CLI-Parser und Dispatch sind in `euercli/cli.py`.
+`pyproject.toml` registriert das Console-Script `euer`.
+Zusätzlich funktioniert `python -m euercli`.
 
 ```python
-#!/usr/bin/env python3
-"""EÜR - Einnahmenüberschussrechnung CLI"""
-
-import argparse
-from euer.schema import DEFAULT_DB_PATH, DEFAULT_EXPORT_DIR
-from euer.commands import (
-    cmd_init,
-    cmd_add_expense, cmd_add_income,
-    cmd_list_expenses, cmd_list_income, cmd_list_categories,
-    cmd_update_expense, cmd_update_income,
-    cmd_delete_expense, cmd_delete_income,
-    cmd_export, cmd_summary,
-    cmd_audit,
-    cmd_config_show, cmd_receipt_check, cmd_receipt_open,
-)
-
-def main():
-    parser = argparse.ArgumentParser(...)
-    # ... Parser-Setup ...
-    args = parser.parse_args()
-    args.func(args)
-
-if __name__ == "__main__":
-    main()
+euer = euercli.cli:main
 ```
 
 ---
 
-## Migrations-Schritte
+## Migrations-Schritte (abgeschlossen)
 
 ### Phase 1: Vorbereitung
 
-1. [ ] Tests schreiben für kritische Funktionen (vor Refactoring)
-2. [ ] `euer/` Package-Verzeichnis erstellen
-3. [ ] `euer/__init__.py` mit VERSION anlegen
+1. [x] Tests schreiben für kritische Funktionen (vor Refactoring)
+2. [x] `euercli/` Package-Verzeichnis erstellen
+3. [x] `euercli/__init__.py` mit VERSION anlegen
 
 ### Phase 2: Utils & Schema extrahieren
 
-4. [ ] `euer/utils.py` erstellen (compute_hash, format_amount)
-5. [ ] `euer/schema.py` erstellen (SCHEMA, SEED_CATEGORIES, Konstanten)
-6. [ ] Tests laufen lassen
+4. [x] `euercli/utils.py` erstellen (compute_hash, format_amount)
+5. [x] `euercli/schema.py` erstellen (SCHEMA, SEED_CATEGORIES, Konstanten)
+6. [x] Tests laufen lassen
 
 ### Phase 3: DB & Config extrahieren
 
-7. [ ] `euer/db.py` erstellen
-8. [ ] `euer/config.py` erstellen
-9. [ ] Tests laufen lassen
+7. [x] `euercli/db.py` erstellen
+8. [x] `euercli/config.py` erstellen
+9. [x] Tests laufen lassen
 
 ### Phase 4: Commands extrahieren
 
-10. [ ] `euer/commands/__init__.py` erstellen
-11. [ ] Commands einzeln extrahieren (init → add → list → update → delete → export → audit → receipt)
-12. [ ] Nach jedem Command: Tests laufen lassen
+10. [x] `euercli/commands/__init__.py` erstellen
+11. [x] Commands einzeln extrahieren
+12. [x] Nach jedem Command: Tests laufen lassen
 
 ### Phase 5: Entry-Point
 
-13. [ ] `euer.py` auf Imports + main() reduzieren
-14. [ ] Vollständiger Test-Durchlauf
-15. [ ] README.md aktualisieren (falls nötig)
+13. [x] Console-Script via `pyproject.toml` anlegen
+14. [x] Vollständiger Test-Durchlauf
+15. [x] README.md aktualisieren
 
 ---
 
@@ -230,14 +218,14 @@ if __name__ == "__main__":
 
 ### Beibehaltene Schnittstellen
 
-- `python euer.py <command>` funktioniert unverändert
 - Alle CLI-Argumente bleiben gleich
 - Datenbank-Format unverändert
 - Config-Pfad unverändert
 
 ### Breaking Changes
 
-Keine für Endnutzer. Nur interne Struktur ändert sich.
+- `python euer.py <command>` entfällt (Datei entfernt).
+- Neues Standard-Entry: `euer <command>` oder `python -m euercli <command>`.
 
 ---
 

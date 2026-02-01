@@ -1,5 +1,8 @@
 # Modularisierung - Technischer Plan (Stand 2026-02-01)
 
+Hinweis: Umsetzung abgeschlossen. CLI läuft über `euer` (Console-Script) oder
+`python -m euercli`. `euer.py` wurde entfernt.
+
 ## Ziele
 - `euer.py` in klar abgegrenzte Module aufteilen, ohne funktionale Aenderungen.
 - Imports und Abhaengigkeiten so strukturieren, dass zirkulaere Imports vermieden werden.

@@ -36,11 +36,11 @@ Die Test-Suite deckt folgende Funktionsbereiche ab:
 ## Ausführen
 
 ```bash
-python -m unittest discover -s tests
+python3 -m unittest discover -s tests
 ```
 
 Optional (mit `openpyxl` installiert):
 
 ```bash
-python -m euercli export --year 2026 --format xlsx
+euer export --year 2026 --format xlsx
 ```

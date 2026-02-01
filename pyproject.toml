@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "euercli"
+version = "0.1.0"
+description = "EÜR (Einnahmenüberschussrechnung) CLI"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+xlsx = ["openpyxl>=3.1.0"]
+
+[project.scripts]
+euer = "euercli.cli:main"
+
+[tool.setuptools]
+packages = ["euercli", "euercli.commands"]

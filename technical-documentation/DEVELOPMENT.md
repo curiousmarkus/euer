@@ -12,7 +12,6 @@ EÜR ist ein CLI-Tool zur Verwaltung der Einnahmenüberschussrechnung für Klein
 
 ```
 euer/
-├── euer.py              # CLI-Wrapper
 ├── euercli/             # Core Package
 │   ├── cli.py           # CLI-Parser + Dispatch
 │   ├── schema.py        # DB-Schema + Seed-Daten
@@ -162,7 +161,7 @@ Pfad: `~/.config/euer/config.toml`
 Interaktive Ersteinrichtung:
 
 ```bash
-python -m euercli setup
+euer setup
 ```
 
 ```toml
@@ -196,7 +195,7 @@ Beispiel: `/pfad/zu/ausgaben-belege/2026/2026-01-15_Render.pdf`
 Bei Ausgaben an ausländische Anbieter ohne deutsche USt:
 
 ```bash
-python -m euercli add expense --date 2026-01-20 --vendor "OpenAI" \
+euer add expense --date 2026-01-20 --vendor "OpenAI" \
     --category "Laufende EDV-Kosten" --amount -20.00 --rc
 ```
 
@@ -211,7 +210,7 @@ Berechnet automatisch 19% USt für die USt-Voranmeldung und speichert dies expli
 ### Globale Optionen
 
 ```bash
-python -m euercli [--db PFAD] <command>
+euer [--db PFAD] <command>
 ```
 
 ### Commands
@@ -340,7 +339,7 @@ python -m unittest discover -s tests
 Optional (mit `openpyxl`):
 
 ```bash
-python -m euercli export --format xlsx
+euer export --format xlsx
 ```
 
 ---
