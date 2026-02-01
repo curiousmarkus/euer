@@ -311,6 +311,20 @@ class EuerCLITestCase(unittest.TestCase):
         self.assertIn(f'income = "{income_dir}"', content)
         self.assertIn("[exports]", content)
         self.assertIn(f'directory = "{export_dir}"', content)
+        self.assertIn("[tax]", content)
+        self.assertIn('mode = "small_business"', content)
+
+    def test_setup_writes_tax_mode_standard(self):
+        expenses_dir = self.root / "receipts" / "expenses"
+        income_dir = self.root / "receipts" / "income"
+        export_dir = self.root / "exports"
+        input_data = f"{expenses_dir}\n{income_dir}\n{export_dir}\nstandard\n"
+
+        self.run_cli(["setup"], input=input_data, check=True)
+
+        config_path = self.home / ".config" / "euer" / "config.toml"
+        content = config_path.read_text(encoding="utf-8")
+        self.assertIn('mode = "standard"', content)
 
     def test_receipt_check_requires_config(self):
         result = self.run_cli(["receipt", "check"])

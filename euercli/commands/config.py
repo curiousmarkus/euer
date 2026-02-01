@@ -27,6 +27,8 @@ def cmd_config_show(args):
         print('  income = "/pfad/zu/einnahmen-belege"')
         print("  [exports]")
         print('  directory = "/pfad/zu/exports"')
+        print("  [tax]")
+        print('  mode = "small_business"')
         print("  EOF")
         return
 
@@ -45,3 +47,6 @@ def cmd_config_show(args):
     export_dir = get_export_dir(config)
     print("[exports]")
     print(f"  directory = {export_dir or '(nicht gesetzt)'}")
+    tax_mode = config.get("tax", {}).get("mode", "small_business")
+    print("[tax]")
+    print(f"  mode = {tax_mode}")

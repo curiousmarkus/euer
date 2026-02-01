@@ -46,6 +46,26 @@ euer/
 - **Config**: `euercli/config.py` (`~/.config/euer/config.toml`).
 - **Import**: `euercli/importers.py` (CSV/JSONL Normalisierung).
 
+## Implementierte Funktionalitaeten (Kurzueberblick)
+
+Dieser Abschnitt hilft Contributor:innen, bestehende Features zu verstehen,
+damit Erweiterungen konsistent und risikoarm umgesetzt werden koennen.
+
+- **Core CLI**: `init`, `setup`, `config show`, `list categories`.
+- **Buchungen**: `add`, `list`, `update`, `delete` fuer `expenses` und `income`.
+- **Audit-Log**: Jede Aenderung (INSERT/UPDATE/DELETE) wird protokolliert.
+- **Import**: CSV/JSONL mit Normalisierung, Duplikat-Schutz (Hash).
+- **Incomplete Entries**: unvollstaendige Importzeilen werden separat gespeichert.
+- **Summary**: Jahreszusammenfassung inkl. RC/Steuerlogik.
+- **Export**: CSV (immer), XLSX optional via `openpyxl`.
+- **Receipts**: Belegpfade in Config, Check + Open.
+- **Steuermodi**: `small_business` und `standard` (RC Handling inkl. USt/VoSt).
+
+Wenn du ein Feature erweiterst, beachte:
+- **Konventionen**: deutschsprachige Ausgaben, parametrisierte SQL, Audit-Log.
+- **Kompatibilitaet**: CLI-Argumente sollten abwaertskompatibel bleiben.
+- **Tests**: Passe `tests/test_cli.py` an oder erweitere es bei Feature-Aenderungen.
+
 ## Datenmodell (Überblick)
 
 Die vollständigen DDLs stehen in `euercli/schema.py`.

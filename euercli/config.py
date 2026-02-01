@@ -4,6 +4,8 @@ from pathlib import Path
 
 from .constants import CONFIG_PATH
 
+VALID_TAX_MODES = {"small_business", "standard"}
+
 
 def load_config() -> dict:
     """Lädt Config, gibt leeres Dict zurück wenn nicht vorhanden."""
@@ -88,6 +90,25 @@ def normalize_receipt_path(value: str) -> str:
 def normalize_export_path(value: str) -> str:
     """Normalisiert Export-Pfad-Eingaben."""
     return normalize_receipt_path(value)
+
+
+def normalize_tax_mode(value: str, default: str = "small_business") -> str:
+    """Normalisiert den Steuermodus für die Config."""
+    cleaned = value.strip().lower()
+    if not cleaned:
+        return default
+
+    aliases = {
+        "small-business": "small_business",
+        "kleinunternehmer": "small_business",
+        "kleinunternehmerregelung": "small_business",
+        "regelbesteuerung": "standard",
+    }
+    normalized = aliases.get(cleaned, cleaned)
+    if normalized in VALID_TAX_MODES:
+        return normalized
+
+    raise ValueError(f"Ungültiger Steuermodus: {value}")
 
 
 def get_export_dir(config: dict) -> str:

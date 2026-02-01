@@ -38,7 +38,7 @@ python -m euercli <command>
 # Datenbank anlegen (erstellt euer.db + exports/)
 euer init
 
-# Beleg- und Export-Pfade konfigurieren (empfohlen)
+# Beleg-/Export-Pfade und Steuermodus konfigurieren (empfohlen)
 euer setup
 
 # Konfiguration prüfen
@@ -132,17 +132,36 @@ euer receipt open 12
 euer receipt open 5 --table income
 ```
 
-## Steuer‑Modus (Config)
+## USt‑Modus (Config)
 
-Der Steuer‑Modus wird in der Config gesetzt (Standard: `small_business`).
+Hier legst du fest, **wie das Tool mit Umsatzsteuer (USt)** rechnet:
+- **Kleinunternehmerregelung (§19 UStG)** oder
+- **Regelbesteuerung**.
+
+Der Modus wird in der Config gesetzt (Standard: `small_business`).
 
 ```toml
 [tax]
 mode = "small_business"  # oder "standard"
 ```
 
-- **small_business**: Keine Vorsteuer, RC erzeugt Umsatzsteuer‑Zahllast.
-- **standard**: Vorsteuer wird erfasst, RC bucht USt und VorSt gleichzeitig.
+- **`small_business`** = Kleinunternehmerregelung (§19 UStG): keine Vorsteuer; Reverse‑Charge erzeugt USt‑Zahllast.
+- **`standard`** = Regelbesteuerung: Vorsteuer wird erfasst; Reverse‑Charge bucht USt und VorSt gleichzeitig.
+
+### Steuermodus setzen, einsehen, aendern
+
+- **Setzen (interaktiv):** `euer setup` fragt nach `small_business|standard`.
+- **Einsehen:** `euer config show` zeigt den aktuellen Wert unter `[tax]`.
+- **Aendern:** `euer setup` erneut ausfuehren und den Modus neu waehlen.
+- **Manuell:** `~/.config/euer/config.toml` bearbeiten und `mode` anpassen.
+
+```bash
+# aktuelle Konfiguration inkl. Steuermodus anzeigen
+euer config show
+
+# Steuermodus neu setzen (interaktiv)
+euer setup
+```
 
 ## Reverse‑Charge (RC)
 
