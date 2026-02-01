@@ -1,6 +1,6 @@
 # Backlog - Feature-Ideen
 
-Sammlung von Feature-Ideen für zukünftige Entwicklung. Nicht priorisiert.
+Sammlung von Feature-Ideen für zukünftige Entwicklung. Nicht priorisiert oder bewertet.
 
 ---
 

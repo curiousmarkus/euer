@@ -81,6 +81,28 @@ python3 euer.py list categories [--type expense|income]
 python3 euer.py audit <ID> [--table expenses|income]
 ```
 
+### Bulk-Import
+
+```bash
+# Import von CSV oder JSONL
+python3 euer.py import --file import.csv --format csv
+python3 euer.py import --file import.jsonl --format jsonl
+
+# Unvollständige Einträge anzeigen
+python3 euer.py incomplete list
+python3 euer.py incomplete list --format csv
+```
+
+Hinweis:
+- Unvollständige Import-Zeilen (fehlende Pflichtfelder) landen in `incomplete_entries`.
+- Standard `add`-Einträge dürfen optionale Felder (z.B. Beleg/Notiz) fehlen und werden
+  später per `update` ergänzt.
+
+Workflow:
+1. Importieren bzw. Eintrag erfassen, auch wenn Details fehlen.
+2. `euer incomplete list` prüfen und offene Aufgaben festhalten (z.B. fehlende Rechnung).
+3. Sobald die Info vorliegt, Einträge per `update` ergänzen oder mit vollständigen
+   Daten erneut erfassen.
 ### Beleg-Verwaltung
 
 ```bash

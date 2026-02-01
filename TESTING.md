@@ -26,6 +26,7 @@ Die Test-Suite deckt folgende Funktionsbereiche ab:
 - `export` (CSV)
 - `config show` und `setup` (Onboarding-Wizard)
 - `receipt check` und `receipt open` (Fehlerpfade)
+- `import` (CSV) und `incomplete list`
 
 ## Nicht automatisiert (manuell)
 

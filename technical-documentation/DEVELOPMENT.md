@@ -121,6 +121,27 @@ CREATE TABLE audit_log (
 );
 ```
 
+### Tabelle: `incomplete_entries`
+
+```sql
+CREATE TABLE incomplete_entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type TEXT NOT NULL,           -- expense, income, unknown
+    date DATE,
+    party TEXT,
+    category_name TEXT,
+    amount_eur REAL,
+    account TEXT,
+    foreign_amount TEXT,
+    receipt_name TEXT,
+    notes TEXT,
+    vat_amount REAL,
+    raw_data TEXT,                -- JSON
+    missing_fields TEXT,          -- JSON-Liste
+    created_at TIMESTAMP
+);
+```
+
 ---
 
 ## Konfiguration
@@ -190,6 +211,7 @@ python3 euer.py [--db PFAD] <command>
 |---------|--------------|
 | `setup` | Interaktive Ersteinrichtung (Beleg-Pfade) |
 | `init` | Datenbank initialisieren |
+| `import` | Bulk-Import (CSV/JSONL) |
 | `add expense` | Ausgabe hinzufügen |
 | `add income` | Einnahme hinzufügen |
 | `list expenses` | Ausgaben anzeigen |
@@ -205,6 +227,7 @@ python3 euer.py [--db PFAD] <command>
 | `config show` | Konfiguration anzeigen |
 | `receipt check` | Fehlende Belege prüfen |
 | `receipt open <id>` | Beleg öffnen |
+| `incomplete list` | Unvollständige Import-Einträge anzeigen |
 
 ### Wichtige Argumente
 
@@ -266,6 +289,33 @@ Oder in `SEED_CATEGORIES` ergänzen und DB neu initialisieren.
 ### Modularisierung
 
 Siehe `specs/003-modularization.md` für den Plan zur Aufteilung in Module (wenn >2500 Zeilen).
+
+---
+
+## Bulk-Import
+
+Der Bulk-Import akzeptiert CSV oder JSONL. Pflichtfelder für vollständige
+Einträge sind: `type`, `date`, `party`, `category`, `amount_eur`.
+
+Wenn Felder fehlen, wird ein Eintrag in `incomplete_entries` erzeugt.
+Spätere Korrekturen können über die Liste der unvollständigen Einträge erfolgen.
+Fehlender `type` wird aus dem Vorzeichen von `amount_eur` abgeleitet
+(negativ = expense, positiv = income).
+
+### CSV-Format
+
+```csv
+type,date,party,category,amount_eur,receipt_name,notes
+expense,2026-01-10,Vendor A,Arbeitsmittel,-20.00,2026-01-10_VendorA.pdf,Monatsabo
+income,2026-01-12,Client A,Umsatzsteuerpflichtige Betriebseinnahmen,200.00,Rechnung_001.pdf,
+```
+
+### JSONL-Format
+
+```json
+{"type":"expense","date":"2026-01-10","party":"Vendor A","category":"Arbeitsmittel","amount_eur":-20.0}
+{"type":"income","date":"2026-01-12","party":"Client A","category":"Umsatzsteuerpflichtige Betriebseinnahmen","amount_eur":200.0}
+```
 
 ---
 

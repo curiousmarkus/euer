@@ -99,6 +99,26 @@ CREATE TABLE IF NOT EXISTS income (
 CREATE INDEX IF NOT EXISTS idx_income_date ON income(date);
 CREATE INDEX IF NOT EXISTS idx_income_category ON income(category_id);
 
+CREATE TABLE IF NOT EXISTS incomplete_entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type TEXT NOT NULL CHECK(type IN ('expense', 'income', 'unknown')),
+    date DATE,
+    party TEXT,
+    category_name TEXT,
+    amount_eur REAL,
+    account TEXT,
+    foreign_amount TEXT,
+    receipt_name TEXT,
+    notes TEXT,
+    vat_amount REAL,
+    raw_data TEXT,
+    missing_fields TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_incomplete_type ON incomplete_entries(type);
+CREATE INDEX IF NOT EXISTS idx_incomplete_date ON incomplete_entries(date);
+
 CREATE TABLE IF NOT EXISTS audit_log (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -138,6 +158,126 @@ def get_db_connection(db_path: Path) -> sqlite3.Connection:
 def format_amount(amount: float) -> str:
     """Formatiert einen Betrag mit deutschem Zahlenformat."""
     return f"{amount:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def parse_bool(value: object) -> bool:
+    """Parst verschiedene Wahrheitswerte."""
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    text = str(value).strip().lower()
+    return text in {"1", "true", "yes", "y", "ja", "j"}
+
+
+def parse_amount(value: object) -> float | None:
+    """Parst Betrag (unterstützt deutsches und internationales Format)."""
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    text = str(value).strip()
+    if not text:
+        return None
+
+    text = text.replace(" ", "")
+    if "," in text and "." in text:
+        if text.rfind(",") > text.rfind("."):
+            text = text.replace(".", "").replace(",", ".")
+        else:
+            text = text.replace(",", "")
+    elif "," in text:
+        text = text.replace(".", "").replace(",", ".")
+
+    try:
+        return float(text)
+    except ValueError:
+        return None
+
+
+def get_row_value(row: dict, *keys: str) -> object | None:
+    """Liest den ersten nicht-leeren Wert aus einem Dict."""
+    for key in keys:
+        if key in row:
+            value = row[key]
+        else:
+            bom_key = f"\ufeff{key}"
+            if bom_key not in row:
+                continue
+            value = row[bom_key]
+        if value is None:
+            continue
+        if isinstance(value, str):
+            value = value.strip()
+            if value == "":
+                continue
+        return value
+    return None
+
+
+def parse_import_type(value: object) -> str | None:
+    """Normalisiert Typ-Angaben auf 'expense' oder 'income'."""
+    if value is None:
+        return None
+    text = str(value).strip().lower()
+    mapping = {
+        "expense": "expense",
+        "expenses": "expense",
+        "ausgabe": "expense",
+        "ausgaben": "expense",
+        "debit": "expense",
+        "outflow": "expense",
+        "outgoing": "expense",
+        "income": "income",
+        "einnahme": "income",
+        "einnahmen": "income",
+        "credit": "income",
+        "inflow": "income",
+        "incoming": "income",
+    }
+    return mapping.get(text)
+
+
+def normalize_import_row(row: dict) -> dict:
+    """Normalisiert Importzeile auf kanonische Keys."""
+    raw_type = get_row_value(row, "type", "kind", "direction")
+    amount_value = get_row_value(row, "amount_eur", "amount")
+    amount = parse_amount(amount_value)
+
+    row_type = parse_import_type(raw_type)
+    if not row_type and amount is not None:
+        if amount < 0:
+            row_type = "expense"
+        elif amount > 0:
+            row_type = "income"
+
+    return {
+        "type": row_type,
+        "date": get_row_value(row, "date"),
+        "party": get_row_value(row, "party", "vendor", "source", "counterparty"),
+        "category": get_row_value(row, "category", "category_name"),
+        "amount_eur": amount,
+        "account": get_row_value(row, "account"),
+        "foreign_amount": get_row_value(row, "foreign_amount", "foreign"),
+        "receipt_name": get_row_value(row, "receipt_name", "receipt"),
+        "notes": get_row_value(row, "notes"),
+        "rc": parse_bool(get_row_value(row, "rc")),
+        "vat_amount": parse_amount(get_row_value(row, "vat_amount")),
+        "raw_data": row,
+    }
+
+
+def format_missing_fields(value: str | None) -> str:
+    """Formatiert fehlende Felder für die Anzeige."""
+    if not value:
+        return ""
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError:
+        return value
+    if isinstance(parsed, list):
+        return ", ".join(str(item) for item in parsed)
+    return str(parsed)
 
 
 def log_audit(
@@ -271,6 +411,34 @@ def normalize_receipt_path(value: str) -> str:
     return str(Path(cleaned).expanduser())
 
 
+def iter_import_rows(path: str, fmt: str) -> list[dict]:
+    """Lädt Importdaten aus Datei oder stdin."""
+    rows: list[dict] = []
+    if path == "-":
+        stream = sys.stdin
+        if fmt == "csv":
+            reader = csv.DictReader(stream)
+            rows.extend(reader)
+        else:
+            for line in stream:
+                if not line.strip():
+                    continue
+                rows.append(json.loads(line))
+        return rows
+
+    encoding = "utf-8-sig" if fmt == "csv" else "utf-8"
+    with open(path, "r", encoding=encoding) as f:
+        if fmt == "csv":
+            reader = csv.DictReader(f)
+            rows.extend(reader)
+        else:
+            for line in f:
+                if not line.strip():
+                    continue
+                rows.append(json.loads(line))
+    return rows
+
+
 def resolve_receipt_path(
     receipt_name: str,
     date: str,  # YYYY-MM-DD
@@ -399,6 +567,288 @@ def cmd_setup(args):
     for path in (expenses_path, income_path):
         if path and not Path(path).exists():
             print(f"! Hinweis: Pfad existiert nicht: {path}", file=sys.stderr)
+
+
+def cmd_import(args):
+    """Bulk-Import von Transaktionen."""
+    db_path = Path(args.db)
+    conn = get_db_connection(db_path)
+
+    try:
+        rows = iter_import_rows(args.file, args.format)
+    except (OSError, json.JSONDecodeError) as exc:
+        conn.close()
+        print(f"Fehler: Importdatei konnte nicht gelesen werden: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    total = 0
+    inserted_expenses = 0
+    inserted_income = 0
+    duplicates = 0
+    incomplete = 0
+
+    for row in rows:
+        total += 1
+        normalized = normalize_import_row(row)
+        row_type = normalized["type"]
+        date = normalized["date"]
+        party = normalized["party"]
+        category_name = normalized["category"]
+        amount = normalized["amount_eur"]
+        account = normalized["account"]
+        foreign_amount = normalized["foreign_amount"]
+        receipt_name = normalized["receipt_name"]
+        notes = normalized["notes"]
+        rc = normalized["rc"]
+        vat_amount = normalized["vat_amount"]
+
+        missing_fields = []
+
+        if not row_type:
+            missing_fields.append("type")
+        if not date:
+            missing_fields.append("date")
+        if amount is None:
+            missing_fields.append("amount_eur")
+        if not party:
+            missing_fields.append("party")
+        if not category_name:
+            missing_fields.append("category")
+
+        cat_id = None
+        if row_type in ("expense", "income") and category_name:
+            cat_id = get_category_id(conn, str(category_name), row_type)
+            if not cat_id:
+                missing_fields.append("category")
+
+        if missing_fields:
+            incomplete += 1
+            if not args.dry_run:
+                cursor = conn.execute(
+                    """INSERT INTO incomplete_entries
+                       (type, date, party, category_name, amount_eur, account,
+                        foreign_amount, receipt_name, notes, vat_amount,
+                        raw_data, missing_fields)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        row_type or "unknown",
+                        str(date) if date else None,
+                        str(party) if party else None,
+                        str(category_name) if category_name else None,
+                        amount,
+                        str(account) if account else None,
+                        str(foreign_amount) if foreign_amount else None,
+                        str(receipt_name) if receipt_name else None,
+                        str(notes) if notes else None,
+                        vat_amount,
+                        json.dumps(normalized["raw_data"], ensure_ascii=False),
+                        json.dumps(missing_fields, ensure_ascii=False),
+                    ),
+                )
+                record_id = cursor.lastrowid
+                assert record_id is not None
+                log_audit(
+                    conn,
+                    "incomplete_entries",
+                    record_id,
+                    "INSERT",
+                    new_data={
+                        "type": row_type or "unknown",
+                        "date": str(date) if date else None,
+                        "party": str(party) if party else None,
+                        "category_name": str(category_name) if category_name else None,
+                        "amount_eur": amount,
+                        "account": str(account) if account else None,
+                        "foreign_amount": str(foreign_amount) if foreign_amount else None,
+                        "receipt_name": str(receipt_name) if receipt_name else None,
+                        "notes": str(notes) if notes else None,
+                        "vat_amount": vat_amount,
+                        "missing_fields": missing_fields,
+                    },
+                )
+            continue
+
+        if row_type == "expense":
+            if rc and vat_amount is None and amount is not None:
+                vat_amount = round(abs(amount) * 0.19, 2)
+
+            tx_hash = compute_hash(
+                str(date), str(party), float(amount), receipt_name or ""
+            )
+            existing = conn.execute(
+                "SELECT id FROM expenses WHERE hash = ?", (tx_hash,)
+            ).fetchone()
+            if existing:
+                duplicates += 1
+                continue
+
+            inserted_expenses += 1
+            if args.dry_run:
+                continue
+
+            cursor = conn.execute(
+                """INSERT INTO expenses 
+                   (receipt_name, date, vendor, category_id, amount_eur, account,
+                    foreign_amount, notes, vat_amount, hash)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    receipt_name,
+                    str(date),
+                    str(party),
+                    cat_id,
+                    amount,
+                    account,
+                    foreign_amount,
+                    notes,
+                    vat_amount,
+                    tx_hash,
+                ),
+            )
+            record_id = cursor.lastrowid
+            assert record_id is not None
+
+            new_data = {
+                "receipt_name": receipt_name,
+                "date": str(date),
+                "vendor": str(party),
+                "category_id": cat_id,
+                "amount_eur": amount,
+                "account": account,
+                "foreign_amount": foreign_amount,
+                "notes": notes,
+                "vat_amount": vat_amount,
+            }
+            log_audit(conn, "expenses", record_id, "INSERT", new_data=new_data)
+        else:
+            tx_hash = compute_hash(
+                str(date), str(party), float(amount), receipt_name or ""
+            )
+            existing = conn.execute(
+                "SELECT id FROM income WHERE hash = ?", (tx_hash,)
+            ).fetchone()
+            if existing:
+                duplicates += 1
+                continue
+
+            inserted_income += 1
+            if args.dry_run:
+                continue
+
+            cursor = conn.execute(
+                """INSERT INTO income
+                   (receipt_name, date, source, category_id, amount_eur,
+                    foreign_amount, notes, hash)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    receipt_name,
+                    str(date),
+                    str(party),
+                    cat_id,
+                    amount,
+                    foreign_amount,
+                    notes,
+                    tx_hash,
+                ),
+            )
+            record_id = cursor.lastrowid
+            assert record_id is not None
+
+            new_data = {
+                "receipt_name": receipt_name,
+                "date": str(date),
+                "source": str(party),
+                "category_id": cat_id,
+                "amount_eur": amount,
+                "foreign_amount": foreign_amount,
+                "notes": notes,
+            }
+            log_audit(conn, "income", record_id, "INSERT", new_data=new_data)
+
+    if not args.dry_run:
+        conn.commit()
+    conn.close()
+
+    print("Import abgeschlossen")
+    print(f"  Zeilen gesamt: {total}")
+    print(f"  Ausgaben angelegt: {inserted_expenses}")
+    print(f"  Einnahmen angelegt: {inserted_income}")
+    print(f"  Duplikate übersprungen: {duplicates}")
+    print(f"  Unvollständig: {incomplete}")
+    if args.dry_run:
+        print("  Dry-Run: keine Änderungen gespeichert")
+
+
+def cmd_incomplete_list(args):
+    """Listet unvollständige Import-Einträge."""
+    db_path = Path(args.db)
+    conn = get_db_connection(db_path)
+
+    query = """
+        SELECT id, type, date, party, category_name, amount_eur,
+               receipt_name, missing_fields, notes
+        FROM incomplete_entries
+        WHERE 1=1
+    """
+    params = []
+
+    if args.type:
+        query += " AND type = ?"
+        params.append(args.type)
+    if args.year:
+        query += " AND date LIKE ?"
+        params.append(f"{args.year}-%")
+
+    query += " ORDER BY date DESC, id DESC"
+
+    rows = conn.execute(query, params).fetchall()
+    conn.close()
+
+    if args.format == "csv":
+        writer = csv.writer(sys.stdout)
+        writer.writerow(
+            [
+                "ID",
+                "Typ",
+                "Datum",
+                "Partei",
+                "Kategorie",
+                "EUR",
+                "Beleg",
+                "Fehlende Felder",
+                "Notizen",
+            ]
+        )
+        for r in rows:
+            missing = format_missing_fields(r["missing_fields"])
+            writer.writerow(
+                [
+                    r["id"],
+                    r["type"],
+                    r["date"] or "",
+                    r["party"] or "",
+                    r["category_name"] or "",
+                    f"{r['amount_eur']:.2f}" if r["amount_eur"] is not None else "",
+                    r["receipt_name"] or "",
+                    missing,
+                    r["notes"] or "",
+                ]
+            )
+        return
+
+    if not rows:
+        print("Keine unvollständigen Einträge gefunden.")
+        return
+
+    print(
+        f"{'ID':<5} {'Typ':<9} {'Datum':<12} {'Partei':<20} {'Kategorie':<25} {'EUR':>10} {'Fehlt':<20}"
+    )
+    print("-" * 105)
+    for r in rows:
+        missing = format_missing_fields(r["missing_fields"])
+        amount_str = f"{r['amount_eur']:.2f}" if r["amount_eur"] is not None else ""
+        print(
+            f"{r['id']:<5} {r['type']:<9} {(r['date'] or ''):<12} {(r['party'] or '')[:20]:<20} {(r['category_name'] or '')[:25]:<25} {amount_str:>10} {missing[:20]:<20}"
+        )
 
 
 def cmd_add_expense(args):
@@ -1527,6 +1977,23 @@ def main():
     )
     setup_parser.set_defaults(func=cmd_setup)
 
+    # --- import ---
+    import_parser = subparsers.add_parser(
+        "import", help="Bulk-Import von Transaktionen"
+    )
+    import_parser.add_argument(
+        "--file",
+        required=True,
+        help="Pfad zur Importdatei (csv|jsonl), '-' für stdin",
+    )
+    import_parser.add_argument(
+        "--format", choices=["csv", "jsonl"], required=True, help="Importformat"
+    )
+    import_parser.add_argument(
+        "--dry-run", action="store_true", help="Nur prüfen, nichts speichern"
+    )
+    import_parser.set_defaults(func=cmd_import)
+
     # --- add ---
     add_parser = subparsers.add_parser("add", help="Fügt Transaktion hinzu")
     add_subparsers = add_parser.add_subparsers(dest="type", required=True)
@@ -1706,6 +2173,25 @@ def main():
         help="Tabelle (default: expenses)",
     )
     receipt_open_parser.set_defaults(func=cmd_receipt_open)
+
+    # --- incomplete ---
+    incomplete_parser = subparsers.add_parser(
+        "incomplete", help="Unvollständige Import-Einträge"
+    )
+    incomplete_subparsers = incomplete_parser.add_subparsers(
+        dest="action", required=True
+    )
+    incomplete_list_parser = incomplete_subparsers.add_parser(
+        "list", help="Listet unvollständige Einträge"
+    )
+    incomplete_list_parser.add_argument(
+        "--type", choices=["expense", "income", "unknown"], help="Typ filtern"
+    )
+    incomplete_list_parser.add_argument("--year", type=int, help="Jahr filtern")
+    incomplete_list_parser.add_argument(
+        "--format", choices=["table", "csv"], default="table"
+    )
+    incomplete_list_parser.set_defaults(func=cmd_incomplete_list)
 
     args = parser.parse_args()
     args.func(args)

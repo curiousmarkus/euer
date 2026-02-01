@@ -144,6 +144,32 @@ python3 euer.py export --year 2026 --format xlsx
 
 Erzeugt: `exports/EÜR_2026_Ausgaben.csv` und `exports/EÜR_2026_Einnahmen.csv`
 
+## Bulk-Import (Bankauszug / AI-Agent)
+
+Der Import akzeptiert CSV oder JSONL. Unvollständige Zeilen werden automatisch
+als "incomplete" gespeichert und können später korrigiert werden.
+Fehlender `type` wird aus dem Vorzeichen von `amount_eur` abgeleitet.
+
+```bash
+python3 euer.py import --file import.csv --format csv
+```
+
+Beispiel CSV:
+
+```csv
+type,date,party,category,amount_eur,receipt_name,notes
+expense,2026-01-10,Vendor A,Arbeitsmittel,-20.00,2026-01-10_VendorA.pdf,Monatsabo
+income,2026-01-12,Client A,Umsatzsteuerpflichtige Betriebseinnahmen,200.00,Rechnung_001.pdf,
+,2026-01-13,Vendor B,Arbeitsmittel,,missing.pdf,
+```
+
+### Unvollständige Einträge anzeigen
+
+```bash
+python3 euer.py incomplete list
+python3 euer.py incomplete list --format csv
+```
+
 ## Beleg-Verwaltung
 
 Belege können mit Transaktionen verknüpft und validiert werden.
