@@ -1,6 +1,6 @@
 ---
 name: euer-buchhaltung
-description: Verwaltet EÜR-Buchhaltung für deutsche Kleinunternehmer. Erfasst Ausgaben, Einnahmen, prüft Belege und erstellt Zusammenfassungen. Triggers "Ausgabe buchen", "Einnahme erfassen", "Buchhaltung", "EÜR", "Beleg prüfen", "Rechnung buchen"
+description: Verwaltet EÜR-Buchhaltung für deutsche Kleinunternehmer. Nutze es um Ausgaben und Einnahmen zu erfassen, Belege zu prüfen und Zusammenfassungen zu erstellen. Triggers "Ausgabe buchen", "Einnahme erfassen", "Buchhaltung", "EÜR", "Beleg prüfen", "Rechnung buchen"
 ---
 
 # EÜR Buchhaltung
@@ -25,16 +25,17 @@ python3 euer.py add expense \
     --date YYYY-MM-DD \
     --vendor "Lieferant" \
     --category "Kategorie" \
-    --amount -XX.XX \
+    --amount -XX.XX  # Brutto-Betrag (negativ, was vom Konto abgeht) \
     [--account "Bankkonto"] \
     [--receipt "Belegname.pdf"] \
     [--foreign "Betrag Währung"] \
     [--notes "Bemerkung"] \
+    [--vat 3.50]  # Manueller Steuerbetrag in EUR (nicht %) \
     [--rc]  # Reverse-Charge für ausländische Anbieter
 
 # Ausgaben anzeigen
 python3 euer.py list expenses [--year YYYY] [--month MM] [--category "..."]
-# Zeigt RC-Flag und USt-VA Betrag an, falls vorhanden.
+# Zeigt RC-Flag, USt (Output) und VorSt (Input) an, falls vorhanden.
 
 # Ausgabe aktualisieren
 python3 euer.py update expense <ID> [--date ...] [--vendor ...] [--amount ...] [--rc] ...
@@ -51,10 +52,11 @@ python3 euer.py add income \
     --date YYYY-MM-DD \
     --source "Kunde/Quelle" \
     --category "Kategorie" \
-    --amount XX.XX \
+    --amount XX.XX  # Brutto-Betrag (positiv, was auf dem Konto eingeht) \
     [--receipt "Belegname.pdf"] \
     [--foreign "Betrag Währung"] \
-    [--notes "Bemerkung"]
+    [--notes "Bemerkung"] \
+    [--vat 285.00]  # Ausgewiesener Umsatzsteuer-Betrag bei Regelbesteuerung (nicht %)
 
 # Einnahmen anzeigen
 python3 euer.py list income [--year YYYY] [--month MM]
@@ -121,8 +123,27 @@ python3 euer.py receipt open <ID> [--table expenses|income]
 
 ### Beträge
 
-- **Ausgaben**: Immer NEGATIV (z.B. `--amount -29.99`)
-- **Einnahmen**: Immer POSITIV (z.B. `--amount 1500.00`)
+Der Betrag (`--amount`) entspricht immer dem tatsächlichen **Zahlfluss auf dem Bankkonto** (Brutto).
+
+- **Ausgaben**: Immer NEGATIV (z.B. `--amount -119.00`).
+    - Standard-Fall: Das ist der Brutto-Preis inkl. USt.
+    - Reverse-Charge: Das ist der Netto-Preis (da keine USt überwiesen wurde).
+- **Einnahmen**: Immer POSITIV (z.B. `--amount 119.00`).
+    - Standard-Fall: Brutto-Rechnungsbetrag, den der Kunde überwiesen hat.
+
+### Steuermodus (Config)
+
+Das Verhalten hängt von der Konfiguration ab (`~/.config/euer/config.toml`):
+
+1.  **Kleinunternehmer (`mode = "small_business"`)**:
+    *   Ausgaben werde brutto als Kosten erfasst.
+    *   Einnahmen werden in der Regel netto (ohne USt) erfasst.
+    *   Reverse-Charge: Erzeugt eine Umsatzsteuerschuld (`vat_output`), die nicht als Vorsteuer abgezogen werden kann.
+
+2.  **Regelbesteuerung (`mode = "standard"`)**:
+    *   Ausgaben: Vorsteuer (`vat_input`) wird erfasst (automatisch bei RC oder manuell via `--vat`).
+    *   Einnahmen: Umsatzsteuer (`vat_output`) wird erfasst.
+    *   Reverse-Charge: Nullsummenspiel (Umsatzsteuer = Vorsteuer).
 
 ### Reverse-Charge (--rc)
 
@@ -132,7 +153,9 @@ Verwende `--rc` bei ausländischen Anbietern ohne deutsche USt:
 - AWS, Google Cloud, Azure
 - GitHub, Stripe
 
-Dies berechnet automatisch 19% USt für die USt-Voranmeldung.
+Berechnet automatisch 19% USt.
+- **Kleinunternehmer**: Erhöht die Zahllast.
+- **Regelbesteuerung**: Bucht USt und VorSt gleichzeitig (Zahllast-neutral).
 
 ### Kategorien
 
@@ -166,7 +189,8 @@ Nur diese Kategorien sind verfügbar:
 | `category` | Kategorie | Name der Ausgabenkategorie |
 | `amount_eur`| Bruttobetrag | **Immer negativ** (z.B. -10.00) |
 | `rc` | Reverse-Charge | `X` markiert Steuerpflicht aus dem Ausland |
-| `vat_amount`| USt-VA Betrag | Steuerschuld für das Finanzamt (positiv) |
+| `vat_input` | Vorsteuer | Forderung an FA (positiv), nur bei Regelbest. |
+| `vat_output`| RC Umsatzsteuer | Schuld an FA (positiv), bei RC |
 | `account` | Konto | Verwendetes Bankkonto/Zahlart |
 | `receipt_name`| Belegdatei | Name der PDF/JPG Datei |
 | `notes` | Notizen | Optionale Bemerkungen |
@@ -179,6 +203,7 @@ Nur diese Kategorien sind verfügbar:
 | `source` | Kunde/Quelle | Wer hat gezahlt? |
 | `category` | Kategorie | Name der Einnahmenkategorie |
 | `amount_eur`| Bruttobetrag | **Immer positiv** (z.B. 1500.00) |
+| `vat_output`| Umsatzsteuer | Schuld an FA (positiv), nur bei Regelbest. |
 | `receipt_name`| Belegdatei | Name der Rechnungsdatei |
 | `notes` | Notizen | Optionale Bemerkungen |
 

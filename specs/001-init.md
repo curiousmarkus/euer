@@ -1,5 +1,8 @@
 # Buchungs-Ledger (EÜR) - Spezifikation
 
+## Status
+**Implemented** (2026-01-31)
+
 ## Zusammenfassung
 
 Ersetzt die Excel-basierte EÜR durch eine SQLite-Datenbank mit CLI-Interface.

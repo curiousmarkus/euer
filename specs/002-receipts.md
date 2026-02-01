@@ -1,5 +1,8 @@
 # Beleg-Management - Spezifikation
 
+## Status
+**Implemented** (2026-01-31)
+
 ## Zusammenfassung
 
 Konfigurierbare Beleg-Pfade mit Validierung und Hilfsbefehlen.

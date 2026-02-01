@@ -84,7 +84,8 @@ CREATE TABLE expenses (
     foreign_amount TEXT,          -- z.B. "26.60 USD"
     notes TEXT,
     is_rc INTEGER NOT NULL DEFAULT 0, -- Reverse-Charge Flag (0 oder 1)
-    vat_amount REAL,              -- Reverse-Charge USt (19%)
+    vat_input REAL,               -- Vorsteuer (Receivable)
+    vat_output REAL,              -- Umsatzsteuer (Payable, für RC)
     created_at TIMESTAMP,
     hash TEXT UNIQUE NOT NULL     -- Duplikat-Erkennung
 );
@@ -102,6 +103,7 @@ CREATE TABLE income (
     amount_eur REAL NOT NULL,     -- Betrag in EUR (positiv!)
     foreign_amount TEXT,
     notes TEXT,
+    vat_output REAL,              -- Umsatzsteuer (Payable)
     created_at TIMESTAMP,
     hash TEXT UNIQUE NOT NULL
 );
@@ -137,7 +139,8 @@ CREATE TABLE incomplete_entries (
     receipt_name TEXT,
     notes TEXT,
     is_rc INTEGER NOT NULL DEFAULT 0,
-    vat_amount REAL,
+    vat_input REAL,
+    vat_output REAL,
     raw_data TEXT,                -- JSON
     missing_fields TEXT,          -- JSON-Liste
     created_at TIMESTAMP

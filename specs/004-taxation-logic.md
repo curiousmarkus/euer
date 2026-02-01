@@ -1,4 +1,7 @@
-# Spezifikation: Erweiterte Steuerlogik (Kleinunternehmer vs. Regelbesteuerung)
+# Spezifikation: Erweiterte Steuerlogik (Kleinunternehmer vs. Regelbesteuerung) - Implemented
+
+## Status
+**Implemented** (2026-02-01)
 
 ## 1. Ausgangslage
 

@@ -129,7 +129,8 @@ class EuerCLITestCase(unittest.TestCase):
 
         rows = self.list_expenses_csv()
         self.assertEqual(len(rows), 2)
-        _, date, vendor, category, amount, account, receipt, foreign, notes = rows[1]
+        # ID, Datum, Lieferant, Kategorie, EUR, Konto, Beleg, Fremdwährung, Bemerkung, RC, Vorsteuer, Umsatzsteuer
+        rec_id, date, vendor, category, amount, account, receipt, foreign, notes, rc, vat_input, vat_output = rows[1]
         self.assertEqual(date, "2026-01-15")
         self.assertEqual(vendor, "TestVendor")
         self.assertEqual(category, "Arbeitsmittel (52)")
@@ -138,6 +139,9 @@ class EuerCLITestCase(unittest.TestCase):
         self.assertEqual(receipt, "receipt.pdf")
         self.assertEqual(foreign, "")
         self.assertEqual(notes, "")
+        self.assertEqual(rc, "")
+        self.assertEqual(vat_input, "")
+        self.assertEqual(vat_output, "")
 
     def test_add_income_and_list_csv(self):
         add_result = self.add_income(receipt="invoice.pdf")
@@ -146,7 +150,8 @@ class EuerCLITestCase(unittest.TestCase):
 
         rows = self.list_income_csv()
         self.assertEqual(len(rows), 2)
-        _, date, source, category, amount, receipt, foreign, notes = rows[1]
+        # ID, Datum, Quelle, Kategorie, EUR, Beleg, Fremdwährung, Bemerkung, Umsatzsteuer
+        rec_id, date, source, category, amount, receipt, foreign, notes, vat_output = rows[1]
         self.assertEqual(date, "2026-01-20")
         self.assertEqual(source, "TestClient")
         self.assertEqual(category, "Umsatzsteuerpflichtige Betriebseinnahmen (14)")
@@ -154,6 +159,8 @@ class EuerCLITestCase(unittest.TestCase):
         self.assertEqual(receipt, "invoice.pdf")
         self.assertEqual(foreign, "")
         self.assertEqual(notes, "")
+        self.assertEqual(vat_output, "")
+
 
     def test_duplicate_detection(self):
         first = self.add_expense()
@@ -215,7 +222,7 @@ class EuerCLITestCase(unittest.TestCase):
         self.assertEqual(result.returncode, 0, msg=result.stderr)
 
         list_result = self.run_cli(["list", "expenses", "--year", "2026"], check=True)
-        self.assertIn("USt-VA", list_result.stdout)
+        self.assertIn("USt", list_result.stdout)
         self.assertIn("OpenAI", list_result.stdout)
 
     def test_list_income_table(self):
@@ -271,7 +278,7 @@ class EuerCLITestCase(unittest.TestCase):
         result = self.run_cli(["summary", "--year", "2026"], check=True)
         self.assertIn("GESAMT Ausgaben", result.stdout)
         self.assertIn("GESAMT Einnahmen", result.stdout)
-        self.assertIn("Reverse-Charge USt", result.stdout)
+        self.assertIn("Umsatzsteuer (Kleinunternehmer)", result.stdout)
 
     def test_audit_log(self):
         self.add_expense()
