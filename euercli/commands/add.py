@@ -2,7 +2,12 @@ import sys
 from pathlib import Path
 
 from ..config import get_audit_user, load_config, warn_missing_receipt
-from ..db import get_category_id, get_db_connection, log_audit
+from ..db import (
+    get_category_id,
+    get_db_connection,
+    log_audit,
+    resolve_incomplete_entries,
+)
 from ..importers import get_tax_config
 from ..utils import compute_hash, format_amount
 
@@ -125,6 +130,15 @@ def cmd_add_expense(args):
         "vat_output": vat_output,
     }
     log_audit(conn, "expenses", record_id, "INSERT", new_data=new_data, user=audit_user)
+    resolve_incomplete_entries(
+        conn,
+        "expense",
+        args.date,
+        args.vendor,
+        args.amount,
+        args.receipt,
+        user=audit_user,
+    )
 
     conn.commit()
     conn.close()
@@ -222,6 +236,15 @@ def cmd_add_income(args):
         "vat_output": vat_output,
     }
     log_audit(conn, "income", record_id, "INSERT", new_data=new_data, user=audit_user)
+    resolve_incomplete_entries(
+        conn,
+        "income",
+        args.date,
+        args.source,
+        args.amount,
+        args.receipt,
+        user=audit_user,
+    )
 
     conn.commit()
     conn.close()

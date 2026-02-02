@@ -25,6 +25,20 @@ def get_row_value(row: dict, *keys: str) -> object | None:
     return None
 
 
+def normalize_category_name(value: object) -> str | None:
+    """Normalisiert Kategorienamen (entfernt optionale EÜR-Zeilennummern)."""
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    if text.endswith(")") and " (" in text:
+        base, _, tail = text.rpartition(" (")
+        if tail[:-1].isdigit():
+            return base
+    return text
+
+
 def parse_import_type(value: object) -> str | None:
     """Normalisiert Typ-Angaben auf 'expense' oder 'income'."""
     if value is None:
@@ -55,8 +69,10 @@ def get_tax_config(config: dict) -> str:
 
 def normalize_import_row(row: dict) -> dict:
     """Normalisiert Importzeile auf kanonische Keys."""
-    raw_type = get_row_value(row, "type", "kind", "direction")
-    amount_value = get_row_value(row, "amount_eur", "amount")
+    raw_type = get_row_value(row, "type", "kind", "direction", "Typ")
+    amount_value = get_row_value(
+        row, "amount_eur", "amount", "EUR", "Betrag", "Betrag in EUR"
+    )
     amount = parse_amount(amount_value)
 
     row_type = parse_import_type(raw_type)
@@ -66,19 +82,36 @@ def normalize_import_row(row: dict) -> dict:
         elif amount > 0:
             row_type = "income"
 
+    category_value = get_row_value(row, "category", "category_name", "Kategorie")
+
     return {
         "type": row_type,
-        "date": get_row_value(row, "date"),
-        "party": get_row_value(row, "party", "vendor", "source", "counterparty"),
-        "category": get_row_value(row, "category", "category_name"),
+        "date": get_row_value(row, "date", "Datum"),
+        "party": get_row_value(
+            row,
+            "party",
+            "vendor",
+            "source",
+            "counterparty",
+            "Lieferant",
+            "Quelle",
+            "Partei",
+        ),
+        "category": normalize_category_name(category_value),
         "amount_eur": amount,
-        "account": get_row_value(row, "account"),
-        "foreign_amount": get_row_value(row, "foreign_amount", "foreign"),
-        "receipt_name": get_row_value(row, "receipt_name", "receipt"),
-        "notes": get_row_value(row, "notes"),
-        "rc": parse_bool(get_row_value(row, "rc")),
-        "vat_input": parse_amount(get_row_value(row, "vat_input")),
-        "vat_output": parse_amount(get_row_value(row, "vat_output")),
+        "account": get_row_value(row, "account", "Konto"),
+        "foreign_amount": get_row_value(
+            row, "foreign_amount", "foreign", "Fremdwährung", "Fremdwaehrung"
+        ),
+        "receipt_name": get_row_value(
+            row, "receipt_name", "receipt", "Belegname", "Beleg"
+        ),
+        "notes": get_row_value(row, "notes", "Bemerkung", "Notiz"),
+        "rc": parse_bool(get_row_value(row, "rc", "is_rc", "RC")),
+        "vat_input": parse_amount(
+            get_row_value(row, "vat_input", "Vorsteuer", "USt-VA")
+        ),
+        "vat_output": parse_amount(get_row_value(row, "vat_output", "Umsatzsteuer")),
         "raw_data": row,
     }
 

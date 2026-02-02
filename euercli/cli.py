@@ -46,17 +46,26 @@ def main() -> None:
     setup_parser.set_defaults(func=cmd_setup)
 
     # --- import ---
-    import_parser = subparsers.add_parser("import", help="Bulk-Import von Transaktionen")
+    import_parser = subparsers.add_parser(
+        "import",
+        help="Bulk-Import von Transaktionen",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="Tipp: euer import --schema",
+    )
     import_parser.add_argument(
         "--file",
-        required=True,
         help="Pfad zur Importdatei (csv|jsonl), '-' für stdin",
     )
     import_parser.add_argument(
-        "--format", choices=["csv", "jsonl"], required=True, help="Importformat"
+        "--format", choices=["csv", "jsonl"], help="Importformat"
     )
     import_parser.add_argument(
         "--dry-run", action="store_true", help="Nur prüfen, nichts speichern"
+    )
+    import_parser.add_argument(
+        "--schema",
+        action="store_true",
+        help="Zeigt Import-Schema, Beispiele und Alias-Keys",
     )
     import_parser.set_defaults(func=cmd_import)
 
@@ -263,6 +272,7 @@ def main() -> None:
         "--format", choices=["table", "csv"], default="table"
     )
     incomplete_list_parser.set_defaults(func=cmd_incomplete_list)
+
 
     args = parser.parse_args()
     args.func(args)

@@ -351,6 +351,44 @@ class EuerCLITestCase(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("nicht gefunden", result.stderr)
 
+    def test_receipt_check_finds_extension(self):
+        expenses_dir = self.root / "receipts" / "expenses"
+        year_dir = expenses_dir / "2026"
+        year_dir.mkdir(parents=True)
+        self.run_cli(["setup"], input=f"{expenses_dir}\n\n", check=True)
+
+        receipt_name = "2026-01-15_TestVendor"
+        (year_dir / f"{receipt_name}.pdf").write_text("dummy", encoding="utf-8")
+        self.add_expense(receipt=receipt_name)
+
+        result = self.run_cli(
+            ["receipt", "check", "--year", "2026", "--type", "expense"]
+        )
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+
+    def test_import_accepts_export_headers(self):
+        import_file = self.root / "import_export_headers.csv"
+        import_file.write_text(
+            "\n".join(
+                [
+                    "Belegname,Datum,Lieferant,Kategorie,EUR,Konto,Fremdwährung,Bemerkung,RC,Vorsteuer,Umsatzsteuer",
+                    "2026-01-10_1und1,2026-01-10,1und1,Arbeitsmittel (52),-39.99,Bank,,Note,X,0.00,0.00",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        result = self.run_cli(
+            ["import", "--file", str(import_file), "--format", "csv"], check=True
+        )
+        self.assertIn("Ausgaben angelegt: 1", result.stdout)
+
+        rows = self.list_expenses_csv()
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[1][3], "Arbeitsmittel (52)")
+        self.assertEqual(rows[1][2], "1und1")
+
     def test_bulk_import_and_incomplete_list(self):
         import_file = self.root / "import.csv"
         import_file.write_text(
@@ -386,7 +424,6 @@ class EuerCLITestCase(unittest.TestCase):
         rows = self.parse_csv(incomplete_result.stdout)
         self.assertEqual(len(rows), 2)
         self.assertIn("missing.pdf", incomplete_result.stdout)
-
 
 if __name__ == "__main__":
     unittest.main()

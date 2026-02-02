@@ -2,7 +2,13 @@ import sys
 from pathlib import Path
 
 from ..config import get_audit_user, load_config, warn_missing_receipt
-from ..db import get_category_id, get_db_connection, log_audit, row_to_dict
+from ..db import (
+    get_category_id,
+    get_db_connection,
+    log_audit,
+    resolve_incomplete_entries,
+    row_to_dict,
+)
 from ..importers import get_tax_config
 from ..utils import compute_hash
 
@@ -156,6 +162,15 @@ def cmd_update_expense(args):
         new_data=new_data,
         user=audit_user,
     )
+    resolve_incomplete_entries(
+        conn,
+        "expense",
+        new_date,
+        new_vendor,
+        new_amount,
+        new_receipt,
+        user=audit_user,
+    )
 
     conn.commit()
     conn.close()
@@ -233,6 +248,15 @@ def cmd_update_income(args):
         "UPDATE",
         old_data=old_data,
         new_data=new_data,
+        user=audit_user,
+    )
+    resolve_incomplete_entries(
+        conn,
+        "income",
+        new_date,
+        new_source,
+        new_amount,
+        new_receipt,
         user=audit_user,
     )
 

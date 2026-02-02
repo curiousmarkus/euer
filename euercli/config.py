@@ -161,11 +161,21 @@ def resolve_receipt_path(
     base_path = Path(base)
     year = date[:4]  # "2026" aus "2026-01-15"
 
-    # Reihenfolge: Erst Jahres-Ordner, dann Basis
-    candidates = [
-        base_path / year / receipt_name,
-        base_path / receipt_name,
-    ]
+    names = [receipt_name]
+    if not Path(receipt_name).suffix:
+        names.extend(
+            [
+                f"{receipt_name}.pdf",
+                f"{receipt_name}.jpg",
+                f"{receipt_name}.jpeg",
+                f"{receipt_name}.png",
+            ]
+        )
+
+    candidates: list[Path] = []
+    for name in names:
+        candidates.append(base_path / year / name)
+        candidates.append(base_path / name)
 
     for path in candidates:
         if path.exists():

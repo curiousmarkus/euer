@@ -17,7 +17,9 @@ This note explains how the new bulk-import + incomplete-entry handling was desig
    of missing fields.
 4. If a row is complete, it is inserted into `expenses` or `income` as usual (with
    duplicate protection via hash).
-5. `euer incomplete list` displays the incomplete entries for follow-up.
+5. Matching complete bookings (add/import/update) automatically resolve incomplete rows
+   based on date/party/amount (optional receipt).
+6. `euer incomplete list` displays the remaining incomplete entries for follow-up.
 
 From a user perspective, there are two sources of “incomplete” work:
 
@@ -90,13 +92,16 @@ euer incomplete list --format csv
 
 Shows missing fields (pretty-printed) to help operators fix entries quickly.
 
+
 ## User Workflow (Practical)
 
 1. Capture everything you already know (even if partial).
 2. Run `euer incomplete list` to see missing required fields.
 3. Keep a clear list of open tasks (e.g., “download invoice X”).
-4. Once the missing piece is available, **update the row** (or re-import the line)
+4. Once the missing piece is available, **update the booking** (or re-import the line)
    so the entry becomes complete.
+5. The incomplete entry is resolved automatically once a complete booking exists
+   (matching on date, party and amount, with optional receipt name).
 
 ## Tests
 

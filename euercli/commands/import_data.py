@@ -3,13 +3,72 @@ import sys
 from pathlib import Path
 
 from ..config import get_audit_user, load_config
-from ..db import get_category_id, get_db_connection, log_audit
+from ..db import (
+    get_category_id,
+    get_db_connection,
+    has_matching_transaction,
+    log_audit,
+    resolve_incomplete_entries,
+)
 from ..importers import get_tax_config, iter_import_rows, normalize_import_row
 from ..utils import compute_hash
 
 
+def print_import_schema() -> None:
+    """Gibt Schema, Beispiele und Alias-Keys für den Import aus."""
+    print("Import-Schema (CSV/JSONL)")
+    print()
+    print("Pflichtfelder:")
+    print("  - type: expense|income (oder aus Vorzeichen von amount_eur abgeleitet)")
+    print("  - date: YYYY-MM-DD")
+    print("  - party: Lieferant/Quelle")
+    print("  - category: Kategoriename (z.B. 'Arbeitsmittel')")
+    print("  - amount_eur: Betrag in EUR (Ausgaben negativ, Einnahmen positiv)")
+    print()
+    print("Optionale Felder:")
+    print("  account, foreign_amount, receipt_name, notes, rc, vat_input, vat_output")
+    print()
+    print("Minimaler JSONL-Datensatz (Ausgabe):")
+    print(
+        '  {"type":"expense","date":"2025-03-19","party":"1und1",'
+        '"category":"Telekommunikation","amount_eur":-39.99}'
+    )
+    print("Minimaler JSONL-Datensatz (Einnahme):")
+    print(
+        '  {"type":"income","date":"2025-03-19","party":"Kunde GmbH",'
+        '"category":"Umsatzsteuerpflichtige Betriebseinnahmen","amount_eur":2500.00}'
+    )
+    print()
+    print("Alias-Keys (werden akzeptiert):")
+    print("  party: party, vendor, source, counterparty, Lieferant, Quelle, Partei")
+    print("  category: category, category_name, Kategorie")
+    print("  amount_eur: amount_eur, amount, EUR, Betrag, Betrag in EUR")
+    print("  receipt_name: receipt_name, receipt, Belegname, Beleg")
+    print("  rc: rc, is_rc, RC")
+    print("  vat_input: vat_input, Vorsteuer, USt-VA")
+    print("  vat_output: vat_output, Umsatzsteuer")
+    print("  notes: notes, Bemerkung, Notiz")
+    print("  account: account, Konto")
+    print("  foreign_amount: foreign_amount, foreign, Fremdwährung")
+    print()
+    print("Hinweis:")
+    print("  - CSV-Exporte von 'euer export' können direkt re-importiert werden.")
+    print("  - Kategorien mit '(NN)' werden automatisch bereinigt.")
+
+
 def cmd_import(args):
     """Bulk-Import von Transaktionen."""
+    if args.schema:
+        print_import_schema()
+        return
+
+    if not args.file or not args.format:
+        print(
+            "Fehler: --file und --format sind erforderlich (oder --schema).",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     db_path = Path(args.db)
     conn = get_db_connection(db_path)
     config = load_config()
@@ -65,6 +124,16 @@ def cmd_import(args):
                 missing_fields.append("category")
 
         if missing_fields:
+            can_match = row_type in ("expense", "income") and date and party and amount is not None
+            if can_match and has_matching_transaction(
+                conn,
+                row_type,
+                str(date),
+                str(party),
+                float(amount),
+                receipt_name,
+            ):
+                continue
             incomplete += 1
             if not args.dry_run:
                 cursor = conn.execute(
@@ -196,6 +265,15 @@ def cmd_import(args):
                 new_data=new_data,
                 user=audit_user,
             )
+            resolve_incomplete_entries(
+                conn,
+                "expense",
+                str(date),
+                str(party),
+                float(amount),
+                receipt_name,
+                user=audit_user,
+            )
         else:
             if vat_output is None:
                 vat_output = 0.0
@@ -250,6 +328,15 @@ def cmd_import(args):
                 record_id,
                 "INSERT",
                 new_data=new_data,
+                user=audit_user,
+            )
+            resolve_incomplete_entries(
+                conn,
+                "income",
+                str(date),
+                str(party),
+                float(amount),
+                receipt_name,
                 user=audit_user,
             )
 

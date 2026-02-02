@@ -151,10 +151,31 @@ euer export --year 2026 --format xlsx
 
 ```bash
 euer import --file import.csv --format csv
+euer import --schema  # Schema + Beispiele
 
 euer incomplete list
 euer incomplete list --format csv
 ```
+
+Hinweise zum Import:
+- Pflichtfelder: `type`, `date`, `party`, `category`, `amount_eur`
+- Optionale Felder: `account`, `foreign_amount`, `receipt_name`, `notes`, `rc`, `vat_input`, `vat_output`
+- `type` kann fehlen, wenn `amount_eur` ein Vorzeichen hat (negativ = Ausgabe, positiv = Einnahme).
+- CSV‑Exports von `euer export` können direkt re‑importiert werden (Spaltennamen sind gemappt).
+- Kategorien mit `"(NN)"` werden beim Import automatisch bereinigt.
+- Alias‑Keys werden akzeptiert (z.B. `EUR`, `Belegname`, `Lieferant`, `Quelle`, `RC`).
+- Steuerfelder:
+  - `small_business` + `rc=true`: `vat_output` wird automatisch aus `amount_eur * 0.19` berechnet,
+    `vat_input` wird auf `0.0` gesetzt (Felder können weggelassen werden).
+  - `standard`: `vat_input` wird **nicht** automatisch berechnet (außer bei RC). Ohne `vat_input`
+    bleibt es `0.0`. `amount_eur` wird immer 1:1 gespeichert (keine Netto/Brutto‑Umrechnung).
+
+Workflow für unvollständige Einträge:
+1. Import ausführen → unvollständige Zeilen landen in `incomplete_entries`.
+2. Fehlende Infos nachtragen und die Buchung **neu** erfassen (`add`/`import`) oder
+   die passende Buchung per `update expense|income` vervollständigen.
+3. Der Eintrag wird automatisch aufgelöst, sobald eine vollständige Buchung vorhanden ist
+   (Matching über Datum, Partei, Betrag; optional Belegname).
 
 ## Beleg‑Verwaltung
 
@@ -184,6 +205,9 @@ euer receipt check --type expense
 euer receipt open 12
 euer receipt open 5 --table income
 ```
+
+Tipp: Wenn der gespeicherte Belegname **keine Dateiendung** hat, versucht der Check automatisch
+`.pdf`, `.jpg`, `.jpeg` und `.png`.
 
 ## USt‑Modus (Config)
 
@@ -232,6 +256,8 @@ Verwende `--rc` für ausländische Anbieter ohne deutsche USt:
 euer add expense --date 2026-01-04 --vendor "RENDER.COM" \
     --category "Laufende EDV-Kosten" --amount -22.71 --rc
 ```
+
+Hinweis: Bei `small_business` setzt RC automatisch `vat_output`, `vat_input` bleibt `0.0`.
 
 ## Troubleshooting
 

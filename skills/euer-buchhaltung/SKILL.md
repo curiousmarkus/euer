@@ -101,6 +101,7 @@ euer audit <ID> [--table expenses|income]
 # Import von CSV oder JSONL
 euer import --file import.csv --format csv
 euer import --file import.jsonl --format jsonl
+euer import --schema  # Schema + Beispiele
 
 # Unvollständige Einträge anzeigen
 euer incomplete list
@@ -115,8 +116,23 @@ Hinweis:
 Workflow:
 1. Importieren bzw. Eintrag erfassen, auch wenn Details fehlen.
 2. `euer incomplete list` prüfen und offene Aufgaben festhalten (z.B. fehlende Rechnung).
-3. Sobald die Info vorliegt, Einträge per `update` ergänzen oder mit vollständigen
-   Daten erneut erfassen.
+3. Sobald die Info vorliegt, Einträge per `euer update expense <ID>` /
+   `euer update income <ID>` ergänzen oder mit vollständigen Daten erneut erfassen.
+4. Der unvollständige Eintrag wird automatisch aufgelöst, sobald die Buchung komplett ist
+   (Matching über Datum, Partei, Betrag; optional Belegname).
+
+Import-Schema (Kurzfassung):
+- Pflichtfelder: `type`, `date`, `party`, `category`, `amount_eur`
+- Optional: `account`, `foreign_amount`, `receipt_name`, `notes`, `rc`,
+  `vat_input`, `vat_output`
+- Alias-Keys (Auszug): `EUR`, `Belegname`, `Lieferant`, `Quelle`, `RC`,
+  `Vorsteuer`, `Umsatzsteuer`
+- Kategorien wie `Arbeitsmittel (52)` werden automatisch auf `Arbeitsmittel` bereinigt.
+- Steuerfelder:
+  - `small_business` + `rc=true`: `vat_output` wird automatisch aus `amount_eur * 0.19` berechnet,
+    `vat_input` wird auf `0.0` gesetzt (Felder können weggelassen werden).
+  - `standard`: `vat_input` wird **nicht** automatisch berechnet (außer bei RC). Ohne `vat_input`
+    bleibt es `0.0`. `amount_eur` wird immer 1:1 gespeichert (keine Netto/Brutto‑Umrechnung).
 ### Beleg-Verwaltung
 
 ```bash
@@ -172,6 +188,7 @@ Verwende `--rc` bei ausländischen Anbietern ohne deutsche USt:
 Berechnet automatisch 19% USt.
 - **Kleinunternehmer**: Erhöht die Zahllast.
 - **Regelbesteuerung**: Bucht USt und VorSt gleichzeitig (Zahllast-neutral).
+Hinweis: Bei `small_business` setzt RC automatisch `vat_output`, `vat_input` bleibt `0.0`.
 
 ### Kategorien
 
@@ -235,6 +252,9 @@ Belege werden in Jahres-Unterordnern erwartet:
 ```
 <belege-pfad>/<Jahr>/<Belegname>
 ```
+
+Hinweis: Fehlt die Dateiendung, prüft `euer receipt check` automatisch
+`.pdf`, `.jpg`, `.jpeg` und `.png`.
 
 ## Typische Workflows
 

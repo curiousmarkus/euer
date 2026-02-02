@@ -36,10 +36,6 @@ def cmd_setup(args):
         "Export-Verzeichnis",
         get_export_dir(config) or exports_config.get("directory") or str(DEFAULT_EXPORT_DIR),
     )
-    audit_user_input = prompt_text(
-        "Audit-User (Name für Änderungen)",
-        get_audit_user(config),
-    )
     try:
         default_tax_mode = normalize_tax_mode(str(tax_config.get("mode", "small_business")))
     except ValueError:
@@ -58,6 +54,11 @@ def cmd_setup(args):
                 "Ungültiger Steuermodus. Erlaubt: small_business oder standard.",
                 file=sys.stderr,
             )
+
+    audit_user_input = prompt_text(
+        "Audit-User (Name für Änderungen)",
+        get_audit_user(config),
+    )
 
     expenses_path = normalize_receipt_path(expenses_input)
     income_path = normalize_receipt_path(income_input)

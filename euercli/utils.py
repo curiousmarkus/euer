@@ -22,7 +22,7 @@ def parse_bool(value: object) -> bool:
     if value is None:
         return False
     text = str(value).strip().lower()
-    return text in {"1", "true", "yes", "y", "ja", "j"}
+    return text in {"1", "true", "yes", "y", "ja", "j", "x"}
 
 
 def parse_amount(value: object) -> float | None:
