@@ -47,6 +47,7 @@ def print_import_schema() -> None:
     print("Hinweis:")
     print("  - CSV-Exporte von 'euer export' können direkt re-importiert werden.")
     print("  - Kategorien mit '(NN)' werden automatisch bereinigt.")
+    print("  - Unbekannte Kategorien werden als fehlend behandelt.")
     print("  - Unvollständige Felder (category/receipt/vat/account) werden später per")
     print("    `euer incomplete list` angezeigt.")
 
@@ -106,9 +107,7 @@ def cmd_import(args):
                     str(normalized["category"]),
                     normalized["type"],
                 )
-                if not cat_id:
-                    errors.append((idx, ["category"]))
-                else:
+                if cat_id:
                     normalized["_category_id"] = cat_id
         normalized_rows.append(normalized)
 
