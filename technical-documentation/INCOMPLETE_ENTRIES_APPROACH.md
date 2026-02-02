@@ -1,120 +1,68 @@
-# Approach: Incomplete Entries (Bulk-Import)
+# Approach: Incomplete Bookings (No Staging Table)
 
-This note explains how the new bulk-import + incomplete-entry handling was designed and implemented.
+This note describes the simplified approach for “incomplete” handling without a
+dedicated staging table.
 
 ## Goals
 
-- Allow AI-agents (or humans) to import bank statements even when data is partial.
-- Store partial lines safely without losing context.
-- Provide a dedicated command to list incomplete lines so they can be fixed later.
-- Keep behavior consistent with existing CLI patterns (audit log, CSV outputs, etc.).
+- Allow imports even when non-critical data is missing.
+- Keep a clear list of bookings that still need enrichment.
+- Avoid separate `incomplete_entries` storage.
 
 ## High-Level Flow
 
-1. `euer import` reads CSV/JSONL rows and normalizes them into a canonical shape.
-2. It validates mandatory fields (`type`, `date`, `party`, `category`, `amount_eur`).
-3. If a row is incomplete, it is stored in `incomplete_entries` with raw data and a list
-   of missing fields.
-4. If a row is complete, it is inserted into `expenses` or `income` as usual (with
-   duplicate protection via hash).
-5. Matching complete bookings (add/import/update) automatically resolve incomplete rows
-   based on date/party/amount (optional receipt).
-6. `euer incomplete list` displays the remaining incomplete entries for follow-up.
+1. `euer import` reads CSV/JSONL rows and normalizes them.
+2. It enforces **hard required fields**: `type`, `date`, `party`, `amount_eur`.
+   - Missing any of these → import aborts.
+3. Valid rows are inserted directly into `expenses` / `income`.
+4. `euer incomplete list` scans **existing bookings** and computes missing
+   **quality fields** (see below).
 
-From a user perspective, there are two sources of “incomplete” work:
+## Required vs. Quality Fields
 
-- **Bulk-import rows with missing required fields** → stored in `incomplete_entries`.
-- **Standard `add` entries with missing optional details** (e.g., receipt or notes) →
-  stored in `expenses`/`income` and completed later via `update`.
-
-## Schema Additions
-
-`incomplete_entries` captures partial data and the missing fields:
-
-- `type`: expense/income/unknown (unknown when type is missing and cannot be inferred).
-- `date`, `party`, `category_name`, `amount_eur`, `account`, `foreign_amount`,
-  `receipt_name`, `notes`, `vat_amount`.
-- `raw_data`: JSON snapshot of the original row.
-- `missing_fields`: JSON list of required fields that were missing.
-
-This keeps the original context so the entry can be fixed later without
-re-reading the bank statement.
-
-## Normalization & Inference
-
-Import rows are normalized using a flexible field mapping:
-
-- `type` accepts synonyms (expense/ausgabe, income/einnahme, etc.).
-- `party` is mapped from `party`, `vendor`, `source`, or `counterparty`.
-- `amount_eur` is parsed from multiple numeric formats.
-- If `type` is missing but `amount_eur` is available:
-  - negative amount → expense
-  - positive amount → income
-
-This allows AI-agent outputs and bank CSVs to be accepted without strict schemas.
-
-## Validation Rules
-
-Required fields for a “complete” entry:
-
-- `type`
+### Hard required (import/add must have)
+- `type` (or inferred from amount sign)
 - `date`
-- `party`
-- `category`
+- `party` (vendor/source)
 - `amount_eur`
 
-If a category name exists but does not resolve to a known category ID, it is
-also considered “missing” so it routes to incomplete.
+### Quality required (can be missing, shown by `incomplete list`)
+- `category`
+- `receipt`
+- `vat` (only in `standard` mode)
+- `account` (expenses only)
 
-## Audit Log
+Receipt exception:
+- `Gezahlte USt` (EÜR line 58) does **not** require a receipt.
 
-Insertions into `incomplete_entries` are recorded in `audit_log` with action `INSERT`,
-consistent with the rest of the system.
+## Incomplete List Logic
 
-## CLI Commands
+`euer incomplete list` is a **live query** over `expenses` / `income`.
 
-### Import
+- For expenses:
+  - missing `category` → `category`
+  - missing `receipt_name` → `receipt` (except `Gezahlte USt`)
+  - missing `account` → `account`
+  - in `standard`:
+    - RC → `vat` if `vat_input` or `vat_output` is missing
+    - normal → `vat` if `vat_input` is missing
+- For income:
+  - missing `category` → `category`
+  - missing `receipt_name` → `receipt`
+  - in `standard`: missing `vat_output` → `vat`
 
-```
-euer import --file import.csv --format csv
-```
+## Schema Notes
 
-- Inserts complete rows into `expenses` / `income`.
-- Stores incomplete rows in `incomplete_entries`.
-- Prints summary counts (total, inserted, duplicates, incomplete).
+- `category_id` is nullable in `expenses` / `income`.
+- No `incomplete_entries` table is used.
 
-### Incomplete List
+## User Workflow
 
-```
-euer incomplete list
-euer incomplete list --format csv
-```
+1. Import or add bookings with the known basics.
+2. Run `euer incomplete list`.
+3. Complete missing data using `euer update expense|income <ID>`.
 
-Shows missing fields (pretty-printed) to help operators fix entries quickly.
+## Tests (Focus)
 
-
-## User Workflow (Practical)
-
-1. Capture everything you already know (even if partial).
-2. Run `euer incomplete list` to see missing required fields.
-3. Keep a clear list of open tasks (e.g., “download invoice X”).
-4. Once the missing piece is available, **update the booking** (or re-import the line)
-   so the entry becomes complete.
-5. The incomplete entry is resolved automatically once a complete booking exists
-   (matching on date, party and amount, with optional receipt name).
-
-## Tests
-
-Tests focus on:
-
-- Mixed complete + incomplete import sets.
-- Correct counts and row routing.
-- `incomplete list` output in CSV format.
-
-## Follow-Ups (Optional)
-
-Potential enhancements that were left out intentionally to keep scope minimal:
-
-- A “repair” command to convert incomplete rows into full entries.
-- UI/editor for fixing missing fields in-place.
-- Optional auto-category fallback based on vendor/source heuristics.
+- Import fails when required fields are missing.
+- `incomplete list` detects missing category/receipt/vat/account.

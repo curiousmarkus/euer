@@ -40,7 +40,7 @@ def cmd_export(args):
         """SELECT e.receipt_name, e.date, e.vendor, c.name as category, c.eur_line,
                   e.amount_eur, e.account, e.foreign_amount, e.notes, e.is_rc, e.vat_input, e.vat_output
            FROM expenses e
-           JOIN categories c ON e.category_id = c.id
+           LEFT JOIN categories c ON e.category_id = c.id
            WHERE strftime('%Y', e.date) = ?
            ORDER BY e.date, e.id""",
         (str(year),),
@@ -51,7 +51,7 @@ def cmd_export(args):
         """SELECT i.receipt_name, i.date, i.source, c.name as category, c.eur_line,
                   i.amount_eur, i.foreign_amount, i.notes, i.vat_output
            FROM income i
-           JOIN categories c ON i.category_id = c.id
+           LEFT JOIN categories c ON i.category_id = c.id
            WHERE strftime('%Y', i.date) = ?
            ORDER BY i.date, i.id""",
         (str(year),),
@@ -80,11 +80,14 @@ def cmd_export(args):
                 ]
             )
             for r in expenses:
-                cat = (
-                    f"{r['category']} ({r['eur_line']})"
-                    if r["eur_line"]
-                    else r["category"]
-                )
+                if r["category"]:
+                    cat = (
+                        f"{r['category']} ({r['eur_line']})"
+                        if r["eur_line"]
+                        else r["category"]
+                    )
+                else:
+                    cat = "Ohne Kategorie"
                 writer.writerow(
                     [
                         r["receipt_name"] or "",
@@ -118,11 +121,14 @@ def cmd_export(args):
                 ]
             )
             for r in income:
-                cat = (
-                    f"{r['category']} ({r['eur_line']})"
-                    if r["eur_line"]
-                    else r["category"]
-                )
+                if r["category"]:
+                    cat = (
+                        f"{r['category']} ({r['eur_line']})"
+                        if r["eur_line"]
+                        else r["category"]
+                    )
+                else:
+                    cat = "Ohne Kategorie"
                 writer.writerow(
                     [
                         r["receipt_name"] or "",
@@ -166,9 +172,14 @@ def cmd_export(args):
             ]
         )
         for r in expenses:
-            cat = (
-                f"{r['category']} ({r['eur_line']})" if r["eur_line"] else r["category"]
-            )
+            if r["category"]:
+                cat = (
+                    f"{r['category']} ({r['eur_line']})"
+                    if r["eur_line"]
+                    else r["category"]
+                )
+            else:
+                cat = "Ohne Kategorie"
             ws.append(
                 [
                     r["receipt_name"] or "",
@@ -203,9 +214,14 @@ def cmd_export(args):
             ]
         )
         for r in income:
-            cat = (
-                f"{r['category']} ({r['eur_line']})" if r["eur_line"] else r["category"]
-            )
+            if r["category"]:
+                cat = (
+                    f"{r['category']} ({r['eur_line']})"
+                    if r["eur_line"]
+                    else r["category"]
+                )
+            else:
+                cat = "Ohne Kategorie"
             ws.append(
                 [
                     r["receipt_name"] or "",

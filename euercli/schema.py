@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS expenses (
     receipt_name TEXT,
     date DATE NOT NULL,
     vendor TEXT NOT NULL,
-    category_id INTEGER NOT NULL REFERENCES categories(id),
+    category_id INTEGER REFERENCES categories(id),
     amount_eur REAL NOT NULL,
     account TEXT,
     foreign_amount TEXT,
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS income (
     receipt_name TEXT,
     date DATE NOT NULL,
     source TEXT NOT NULL,
-    category_id INTEGER NOT NULL REFERENCES categories(id),
+    category_id INTEGER REFERENCES categories(id),
     amount_eur REAL NOT NULL,
     foreign_amount TEXT,
     notes TEXT,
@@ -45,28 +45,6 @@ CREATE TABLE IF NOT EXISTS income (
 
 CREATE INDEX IF NOT EXISTS idx_income_date ON income(date);
 CREATE INDEX IF NOT EXISTS idx_income_category ON income(category_id);
-
-CREATE TABLE IF NOT EXISTS incomplete_entries (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    type TEXT NOT NULL CHECK(type IN ('expense', 'income', 'unknown')),
-    date DATE,
-    party TEXT,
-    category_name TEXT,
-    amount_eur REAL,
-    account TEXT,
-    foreign_amount TEXT,
-    receipt_name TEXT,
-    notes TEXT,
-    is_rc INTEGER NOT NULL DEFAULT 0,
-    vat_input REAL,
-    vat_output REAL,
-    raw_data TEXT,
-    missing_fields TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS idx_incomplete_type ON incomplete_entries(type);
-CREATE INDEX IF NOT EXISTS idx_incomplete_date ON incomplete_entries(date);
 
 CREATE TABLE IF NOT EXISTS audit_log (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

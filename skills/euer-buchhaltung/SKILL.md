@@ -109,22 +109,23 @@ euer incomplete list --format csv
 ```
 
 Hinweis:
-- Unvollständige Import-Zeilen (fehlende Pflichtfelder) landen in `incomplete_entries`.
+- Fehlende Pflichtfelder brechen den Import ab.
 - Standard `add`-Einträge dürfen optionale Felder (z.B. Beleg/Notiz) fehlen und werden
   später per `update` ergänzt.
 
 Workflow:
-1. Importieren bzw. Eintrag erfassen, auch wenn Details fehlen.
-2. `euer incomplete list` prüfen und offene Aufgaben festhalten (z.B. fehlende Rechnung).
-3. Sobald die Info vorliegt, Einträge per `euer update expense <ID>` /
-   `euer update income <ID>` ergänzen oder mit vollständigen Daten erneut erfassen.
-4. Der unvollständige Eintrag wird automatisch aufgelöst, sobald die Buchung komplett ist
-   (Matching über Datum, Partei, Betrag; optional Belegname).
+1. Importieren bzw. Eintrag erfassen, Pflichtfelder müssen vorhanden sein.
+2. `euer incomplete list` prüfen und offene Aufgaben festhalten
+   (fehlende `category`, `receipt`, `vat`, `account`).
+3. Fehlende Felder per `euer update expense <ID>` /
+   `euer update income <ID>` ergänzen.
+Hinweis: Für die Kategorie **Gezahlte USt (58)** ist kein Beleg erforderlich.
 
 Import-Schema (Kurzfassung):
-- Pflichtfelder: `type`, `date`, `party`, `category`, `amount_eur`
-- Optional: `account`, `foreign_amount`, `receipt_name`, `notes`, `rc`,
+- Pflichtfelder: `type`, `date`, `party`, `amount_eur`
+- Optional: `category`, `account`, `foreign_amount`, `receipt_name`, `notes`, `rc`,
   `vat_input`, `vat_output`
+- Fehlende Pflichtfelder führen zu einem Import-Abbruch.
 - Alias-Keys (Auszug): `EUR`, `Belegname`, `Lieferant`, `Quelle`, `RC`,
   `Vorsteuer`, `Umsatzsteuer`
 - Kategorien wie `Arbeitsmittel (52)` werden automatisch auf `Arbeitsmittel` bereinigt.

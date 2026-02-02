@@ -50,10 +50,12 @@ def parse_amount(value: object) -> float | None:
         return None
 
 
-def format_missing_fields(value: str | None) -> str:
+def format_missing_fields(value: str | list | None) -> str:
     """Formatiert fehlende Felder für die Anzeige."""
     if not value:
         return ""
+    if isinstance(value, list):
+        return ", ".join(str(item) for item in value)
     try:
         parsed = json.loads(value)
     except json.JSONDecodeError:

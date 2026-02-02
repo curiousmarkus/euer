@@ -55,7 +55,7 @@ damit Erweiterungen konsistent und risikoarm umgesetzt werden koennen.
 - **Buchungen**: `add`, `list`, `update`, `delete` fuer `expenses` und `income`.
 - **Audit-Log**: Jede Aenderung (INSERT/UPDATE/DELETE) wird protokolliert.
 - **Import**: CSV/JSONL mit Normalisierung, Duplikat-Schutz (Hash).
-- **Incomplete Entries**: unvollstaendige Importzeilen werden separat gespeichert.
+- **Incomplete**: unvollstaendige Buchungen werden live aus `expenses`/`income` berechnet.
 - **Summary**: Jahreszusammenfassung inkl. RC/Steuerlogik.
 - **Export**: CSV (immer), XLSX optional via `openpyxl`.
 - **Receipts**: Belegpfade in Config, Check + Open.
@@ -74,7 +74,6 @@ Die vollständigen DDLs stehen in `euercli/schema.py`.
 - **expenses**: Ausgaben inkl. Beleg, Konto, Fremdwährung, RC‑Flags, Steuern.
 - **income**: Einnahmen inkl. Beleg, Fremdwährung, Umsatzsteuer.
 - **audit_log**: Protokolliert INSERT/UPDATE/DELETE inkl. Vorher/Nachher.
-- **incomplete_entries**: Unvollständige Import‑Zeilen mit fehlenden Feldern.
 
 ## Audit‑Logging (Pflicht)
 
@@ -88,13 +87,15 @@ Der Modus wird aus der Config gelesen (`[tax].mode`).
 - `small_business` (Default): keine Vorsteuer; RC erzeugt Umsatzsteuer‑Zahllast.
 - `standard`: Vorsteuer wird erfasst; RC bucht USt und VorSt gleichzeitig.
 
-## Import & Incomplete Entries
+## Import & Incomplete
 
-Der Import akzeptiert CSV/JSONL. Pflichtfelder für vollständige Einträge:
-`type`, `date`, `party`, `category`, `amount_eur`.
+Der Import akzeptiert CSV/JSONL. Pflichtfelder:
+`type`, `date`, `party`, `amount_eur`.
 
-Fehlende Pflichtfelder führen zu Einträgen in `incomplete_entries`.
-Details siehe `technical-documentation/INCOMPLETE_ENTRIES_APPROACH.md`.
+Fehlende Pflichtfelder brechen den Import ab. Unvollständige Buchungen werden
+über `euer incomplete list` live berechnet (fehlende `category`, `receipt`,
+`vat`, `account`). Details siehe
+`technical-documentation/INCOMPLETE_ENTRIES_APPROACH.md`.
 
 ## Neue Commands hinzufügen
 

@@ -2,13 +2,7 @@ import sys
 from pathlib import Path
 
 from ..config import get_audit_user, load_config, warn_missing_receipt
-from ..db import (
-    get_category_id,
-    get_db_connection,
-    log_audit,
-    resolve_incomplete_entries,
-    row_to_dict,
-)
+from ..db import get_category_id, get_db_connection, log_audit, row_to_dict
 from ..importers import get_tax_config
 from ..utils import compute_hash
 
@@ -162,16 +156,6 @@ def cmd_update_expense(args):
         new_data=new_data,
         user=audit_user,
     )
-    resolve_incomplete_entries(
-        conn,
-        "expense",
-        new_date,
-        new_vendor,
-        new_amount,
-        new_receipt,
-        user=audit_user,
-    )
-
     conn.commit()
     conn.close()
 
@@ -187,6 +171,7 @@ def cmd_update_income(args):
     conn = get_db_connection(db_path)
     config = load_config()
     audit_user = get_audit_user(config)
+    tax_mode = get_tax_config(config)
 
     row = conn.execute("SELECT * FROM income WHERE id = ?", (args.id,)).fetchone()
     if not row:
@@ -202,6 +187,11 @@ def cmd_update_income(args):
     new_amount = args.amount if args.amount is not None else row["amount_eur"]
     new_foreign = args.foreign if args.foreign is not None else row["foreign_amount"]
     new_notes = args.notes if args.notes is not None else row["notes"]
+    new_vat_output = row["vat_output"]
+    if args.vat is not None:
+        new_vat_output = args.vat
+    elif tax_mode == "standard" and row["vat_output"] is None:
+        new_vat_output = None
 
     if args.category:
         cat_id = get_category_id(conn, args.category, "income")
@@ -217,7 +207,7 @@ def cmd_update_income(args):
     conn.execute(
         """UPDATE income SET
            receipt_name = ?, date = ?, source = ?, category_id = ?, amount_eur = ?,
-           foreign_amount = ?, notes = ?, hash = ?
+           foreign_amount = ?, notes = ?, vat_output = ?, hash = ?
            WHERE id = ?""",
         (
             new_receipt,
@@ -227,6 +217,7 @@ def cmd_update_income(args):
             new_amount,
             new_foreign,
             new_notes,
+            new_vat_output,
             new_hash,
             args.id,
         ),
@@ -240,6 +231,7 @@ def cmd_update_income(args):
         "amount_eur": new_amount,
         "foreign_amount": new_foreign,
         "notes": new_notes,
+        "vat_output": new_vat_output,
     }
     log_audit(
         conn,
@@ -250,16 +242,6 @@ def cmd_update_income(args):
         new_data=new_data,
         user=audit_user,
     )
-    resolve_incomplete_entries(
-        conn,
-        "income",
-        new_date,
-        new_source,
-        new_amount,
-        new_receipt,
-        user=audit_user,
-    )
-
     conn.commit()
     conn.close()
 

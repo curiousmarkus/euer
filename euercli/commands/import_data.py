@@ -3,13 +3,7 @@ import sys
 from pathlib import Path
 
 from ..config import get_audit_user, load_config
-from ..db import (
-    get_category_id,
-    get_db_connection,
-    has_matching_transaction,
-    log_audit,
-    resolve_incomplete_entries,
-)
+from ..db import get_category_id, get_db_connection, log_audit
 from ..importers import get_tax_config, iter_import_rows, normalize_import_row
 from ..utils import compute_hash
 
@@ -22,11 +16,10 @@ def print_import_schema() -> None:
     print("  - type: expense|income (oder aus Vorzeichen von amount_eur abgeleitet)")
     print("  - date: YYYY-MM-DD")
     print("  - party: Lieferant/Quelle")
-    print("  - category: Kategoriename (z.B. 'Arbeitsmittel')")
     print("  - amount_eur: Betrag in EUR (Ausgaben negativ, Einnahmen positiv)")
     print()
     print("Optionale Felder:")
-    print("  account, foreign_amount, receipt_name, notes, rc, vat_input, vat_output")
+    print("  category, account, foreign_amount, receipt_name, notes, rc, vat_input, vat_output")
     print()
     print("Minimaler JSONL-Datensatz (Ausgabe):")
     print(
@@ -54,6 +47,8 @@ def print_import_schema() -> None:
     print("Hinweis:")
     print("  - CSV-Exporte von 'euer export' können direkt re-importiert werden.")
     print("  - Kategorien mit '(NN)' werden automatisch bereinigt.")
+    print("  - Unvollständige Felder (category/receipt/vat/account) werden später per")
+    print("    `euer incomplete list` angezeigt.")
 
 
 def cmd_import(args):
@@ -86,11 +81,46 @@ def cmd_import(args):
     inserted_expenses = 0
     inserted_income = 0
     duplicates = 0
-    incomplete = 0
 
-    for row in rows:
+    normalized_rows: list[dict] = []
+    errors: list[tuple[int, list[str]]] = []
+
+    for idx, row in enumerate(rows, start=1):
         total += 1
         normalized = normalize_import_row(row)
+        missing_fields = []
+        if not normalized["type"]:
+            missing_fields.append("type")
+        if not normalized["date"]:
+            missing_fields.append("date")
+        if normalized["amount_eur"] is None:
+            missing_fields.append("amount_eur")
+        if not normalized["party"]:
+            missing_fields.append("party")
+        if missing_fields:
+            errors.append((idx, missing_fields))
+        else:
+            if normalized["category"]:
+                cat_id = get_category_id(
+                    conn,
+                    str(normalized["category"]),
+                    normalized["type"],
+                )
+                if not cat_id:
+                    errors.append((idx, ["category"]))
+                else:
+                    normalized["_category_id"] = cat_id
+        normalized_rows.append(normalized)
+
+    if errors:
+        print("Fehler: Import abgebrochen. Pflichtfelder fehlen:", file=sys.stderr)
+        for row_idx, fields in errors:
+            fields_str = ", ".join(fields)
+            print(f"  Zeile {row_idx}: {fields_str}", file=sys.stderr)
+        conn.close()
+        sys.exit(1)
+
+    for normalized in normalized_rows:
         row_type = normalized["type"]
         date = normalized["date"]
         party = normalized["party"]
@@ -104,86 +134,7 @@ def cmd_import(args):
         vat_input = normalized["vat_input"]
         vat_output = normalized["vat_output"]
 
-        missing_fields = []
-
-        if not row_type:
-            missing_fields.append("type")
-        if not date:
-            missing_fields.append("date")
-        if amount is None:
-            missing_fields.append("amount_eur")
-        if not party:
-            missing_fields.append("party")
-        if not category_name:
-            missing_fields.append("category")
-
-        cat_id = None
-        if row_type in ("expense", "income") and category_name:
-            cat_id = get_category_id(conn, str(category_name), row_type)
-            if not cat_id:
-                missing_fields.append("category")
-
-        if missing_fields:
-            can_match = row_type in ("expense", "income") and date and party and amount is not None
-            if can_match and has_matching_transaction(
-                conn,
-                row_type,
-                str(date),
-                str(party),
-                float(amount),
-                receipt_name,
-            ):
-                continue
-            incomplete += 1
-            if not args.dry_run:
-                cursor = conn.execute(
-                    """INSERT INTO incomplete_entries
-                       (type, date, party, category_name, amount_eur, account,
-                        foreign_amount, receipt_name, notes, is_rc, vat_input, vat_output,
-                        raw_data, missing_fields)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                    (
-                        row_type or "unknown",
-                        str(date) if date else None,
-                        str(party) if party else None,
-                        str(category_name) if category_name else None,
-                        amount,
-                        str(account) if account else None,
-                        str(foreign_amount) if foreign_amount else None,
-                        str(receipt_name) if receipt_name else None,
-                        str(notes) if notes else None,
-                        1 if rc else 0,
-                        vat_input,
-                        vat_output,
-                        json.dumps(normalized["raw_data"], ensure_ascii=False),
-                        json.dumps(missing_fields, ensure_ascii=False),
-                    ),
-                )
-                record_id = cursor.lastrowid
-                assert record_id is not None
-                log_audit(
-                    conn,
-                    "incomplete_entries",
-                    record_id,
-                    "INSERT",
-                    new_data={
-                        "type": row_type or "unknown",
-                        "date": str(date) if date else None,
-                        "party": str(party) if party else None,
-                        "category_name": str(category_name) if category_name else None,
-                        "amount_eur": amount,
-                        "account": str(account) if account else None,
-                        "foreign_amount": str(foreign_amount) if foreign_amount else None,
-                        "receipt_name": str(receipt_name) if receipt_name else None,
-                        "notes": str(notes) if notes else None,
-                        "is_rc": 1 if rc else 0,
-                        "vat_input": vat_input,
-                        "vat_output": vat_output,
-                        "missing_fields": missing_fields,
-                    },
-                    user=audit_user,
-                )
-            continue
+        cat_id = normalized.get("_category_id")
 
         if row_type == "expense":
             # Automatische VAT-Berechnung für RC, falls nicht im Import
@@ -201,11 +152,15 @@ def cmd_import(args):
                     if vat_input is None:
                         vat_input = calc_vat
             else:
-                # Normale Ausgabe: Defaults auf 0 wenn nicht vorhanden
-                if vat_input is None:
-                    vat_input = 0.0
-                if vat_output is None:
-                    vat_output = 0.0
+                # Normale Ausgabe: im Standard-Modus bleibt vat_input optional
+                if tax_mode == "small_business":
+                    if vat_input is None:
+                        vat_input = 0.0
+                    if vat_output is None:
+                        vat_output = 0.0
+                else:
+                    if vat_output is None:
+                        vat_output = 0.0
 
             tx_hash = compute_hash(
                 str(date), str(party), float(amount), receipt_name or ""
@@ -265,18 +220,10 @@ def cmd_import(args):
                 new_data=new_data,
                 user=audit_user,
             )
-            resolve_incomplete_entries(
-                conn,
-                "expense",
-                str(date),
-                str(party),
-                float(amount),
-                receipt_name,
-                user=audit_user,
-            )
         else:
-            if vat_output is None:
-                vat_output = 0.0
+            if tax_mode == "small_business":
+                if vat_output is None:
+                    vat_output = 0.0
 
             tx_hash = compute_hash(
                 str(date), str(party), float(amount), receipt_name or ""
@@ -330,15 +277,6 @@ def cmd_import(args):
                 new_data=new_data,
                 user=audit_user,
             )
-            resolve_incomplete_entries(
-                conn,
-                "income",
-                str(date),
-                str(party),
-                float(amount),
-                receipt_name,
-                user=audit_user,
-            )
 
     if not args.dry_run:
         conn.commit()
@@ -349,6 +287,5 @@ def cmd_import(args):
     print(f"  Ausgaben angelegt: {inserted_expenses}")
     print(f"  Einnahmen angelegt: {inserted_income}")
     print(f"  Duplikate übersprungen: {duplicates}")
-    print(f"  Unvollständig: {incomplete}")
     if args.dry_run:
         print("  Dry-Run: keine Änderungen gespeichert")

@@ -77,7 +77,7 @@ def main() -> None:
     add_expense_parser = add_subparsers.add_parser("expense", help="Ausgabe hinzufügen")
     add_expense_parser.add_argument("--date", required=True, help="Datum (YYYY-MM-DD)")
     add_expense_parser.add_argument("--vendor", required=True, help="Lieferant/Zweck")
-    add_expense_parser.add_argument("--category", required=True, help="Kategorie")
+    add_expense_parser.add_argument("--category", help="Kategorie")
     add_expense_parser.add_argument(
         "--amount", required=True, type=float, help="Betrag in EUR"
     )
@@ -97,7 +97,7 @@ def main() -> None:
     add_income_parser = add_subparsers.add_parser("income", help="Einnahme hinzufügen")
     add_income_parser.add_argument("--date", required=True, help="Datum (YYYY-MM-DD)")
     add_income_parser.add_argument("--source", required=True, help="Quelle/Zweck")
-    add_income_parser.add_argument("--category", required=True, help="Kategorie")
+    add_income_parser.add_argument("--category", help="Kategorie")
     add_income_parser.add_argument(
         "--amount", required=True, type=float, help="Betrag in EUR"
     )
@@ -169,6 +169,7 @@ def main() -> None:
     upd_inc_parser.add_argument("--foreign", help="Neuer Fremdwährungsbetrag")
     upd_inc_parser.add_argument("--receipt", help="Neuer Belegname")
     upd_inc_parser.add_argument("--notes", help="Neue Bemerkung")
+    upd_inc_parser.add_argument("--vat", type=float, help="Neue Umsatzsteuer")
     upd_inc_parser.set_defaults(func=cmd_update_income)
 
     # --- delete ---
@@ -258,14 +259,14 @@ def main() -> None:
 
     # --- incomplete ---
     incomplete_parser = subparsers.add_parser(
-        "incomplete", help="Unvollständige Import-Einträge"
+        "incomplete", help="Unvollständige Buchungen"
     )
     incomplete_subparsers = incomplete_parser.add_subparsers(dest="action", required=True)
     incomplete_list_parser = incomplete_subparsers.add_parser(
         "list", help="Listet unvollständige Einträge"
     )
     incomplete_list_parser.add_argument(
-        "--type", choices=["expense", "income", "unknown"], help="Typ filtern"
+        "--type", choices=["expense", "income"], help="Typ filtern"
     )
     incomplete_list_parser.add_argument("--year", type=int, help="Jahr filtern")
     incomplete_list_parser.add_argument(

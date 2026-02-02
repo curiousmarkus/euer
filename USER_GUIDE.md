@@ -158,8 +158,9 @@ euer incomplete list --format csv
 ```
 
 Hinweise zum Import:
-- Pflichtfelder: `type`, `date`, `party`, `category`, `amount_eur`
-- Optionale Felder: `account`, `foreign_amount`, `receipt_name`, `notes`, `rc`, `vat_input`, `vat_output`
+- Pflichtfelder: `type`, `date`, `party`, `amount_eur`
+- Optionale Felder: `category`, `account`, `foreign_amount`, `receipt_name`, `notes`, `rc`, `vat_input`, `vat_output`
+- Fehlende Pflichtfelder führen zu einem Import-Abbruch.
 - `type` kann fehlen, wenn `amount_eur` ein Vorzeichen hat (negativ = Ausgabe, positiv = Einnahme).
 - CSV‑Exports von `euer export` können direkt re‑importiert werden (Spaltennamen sind gemappt).
 - Kategorien mit `"(NN)"` werden beim Import automatisch bereinigt.
@@ -171,11 +172,11 @@ Hinweise zum Import:
     bleibt es `0.0`. `amount_eur` wird immer 1:1 gespeichert (keine Netto/Brutto‑Umrechnung).
 
 Workflow für unvollständige Einträge:
-1. Import ausführen → unvollständige Zeilen landen in `incomplete_entries`.
-2. Fehlende Infos nachtragen und die Buchung **neu** erfassen (`add`/`import`) oder
-   die passende Buchung per `update expense|income` vervollständigen.
-3. Der Eintrag wird automatisch aufgelöst, sobald eine vollständige Buchung vorhanden ist
-   (Matching über Datum, Partei, Betrag; optional Belegname).
+1. Import/Add ausführen → Buchungen werden angelegt (Pflichtfelder müssen vorhanden sein).
+2. `euer incomplete list` zeigt fehlende **Qualitätsfelder**:
+   `category`, `receipt`, `vat`, `account` (abhängig von Typ/Steuermodus).
+3. Fehlende Infos per `euer update expense|income <ID>` nachpflegen.
+Hinweis: Für die Kategorie **Gezahlte USt (58)** ist kein Beleg erforderlich.
 
 ## Beleg‑Verwaltung
 

@@ -60,11 +60,11 @@ class EuerCLITestCase(unittest.TestCase):
             data["date"],
             "--vendor",
             data["vendor"],
-            "--category",
-            data["category"],
             "--amount",
             str(data["amount"]),
         ]
+        if data.get("category") is not None:
+            args += ["--category", data["category"]]
         if "account" in data:
             args += ["--account", data["account"]]
         if "foreign" in data:
@@ -94,11 +94,11 @@ class EuerCLITestCase(unittest.TestCase):
             data["date"],
             "--source",
             data["source"],
-            "--category",
-            data["category"],
             "--amount",
             str(data["amount"]),
         ]
+        if data.get("category") is not None:
+            args += ["--category", data["category"]]
         if "foreign" in data:
             args += ["--foreign", data["foreign"]]
         if "receipt" in data:
@@ -389,41 +389,47 @@ class EuerCLITestCase(unittest.TestCase):
         self.assertEqual(rows[1][3], "Arbeitsmittel (52)")
         self.assertEqual(rows[1][2], "1und1")
 
-    def test_bulk_import_and_incomplete_list(self):
-        import_file = self.root / "import.csv"
+    def test_import_missing_required_fails(self):
+        import_file = self.root / "import_missing.csv"
         import_file.write_text(
             "\n".join(
                 [
                     "type,date,party,category,amount_eur,receipt_name,notes",
                     "expense,2026-01-10,Vendor A,Arbeitsmittel,-20.00,rec1.pdf,Note",
-                    "income,2026-01-12,Client A,Umsatzsteuerpflichtige Betriebseinnahmen,200.00,inv1.pdf,",
                     ",2026-01-13,Vendor B,Arbeitsmittel,,missing.pdf,",
-                    ",2026-01-14,Client B,Umsatzsteuerpflichtige Betriebseinnahmen,300.00,,",
                 ]
             )
             + "\n",
             encoding="utf-8",
         )
 
-        result = self.run_cli(
-            ["import", "--file", str(import_file), "--format", "csv"], check=True
-        )
-        self.assertIn("Import abgeschlossen", result.stdout)
-        self.assertIn("Ausgaben angelegt: 1", result.stdout)
-        self.assertIn("Einnahmen angelegt: 2", result.stdout)
-        self.assertIn("Unvollständig: 1", result.stdout)
+        result = self.run_cli(["import", "--file", str(import_file), "--format", "csv"])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Pflichtfelder fehlen", result.stderr)
 
-        expenses = self.list_expenses_csv()
-        income = self.list_income_csv()
-        self.assertEqual(len(expenses), 2)
-        self.assertEqual(len(income), 3)
+    def test_incomplete_list_from_bookings(self):
+        self.run_cli(
+            [
+                "add",
+                "expense",
+                "--date",
+                "2026-01-10",
+                "--vendor",
+                "Vendor A",
+                "--amount",
+                "-20.00",
+            ],
+            check=True,
+        )
 
         incomplete_result = self.run_cli(
             ["incomplete", "list", "--format", "csv"], check=True
         )
         rows = self.parse_csv(incomplete_result.stdout)
         self.assertEqual(len(rows), 2)
-        self.assertIn("missing.pdf", incomplete_result.stdout)
+        self.assertIn("category", incomplete_result.stdout)
+        self.assertIn("receipt", incomplete_result.stdout)
+        self.assertIn("account", incomplete_result.stdout)
 
 if __name__ == "__main__":
     unittest.main()

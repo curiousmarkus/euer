@@ -15,7 +15,7 @@ def cmd_list_expenses(args):
                e.amount_eur, e.account, e.receipt_name, e.foreign_amount, 
                e.notes, e.is_rc, e.vat_input, e.vat_output
         FROM expenses e
-        JOIN categories c ON e.category_id = c.id
+        LEFT JOIN categories c ON e.category_id = c.id
         WHERE 1=1
     """
     params = []
@@ -54,9 +54,14 @@ def cmd_list_expenses(args):
             ]
         )
         for r in rows:
-            cat_str = (
-                f"{r['category']} ({r['eur_line']})" if r["eur_line"] else r["category"]
-            )
+            if r["category"]:
+                cat_str = (
+                    f"{r['category']} ({r['eur_line']})"
+                    if r["eur_line"]
+                    else r["category"]
+                )
+            else:
+                cat_str = "Ohne Kategorie"
             writer.writerow(
                 [
                     r["id"],
@@ -102,9 +107,14 @@ def cmd_list_expenses(args):
         vat_out_total = 0.0
         vat_in_total = 0.0
         for r in rows:
-            cat_str = (
-                f"{r['category']} ({r['eur_line']})" if r["eur_line"] else r["category"]
-            )
+            if r["category"]:
+                cat_str = (
+                    f"{r['category']} ({r['eur_line']})"
+                    if r["eur_line"]
+                    else r["category"]
+                )
+            else:
+                cat_str = "Ohne Kategorie"
             if has_vat:
                 vout_str = f"{r['vat_output']:.2f}" if r["vat_output"] else ""
                 vin_str = f"{r['vat_input']:.2f}" if r["vat_input"] else ""
@@ -140,7 +150,7 @@ def cmd_list_income(args):
                i.amount_eur, i.receipt_name, i.foreign_amount, i.notes,
                i.vat_output
         FROM income i
-        JOIN categories c ON i.category_id = c.id
+        LEFT JOIN categories c ON i.category_id = c.id
         WHERE 1=1
     """
     params = []
@@ -176,9 +186,14 @@ def cmd_list_income(args):
             ]
         )
         for r in rows:
-            cat_str = (
-                f"{r['category']} ({r['eur_line']})" if r["eur_line"] else r["category"]
-            )
+            if r["category"]:
+                cat_str = (
+                    f"{r['category']} ({r['eur_line']})"
+                    if r["eur_line"]
+                    else r["category"]
+                )
+            else:
+                cat_str = "Ohne Kategorie"
             writer.writerow(
                 [
                     r["id"],
@@ -212,9 +227,14 @@ def cmd_list_income(args):
         vat_out_total = 0.0
 
         for r in rows:
-            cat_str = (
-                f"{r['category']} ({r['eur_line']})" if r["eur_line"] else r["category"]
-            )
+            if r["category"]:
+                cat_str = (
+                    f"{r['category']} ({r['eur_line']})"
+                    if r["eur_line"]
+                    else r["category"]
+                )
+            else:
+                cat_str = "Ohne Kategorie"
             amount_str = f"{r['amount_eur']:>12.2f}"
             if has_vat:
                 vat_str = f"{r['vat_output']:.2f}" if r["vat_output"] else ""

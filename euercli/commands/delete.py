@@ -14,7 +14,7 @@ def cmd_delete_expense(args):
 
     row = conn.execute(
         """SELECT e.*, c.name as category_name 
-           FROM expenses e JOIN categories c ON e.category_id = c.id 
+           FROM expenses e LEFT JOIN categories c ON e.category_id = c.id 
            WHERE e.id = ?""",
         (args.id,),
     ).fetchone()
@@ -28,7 +28,7 @@ def cmd_delete_expense(args):
         print(f"Ausgabe #{args.id}:")
         print(f"  Datum:     {row['date']}")
         print(f"  Lieferant: {row['vendor']}")
-        print(f"  Kategorie: {row['category_name']}")
+        print(f"  Kategorie: {row['category_name'] or '-'}")
         print(f"  Betrag:    {row['amount_eur']:.2f} EUR")
 
         confirm = input("\nWirklich löschen? (j/N): ")
@@ -64,7 +64,7 @@ def cmd_delete_income(args):
 
     row = conn.execute(
         """SELECT i.*, c.name as category_name 
-           FROM income i JOIN categories c ON i.category_id = c.id 
+           FROM income i LEFT JOIN categories c ON i.category_id = c.id 
            WHERE i.id = ?""",
         (args.id,),
     ).fetchone()
@@ -78,7 +78,7 @@ def cmd_delete_income(args):
         print(f"Einnahme #{args.id}:")
         print(f"  Datum:    {row['date']}")
         print(f"  Quelle:   {row['source']}")
-        print(f"  Kategorie: {row['category_name']}")
+        print(f"  Kategorie: {row['category_name'] or '-'}")
         print(f"  Betrag:   {row['amount_eur']:.2f} EUR")
 
         confirm = input("\nWirklich löschen? (j/N): ")

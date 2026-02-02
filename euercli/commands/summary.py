@@ -23,7 +23,7 @@ def cmd_summary(args):
     expenses = conn.execute(
         """SELECT c.name, c.eur_line, SUM(e.amount_eur) as total
            FROM expenses e
-           JOIN categories c ON e.category_id = c.id
+           LEFT JOIN categories c ON e.category_id = c.id
            WHERE strftime('%Y', e.date) = ?
            GROUP BY c.id
            ORDER BY c.eur_line, c.name""",
@@ -33,7 +33,10 @@ def cmd_summary(args):
     print("Ausgaben nach Kategorie:")
     expense_total = 0.0
     for r in expenses:
-        cat = f"{r['name']} ({r['eur_line']})" if r["eur_line"] else r["name"]
+        if r["name"]:
+            cat = f"{r['name']} ({r['eur_line']})" if r["eur_line"] else r["name"]
+        else:
+            cat = "Ohne Kategorie"
         print(f"  {cat:<40} {r['total']:>12.2f} EUR")
         expense_total += r["total"]
     print("  " + "-" * 54)
@@ -94,7 +97,7 @@ def cmd_summary(args):
     income = conn.execute(
         """SELECT c.name, c.eur_line, SUM(i.amount_eur) as total
            FROM income i
-           JOIN categories c ON i.category_id = c.id
+           LEFT JOIN categories c ON i.category_id = c.id
            WHERE strftime('%Y', i.date) = ?
            GROUP BY c.id
            ORDER BY c.eur_line, c.name""",
@@ -104,7 +107,10 @@ def cmd_summary(args):
     print("Einnahmen nach Kategorie:")
     income_total = 0.0
     for r in income:
-        cat = f"{r['name']} ({r['eur_line']})" if r["eur_line"] else r["name"]
+        if r["name"]:
+            cat = f"{r['name']} ({r['eur_line']})" if r["eur_line"] else r["name"]
+        else:
+            cat = "Ohne Kategorie"
         print(f"  {cat:<40} {r['total']:>12.2f} EUR")
         income_total += r["total"]
     print("  " + "-" * 54)
