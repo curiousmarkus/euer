@@ -83,8 +83,7 @@ euer setup
 euer config show
 
 # Erste Buchung
-euer add expense --date 2026-02-02 --vendor "Test" \
-    --category "Bürobedarf" --amount -10.00
+euer add expense --date 2026-02-02 --vendor "Test" --category "Laufende EDV-Kosten" --amount -10.00
 ```
 
 ### Wo liegen meine Daten?
