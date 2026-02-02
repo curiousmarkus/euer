@@ -71,7 +71,7 @@ Der Agent nutzt Befehle wie:
 Detaillierte Anleitungen findest du in unseren Guides:
 
 - 📖 **[User Guide](USER_GUIDE.md)** – Installation, Workflows und alle Befehle.
-- 🤖 **[SKILL "euer-buchhaltung"](euer-buchhaltung/SKILL.md)** – Die Anleitung für deinen Agent
+- 🤖 **[SKILL "euer-buchhaltung"](skills/euer-buchhaltung/SKILL.md)** – Die Anleitung für deinen Agenten
 - 🛠️ **[Development](DEVELOPMENT.md)** – Architektur und Mitwirkung.
 
 ---
