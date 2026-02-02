@@ -1,6 +1,7 @@
 import sys
 from pathlib import Path
 
+from ..config import get_audit_user, load_config
 from ..db import get_db_connection, log_audit, row_to_dict
 
 
@@ -8,6 +9,8 @@ def cmd_delete_expense(args):
     """Löscht eine Ausgabe."""
     db_path = Path(args.db)
     conn = get_db_connection(db_path)
+    config = load_config()
+    audit_user = get_audit_user(config)
 
     row = conn.execute(
         """SELECT e.*, c.name as category_name 
@@ -37,7 +40,14 @@ def cmd_delete_expense(args):
     old_data = row_to_dict(row)
 
     conn.execute("DELETE FROM expenses WHERE id = ?", (args.id,))
-    log_audit(conn, "expenses", args.id, "DELETE", old_data=old_data)
+    log_audit(
+        conn,
+        "expenses",
+        args.id,
+        "DELETE",
+        old_data=old_data,
+        user=audit_user,
+    )
 
     conn.commit()
     conn.close()
@@ -49,6 +59,8 @@ def cmd_delete_income(args):
     """Löscht eine Einnahme."""
     db_path = Path(args.db)
     conn = get_db_connection(db_path)
+    config = load_config()
+    audit_user = get_audit_user(config)
 
     row = conn.execute(
         """SELECT i.*, c.name as category_name 
@@ -78,7 +90,14 @@ def cmd_delete_income(args):
     old_data = row_to_dict(row)
 
     conn.execute("DELETE FROM income WHERE id = ?", (args.id,))
-    log_audit(conn, "income", args.id, "DELETE", old_data=old_data)
+    log_audit(
+        conn,
+        "income",
+        args.id,
+        "DELETE",
+        old_data=old_data,
+        user=audit_user,
+    )
 
     conn.commit()
     conn.close()

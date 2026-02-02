@@ -19,8 +19,8 @@ Belege werden in Jahres-Unterordnern organisiert und mit Transaktionen verlinkt.
 ### Ist-Zustand
 
 - Belege liegen in Dropbox: 
-  - Ausgaben: `/Users/markus/Dropbox/Mein Unternehmen/Ausgaben-Belege/`
-  - Einnahmen: `/Users/markus/Dropbox/Mein Unternehmen/Einnahmen-Belege/`
+  - Ausgaben: `~/Dropbox/Beispielunternehmen/Ausgaben-Belege/`
+  - Einnahmen: `~/Dropbox/Beispielunternehmen/Einnahmen-Belege/`
 - Struktur: `<base>/<Jahr>/YYYYMMDD_Vendor.pdf`
 - DB speichert nur `receipt_name` (Dateiname ohne Pfad)
 - Keine Validierung ob Beleg existiert
@@ -72,8 +72,8 @@ Belege werden in Jahres-Unterordnern organisiert und mit Transaktionen verlinkt.
 
 ```toml
 [receipts]
-expenses = "/Users/markus/Dropbox/Mein Unternehmen/Ausgaben-Belege"
-income = "/Users/markus/Dropbox/Mein Unternehmen/Einnahmen-Belege"
+expenses = "~/Dropbox/Beispielunternehmen/Ausgaben-Belege"
+income = "~/Dropbox/Beispielunternehmen/Einnahmen-Belege"
 ```
 
 ### Defaults (wenn keine Config existiert)
@@ -162,8 +162,8 @@ Nach erfolgreichem Insert, wenn `--receipt` angegeben:
 ```
 Ausgabe #5 hinzugefügt: Render -15.50 EUR
 ⚠ Beleg '2026-02-01_Render.pdf' nicht gefunden:
-  - /Users/.../Ausgaben-Belege/2026/2026-02-01_Render.pdf
-  - /Users/.../Ausgaben-Belege/2026-02-01_Render.pdf
+  - /path/to/Ausgaben-Belege/2026/2026-02-01_Render.pdf
+  - /path/to/Ausgaben-Belege/2026-02-01_Render.pdf
 ```
 
 - Warnung nur wenn Config vorhanden UND Pfad konfiguriert
@@ -227,7 +227,7 @@ euer receipt open 12 [--table expenses|income]  # Default: expenses
 **Beispiel:**
 ```
 $ euer receipt open 12
-Öffne: /Users/.../Ausgaben-Belege/2026/2026-01-15_Render.pdf
+Öffne: /path/to/Ausgaben-Belege/2026/2026-01-15_Render.pdf
 ```
 
 ---
@@ -249,8 +249,8 @@ EÜR Konfiguration
 Config-Datei: ~/.config/euer/config.toml
 
 [receipts]
-  expenses = /Users/markus/Dropbox/Mein Unternehmen/Ausgaben-Belege
-  income   = /Users/markus/Dropbox/Mein Unternehmen/Einnahmen-Belege
+  expenses = ~/Dropbox/Beispielunternehmen/Ausgaben-Belege
+  income   = ~/Dropbox/Beispielunternehmen/Einnahmen-Belege
 ```
 
 Oder wenn keine Config:

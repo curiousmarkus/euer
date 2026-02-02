@@ -1,4 +1,4 @@
-from ..config import get_export_dir, load_config
+from ..config import get_audit_user, get_export_dir, load_config
 from ..constants import CONFIG_PATH
 
 
@@ -27,6 +27,8 @@ def cmd_config_show(args):
         print('  income = "/pfad/zu/einnahmen-belege"')
         print("  [exports]")
         print('  directory = "/pfad/zu/exports"')
+        print("  [user]")
+        print('  name = "Dein Name"')
         print("  [tax]")
         print('  mode = "small_business"')
         print("  EOF")
@@ -50,3 +52,6 @@ def cmd_config_show(args):
     tax_mode = config.get("tax", {}).get("mode", "small_business")
     print("[tax]")
     print(f"  mode = {tax_mode}")
+    audit_user = get_audit_user(config)
+    print("[user]")
+    print(f"  name = {audit_user}")

@@ -2,7 +2,7 @@ import sys
 import tomllib
 from pathlib import Path
 
-from .constants import CONFIG_PATH
+from .constants import CONFIG_PATH, DEFAULT_USER
 
 VALID_TAX_MODES = {"small_business", "standard"}
 
@@ -74,6 +74,23 @@ def prompt_path(label: str, default: str | None) -> str:
     return value
 
 
+def prompt_text(label: str, default: str | None) -> str:
+    """Fragt interaktiv einen Textwert ab."""
+    prompt = f"{label}"
+    if default:
+        prompt += f" [{default}]"
+    prompt += ": "
+    try:
+        value = input(prompt).strip()
+    except EOFError:
+        if default is not None:
+            return default
+        return ""
+    if not value and default is not None:
+        return default
+    return value
+
+
 def normalize_receipt_path(value: str) -> str:
     """Normalisiert Pfad-Eingaben."""
     if not value:
@@ -114,6 +131,14 @@ def normalize_tax_mode(value: str, default: str = "small_business") -> str:
 def get_export_dir(config: dict) -> str:
     """Liest Export-Verzeichnis aus der Config."""
     return config.get("exports", {}).get("directory", "")
+
+
+def get_audit_user(config: dict) -> str:
+    """Liest Audit-User aus der Config."""
+    user = config.get("user", {}).get("name", "")
+    if not user:
+        return DEFAULT_USER
+    return str(user)
 
 
 def resolve_receipt_path(

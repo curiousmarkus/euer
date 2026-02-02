@@ -22,12 +22,12 @@ Single-User, lokal, keine Netzwerk-Komponenten.
 - EÜR = Einnahmen-Überschuss-Rechnung (vereinfachte Buchführung)
 
 ### Bestehende Lösung (wird ersetzt)
-- Excel-Datei: `/Users/markus/Dropbox/Mein Unternehmen/2026 EÜR Markus Keller Digital Solutions.xlsx`
+- Excel-Datei: `~/Dropbox/Beispielunternehmen/2026 EÜR Beispielunternehmen.xlsx`
 - Sheets: "Ausgaben", "Einnahmen", "Übersicht" (Pivot)
-- Belege: `/Users/markus/Dropbox/Mein Unternehmen/Ausgaben-Belege/`
+- Belege: `~/Dropbox/Beispielunternehmen/Ausgaben-Belege/`
 
 ### Kategorisierungs-Regeln
-Dokumentiert in: `/Users/markus/dev/ItsMe/Mein Gewerbe/Organisatorisches/EÜR Kategorisierung.md`
+Dokumentiert in: `/path/to/EÜR Kategorisierung.md` (intern, nicht Teil des Repos)
 
 ---
 
@@ -150,7 +150,7 @@ CREATE TABLE audit_log (
     action TEXT NOT NULL CHECK(action IN ('INSERT', 'UPDATE', 'DELETE', 'MIGRATE')),
     old_data TEXT,                        -- JSON des vorherigen Zustands (NULL bei INSERT)
     new_data TEXT,                        -- JSON des neuen Zustands (NULL bei DELETE)
-    user TEXT NOT NULL DEFAULT 'markus'   -- Hardcoded für jetzt
+    user TEXT NOT NULL DEFAULT 'default'   -- Hardcoded für jetzt
 );
 
 CREATE INDEX idx_audit_table_record ON audit_log(table_name, record_id);
@@ -391,10 +391,10 @@ ledger audit 42 [--table expenses|income]  # Default: expenses
 Audit-Log für expenses #42
 ==========================
 
-2026-01-15 10:30:00  INSERT by markus
+2026-01-15 10:30:00  INSERT by default
   → {"date": "2026-01-15", "vendor": "Render", "amount_eur": -15.50, ...}
 
-2026-01-16 14:22:00  UPDATE by markus
+2026-01-16 14:22:00  UPDATE by default
   ← {"amount_eur": -15.50}
   → {"amount_eur": -20.00}
 ```
@@ -406,8 +406,8 @@ Audit-Log für expenses #42
 ### Verwendung
 
 ```bash
-python migrate_excel.py "/Users/markus/Dropbox/Mein Unternehmen/2025 EÜR Markus Keller Digital Solutions.xlsx"
-python migrate_excel.py "/Users/markus/Dropbox/Mein Unternehmen/2026 EÜR Markus Keller Digital Solutions.xlsx"
+python migrate_excel.py "~/Dropbox/Beispielunternehmen/2025 EÜR Beispielunternehmen.xlsx"
+python migrate_excel.py "~/Dropbox/Beispielunternehmen/2026 EÜR Beispielunternehmen.xlsx"
 ```
 
 ### Ablauf
@@ -569,6 +569,6 @@ Ja, das Schema ist dafür ausgelegt:
 
 ## Referenzen
 
-- Excel-Dateien: `/Users/markus/Dropbox/Mein Unternehmen/`
-- Kategorisierungs-Regeln: `/Users/markus/dev/ItsMe/Mein Gewerbe/Organisatorisches/EÜR Kategorisierung.md`
-- Accounting SOP: `/Users/markus/dev/ItsMe/.opencode/skills/sop-accounting-process/SKILL.md`
+- Excel-Dateien: `~/Dropbox/Beispielunternehmen/`
+- Kategorisierungs-Regeln: `/path/to/EÜR Kategorisierung.md` (intern)
+- Accounting SOP: `/path/to/sop-accounting-process/SKILL.md` (intern)

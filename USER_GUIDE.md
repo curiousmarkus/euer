@@ -110,7 +110,7 @@ euer incomplete list --format csv
 
 ### Konfiguration
 
-`euer setup` legt Pfade in `~/.config/euer/config.toml` an.
+`euer setup` legt Pfade und den Audit‑User in `~/.config/euer/config.toml` an.
 Belege werden in Jahres‑Unterordnern erwartet: `<base>/<Jahr>/<Belegname>`.
 
 ```toml
@@ -120,6 +120,9 @@ income = "/pfad/zu/einnahmen-belege"
 
 [exports]
 directory = "/pfad/zu/exports"
+
+[user]
+name = "Dein Name"
 ```
 
 ### Prüfen & Öffnen
@@ -154,6 +157,14 @@ mode = "small_business"  # oder "standard"
 - **Einsehen:** `euer config show` zeigt den aktuellen Wert unter `[tax]`.
 - **Aendern:** `euer setup` erneut ausfuehren und den Modus neu waehlen.
 - **Manuell:** `~/.config/euer/config.toml` bearbeiten und `mode` anpassen.
+
+### Audit‑User
+
+Der Audit‑User wird für Änderungen in der `audit_log`‑Tabelle gespeichert.
+
+- **Setzen (interaktiv):** `euer setup` fragt nach dem Namen.
+- **Einsehen:** `euer config show` zeigt den aktuellen Wert unter `[user]`.
+- **Manuell:** `~/.config/euer/config.toml` bearbeiten und `name` anpassen.
 
 ```bash
 # aktuelle Konfiguration inkl. Steuermodus anzeigen

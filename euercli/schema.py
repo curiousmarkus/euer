@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS audit_log (
     action TEXT NOT NULL CHECK(action IN ('INSERT', 'UPDATE', 'DELETE', 'MIGRATE')),
     old_data TEXT,
     new_data TEXT,
-    user TEXT NOT NULL DEFAULT 'markus'
+    user TEXT NOT NULL DEFAULT 'default'
 );
 
 CREATE INDEX IF NOT EXISTS idx_audit_table_record ON audit_log(table_name, record_id);

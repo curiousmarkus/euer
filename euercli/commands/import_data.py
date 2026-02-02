@@ -2,7 +2,7 @@ import json
 import sys
 from pathlib import Path
 
-from ..config import load_config
+from ..config import get_audit_user, load_config
 from ..db import get_category_id, get_db_connection, log_audit
 from ..importers import get_tax_config, iter_import_rows, normalize_import_row
 from ..utils import compute_hash
@@ -13,6 +13,7 @@ def cmd_import(args):
     db_path = Path(args.db)
     conn = get_db_connection(db_path)
     config = load_config()
+    audit_user = get_audit_user(config)
     tax_mode = get_tax_config(config)
 
     try:
@@ -111,6 +112,7 @@ def cmd_import(args):
                         "vat_output": vat_output,
                         "missing_fields": missing_fields,
                     },
+                    user=audit_user,
                 )
             continue
 
@@ -186,7 +188,14 @@ def cmd_import(args):
                 "vat_input": vat_input,
                 "vat_output": vat_output,
             }
-            log_audit(conn, "expenses", record_id, "INSERT", new_data=new_data)
+            log_audit(
+                conn,
+                "expenses",
+                record_id,
+                "INSERT",
+                new_data=new_data,
+                user=audit_user,
+            )
         else:
             if vat_output is None:
                 vat_output = 0.0
@@ -235,7 +244,14 @@ def cmd_import(args):
                 "notes": notes,
                 "vat_output": vat_output,
             }
-            log_audit(conn, "income", record_id, "INSERT", new_data=new_data)
+            log_audit(
+                conn,
+                "income",
+                record_id,
+                "INSERT",
+                new_data=new_data,
+                user=audit_user,
+            )
 
     if not args.dry_run:
         conn.commit()

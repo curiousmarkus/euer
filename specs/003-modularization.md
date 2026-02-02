@@ -141,7 +141,7 @@ SCHEMA = """..."""
 SEED_CATEGORIES = [...]
 DEFAULT_DB_PATH = <project_root> / "euer.db"
 DEFAULT_EXPORT_DIR = <project_root> / "exports"
-DEFAULT_USER = "markus"
+DEFAULT_USER = "default"
 ```
 
 ### `euercli/utils.py`

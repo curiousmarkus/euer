@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 
-from ..config import load_config, warn_missing_receipt
+from ..config import get_audit_user, load_config, warn_missing_receipt
 from ..db import get_category_id, get_db_connection, log_audit
 from ..importers import get_tax_config
 from ..utils import compute_hash, format_amount
@@ -12,6 +12,7 @@ def cmd_add_expense(args):
     db_path = Path(args.db)
     conn = get_db_connection(db_path)
     config = load_config()
+    audit_user = get_audit_user(config)
     tax_mode = get_tax_config(config)
 
     # Kategorie nachschlagen
@@ -123,7 +124,7 @@ def cmd_add_expense(args):
         "vat_input": vat_input,
         "vat_output": vat_output,
     }
-    log_audit(conn, "expenses", record_id, "INSERT", new_data=new_data)
+    log_audit(conn, "expenses", record_id, "INSERT", new_data=new_data, user=audit_user)
 
     conn.commit()
     conn.close()
@@ -144,7 +145,6 @@ def cmd_add_expense(args):
     )
 
     # Beleg-Warnung (nach erfolgreicher Transaktion)
-    config = load_config()
     warn_missing_receipt(args.receipt, args.date, "expenses", config)
 
 
@@ -153,6 +153,7 @@ def cmd_add_income(args):
     db_path = Path(args.db)
     conn = get_db_connection(db_path)
     config = load_config()
+    audit_user = get_audit_user(config)
     tax_mode = get_tax_config(config)
 
     # Kategorie nachschlagen
@@ -220,7 +221,7 @@ def cmd_add_income(args):
         "notes": args.notes,
         "vat_output": vat_output,
     }
-    log_audit(conn, "income", record_id, "INSERT", new_data=new_data)
+    log_audit(conn, "income", record_id, "INSERT", new_data=new_data, user=audit_user)
 
     conn.commit()
     conn.close()
@@ -232,5 +233,4 @@ def cmd_add_income(args):
     )
 
     # Beleg-Warnung (nach erfolgreicher Transaktion)
-    config = load_config()
     warn_missing_receipt(args.receipt, args.date, "income", config)

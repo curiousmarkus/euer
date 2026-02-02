@@ -2,12 +2,14 @@ import sys
 from pathlib import Path
 
 from ..config import (
+    get_audit_user,
     get_export_dir,
     load_config,
     normalize_export_path,
     normalize_receipt_path,
     normalize_tax_mode,
     prompt_path,
+    prompt_text,
     save_config,
 )
 from ..constants import CONFIG_PATH, DEFAULT_EXPORT_DIR
@@ -22,6 +24,7 @@ def cmd_setup(args):
     receipts_config = dict(config.get("receipts", {}))
     exports_config = dict(config.get("exports", {}))
     tax_config = dict(config.get("tax", {}))
+    user_config = dict(config.get("user", {}))
 
     expenses_input = prompt_path(
         "Beleg-Pfad für Ausgaben", receipts_config.get("expenses")
@@ -32,6 +35,10 @@ def cmd_setup(args):
     export_input = prompt_path(
         "Export-Verzeichnis",
         get_export_dir(config) or exports_config.get("directory") or str(DEFAULT_EXPORT_DIR),
+    )
+    audit_user_input = prompt_text(
+        "Audit-User (Name für Änderungen)",
+        get_audit_user(config),
     )
     try:
         default_tax_mode = normalize_tax_mode(str(tax_config.get("mode", "small_business")))
@@ -60,17 +67,20 @@ def cmd_setup(args):
     receipts_config["income"] = income_path
     exports_config["directory"] = export_path
     tax_config["mode"] = tax_mode
+    user_config["name"] = audit_user_input
     config["receipts"] = receipts_config
     config["exports"] = exports_config
     config["tax"] = tax_config
+    config["user"] = user_config
 
     ordered_config = {
         "receipts": receipts_config,
         "exports": exports_config,
         "tax": tax_config,
+        "user": user_config,
     }
     for key, value in config.items():
-        if key not in ("receipts", "exports", "tax"):
+        if key not in ("receipts", "exports", "tax", "user"):
             ordered_config[key] = value
 
     save_config(ordered_config)
@@ -85,6 +95,8 @@ def cmd_setup(args):
     print(f"  directory = {export_path or '(nicht gesetzt)'}")
     print("[tax]")
     print(f"  mode = {tax_mode}")
+    print("[user]")
+    print(f"  name = {audit_user_input}")
 
     for path in (expenses_path, income_path, export_path):
         if path and not Path(path).exists():

@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 
-from ..config import load_config, warn_missing_receipt
+from ..config import get_audit_user, load_config, warn_missing_receipt
 from ..db import get_category_id, get_db_connection, log_audit, row_to_dict
 from ..importers import get_tax_config
 from ..utils import compute_hash
@@ -12,6 +12,7 @@ def cmd_update_expense(args):
     db_path = Path(args.db)
     conn = get_db_connection(db_path)
     config = load_config()
+    audit_user = get_audit_user(config)
     tax_mode = get_tax_config(config)
 
     # Bestehenden Datensatz laden
@@ -146,7 +147,15 @@ def cmd_update_expense(args):
         "vat_input": new_vat_input,
         "vat_output": new_vat_output,
     }
-    log_audit(conn, "expenses", args.id, "UPDATE", old_data=old_data, new_data=new_data)
+    log_audit(
+        conn,
+        "expenses",
+        args.id,
+        "UPDATE",
+        old_data=old_data,
+        new_data=new_data,
+        user=audit_user,
+    )
 
     conn.commit()
     conn.close()
@@ -154,7 +163,6 @@ def cmd_update_expense(args):
     print(f"Ausgabe #{args.id} aktualisiert.")
 
     # Beleg-Warnung (nach erfolgreicher Transaktion)
-    config = load_config()
     warn_missing_receipt(new_receipt, new_date, "expenses", config)
 
 
@@ -162,6 +170,8 @@ def cmd_update_income(args):
     """Aktualisiert eine Einnahme."""
     db_path = Path(args.db)
     conn = get_db_connection(db_path)
+    config = load_config()
+    audit_user = get_audit_user(config)
 
     row = conn.execute("SELECT * FROM income WHERE id = ?", (args.id,)).fetchone()
     if not row:
@@ -216,7 +226,15 @@ def cmd_update_income(args):
         "foreign_amount": new_foreign,
         "notes": new_notes,
     }
-    log_audit(conn, "income", args.id, "UPDATE", old_data=old_data, new_data=new_data)
+    log_audit(
+        conn,
+        "income",
+        args.id,
+        "UPDATE",
+        old_data=old_data,
+        new_data=new_data,
+        user=audit_user,
+    )
 
     conn.commit()
     conn.close()
@@ -224,5 +242,4 @@ def cmd_update_income(args):
     print(f"Einnahme #{args.id} aktualisiert.")
 
     # Beleg-Warnung (nach erfolgreicher Transaktion)
-    config = load_config()
     warn_missing_receipt(new_receipt, new_date, "income", config)
