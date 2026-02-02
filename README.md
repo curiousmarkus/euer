@@ -1,4 +1,4 @@
-# euer: Die CLI-Buchhaltung für das KI-Zeitalter 🚀
+# euer: Erlaubt deinem AI-Agenten deine Buchhaltung zu übernehmen
 
 **Schluss mit komplizierten Tabellen und teuren Abos.**  
 euer ist die schlanke und AI-native Lösung für deutsche Freelancer und Kleinunternehmer zur Pflege der Einnahmenüberschussrechnung (EÜR). So kannst du deine Buchhaltung an deine AI Agents outsourcen. Und das vollständig lokal.
