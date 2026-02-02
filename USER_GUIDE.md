@@ -6,36 +6,74 @@ Konfiguration und typische Workflows.
 ## Voraussetzungen
 
 - Python 3.11+
+- Git (für das Herunterladen des Projekts)
 - Optional: `openpyxl` für XLSX‑Export
+
+## Projekt herunterladen
+
+**Erster Schritt:** Lade das Projekt herunter und erstelle den Entwicklungsordner:
+
+```bash
+# Falls das Projekt auf GitHub/GitLab liegt:
+git clone https://github.com/curiousmarkus/euer.git
+cd euer
+
+# Falls du das Projekt als ZIP erhalten hast:
+unzip euer.zip
+cd euer
+
+# Falls du bereits im Projekt-Ordner bist:
+cd /pfad/zum/euer
+```
+
+Nach diesem Schritt hast du einen Ordner (z.B. `~/dev/euer` oder `/Users/name/euer`), 
+der den Quellcode enthält. **Hier** führst du die Installation aus.
 
 ## Installation
 
-### Empfehlung (pipx)
+**Wichtig:** Die Installation erfolgt **einmalig** im Entwicklungsordner und macht das `euer`-Kommando
+**systemweit verfügbar**. Deine Buchhaltungsdaten (Datenbank, Belege) liegen dann in einem
+**separaten Arbeitsordner** deiner Wahl.
+
+### Empfohlene Installation
+
+```bash
+# Im Entwicklungsordner (einmalig)
+cd /pfad/zum/euer-repo
+python -m pip install -e .
+```
+
+Der `-e` Flag (editable mode) sorgt dafür, dass Code-Änderungen sofort wirksam werden.
+
+**Alternative mit pipx** (isolierte Umgebung):
 
 ```bash
 brew install pipx
 pipx ensurepath
+cd /pfad/zum/euer-repo
 pipx install -e .
 ```
 
-### Lokale Installation (im Repo)
+### Ohne Installation (direkter Aufruf)
 
 ```bash
-git clone <repo-url>
-cd euer
-python -m pip install -e .
-```
-
-### Alternative: ohne Installation
-
-```bash
+# Im Entwicklungsordner
+cd /pfad/zum/euer-repo
 python -m euercli <command>
 ```
 
 ## Erste Schritte
 
+### Nach der Installation
+
+Wechsle in deinen **Buchhaltungs-Arbeitsordner** (nicht das Repo!), z.B.:
+
 ```bash
-# Datenbank anlegen (erstellt euer.db + exports/)
+# Beispiel: Separater Ordner für Buchhaltungsdaten
+mkdir -p ~/Documents/Buchhaltung_2026
+cd ~/Documents/Buchhaltung_2026
+
+# Datenbank anlegen (erstellt euer.db + exports/ hier)
 euer init
 
 # Beleg-/Export-Pfade und Steuermodus konfigurieren (empfohlen)
@@ -43,7 +81,18 @@ euer setup
 
 # Konfiguration prüfen
 euer config show
+
+# Erste Buchung
+euer add expense --date 2026-02-02 --vendor "Test" \
+    --category "Bürobedarf" --amount -10.00
 ```
+
+### Wo liegen meine Daten?
+
+- **Datenbank:** `euer.db` im aktuellen Verzeichnis (wo du `euer init` ausgeführt hast)
+- **Konfiguration:** `~/.config/euer/config.toml` (systemweit)
+- **Belege:** Pfade in der Konfiguration festgelegt
+- **Exports:** `exports/` im aktuellen Verzeichnis oder in der Config festgelegt
 
 ## Grundbegriffe
 
@@ -51,7 +100,9 @@ euer config show
 - **Einnahmen** haben immer **positive** Beträge (`--amount 10.00`).
 - **Kategorien** sind vorgegeben und müssen existieren: `euer list categories`.
 - **Belege** können geprüft und geöffnet werden, wenn Pfade konfiguriert sind.
-- **Datenbank**: Standard `euer.db` im Projekt; alternativ via `--db PFAD`.
+- **Datenbank**: Standard `euer.db` im **aktuellen Verzeichnis**; alternativ via `--db PFAD`.
+- **Arbeitsverzeichnis**: Das Tool sucht nach `euer.db` dort, wo du es aufrufst. 
+  Wechsle vor dem Arbeiten in deinen Buchhaltungsordner!
 
 ## Typische Befehle
 

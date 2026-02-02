@@ -14,27 +14,41 @@ Das Tool ist schlank, auditierbar und AI‑Agent‑freundlich – ideal für wie
 
 ## Quickstart
 
+### Installation (einmalig im Projektordner)
+
 ```bash
 # 1) Repo klonen
-git clone <repo-url>
+git clone https://github.com/curiousmarkus/euer.git
 cd euer
 
-# 2) Installieren (lokal, im Repo)
+# 2) Installieren (macht 'euer' systemweit verfügbar)
 python -m pip install -e .
+```
 
-# 3) Datenbank anlegen
+**Wichtig:** Die Installation erfolgt einmalig im Projektordner und macht das `euer`-Kommando 
+systemweit verfügbar. Deine Buchhaltungsdaten liegen dann in einem **separaten Arbeitsordner**.
+
+### Nutzung (in deinem Buchhaltungsordner)
+
+```bash
+# In deinen Buchhaltungsordner wechseln (nicht das Repo!)
+mkdir -p ~/Documents/Buchhaltung_2026
+cd ~/Documents/Buchhaltung_2026
+
+# 3) Datenbank anlegen (hier in deinem Buchhaltungsordner)
 euer init
 
-# 4) Optional: Beleg- und Export-Pfade konfigurieren
+# 4) Beleg- und Export-Pfade konfigurieren
 euer setup
 
 # 5) Erste Ausgabe erfassen
 euer add expense --date 2026-01-15 --vendor "Test" --category "Arbeitsmittel" --amount -10.00
 ```
 
-Falls die CLI nicht installiert ist:
+**Ohne Installation:**
 
 ```bash
+cd /pfad/zum/euer-repo
 python -m euercli <command>
 ```
 
