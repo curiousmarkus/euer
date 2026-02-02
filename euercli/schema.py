@@ -62,13 +62,23 @@ CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_log(timestamp);
 """
 
 SEED_CATEGORIES = [
-    ("Telekommunikation", 44, "expense"),
-    ("Laufende EDV-Kosten", 51, "expense"),
-    ("Arbeitsmittel", 52, "expense"),
+    ("Waren, Rohstoffe und Hilfsstoffe", 27, "expense"),
+    ("Bezogene Fremdleistungen", 29, "expense"),
+    ("Aufwendungen für geringwertige Wirtschaftsgüter (GWG)", 36, "expense"),
+    ("Telekommunikation", 43, "expense"),
+    ("Übernachtungs- und Reisenebenkosten", 44, "expense"),
+    ("Fortbildungskosten", 45, "expense"),
+    ("Rechts- und Steuerberatung, Buchführung", 46, "expense"),
+    ("Beiträge, Gebühren, Abgaben und Versicherungen", 49, "expense"),
+    ("Laufende EDV-Kosten", 50, "expense"),
+    ("Arbeitsmittel", 51, "expense"),
     ("Werbekosten", 54, "expense"),
-    ("Gezahlte USt", 58, "expense"),
+    ("Gezahlte USt", 57, "expense"),
     ("Übrige Betriebsausgaben", 60, "expense"),
-    ("Bewirtungsaufwendungen", 63, "expense"),
+    ("Bewirtungsaufwendungen nicht abziehbar", 63, "expense"),
+    ("Bewirtungsaufwendungen abziehbar", 63, "expense"),
+    ("Verpflegungsmehraufwendungen", 64, "expense"),
+    ("Fahrtkosten (Nutzungseinlage)", 71, "expense"),
     ("Sonstige betriebsfremde Einnahme", None, "income"),
     ("Umsatzsteuerpflichtige Betriebseinnahmen", 14, "income"),
 ]
