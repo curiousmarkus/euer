@@ -3,30 +3,27 @@
 
 > `euer` ist die Lösung für Freelancer und Kleinunternehmer in Deutschland, die ihre Einnahmenüberschussrechnung (EÜR) an ihre KI-Agenten auslagern möchten.
 
-Ein CLI-Tool, das speziell für die Nutzung durch KI-Agenten entwickelt wurde und diesen standardisierte und verlässliche Strukturen bietet, um Buchhaltungsaufgaben effizient und fehlerfrei zu erledigen.
-
 ---
 
 ## Warum euer?
 
-Jeder Freelancer und Kleinunternehmer in Deutschland kennt es: Alle Ausgaben und Einnahmen müssen sorgfältig für das Finanzamt in einer Einnahmenüberschussrechnung (EÜR) erfasst werden. Zusätzlich muss teilweise auch noch eine Umsatzsteuervoranmeldung (UStVA) ausgefüllt werden. Bisher muss man entweder alles manuell in einer teuren Software erfassen oder aufwändig eine Excel Datei pflegen.
+Die meisten Tools zwingen dich zu einer Entscheidung: Entweder du nutzt unflexible SaaS-Abos (Lexoffice, SevDesk) oder du bastelst manuell in Excel. `euer` geht einen dritten Weg: **Ein Tool, damit dein Agent die Arbeit übernehmen kann.**
 
-### 🤖 Built for AI Agents
-Herkömmliche Buchhaltungs-Tools sind für Menschen gemacht. `euer` ist für **Agents** optimiert:
-*   **CLI statt GUI:** Einfach für LLMs zu verstehen und zu bedienen.
-*   **Simpel:** Leicht zu verstehen und mit klaren Anweisungen. Ein Tool für genau diesen Zweck.
-*   **Flexibel:** Agents können die CLI-Befehle mit direktem Queries auf die SQLite-Datenbank kombinieren, um komplexe Fragen zu beantworten.
+### 🤖 Built for AI Agents, not humans
+*   **CLI first:** Perfekt für LLMs – Text Input, strukturierter Text Output. Kein Halluzinieren von GUI-Klicks.
+*   **Do one thing well:** Kein Feature-Bloat. Nur EÜR. Agenten lieben Tools mit klarem Scope.
+*   **SQL Superpowers:** Wenn das CLI nicht reicht, darf der Agent direkt auf die SQLite-DB zugreifen für komplexe Analysen.
 
 ### 🔒 Revisionssicher & Lokal
-Deine Finanzdaten bei dir und nicht irgendwo in der Cloud.
-*   **SQLite-Backend:** Eine einzige Datei. Einfach zu sichern, einfach zu versionieren.
-*   **Audit-Log:** Jede Änderung (Insert, Update, Delete) wird unveränderbar protokolliert. Erfüllt die Anforderungen an eine nachvollziehbare Buchführung.
-*   **Zero Dependencies:** Der Core läuft überall, braucht nur Python 3.11+.
-*   **Einfach migrierbar:** Die Daten können jederzeit in andere Systeme exportiert werden. Kein Vendor Lock-in.
+*   **Local First:** Eine SQLite-Datei. Deine Daten. Dein Backup. Deine Kontrolle.
+*   **Audit-Log:** Jede Änderung wird unveränderbar protokolliert. Sicherheit für dich und das Finanzamt.
+*   **Leichtgewichtig:** Nur Python 3.11+. Keine schweren Abhängigkeiten. Läuft überall.
+*   **Kein Lock-in:** Daten exportieren ist so einfach wie cp euer.db.
 
 ### Alles, was du für deine EÜR brauchst
 
 - **EÜR-konforme Kategorien:** Direkt einsatzbereit mit den offiziellen Zeilennummern für deine Steuererklärung.
+- **Auch für deine Umsatzsteuer:** Unterstützt Vorsteuer und USt-Zahllast bei Regelbesteuerung.
 - **Reverse-Charge Support:** Automatische Logik für ausländische Dienstleister bei denen du die Umsatzsteuer schuldig bist.
 - **Beleg-Management:** Verknüpfe digitale Belege direkt mit deinen Buchungen.
 - **Umsatzsteuer-Modi:** Unterstützt sowohl die Kleinunternehmerregelung (§19 UStG) als auch die Regelbesteuerung in der USt.
