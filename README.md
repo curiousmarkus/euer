@@ -1,5 +1,6 @@
-# euer
-## EÜR-Buchhaltung für KI-Agenten
+![euer Logo](euer_logo.png)
+
+# EÜR-Buchhaltung für KI-Agenten
 
 > `euer` ist die Lösung für Freelancer und Kleinunternehmer in Deutschland, die ihre Einnahmenüberschussrechnung (EÜR) an ihre KI-Agenten auslagern möchten.
 
