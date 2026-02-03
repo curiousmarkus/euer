@@ -1,7 +1,9 @@
-# euer: Erlaubt deinem AI-Agenten deine Buchhaltung zu übernehmen
+# euer
+## EÜR-Buchhaltung für KI-Agenten
 
-**Schluss mit komplizierten Tabellen und teuren Abos.**  
-euer ist die schlanke und AI-native Lösung für deutsche Freelancer und Kleinunternehmer zur Pflege der Einnahmenüberschussrechnung (EÜR). So kannst du deine Buchhaltung an deine AI Agents outsourcen. Und das vollständig lokal.
+> `euer` ist die Lösung für Freelancer und Kleinunternehmer in Deutschland, die ihre Einnahmenüberschussrechnung (EÜR) an ihre KI-Agenten auslagern möchten.
+
+Ein CLI-Tool, das speziell für die Nutzung durch KI-Agenten entwickelt wurde und diesen standardisierte und verlässliche Strukturen bietet, um Buchhaltungsaufgaben effizient und fehlerfrei zu erledigen.
 
 ---
 
@@ -10,23 +12,24 @@ euer ist die schlanke und AI-native Lösung für deutsche Freelancer und Kleinun
 Jeder Freelancer und Kleinunternehmer in Deutschland kennt es: Alle Ausgaben und Einnahmen müssen sorgfältig für das Finanzamt in einer Einnahmenüberschussrechnung (EÜR) erfasst werden. Zusätzlich muss teilweise auch noch eine Umsatzsteuervoranmeldung (UStVA) ausgefüllt werden. Bisher muss man entweder alles manuell in einer teuren Software erfassen oder aufwändig eine Excel Datei pflegen.
 
 ### 🤖 Built for AI Agents
-Mit euer, kann ich meine Buchhaltung nun ganz einfach an meinen lokalen AI-Agenten (wie OpenCode oder ClaudeCowork) auslagern. Das CLI-Tool macht es dem Agenten leicht Ausgaben und Einnahmen aus ausgelesenen Belegen und Kontoauszügen zu erfassen. 
+Herkömmliche Buchhaltungs-Tools sind für Menschen gemacht. `euer` ist für **Agents** optimiert:
+*   **CLI statt GUI:** Einfach für LLMs zu verstehen und zu bedienen.
+*   **Simpel:** Leicht zu verstehen und mit klaren Anweisungen. Ein Tool für genau diesen Zweck.
+*   **Flexibel:** Agents können die CLI-Befehle mit direktem Queries auf die SQLite-Datenbank kombinieren, um komplexe Fragen zu beantworten.
 
-### 🔒 Local-First & Privat
-Deine Finanzdaten bleiben dabei komplett lokal in einer SQLite-Datenbank auf deinem Rechner. Das bedeutet: Volle Performance, maximale Privatsphäre und kein Vendor Lock-in.
+### 🔒 Revisionssicher & Lokal
+Deine Finanzdaten bei dir und nicht irgendwo in der Cloud.
+*   **SQLite-Backend:** Eine einzige Datei. Einfach zu sichern, einfach zu versionieren.
+*   **Audit-Log:** Jede Änderung (Insert, Update, Delete) wird unveränderbar protokolliert. Erfüllt die Anforderungen an eine nachvollziehbare Buchführung.
+*   **Zero Dependencies:** Der Core läuft überall, braucht nur Python 3.11+.
+*   **Einfach migrierbar:** Die Daten können jederzeit in andere Systeme exportiert werden. Kein Vendor Lock-in.
 
-### ⚖️ Revisionssicher & Konform
-Das integrierte **Audit-Log** protokolliert jede Änderung (INSERT/UPDATE/DELETE). So bleibst du transparent und erfüllst die Anforderungen an eine nachvollziehbare Buchführung.
-
----
-
-## Die Highlights auf einen Blick
+### Alles, was du für deine EÜR brauchst
 
 - **EÜR-konforme Kategorien:** Direkt einsatzbereit mit den offiziellen Zeilennummern für deine Steuererklärung.
 - **Reverse-Charge Support:** Automatische Logik für ausländische Dienstleister bei denen du die Umsatzsteuer schuldig bist.
 - **Beleg-Management:** Verknüpfe digitale Belege direkt mit deinen Buchungen.
 - **Umsatzsteuer-Modi:** Unterstützt sowohl die Kleinunternehmerregelung (§19 UStG) als auch die Regelbesteuerung in der USt.
-- **Zero Dependencies:** Läuft mit Python 3.11+ Standard-Bibliotheken (optional `openpyxl` für Excel-Exports).
 
 ---
 
@@ -46,23 +49,26 @@ euer init
 euer setup
 ```
 
-### 3. Erste Buchung (oder lass es deinen AI-Agent machen!)
+### 3. Erste Buchung (lass es deinen AI-Agent machen!)
 ```bash
-euer add expense --date 2026-02-02 --vendor "Test" --category "Laufende EDV-Kosten" --amount -10.00
+euer add expense --date 2026-02-02 --vendor "Hetzner" --category "Laufende EDV-Kosten" --amount -10.00
 ```
 
 ---
 
 ## So arbeitet dein AI-Agent mit euer
 
-Stell dir vor, du gibst deinem Agenten einen Stapel PDFs und sagst: *"Buche diese Belege in euer ein."*
+Du hast einen Stapel PDF Belege?
+Gib es an deinen KI-Agenten:
+> "Buche diese Belege in euer ein."
 
-Der Agent nutzt Befehle wie:
-- `euer list categories` – Um die richtige Steuerkategorie zu finden.
-- `euer add expense --date ... --vendor ...` – Um die Daten präzise zu erfassen.
-- `euer incomplete list` – Um fehlende Informationen (wie Kategorien oder Belege) zu identifizieren.
+Der Agent:
+1. holt sich die korrekten Steuerkategorien mit `euer list categories`
+2. Fügt die Belege in die EÜR mit `euer add expense --date ... --vendor ...`
+3. kontrolliert die Vollständigkeit mit `euer incomplete list`
+4. gibt dir eine Übersicht über deine EÜR mit `euer summary --year 2026`
 
-**Ergebnis:** Dein Agent übernimmt die nervige Buchhaltung und du kannst dich zurücklehnen! 
+**Ergebnis:** Du kannst dich zurücklehnen — dein Agent übernimmt für dich die Buchhaltung!
 
 ---
 
@@ -76,10 +82,15 @@ Detaillierte Anleitungen findest du in unseren Guides:
 
 ---
 
-## Lizenz
+## 📄 Lizenz
 
-Dieses Projekt steht unter der **MIT-Lizenz**. Siehe [LICENSE](LICENSE) für Details.
+GNU AGPLv3 License
+Copyright (c) 2026 Markus
+
+**Hinweis zur AGPL:**
+Diese Software ist frei verfügbar. Wenn du sie jedoch modifizierst und über ein Netzwerk (z.B. als Web-Service oder SaaS) anbietest, bist du verpflichtet, den vollständigen Quellcode deiner Version ebenfalls unter der AGPL offenzulegen.
+Dies stellt sicher, dass `euer` ein Gemeinschaftsprojekt bleibt und nicht proprietär vereinnahmt wird.
 
 ---
 
-*Entwickelt für AI-Agents, die gerne bei der Buchhaltung unterstützen – CLI basiert, lokal und einfach.*
+*Entwickelt für AI-Agents, die sich täglich freuen deine Buchhaltung zu übernehmen – CLI basiert, lokal und einfach.*

@@ -25,6 +25,7 @@ euer/
 ├── euercli/                 # Core Package
 │   ├── cli.py               # CLI Parser + Dispatch
 │   ├── commands/            # Command Implementierungen
+│   ├── services/            # Service Layer (Business-Logik, Plugin-API)
 │   ├── db.py                # DB Helpers
 │   ├── schema.py            # DB Schema + Seeds
 │   ├── importers.py         # Import Normalisierung
@@ -40,11 +41,13 @@ euer/
 ## Architektur
 
 - **CLI Entry Point**: `euercli/cli.py` (argparse + Dispatch).
-- **Commands**: je Feature in `euercli/commands/`.
+- **Commands**: je Feature in `euercli/commands/` (View-Controller, keine Logik).
+- **Service Layer**: `euercli/services/` als stabile API (keine Prints, keine argparse-Abhängigkeit).
 - **DB Zugriff**: zentral in `euercli/db.py` und `get_db_connection()`.
 - **Schema/Seeds**: `euercli/schema.py`.
 - **Config**: `euercli/config.py` (`~/.config/euer/config.toml`).
 - **Import**: `euercli/importers.py` (CSV/JSONL Normalisierung).
+- **Plugins**: CLI lädt Entry Points `euer.commands` und ruft `setup(subparsers)`.
 
 ## Implementierte Funktionalitaeten (Kurzueberblick)
 
@@ -54,6 +57,7 @@ damit Erweiterungen konsistent und risikoarm umgesetzt werden koennen.
 - **Core CLI**: `init`, `setup`, `config show`, `list categories`.
 - **Buchungen**: `add`, `list`, `update`, `delete` fuer `expenses` und `income`.
 - **Audit-Log**: Jede Aenderung (INSERT/UPDATE/DELETE) wird protokolliert.
+- **Service Layer**: Logik ist typisiert (Dataclasses) und nutzt Exceptions statt `sys.exit()`.
 - **Import**: CSV/JSONL mit Normalisierung, Duplikat-Schutz (Hash).
 - **Incomplete**: unvollstaendige Buchungen werden live aus `expenses`/`income` berechnet.
 - **Summary**: Jahreszusammenfassung inkl. RC/Steuerlogik.
@@ -70,15 +74,17 @@ Wenn du ein Feature erweiterst, beachte:
 
 Die vollständigen DDLs stehen in `euercli/schema.py`.
 
-- **categories**: Name, EÜR‑Zeile, Typ (expense/income).
-- **expenses**: Ausgaben inkl. Beleg, Konto, Fremdwährung, RC‑Flags, Steuern.
-- **income**: Einnahmen inkl. Beleg, Fremdwährung, Umsatzsteuer.
-- **audit_log**: Protokolliert INSERT/UPDATE/DELETE inkl. Vorher/Nachher.
+- **categories**: UUID, Name, EÜR‑Zeile, Typ (expense/income).
+- **expenses**: UUID, Ausgaben inkl. Beleg, Konto, Fremdwährung, RC‑Flags, Steuern.
+- **income**: UUID, Einnahmen inkl. Beleg, Fremdwährung, Umsatzsteuer.
+- **audit_log**: Protokolliert INSERT/UPDATE/DELETE inkl. Vorher/Nachher + `record_uuid`.
+
+Hinweis: Es gibt keine Migrationen. Datenbanken müssen bei Schema-Änderungen neu angelegt werden.
 
 ## Audit‑Logging (Pflicht)
 
 Jede Änderung an `expenses` oder `income` muss in `audit_log` landen.
-Verwende `log_audit()` nach INSERT/UPDATE/DELETE.
+Verwende `log_audit()` nach INSERT/UPDATE/DELETE und schreibe `record_uuid`.
 
 ## Steuer‑Logik
 
@@ -99,9 +105,15 @@ Fehlende Pflichtfelder brechen den Import ab. Unvollständige Buchungen werden
 
 ## Neue Commands hinzufügen
 
-1. `cmd_<name>(args)` in `euercli/commands/` implementieren.
-2. Parser in `euercli/cli.py` registrieren.
-3. `set_defaults(func=cmd_<name>)` setzen.
+1. Service-Funktion in `euercli/services/` implementieren (Dataclass-Return, Exceptions).
+2. `cmd_<name>(args)` in `euercli/commands/` als View-Controller implementieren.
+3. Parser in `euercli/cli.py` registrieren.
+4. `set_defaults(func=cmd_<name>)` setzen.
+
+### Plugins (Entry Points)
+
+Plugins registrieren Commands über `euer.commands`. Der Entry Point muss entweder
+eine callable sein oder ein Objekt mit `setup(subparsers)`.
 
 ## Code‑Konventionen (Kurzfassung)
 
@@ -117,6 +129,9 @@ Ausführliche Guidelines: `AGENTS.md`.
 ```bash
 python -m unittest discover -s tests
 ```
+
+Zusätzliche Unit-Tests liegen in `tests/test_services_*.py` und laufen gegen
+eine In-Memory SQLite DB.
 
 Weitere Details: `TESTING.md`.
 

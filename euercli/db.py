@@ -24,7 +24,11 @@ def log_audit(
     new_data: Optional[dict] = None,
     user: str = DEFAULT_USER,
 ) -> None:
-    """Schreibt einen Audit-Log-Eintrag."""
+    """Schreibt einen Audit-Log-Eintrag.
+
+    Args:
+        record_uuid: UUID des Datensatzes (optional, für neuere Einträge)
+    """
     conn.execute(
         """INSERT INTO audit_log (table_name, record_id, record_uuid, action, old_data, new_data, user)
            VALUES (?, ?, ?, ?, ?, ?, ?)""",

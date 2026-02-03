@@ -2,6 +2,9 @@ import argparse
 import importlib.metadata
 import sys
 
+# Copyright (C) 2026 EÜR Contributors
+# Licensed under GNU AGPLv3
+
 from .commands import (
     cmd_add_expense,
     cmd_add_income,
@@ -27,10 +30,8 @@ from .constants import DEFAULT_DB_PATH, DEFAULT_EXPORT_DIR
 
 
 def load_plugins(subparsers: argparse._SubParsersAction) -> None:
-    try:
-        entry_points = importlib.metadata.entry_points(group="euer.commands")
-    except TypeError:
-        entry_points = importlib.metadata.entry_points().get("euer.commands", [])
+    # Requires Python 3.11+
+    entry_points = importlib.metadata.entry_points(group="euer.commands")
 
     for entry_point in entry_points:
         try:
@@ -154,7 +155,9 @@ def main() -> None:
     list_inc_parser.set_defaults(func=cmd_list_income)
 
     # list categories
-    list_cat_parser = list_subparsers.add_parser("categories", help="Kategorien anzeigen")
+    list_cat_parser = list_subparsers.add_parser(
+        "categories", help="Kategorien anzeigen"
+    )
     list_cat_parser.add_argument(
         "--type", choices=["expense", "income"], help="Typ filtern"
     )
@@ -165,7 +168,9 @@ def main() -> None:
     update_subparsers = update_parser.add_subparsers(dest="type", required=True)
 
     # update expense
-    upd_exp_parser = update_subparsers.add_parser("expense", help="Ausgabe aktualisieren")
+    upd_exp_parser = update_subparsers.add_parser(
+        "expense", help="Ausgabe aktualisieren"
+    )
     upd_exp_parser.add_argument("id", type=int, help="ID der Ausgabe")
     upd_exp_parser.add_argument("--date", help="Neues Datum")
     upd_exp_parser.add_argument("--vendor", help="Neuer Lieferant")
@@ -184,7 +189,9 @@ def main() -> None:
     upd_exp_parser.set_defaults(func=cmd_update_expense)
 
     # update income
-    upd_inc_parser = update_subparsers.add_parser("income", help="Einnahme aktualisieren")
+    upd_inc_parser = update_subparsers.add_parser(
+        "income", help="Einnahme aktualisieren"
+    )
     upd_inc_parser.add_argument("id", type=int, help="ID der Einnahme")
     upd_inc_parser.add_argument("--date", help="Neues Datum")
     upd_inc_parser.add_argument("--source", help="Neue Quelle")
@@ -285,7 +292,9 @@ def main() -> None:
     incomplete_parser = subparsers.add_parser(
         "incomplete", help="Unvollständige Buchungen"
     )
-    incomplete_subparsers = incomplete_parser.add_subparsers(dest="action", required=True)
+    incomplete_subparsers = incomplete_parser.add_subparsers(
+        dest="action", required=True
+    )
     incomplete_list_parser = incomplete_subparsers.add_parser(
         "list", help="Listet unvollständige Einträge"
     )
