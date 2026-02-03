@@ -147,6 +147,10 @@ euer export --year 2026 --format csv
 euer export --year 2026 --format xlsx
 ```
 
+Hinweis: Für die Kategorie **Bewirtungsaufwendungen** rechnet `euer summary`
+den Aufwand automatisch als **70% abziehbar / 30% nicht abziehbar**. In
+`list expenses` und Exporten bleibt der Betrag **100%**.
+
 ### Bulk‑Import & Unvollständige Einträge
 
 ```bash

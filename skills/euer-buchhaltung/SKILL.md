@@ -206,6 +206,10 @@ Nur diese Kategorien sind verfügbar:
 | Übrige Betriebsausgaben | 60 |
 | Bewirtungsaufwendungen | 63 |
 
+Hinweis: **Bewirtungsaufwendungen** werden in `euer summary` automatisch **70/30**
+aufgeteilt. In `list expenses` und Exporten bleibt der volle Betrag (100%) erhalten;
+der nicht abziehbare 30%-Anteil wird nur im Summary ausgewiesen.
+
 **Einnahmen (income):**
 | Kategorie | EÜR-Zeile |
 |-----------|-----------|
