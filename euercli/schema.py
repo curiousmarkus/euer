@@ -62,6 +62,7 @@ CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_log(timestamp);
 """
 
 SEED_CATEGORIES = [
+    # EÜR-Zeilen folgen den ELSTER-Positionen; diese Liste ist die maßgebliche Quelle.
     ("Waren, Rohstoffe und Hilfsstoffe", 27, "expense"),
     ("Bezogene Fremdleistungen", 29, "expense"),
     ("Aufwendungen für geringwertige Wirtschaftsgüter (GWG)", 36, "expense"),

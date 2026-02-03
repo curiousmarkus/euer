@@ -119,7 +119,7 @@ Workflow:
    (fehlende `category`, `receipt`, `vat`, `account`).
 3. Fehlende Felder per `euer update expense <ID>` /
    `euer update income <ID>` ergänzen.
-Hinweis: Für die Kategorie **Gezahlte USt (58)** ist kein Beleg erforderlich.
+Hinweis: Für die Kategorie **Gezahlte USt (57)** ist kein Beleg erforderlich.
 
 Import-Schema (Kurzfassung):
 - Pflichtfelder: `type`, `date`, `party`, `amount_eur`
@@ -128,7 +128,7 @@ Import-Schema (Kurzfassung):
 - Fehlende Pflichtfelder führen zu einem Import-Abbruch.
 - Alias-Keys (Auszug): `EUR`, `Belegname`, `Lieferant`, `Quelle`, `RC`,
   `Vorsteuer`, `Umsatzsteuer`
-- Kategorien wie `Arbeitsmittel (52)` werden automatisch auf `Arbeitsmittel` bereinigt.
+- Kategorien wie `Arbeitsmittel (51)` werden automatisch auf `Arbeitsmittel` bereinigt.
 - Steuerfelder:
   - `small_business` + `rc=true`: `vat_output` wird automatisch aus `amount_eur * 0.19` berechnet,
     `vat_input` wird auf `0.0` gesetzt (Felder können weggelassen werden).
@@ -198,13 +198,22 @@ Nur diese Kategorien sind verfügbar:
 **Ausgaben (expense):**
 | Kategorie | EÜR-Zeile |
 |-----------|-----------|
-| Telekommunikation | 44 |
-| Laufende EDV-Kosten | 51 |
-| Arbeitsmittel | 52 |
+| Waren, Rohstoffe und Hilfsstoffe | 27 |
+| Bezogene Fremdleistungen | 29 |
+| Aufwendungen für geringwertige Wirtschaftsgüter (GWG) | 36 |
+| Telekommunikation | 43 |
+| Übernachtungs- und Reisenebenkosten | 44 |
+| Fortbildungskosten | 45 |
+| Rechts- und Steuerberatung, Buchführung | 46 |
+| Beiträge, Gebühren, Abgaben und Versicherungen | 49 |
+| Laufende EDV-Kosten | 50 |
+| Arbeitsmittel | 51 |
 | Werbekosten | 54 |
-| Gezahlte USt | 58 |
+| Gezahlte USt | 57 |
 | Übrige Betriebsausgaben | 60 |
 | Bewirtungsaufwendungen | 63 |
+| Verpflegungsmehraufwendungen | 64 |
+| Fahrtkosten (Nutzungseinlage) | 71 |
 
 Hinweis: **Bewirtungsaufwendungen** werden in `euer summary` automatisch **70/30**
 aufgeteilt. In `list expenses` und Exporten bleibt der volle Betrag (100%) erhalten;

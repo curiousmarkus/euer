@@ -133,7 +133,7 @@ class EuerCLITestCase(unittest.TestCase):
         rec_id, date, vendor, category, amount, account, receipt, foreign, notes, rc, vat_input, vat_output = rows[1]
         self.assertEqual(date, "2026-01-15")
         self.assertEqual(vendor, "TestVendor")
-        self.assertEqual(category, "Arbeitsmittel (52)")
+        self.assertEqual(category, "Arbeitsmittel (51)")
         self.assertEqual(amount, "-10.00")
         self.assertEqual(account, "Bank")
         self.assertEqual(receipt, "receipt.pdf")
@@ -372,7 +372,7 @@ class EuerCLITestCase(unittest.TestCase):
             "\n".join(
                 [
                     "Belegname,Datum,Lieferant,Kategorie,EUR,Konto,Fremdwährung,Bemerkung,RC,Vorsteuer,Umsatzsteuer",
-                    "2026-01-10_1und1,2026-01-10,1und1,Arbeitsmittel (52),-39.99,Bank,,Note,X,0.00,0.00",
+                    "2026-01-10_1und1,2026-01-10,1und1,Arbeitsmittel (51),-39.99,Bank,,Note,X,0.00,0.00",
                 ]
             )
             + "\n",
@@ -386,7 +386,7 @@ class EuerCLITestCase(unittest.TestCase):
 
         rows = self.list_expenses_csv()
         self.assertEqual(len(rows), 2)
-        self.assertEqual(rows[1][3], "Arbeitsmittel (52)")
+        self.assertEqual(rows[1][3], "Arbeitsmittel (51)")
         self.assertEqual(rows[1][2], "1und1")
 
     def test_import_missing_required_fails(self):
