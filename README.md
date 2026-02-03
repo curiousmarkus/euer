@@ -58,8 +58,7 @@ Du hast einen Stapel PDF Belege?
 Gib es an deinen KI-Agenten:
 > "Buche diese Belege in euer ein."
 
-Der Agent:
-1. holt sich die korrekten Steuerkategorien mit `euer list categories`
+1. Der Agent holt sich die korrekten Steuerkategorien mit `euer list categories`
 2. Fügt die Belege in die EÜR mit `euer add expense --date ... --vendor ...`
 3. kontrolliert die Vollständigkeit mit `euer incomplete list`
 4. gibt dir eine Übersicht über deine EÜR mit `euer summary --year 2026`
