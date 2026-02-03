@@ -2,7 +2,10 @@ import sys
 from pathlib import Path
 
 from ..config import get_audit_user, load_config
-from ..db import get_db_connection, log_audit, row_to_dict
+from ..db import get_db_connection
+from ..services.errors import RecordNotFoundError
+from ..services.expenses import delete_expense, get_expense_detail
+from ..services.income import delete_income, get_income_detail
 
 
 def cmd_delete_expense(args):
@@ -12,24 +15,19 @@ def cmd_delete_expense(args):
     config = load_config()
     audit_user = get_audit_user(config)
 
-    row = conn.execute(
-        """SELECT e.*, c.name as category_name 
-           FROM expenses e LEFT JOIN categories c ON e.category_id = c.id 
-           WHERE e.id = ?""",
-        (args.id,),
-    ).fetchone()
-
-    if not row:
+    try:
+        expense = get_expense_detail(conn, args.id)
+    except RecordNotFoundError:
         print(f"Fehler: Ausgabe #{args.id} nicht gefunden.", file=sys.stderr)
         conn.close()
         sys.exit(1)
 
     if not args.force:
         print(f"Ausgabe #{args.id}:")
-        print(f"  Datum:     {row['date']}")
-        print(f"  Lieferant: {row['vendor']}")
-        print(f"  Kategorie: {row['category_name'] or '-'}")
-        print(f"  Betrag:    {row['amount_eur']:.2f} EUR")
+        print(f"  Datum:     {expense.date}")
+        print(f"  Lieferant: {expense.vendor}")
+        print(f"  Kategorie: {expense.category_name or '-'}")
+        print(f"  Betrag:    {expense.amount_eur:.2f} EUR")
 
         confirm = input("\nWirklich löschen? (j/N): ")
         if confirm.lower() != "j":
@@ -37,19 +35,13 @@ def cmd_delete_expense(args):
             conn.close()
             return
 
-    old_data = row_to_dict(row)
+    try:
+        delete_expense(conn, record_id=args.id, audit_user=audit_user)
+    except RecordNotFoundError:
+        print(f"Fehler: Ausgabe #{args.id} nicht gefunden.", file=sys.stderr)
+        conn.close()
+        sys.exit(1)
 
-    conn.execute("DELETE FROM expenses WHERE id = ?", (args.id,))
-    log_audit(
-        conn,
-        "expenses",
-        args.id,
-        "DELETE",
-        old_data=old_data,
-        user=audit_user,
-    )
-
-    conn.commit()
     conn.close()
 
     print(f"Ausgabe #{args.id} gelöscht.")
@@ -62,24 +54,19 @@ def cmd_delete_income(args):
     config = load_config()
     audit_user = get_audit_user(config)
 
-    row = conn.execute(
-        """SELECT i.*, c.name as category_name 
-           FROM income i LEFT JOIN categories c ON i.category_id = c.id 
-           WHERE i.id = ?""",
-        (args.id,),
-    ).fetchone()
-
-    if not row:
+    try:
+        income = get_income_detail(conn, args.id)
+    except RecordNotFoundError:
         print(f"Fehler: Einnahme #{args.id} nicht gefunden.", file=sys.stderr)
         conn.close()
         sys.exit(1)
 
     if not args.force:
         print(f"Einnahme #{args.id}:")
-        print(f"  Datum:    {row['date']}")
-        print(f"  Quelle:   {row['source']}")
-        print(f"  Kategorie: {row['category_name'] or '-'}")
-        print(f"  Betrag:   {row['amount_eur']:.2f} EUR")
+        print(f"  Datum:    {income.date}")
+        print(f"  Quelle:   {income.source}")
+        print(f"  Kategorie: {income.category_name or '-'}")
+        print(f"  Betrag:   {income.amount_eur:.2f} EUR")
 
         confirm = input("\nWirklich löschen? (j/N): ")
         if confirm.lower() != "j":
@@ -87,19 +74,13 @@ def cmd_delete_income(args):
             conn.close()
             return
 
-    old_data = row_to_dict(row)
+    try:
+        delete_income(conn, record_id=args.id, audit_user=audit_user)
+    except RecordNotFoundError:
+        print(f"Fehler: Einnahme #{args.id} nicht gefunden.", file=sys.stderr)
+        conn.close()
+        sys.exit(1)
 
-    conn.execute("DELETE FROM income WHERE id = ?", (args.id,))
-    log_audit(
-        conn,
-        "income",
-        args.id,
-        "DELETE",
-        old_data=old_data,
-        user=audit_user,
-    )
-
-    conn.commit()
     conn.close()
 
     print(f"Einnahme #{args.id} gelöscht.")

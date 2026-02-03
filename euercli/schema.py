@@ -1,6 +1,7 @@
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS categories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    uuid TEXT UNIQUE NOT NULL,
     name TEXT NOT NULL,
     eur_line INTEGER,
     type TEXT NOT NULL CHECK(type IN ('expense', 'income'))
@@ -10,6 +11,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_categories_name_type ON categories(name, t
 
 CREATE TABLE IF NOT EXISTS expenses (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    uuid TEXT UNIQUE NOT NULL,
     receipt_name TEXT,
     date DATE NOT NULL,
     vendor TEXT NOT NULL,
@@ -31,6 +33,7 @@ CREATE INDEX IF NOT EXISTS idx_expenses_vendor ON expenses(vendor);
 
 CREATE TABLE IF NOT EXISTS income (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    uuid TEXT UNIQUE NOT NULL,
     receipt_name TEXT,
     date DATE NOT NULL,
     source TEXT NOT NULL,
@@ -51,6 +54,7 @@ CREATE TABLE IF NOT EXISTS audit_log (
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     table_name TEXT NOT NULL,
     record_id INTEGER NOT NULL,
+    record_uuid TEXT,
     action TEXT NOT NULL CHECK(action IN ('INSERT', 'UPDATE', 'DELETE', 'MIGRATE')),
     old_data TEXT,
     new_data TEXT,

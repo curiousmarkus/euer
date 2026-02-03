@@ -19,17 +19,19 @@ def log_audit(
     table_name: str,
     record_id: int,
     action: str,
+    record_uuid: str | None = None,
     old_data: Optional[dict] = None,
     new_data: Optional[dict] = None,
     user: str = DEFAULT_USER,
 ) -> None:
     """Schreibt einen Audit-Log-Eintrag."""
     conn.execute(
-        """INSERT INTO audit_log (table_name, record_id, action, old_data, new_data, user)
-           VALUES (?, ?, ?, ?, ?, ?)""",
+        """INSERT INTO audit_log (table_name, record_id, record_uuid, action, old_data, new_data, user)
+           VALUES (?, ?, ?, ?, ?, ?, ?)""",
         (
             table_name,
             record_id,
+            record_uuid,
             action,
             json.dumps(old_data, ensure_ascii=False) if old_data else None,
             json.dumps(new_data, ensure_ascii=False) if new_data else None,

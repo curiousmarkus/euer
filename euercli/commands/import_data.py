@@ -1,5 +1,6 @@
 import json
 import sys
+import uuid
 from pathlib import Path
 
 from ..config import get_audit_user, load_config
@@ -175,12 +176,14 @@ def cmd_import(args):
             if args.dry_run:
                 continue
 
+            record_uuid = str(uuid.uuid4())
             cursor = conn.execute(
                 """INSERT INTO expenses 
-                   (receipt_name, date, vendor, category_id, amount_eur, account,
+                   (uuid, receipt_name, date, vendor, category_id, amount_eur, account,
                     foreign_amount, notes, is_rc, vat_input, vat_output, hash)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
+                    record_uuid,
                     receipt_name,
                     str(date),
                     str(party),
@@ -199,6 +202,7 @@ def cmd_import(args):
             assert record_id is not None
 
             new_data = {
+                "uuid": record_uuid,
                 "receipt_name": receipt_name,
                 "date": str(date),
                 "vendor": str(party),
@@ -216,6 +220,7 @@ def cmd_import(args):
                 "expenses",
                 record_id,
                 "INSERT",
+                record_uuid=record_uuid,
                 new_data=new_data,
                 user=audit_user,
             )
@@ -238,12 +243,14 @@ def cmd_import(args):
             if args.dry_run:
                 continue
 
+            record_uuid = str(uuid.uuid4())
             cursor = conn.execute(
                 """INSERT INTO income
-                   (receipt_name, date, source, category_id, amount_eur,
+                   (uuid, receipt_name, date, source, category_id, amount_eur,
                     foreign_amount, notes, vat_output, hash)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
+                    record_uuid,
                     receipt_name,
                     str(date),
                     str(party),
@@ -259,6 +266,7 @@ def cmd_import(args):
             assert record_id is not None
 
             new_data = {
+                "uuid": record_uuid,
                 "receipt_name": receipt_name,
                 "date": str(date),
                 "source": str(party),
@@ -273,6 +281,7 @@ def cmd_import(args):
                 "income",
                 record_id,
                 "INSERT",
+                record_uuid=record_uuid,
                 new_data=new_data,
                 user=audit_user,
             )

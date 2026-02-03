@@ -1,3 +1,4 @@
+import uuid
 from pathlib import Path
 
 from ..config import get_export_dir, load_config
@@ -21,8 +22,8 @@ def cmd_init(args):
         print("Seede Kategorien...")
         for name, eur_line, cat_type in SEED_CATEGORIES:
             conn.execute(
-                "INSERT INTO categories (name, eur_line, type) VALUES (?, ?, ?)",
-                (name, eur_line, cat_type),
+                "INSERT INTO categories (uuid, name, eur_line, type) VALUES (?, ?, ?, ?)",
+                (str(uuid.uuid4()), name, eur_line, cat_type),
             )
         conn.commit()
         print(f"  {len(SEED_CATEGORIES)} Kategorien angelegt")

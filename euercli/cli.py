@@ -1,4 +1,6 @@
 import argparse
+import importlib.metadata
+import sys
 
 from .commands import (
     cmd_add_expense,
@@ -22,6 +24,28 @@ from .commands import (
     cmd_update_income,
 )
 from .constants import DEFAULT_DB_PATH, DEFAULT_EXPORT_DIR
+
+
+def load_plugins(subparsers: argparse._SubParsersAction) -> None:
+    try:
+        entry_points = importlib.metadata.entry_points(group="euer.commands")
+    except TypeError:
+        entry_points = importlib.metadata.entry_points().get("euer.commands", [])
+
+    for entry_point in entry_points:
+        try:
+            plugin = entry_point.load()
+            if callable(plugin):
+                plugin(subparsers)
+            elif hasattr(plugin, "setup") and callable(plugin.setup):
+                plugin.setup(subparsers)
+            else:
+                raise TypeError("Entry point provides neither callable nor setup()")
+        except Exception as exc:
+            print(
+                f"Warnung: Plugin '{entry_point.name}' konnte nicht geladen werden: {exc}",
+                file=sys.stderr,
+            )
 
 
 def main() -> None:
@@ -274,7 +298,7 @@ def main() -> None:
     )
     incomplete_list_parser.set_defaults(func=cmd_incomplete_list)
 
-
+    load_plugins(subparsers)
     args = parser.parse_args()
     args.func(args)
 

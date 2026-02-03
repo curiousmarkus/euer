@@ -17,4 +17,4 @@ xlsx = ["openpyxl>=3.1.0"]
 euer = "euercli.cli:main"
 
 [tool.setuptools]
-packages = ["euercli", "euercli.commands"]
+packages = ["euercli", "euercli.commands", "euercli.services"]
