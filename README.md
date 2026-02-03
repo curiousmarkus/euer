@@ -20,13 +20,11 @@ Die meisten Tools zwingen dich zu einer Entscheidung: Entweder du nutzt unflexib
 *   **Leichtgewichtig:** Nur Python 3.11+. Keine schweren Abhängigkeiten. Läuft überall.
 *   **Kein Lock-in:** Daten exportieren ist so einfach wie cp euer.db.
 
-### Alles, was du für deine EÜR brauchst
-
-- **EÜR-konforme Kategorien:** Direkt einsatzbereit mit den offiziellen Zeilennummern für deine Steuererklärung.
-- **Auch für deine Umsatzsteuer:** Unterstützt Vorsteuer und USt-Zahllast bei Regelbesteuerung.
-- **Reverse-Charge Support:** Automatische Logik für ausländische Dienstleister bei denen du die Umsatzsteuer schuldig bist.
-- **Beleg-Management:** Verknüpfe digitale Belege direkt mit deinen Buchungen.
-- **Umsatzsteuer-Modi:** Unterstützt sowohl die Kleinunternehmerregelung (§19 UStG) als auch die Regelbesteuerung in der USt.
+### ✅ Alles, was du steuerlich brauchst
+- **EÜR-konforme Kategorien:** Direkt einsatzbereit mit den offiziellen Zeilennummern für die Anlage EÜR.
+- **Umsatzsteuer-Logik:** Voller Support für Regelbesteuerung (USt/Vorsteuer) sowie Kleinunternehmerregelung (§19 UStG).
+- **Reverse-Charge Support:** Umsatzsteuerliche Behandlung von Dienstleistern aus dem EU/Drittland-Ausland (§13b UStG).
+- **Beleg-Management:** Verknüpfe digitale Belege (PDF/Bilder) direkt mit deinen Buchungen.
 
 ---
 
