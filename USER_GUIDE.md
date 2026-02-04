@@ -120,11 +120,14 @@ euer add income --date 2026-01-20 --source "Kunde ABC" \
 ### Anzeigen & Filtern
 
 ```bash
+# Default: aktuelles Jahr
 euer list expenses --year 2026
 euer list expenses --year 2026 --month 1
 euer list income --year 2026
 euer list categories
 ```
+
+Hinweis: `list ... --format csv` gibt die Liste als CSV auf stdout aus (für Pipes/Redirects).
 
 ### Korrigieren & Löschen
 
@@ -142,14 +145,27 @@ euer audit 42 --table expenses
 ```bash
 euer summary --year 2026
 
-euer export --year 2026 --format csv
+# Default: CSV, ohne --year = alle Jahre
+euer export
+euer export --year 2026
 # XLSX benötigt openpyxl:
 euer export --year 2026 --format xlsx
 ```
 
+Hinweis: `export` schreibt Dateien ins Export-Verzeichnis (Ausgaben + Einnahmen).
+
 Hinweis: Für die Kategorie **Bewirtungsaufwendungen** rechnet `euer summary`
 den Aufwand automatisch als **70% abziehbar / 30% nicht abziehbar**. In
 `list expenses` und Exporten bleibt der Betrag **100%**.
+
+### SQL‑Abfragen (nur lesend)
+
+```bash
+# Ausgabe als CSV auf stdout (nur SELECT)
+euer query "SELECT id, date, vendor, amount_eur FROM expenses WHERE vendor LIKE '%OpenAI%' ORDER BY date DESC"
+```
+
+Hinweis: `query` ist **nur** für SELECT‑Abfragen. Keine Änderungen/Schreiboperationen.
 
 ### Bulk‑Import & Unvollständige Einträge
 

@@ -25,6 +25,20 @@ python -m euercli <command>
 
 - Standard‑DB: `euer.db` im Projekt (oder via `--db PFAD`).
 - Config: `~/.config/euer/config.toml` (Beleg‑Pfade, Export‑Verzeichnis, Steuer‑Modus).
+- Direkter sqlite3‑Zugriff ist **verboten**, da sonst Inkonsistenzen auftreten können und das Audit-Log umgangen wird.
+- Für fortgeschrittene Abfragen **nur** `euer query` verwenden (nur SELECT, keine Writes).
+
+### SQL‑Abfragen (nur lesend)
+
+Nutze `euer query` für komplexe Filter. Ausgabe ist CSV auf stdout.
+
+```bash
+# Ausgaben eines Lieferanten in einem Zeitraum
+euer query "SELECT id, date, vendor, amount_eur FROM expenses WHERE vendor LIKE '%OpenAI%' AND date BETWEEN '2026-01-01' AND '2026-12-31' ORDER BY date DESC"
+
+# Große Ausgaben (Betrag <= -500)
+euer query "SELECT id, date, vendor, amount_eur FROM expenses WHERE amount_eur <= -500 ORDER BY amount_eur ASC"
+```
 
 ## Verfügbare Commands
 
@@ -87,6 +101,9 @@ euer summary [--year YYYY]
 
 # Export als CSV oder XLSX
 euer export [--year YYYY] [--format csv|xlsx]
+
+# SQL-Query (nur SELECT, Ausgabe als CSV)
+euer query "SELECT ... FROM ... WHERE ..."
 
 # Kategorien anzeigen
 euer list categories [--type expense|income]

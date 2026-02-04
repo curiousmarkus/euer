@@ -7,6 +7,7 @@ from .import_data import cmd_import
 from .incomplete import cmd_incomplete_list
 from .init import cmd_init
 from .list import cmd_list_categories, cmd_list_expenses, cmd_list_income
+from .query import cmd_query
 from .receipt import cmd_receipt_check, cmd_receipt_open
 from .setup import cmd_setup
 from .summary import cmd_summary
@@ -26,6 +27,7 @@ __all__ = [
     "cmd_list_categories",
     "cmd_list_expenses",
     "cmd_list_income",
+    "cmd_query",
     "cmd_receipt_check",
     "cmd_receipt_open",
     "cmd_setup",

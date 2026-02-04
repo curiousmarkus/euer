@@ -1,5 +1,6 @@
 import csv
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from ..db import get_db_connection
@@ -13,9 +14,11 @@ def cmd_list_expenses(args):
     db_path = Path(args.db)
     conn = get_db_connection(db_path)
 
+    year = args.year or datetime.now().year
+
     rows = list_expenses(
         conn,
-        year=args.year,
+        year=year,
         month=args.month,
         category_name=args.category,
     )
@@ -129,9 +132,11 @@ def cmd_list_income(args):
     db_path = Path(args.db)
     conn = get_db_connection(db_path)
 
+    year = args.year or datetime.now().year
+
     rows = list_income(
         conn,
-        year=args.year,
+        year=year,
         month=args.month,
         category_name=args.category,
     )

@@ -267,6 +267,57 @@ class EuerCLITestCase(unittest.TestCase):
         self.assertIn("Belegname", exp_header)
         self.assertIn("Belegname", inc_header)
 
+    def test_export_csv_all_years_default(self):
+        self.add_expense(date="2025-12-31", vendor="Alt")
+        self.add_expense(date="2026-01-15", vendor="Neu")
+        self.add_income(date="2025-12-05", source="Alt")
+        self.add_income(date="2026-02-01", source="Neu")
+        export_dir = self.root / "exports"
+        export_dir.mkdir()
+
+        result = self.run_cli(["export", "--output", str(export_dir)], check=True)
+        self.assertIn("Exportiert:", result.stdout)
+
+        exported = [
+            line.split("Exportiert: ", 1)[1]
+            for line in result.stdout.splitlines()
+            if line.startswith("Exportiert: ")
+        ]
+        self.assertEqual(len(exported), 2)
+        exp_file = Path(exported[0])
+        inc_file = Path(exported[1])
+        self.assertTrue(exp_file.exists())
+        self.assertTrue(inc_file.exists())
+
+        exp_rows = list(
+            csv.reader(exp_file.read_text(encoding="utf-8-sig").splitlines())
+        )
+        inc_rows = list(
+            csv.reader(inc_file.read_text(encoding="utf-8-sig").splitlines())
+        )
+
+        exp_dates = {row[1] for row in exp_rows[1:]}
+        inc_dates = {row[1] for row in inc_rows[1:]}
+        self.assertIn("2025-12-31", exp_dates)
+        self.assertIn("2026-01-15", exp_dates)
+        self.assertIn("2025-12-05", inc_dates)
+        self.assertIn("2026-02-01", inc_dates)
+
+    def test_query_select(self):
+        self.add_expense(vendor="QueryTest")
+        result = self.run_cli(
+            ["query", "SELECT", "id", "vendor", "FROM", "expenses", "LIMIT", "1"],
+            check=True,
+        )
+        rows = self.parse_csv(result.stdout)
+        self.assertGreaterEqual(len(rows), 2)
+        self.assertIn("vendor", rows[0])
+
+    def test_query_rejects_write(self):
+        result = self.run_cli(["query", "UPDATE", "expenses", "SET", "vendor='X'"])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Nur SELECT", result.stderr)
+
     def test_summary_and_rc(self):
         self.add_expense(
             vendor="OpenAI",

@@ -1,6 +1,5 @@
 import csv
 import sys
-from datetime import datetime
 from pathlib import Path
 
 from ..config import get_export_dir, load_config
@@ -33,35 +32,47 @@ def cmd_export(args):
 
     output_dir.mkdir(exist_ok=True)
 
-    year = args.year or datetime.now().year
+    year = args.year
+
+    if year is not None:
+        year_filter = "WHERE strftime('%Y', e.date) = ?"
+        year_params = (str(year),)
+        income_filter = "WHERE strftime('%Y', i.date) = ?"
+        income_params = (str(year),)
+    else:
+        year_filter = ""
+        year_params = ()
+        income_filter = ""
+        income_params = ()
 
     # Ausgaben laden
     expenses = conn.execute(
-        """SELECT e.receipt_name, e.date, e.vendor, c.name as category, c.eur_line,
+        f"""SELECT e.receipt_name, e.date, e.vendor, c.name as category, c.eur_line,
                   e.amount_eur, e.account, e.foreign_amount, e.notes, e.is_rc, e.vat_input, e.vat_output
            FROM expenses e
            LEFT JOIN categories c ON e.category_id = c.id
-           WHERE strftime('%Y', e.date) = ?
+           {year_filter}
            ORDER BY e.date, e.id""",
-        (str(year),),
+        year_params,
     ).fetchall()
 
     # Einnahmen laden
     income = conn.execute(
-        """SELECT i.receipt_name, i.date, i.source, c.name as category, c.eur_line,
+        f"""SELECT i.receipt_name, i.date, i.source, c.name as category, c.eur_line,
                   i.amount_eur, i.foreign_amount, i.notes, i.vat_output
            FROM income i
            LEFT JOIN categories c ON i.category_id = c.id
-           WHERE strftime('%Y', i.date) = ?
+           {income_filter}
            ORDER BY i.date, i.id""",
-        (str(year),),
+        income_params,
     ).fetchall()
 
     conn.close()
 
     if args.format == "csv":
         # CSV Export
-        exp_path = output_dir / f"EÜR_{year}_Ausgaben.csv"
+        exp_suffix = f"_{year}" if year is not None else ""
+        exp_path = output_dir / f"EÜR{exp_suffix}_Ausgaben.csv"
         with open(exp_path, "w", newline="", encoding="utf-8-sig") as f:
             writer = csv.writer(f)
             writer.writerow(
@@ -105,7 +116,7 @@ def cmd_export(args):
                 )
         print(f"Exportiert: {exp_path}")
 
-        inc_path = output_dir / f"EÜR_{year}_Einnahmen.csv"
+        inc_path = output_dir / f"EÜR{exp_suffix}_Einnahmen.csv"
         with open(inc_path, "w", newline="", encoding="utf-8-sig") as f:
             writer = csv.writer(f)
             writer.writerow(
@@ -153,7 +164,8 @@ def cmd_export(args):
             sys.exit(1)
 
         # Ausgaben
-        exp_path = output_dir / f"EÜR_{year}_Ausgaben.xlsx"
+        exp_suffix = f"_{year}" if year is not None else ""
+        exp_path = output_dir / f"EÜR{exp_suffix}_Ausgaben.xlsx"
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "Ausgaben"
@@ -198,7 +210,7 @@ def cmd_export(args):
         print(f"Exportiert: {exp_path}")
 
         # Einnahmen
-        inc_path = output_dir / f"EÜR_{year}_Einnahmen.xlsx"
+        inc_path = output_dir / f"EÜR{exp_suffix}_Einnahmen.xlsx"
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "Einnahmen"

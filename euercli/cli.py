@@ -19,6 +19,7 @@ from .commands import (
     cmd_list_categories,
     cmd_list_expenses,
     cmd_list_income,
+    cmd_query,
     cmd_receipt_check,
     cmd_receipt_open,
     cmd_setup,
@@ -140,7 +141,11 @@ def main() -> None:
 
     # list expenses
     list_exp_parser = list_subparsers.add_parser("expenses", help="Ausgaben anzeigen")
-    list_exp_parser.add_argument("--year", type=int, help="Jahr filtern")
+    list_exp_parser.add_argument(
+        "--year",
+        type=int,
+        help="Jahr filtern (default: aktuelles)",
+    )
     list_exp_parser.add_argument("--month", type=int, help="Monat filtern (1-12)")
     list_exp_parser.add_argument("--category", help="Kategorie filtern")
     list_exp_parser.add_argument("--format", choices=["table", "csv"], default="table")
@@ -148,7 +153,11 @@ def main() -> None:
 
     # list income
     list_inc_parser = list_subparsers.add_parser("income", help="Einnahmen anzeigen")
-    list_inc_parser.add_argument("--year", type=int, help="Jahr filtern")
+    list_inc_parser.add_argument(
+        "--year",
+        type=int,
+        help="Jahr filtern (default: aktuelles)",
+    )
     list_inc_parser.add_argument("--month", type=int, help="Monat filtern (1-12)")
     list_inc_parser.add_argument("--category", help="Kategorie filtern")
     list_inc_parser.add_argument("--format", choices=["table", "csv"], default="table")
@@ -221,8 +230,12 @@ def main() -> None:
 
     # --- export ---
     export_parser = subparsers.add_parser("export", help="Exportiert Daten")
-    export_parser.add_argument("--year", type=int, help="Jahr (default: aktuelles)")
-    export_parser.add_argument("--format", choices=["csv", "xlsx"], default="xlsx")
+    export_parser.add_argument(
+        "--year",
+        type=int,
+        help="Jahr filtern (ohne Angabe: alle Jahre exportieren)",
+    )
+    export_parser.add_argument("--format", choices=["csv", "xlsx"], default="csv")
     export_parser.add_argument(
         "--output",
         default=None,
@@ -237,6 +250,18 @@ def main() -> None:
     summary_parser = subparsers.add_parser("summary", help="Zeigt Zusammenfassung")
     summary_parser.add_argument("--year", type=int, help="Jahr (default: aktuelles)")
     summary_parser.set_defaults(func=cmd_summary)
+
+    # --- query ---
+    query_parser = subparsers.add_parser(
+        "query",
+        help="Führt eine SQL-SELECT-Query aus (nur lesend)",
+    )
+    query_parser.add_argument(
+        "sql",
+        nargs=argparse.REMAINDER,
+        help="SQL-Query (nur SELECT, bitte in Anführungszeichen)",
+    )
+    query_parser.set_defaults(func=cmd_query)
 
     # --- audit ---
     audit_parser = subparsers.add_parser("audit", help="Zeigt Änderungshistorie")
