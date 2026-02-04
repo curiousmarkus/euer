@@ -71,8 +71,9 @@ Gib es an deinen KI-Agenten:
 
 Detaillierte Anleitungen findest du in unseren Guides:
 
-- 📖 **[User Guide](USER_GUIDE.md)** – Installation, Workflows und alle Befehle.
-- 🤖 **[SKILL "euer-buchhaltung"](skills/euer-buchhaltung/SKILL.md)** – Die Anleitung für deinen Agenten
+- 📖 **[User Guide](docs/USER_GUIDE.md)** – Installation, Workflows und alle Befehle.
+- 🤖 **[SKILL "euer-buchhaltung"](docs/skills/euer-buchhaltung/SKILL.md)** – Die Anleitung für deinen Agenten
+- 🤖 **[Agent Templates](docs/templates/)** – Konfigurationsvorlagen für KI-Buchhalter
 - 🛠️ **[Development](DEVELOPMENT.md)** – Architektur und Mitwirkung.
 
 ---

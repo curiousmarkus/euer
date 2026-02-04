@@ -138,7 +138,7 @@ Weitere Details: `TESTING.md`.
 ## Beiträge
 
 - Kleine, fokussierte PRs bevorzugt.
-- Bitte relevante Doku aktualisieren (`README.md`, `USER_GUIDE.md`, `DEVELOPMENT.md`).
+- Bitte relevante Doku aktualisieren (`README.md`, `docs/USER_GUIDE.md`, `DEVELOPMENT.md`).
 - User‑Facing Texte auf Deutsch halten.
 
 ## Backlog & Spezifikationen

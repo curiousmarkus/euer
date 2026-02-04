@@ -196,10 +196,12 @@ euer/
 │   └── schema.py        # DB schema + seeds
 ├── tests/               # CLI integration tests
 ├── exports/             # CSV/XLSX exports
-├── skills/              # AI agent skills
+├── docs/                # User-facing documentation
+│   ├── skills/          # AI agent skills
+│   ├── templates/       # Agent configuration templates
+│   └── USER_GUIDE.md    # User documentation
 ├── specs/               # Feature specs + backlog items
 ├── README.md            # Project overview
-├── USER_GUIDE.md        # User documentation
 ├── DEVELOPMENT.md       # Developer documentation
 ├── TESTING.md           # Test strategy
 └── AGENTS.md            # This file
@@ -207,8 +209,8 @@ euer/
 
 ## Key References
 
-- Skill for agents: `skills/euer-buchhaltung/SKILL.md`
+- Skill for agents: `docs/skills/euer-buchhaltung/SKILL.md`
 - DB schema: `euercli/schema.py`
 - Developer guide: `DEVELOPMENT.md`
-- User guide: `USER_GUIDE.md`
-- Incomplete import design note: `technical-documentation/INCOMPLETE_ENTRIES_APPROACH.md`
+- User guide: `docs/USER_GUIDE.md`
+- Agent templates: `docs/templates/`

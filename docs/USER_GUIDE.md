@@ -62,6 +62,47 @@ cd /pfad/zum/euer-repo
 python -m euercli <command>
 ```
 
+## KI-Agenten Konfiguration
+
+Das CLI-Tool ist so konzipiert, dass KI-Agenten die Buchhaltung automatisieren können.
+Im Ordner `docs/templates/` findest du Vorlagen für die Agent-Konfiguration.
+
+### Verfügbare Templates
+
+| Datei | Beschreibung |
+|-------|--------------|
+| `Agent.md` | Template für persönliche Buchhaltungsdaten (Pfade, Konten, Kategorien) |
+| `accountant-agent.md` | Agent-Definition für KI-Buchhalter (Regeln, Workflows, Steuerlogik) |
+| `onboarding-prompt.md` | Interview-Prompt zur Erstellung einer personalisierten `Agent.md` |
+
+### Schnellstart für KI-Agenten
+
+1. **Onboarding durchführen:**
+   - Kopiere den Inhalt von `docs/templates/onboarding-prompt.md` in einen neuen LLM-Chat
+   - Der Assistent führt ein Interview und erstellt deine persönliche `Agent.md`
+
+2. **Agent konfigurieren:**
+   - Speichere die generierte `Agent.md` in deinem Buchhaltungsordner
+   - Füge die `accountant-agent.md` als Agent-Definition zu deinem Agent-Framework hinzu
+   - kopiere den Skill in den korrekten Pfad, so dass dein Agent darauf Zugriff hat: `docs/skills/euer-buchhaltung/SKILL.md`
+   - Starte deinen KI-Agenten im Buchhaltungsordner (so hat er Zugriff auf `Agent.md` als Kontext
+
+3. **CLI einrichten:**
+   - Führe `euer setup` aus, um die gleichen Pfade auch im CLI zu konfigurieren
+   - Die Konfiguration wird in `~/.config/euer/config.toml` gespeichert
+
+### Empfohlene Tools für Agenten
+
+- **PDF-Parsing:** `markitdown` – extrahiert Text aus PDFs (Kontoauszüge, Rechnungen)
+  ```bash
+  # Installation
+  pip install markitdown
+  
+  # Nutzung
+  markitdown "pfad/zur/rechnung.pdf"
+  ```
+
+
 ## Erste Schritte
 
 ### Nach der Installation
@@ -279,6 +320,7 @@ euer add expense --date 2026-01-04 --vendor "RENDER.COM" \
 ```
 
 Hinweis: Bei `small_business` setzt RC automatisch `vat_output`, `vat_input` bleibt `0.0`.
+
 
 ## Troubleshooting
 
