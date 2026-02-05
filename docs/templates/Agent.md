@@ -50,8 +50,20 @@ Diese Anbieter sind NICHT in Deutschland ansässig und erfordern das `--rc` Flag
 | **Einnahmen-Belege** | `{{PFAD_EINNAHMEN}}` |
 | **Kontoauszüge** | `{{PFAD_KONTOAUSZUEGE}}` |
 
-### Struktur innerhalb der Ordner
+### Dateinamen-Format für Belege
 
+Format: `{{DATEIFORMAT}}`
+
+- **Datum**: Rechnungsdatum (nicht Download-Datum oder Wertstellungsdatum!)
+- **Anbieter**: Kurzname des Lieferanten/Dienstleisters
+
+### Ordner-Hierarchie
+
+`{{ORDNERSTRUKTUR}}`
+
+**Mögliche Strukturen:**
+
+**Option A: Typ/Jahr**
 ```
 {{PFAD_AUSGABEN}}/
 ├── 2025/
@@ -61,11 +73,34 @@ Diese Anbieter sind NICHT in Deutschland ansässig und erfordern das `--rc` Flag
     └── ...
 ```
 
-### Dateinamens-Konvention
+**Option B: Jahr/Typ**
+```
+2025/
+├── Ausgaben/
+│   ├── 2025-01-15_Adobe.pdf
+│   └── 2025-01-20_BueroMaterial.pdf
+└── Einnahmen/
+    └── ...
+```
 
-Format: `YYYY-MM-DD_Anbieter.pdf`
-- **YYYY-MM-DD**: Rechnungsdatum (nicht Download-Datum!)
-- **Anbieter**: Kurzname des Lieferanten/Dienstleisters
+**Option C: Jahr/Monat** (Einnahmen/Ausgaben gemischt)
+```
+2025/
+├── 01/
+│   ├── 2025-01-15_Adobe.pdf (Ausgabe)
+│   └── 2025-01-18_Kunde_A.pdf (Einnahme)
+└── 02/
+    └── ...
+```
+
+**Option D: Flach** (keine Unterordner)
+```
+{{PFAD_AUSGABEN}}/
+├── 2025-01-15_Adobe.pdf
+├── 2025-01-20_BueroMaterial.pdf
+├── 2025-02-01_Server.pdf
+└── ...
+```
 
 ### PDF-Tool
 

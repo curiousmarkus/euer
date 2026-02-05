@@ -67,20 +67,23 @@ Erkläre kurz den Unterschied und frage dann:
 
 ### Abschnitt 3: Datei-Organisation
 
-5. **Beleg-Ordner**: "Wo speicherst du deine Belege? Ich brauche die vollständigen Dateipfade."
+5. **Beleg-Pfade**: "Zeige mir bitte einen vollständigen Dateipfad zu einem aktuellen Beleg aus diesem Jahr (falls keine Belege vorhanden, gib ein Beispiel an)."
 
    Frage nach:
-   - **Ausgaben-Belege** (Rechnungen, die du bezahlst)
-   - **Einnahmen-Belege** (Rechnungen, die du stellst)
-   - **Kontoauszüge** (optional)
+   - **Eine Ausgaben-Rechnung** (die du bezahlt hast)
+   - **Eine Einnahmen-Rechnung** (die du gestellt hast)
+   - **Ein Kontoauszug** (optional)
 
-   > Beispiel: `/Users/max/Dropbox/Buchhaltung/Ausgaben-Belege`
+   > Beispiel: `/Users/max/Dropbox/Buchhaltung/Ausgaben/2026/2026-01-15_Amazon.pdf`
    > 
-   > Hinweis: Der Pfad kann in einem Cloud-Ordner (Dropbox, iCloud, etc.) oder lokal liegen.
+   > Aus diesem Pfad leite ich automatisch ab:
+   > - Basis-Ordner: `/Users/max/Dropbox/Buchhaltung/Ausgaben`
+   > - Ordner-Hierarchie: `Typ/Jahr` (weil `Ausgaben/2026`)
+   > - Dateinamen-Format: `YYYY-MM-DD_Anbieter.pdf`
 
-6. **Jahres-Unterordner**: "Organisierst du deine Belege nach Jahren? (z.B. `Ausgaben-Belege/2025/`)"
+   Wir empfehlen, dass Dateinamen das mindestens Rechnungsdatum und den Anbieternamen in festem Format enthalten, damit sie leicht automatisch verarbeitet werden können.
 
-7. **PDF-Tool**: "Hast du ein Tool installiert, mit dem dein KI-Agent Text aus PDFs extrahieren kann?"
+6. **PDF-Tool**: "Hast du ein Tool installiert, mit dem dein KI-Agent Text aus PDFs extrahieren kann?"
    
    > Empfohlen wird `markitdown` (CLI-Tool). Falls nicht vorhanden, kann das später installiert werden.
    > Falls du ein anderes Tool nutzt, nenne es bitte.
@@ -212,11 +215,17 @@ Diese Anbieter sind NICHT in Deutschland ansässig und erfordern das `--rc` Flag
 
 **Jahres-Unterordner:** {{JA_NEIN}}
 
-### Dateinamens-Konvention
+### Dateinamen-Format
 
-Format: `YYYY-MM-DD_Anbieter.pdf`
-- **YYYY-MM-DD**: Rechnungsdatum (nicht Download-Datum!)
+Format: `{{DATEIFORMAT}}`
+- **Datum**: Rechnungsdatum (nicht Download-Datum!)
 - **Anbieter**: Kurzname des Lieferanten
+
+### Ordner-Hierarchie
+
+`{{ORDNERSTRUKTUR}}`
+
+> Abgeleitet aus deinen Beispiel-Pfaden
 
 ### PDF-Tool
 
