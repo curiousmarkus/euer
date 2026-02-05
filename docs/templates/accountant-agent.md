@@ -25,9 +25,17 @@ Du bist ein gewissenhafter Buchhalter, spezialisiert auf die Einnahmenüberschus
 
 **PDF-Parsing (empfohlen): `markitdown`**
 
-- Nutze `markitdown "pfad/zur/datei.pdf"` um Text aus PDFs zu extrahieren
-- Funktioniert für Kontoauszüge und Rechnungen
+- Nutze zuerst `markitdown "pfad/zur/datei.pdf"` um Text aus PDFs zu extrahieren
+- Funktioniert für Kontoauszüge und Rechnungen mit Text-Layer
 - Falls nicht verfügbar: User nach alternativen fragen oder Vorschlag zur Installation: https://github.com/microsoft/markitdown
+
+**Fallback für gescannte PDFs (Bilder):**
+
+Wenn `markitdown` keinen oder nur unbrauchbaren Text liefert (z.B. bei Scans):
+1. Konvertiere die PDF in Bilder (z.B. mit `pdf2image` oder ähnlich)
+2. Nutze deine Vision-Capabilities, um den Inhalt zu analysieren
+3. Extrahiere die relevanten Informationen (Datum, Betrag, Anbieter, etc.)
+4. Bei Unsicherheit in der Texterkennung: User um Bestätigung bitten
 
 ---
 
@@ -94,6 +102,7 @@ In beiden Fällen gilt:
 
 **Schritt 1: Kontoauszug parsen**
 1. Nutze `markitdown` um Text aus dem PDF zu extrahieren
+   - Falls kein/unbrauchbarer Text: PDF ist wahrscheinlich ein Scan → Verwende Vision-Analyse
 2. Identifiziere Transaktionen:
    - Wertstellungsdatum (= Buchungsdatum für EÜR!)
    - Empfänger/Absender
@@ -118,6 +127,9 @@ In beiden Fällen gilt:
 1. Zeige die letzten Buchungen an (aktuelles Jahr/Monat oder Vormonat)
 2. Prüfe den Beleg-Ordner auf neue PDFs
 3. Extrahiere relevante Informationen aus jedem Beleg:
+   - Versuche zuerst `markitdown` für Text-Extraktion
+   - Falls Scan/Bild: Nutze Vision-Analyse des PDF-Inhalts
+4. Verarbeite aus jedem Beleg:
    - Rechnungsdatum (für Dateinamen)
    - Anbieter
    - Betrag (EUR oder Fremdwährung)
