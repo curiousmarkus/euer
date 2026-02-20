@@ -71,25 +71,25 @@ Im Ordner `docs/templates/` findest du Vorlagen für die Agent-Konfiguration.
 
 | Datei | Beschreibung |
 |-------|--------------|
-| `Agent.md` | Template für persönliche Buchhaltungsdaten (Pfade, Konten, Kategorien) |
+| `Agents.md` | Template für persönliche Buchhaltungsdaten (Pfade, Konten, Kategorien) |
 | `accountant-agent.md` | Agent-Definition für KI-Buchhalter (Regeln, Workflows, Steuerlogik) |
-| `onboarding-prompt.md` | Interview-Prompt zur Erstellung einer personalisierten `Agent.md` |
+| `onboarding-prompt.md` | Interview-Prompt zur Erstellung einer personalisierten `Agents.md` |
 
 ### Schnellstart für KI-Agenten
 
 1. **Onboarding durchführen:**
    - Kopiere den Inhalt von `docs/templates/onboarding-prompt.md` in einen neuen LLM-Chat
-   - Der Assistent führt ein Interview und erstellt deine persönliche `Agent.md`
+   - Der Assistent führt ein Interview und erstellt deine persönliche `Agents.md`
 
 2. **Agent konfigurieren:**
-   - Speichere die generierte `Agent.md` in deinem Buchhaltungsordner
+   - Speichere die generierte `Agents.md` in deinem Buchhaltungsordner
    - Füge die `accountant-agent.md` als Agent-Definition zu deinem Agent-Framework hinzu
    - kopiere den Skill in den korrekten Pfad, so dass dein Agent darauf Zugriff hat: `docs/skills/euer-buchhaltung/SKILL.md`
-   - Starte deinen KI-Agenten im Buchhaltungsordner (so hat er Zugriff auf `Agent.md` als Kontext
+   - Starte deinen KI-Agenten im Buchhaltungsordner (so hat er Zugriff auf `Agents.md` als Kontext)
 
 3. **CLI einrichten:**
    - Führe `euer setup` aus, um die gleichen Pfade auch im CLI zu konfigurieren
-   - Die Konfiguration wird in `~/.config/euer/config.toml` gespeichert
+   - Die Konfiguration wird unter macOS/Linux in `~/.config/euer/config.toml` gespeichert, unter Windows in `%APPDATA%\\euer\\config.toml`
 
 ### Empfohlene Tools für Agenten
 
@@ -138,6 +138,7 @@ euer add expense --date 2026-02-02 --vendor "Test" --category "Laufende EDV-Kost
 
 - **Ausgaben** haben immer **negative** Beträge (`--amount -10.00`).
 - **Einnahmen** haben immer **positive** Beträge (`--amount 10.00`).
+- **Privateinlagen/Privatentnahmen** (`add private-*`) verwenden immer **positive** Beträge; die Richtung ergibt sich aus dem Command.
 - **Kategorien** sind vorgegeben und müssen existieren: `euer list categories`.
 - **Belege** können geprüft und geöffnet werden, wenn Pfade konfiguriert sind.
 - **Datenbank**: Standard `euer.db` im **aktuellen Verzeichnis**; alternativ via `--db PFAD`.
@@ -170,6 +171,26 @@ euer list categories
 
 Hinweis: `list ... --format csv` gibt die Liste als CSV auf stdout aus (für Pipes/Redirects).
 
+### Privatvorgänge
+
+```bash
+# Direkte Privatvorgänge
+euer add private-deposit --date 2026-01-15 --amount 500 --description "Einlage"
+euer add private-withdrawal --date 2026-01-20 --amount 200 --description "Entnahme"
+
+# Als Liste (inkl. Sacheinlagen aus Ausgaben mit privater Zahlung)
+euer list private-transfers --year 2026
+euer list private-deposits --year 2026
+euer list private-withdrawals --year 2026
+```
+
+Bei Ausgaben kannst du private Zahlung explizit markieren:
+
+```bash
+euer add expense --date 2026-01-10 --vendor "Adobe" \
+  --category "Laufende EDV-Kosten" --amount -22.99 --private-paid
+```
+
 ### Korrigieren & Löschen
 
 ```bash
@@ -185,6 +206,8 @@ euer audit 42 --table expenses
 
 ```bash
 euer summary --year 2026
+euer summary --year 2026 --include-private
+euer private-summary --year 2026
 
 # Default: CSV, ohne --year = alle Jahre
 euer export
@@ -193,7 +216,11 @@ euer export --year 2026
 euer export --year 2026 --format xlsx
 ```
 
-Hinweis: `export` schreibt Dateien ins Export-Verzeichnis (Ausgaben + Einnahmen).
+Hinweis: `export` schreibt Dateien ins Export-Verzeichnis:
+- Ausgaben
+- Einnahmen
+- `PrivateTransfers` (direkte Privatvorgänge)
+- `Sacheinlagen` (aus `expenses.is_private_paid` abgeleitet)
 
 Hinweis: Für die Kategorie **Bewirtungsaufwendungen** rechnet `euer summary`
 den Aufwand automatisch als **70% abziehbar / 30% nicht abziehbar**. In
@@ -223,7 +250,8 @@ Hinweise zum Import:
 - Optionale Felder: `category`, `account`, `foreign_amount`, `receipt_name`, `notes`, `rc`, `vat_input`, `vat_output`
 - Fehlende Pflichtfelder führen zu einem Import-Abbruch.
 - `type` kann fehlen, wenn `amount_eur` ein Vorzeichen hat (negativ = Ausgabe, positiv = Einnahme).
-- CSV‑Exports von `euer export` können direkt re‑importiert werden (Spaltennamen sind gemappt).
+- CSV‑Exports für **Ausgaben/Einnahmen** können direkt re‑importiert werden (Spaltennamen sind gemappt).
+- Exporte `PrivateTransfers` und `Sacheinlagen` sind nicht als Standard-Importquelle vorgesehen.
 - Kategorien mit `"(NN)"` werden beim Import automatisch bereinigt.
 - Alias‑Keys werden akzeptiert (z.B. `EUR`, `Belegname`, `Lieferant`, `Quelle`, `RC`).
 - Steuerfelder:
@@ -256,6 +284,9 @@ directory = "/pfad/zu/exports"
 
 [user]
 name = "Dein Name"
+
+[accounts]
+private = ["privat", "private Kreditkarte"]
 ```
 
 ### Prüfen & Öffnen
@@ -320,6 +351,57 @@ euer add expense --date 2026-01-04 --vendor "RENDER.COM" \
 ```
 
 Hinweis: Bei `small_business` setzt RC automatisch `vat_output`, `vat_input` bleibt `0.0`.
+
+## Einmaliger Backfill für bestehende DB (direkt in SQLite)
+
+Wenn du alte Ausgaben nachträglich als private Sacheinlagen markieren willst:
+
+1. Backup erstellen:
+
+```bash
+cp euer.db euer.backup.db
+```
+
+2. Sicherstellen, dass neue Spalten existieren:
+
+```bash
+euer init
+```
+
+3. Einmaliger Backfill (Beispiel-Regeln):
+
+```bash
+sqlite3 euer.db <<'SQL'
+BEGIN;
+
+-- Regel 1: private Konten
+UPDATE expenses
+SET is_private_paid = 1,
+    private_classification = 'account_rule'
+WHERE LOWER(COALESCE(account, '')) IN ('privat', 'private kreditkarte', 'barauslagen')
+  AND is_private_paid = 0;
+
+-- Regel 2: Nutzungseinlage-Kategorie
+UPDATE expenses
+SET is_private_paid = 1,
+    private_classification = 'category_rule'
+WHERE category_id IN (
+  SELECT id FROM categories
+  WHERE type = 'expense' AND name = 'Fahrtkosten (Nutzungseinlage)'
+);
+
+COMMIT;
+SQL
+```
+
+4. Ergebnis prüfen:
+
+```bash
+euer private-summary --year 2026
+euer list private-deposits --year 2026
+```
+
+Hinweis: Direkte Privatentnahmen/Privateinlagen aus früheren Jahren können nicht zuverlässig aus `expenses`/`income` rekonstruiert werden und sollten bei Bedarf manuell über `add private-deposit`/`add private-withdrawal` nachgetragen werden.
 
 
 ## Troubleshooting

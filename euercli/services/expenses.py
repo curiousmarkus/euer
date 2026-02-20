@@ -8,6 +8,7 @@ from ..utils import compute_hash
 from .categories import get_category_by_name
 from .errors import RecordNotFoundError, ValidationError
 from .models import Expense
+from .private_transfers import classify_expense_private_paid
 
 
 def _get_optional(row: sqlite3.Row, key: str):
@@ -31,6 +32,8 @@ def _row_to_expense(row: sqlite3.Row) -> Expense:
         is_rc=bool(_get_optional(row, "is_rc") or 0),
         vat_input=_get_optional(row, "vat_input"),
         vat_output=_get_optional(row, "vat_output"),
+        is_private_paid=bool(_get_optional(row, "is_private_paid") or 0),
+        private_classification=_get_optional(row, "private_classification") or "none",
         hash=_get_optional(row, "hash"),
     )
 
@@ -48,6 +51,8 @@ def create_expense(
     notes: str | None = None,
     is_rc: bool = False,
     vat: float | None = None,
+    private_paid: bool = False,
+    private_accounts: list[str] | None = None,
     tax_mode: str,
     audit_user: str,
 ) -> Expense:
@@ -104,12 +109,19 @@ def create_expense(
         )
 
     record_uuid = str(uuid.uuid4())
+    is_private_paid, private_classification = classify_expense_private_paid(
+        account=account,
+        category_name=category_name,
+        private_accounts=private_accounts or [],
+        manual_override=private_paid,
+    )
 
     cursor = conn.execute(
         """INSERT INTO expenses
            (uuid, receipt_name, date, vendor, category_id, amount_eur, account,
-            foreign_amount, notes, is_rc, vat_input, vat_output, hash)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            foreign_amount, notes, is_rc, vat_input, vat_output,
+            is_private_paid, private_classification, hash)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             record_uuid,
             receipt_name,
@@ -123,6 +135,8 @@ def create_expense(
             1 if is_rc else 0,
             vat_input,
             vat_output,
+            1 if is_private_paid else 0,
+            private_classification,
             tx_hash,
         ),
     )
@@ -142,6 +156,8 @@ def create_expense(
         "is_rc": 1 if is_rc else 0,
         "vat_input": vat_input,
         "vat_output": vat_output,
+        "is_private_paid": 1 if is_private_paid else 0,
+        "private_classification": private_classification,
     }
     log_audit(
         conn,
@@ -169,6 +185,8 @@ def create_expense(
         is_rc=is_rc,
         vat_input=vat_input,
         vat_output=vat_output,
+        is_private_paid=is_private_paid,
+        private_classification=private_classification,
         hash=tx_hash,
     )
 
@@ -183,7 +201,8 @@ def list_expenses(
     query = """
         SELECT e.id, e.uuid, e.date, e.vendor, e.category_id, c.name as category_name,
                c.eur_line as category_eur_line, e.amount_eur, e.account, e.receipt_name,
-               e.foreign_amount, e.notes, e.is_rc, e.vat_input, e.vat_output, e.hash
+               e.foreign_amount, e.notes, e.is_rc, e.vat_input, e.vat_output,
+               e.is_private_paid, e.private_classification, e.hash
         FROM expenses e
         LEFT JOIN categories c ON e.category_id = c.id
         WHERE 1=1
@@ -210,7 +229,8 @@ def get_expense_detail(conn: sqlite3.Connection, record_id: int) -> Expense:
     row = conn.execute(
         """SELECT e.id, e.uuid, e.date, e.vendor, e.category_id, c.name as category_name,
                   c.eur_line as category_eur_line, e.amount_eur, e.account, e.receipt_name,
-                  e.foreign_amount, e.notes, e.is_rc, e.vat_input, e.vat_output, e.hash
+                  e.foreign_amount, e.notes, e.is_rc, e.vat_input, e.vat_output,
+                  e.is_private_paid, e.private_classification, e.hash
            FROM expenses e
            LEFT JOIN categories c ON e.category_id = c.id
            WHERE e.id = ?""",
@@ -239,6 +259,8 @@ def update_expense(
     notes: str | None = None,
     vat: float | None = None,
     is_rc: bool = False,
+    private_paid: bool = False,
+    private_accounts: list[str] | None = None,
     tax_mode: str,
     audit_user: str,
 ) -> Expense:
@@ -302,6 +324,7 @@ def update_expense(
                 details={"tax_mode": tax_mode},
             )
 
+    resolved_category_name: str | None = None
     if category_name:
         category = get_category_by_name(conn, category_name, "expense")
         if not category:
@@ -311,15 +334,41 @@ def update_expense(
                 details={"category": category_name, "type": "expense"},
             )
         category_id = category.id
+        resolved_category_name = category.name
     else:
         category_id = row["category_id"]
+        if category_id:
+            cat_row = conn.execute(
+                "SELECT name FROM categories WHERE id = ?",
+                (category_id,),
+            ).fetchone()
+            if cat_row:
+                resolved_category_name = cat_row["name"]
+
+    if private_paid:
+        new_is_private_paid, new_private_classification = classify_expense_private_paid(
+            account=new_account,
+            category_name=resolved_category_name,
+            private_accounts=private_accounts or [],
+            manual_override=True,
+        )
+    elif account is not None or category_name is not None:
+        new_is_private_paid, new_private_classification = classify_expense_private_paid(
+            account=new_account,
+            category_name=resolved_category_name,
+            private_accounts=private_accounts or [],
+        )
+    else:
+        new_is_private_paid = bool(row["is_private_paid"])
+        new_private_classification = row["private_classification"]
 
     new_hash = compute_hash(new_date, new_vendor, new_amount, new_receipt or "")
 
     conn.execute(
         """UPDATE expenses SET
            receipt_name = ?, date = ?, vendor = ?, category_id = ?, amount_eur = ?,
-           account = ?, foreign_amount = ?, notes = ?, is_rc = ?, vat_input = ?, vat_output = ?, hash = ?
+           account = ?, foreign_amount = ?, notes = ?, is_rc = ?, vat_input = ?, vat_output = ?,
+           is_private_paid = ?, private_classification = ?, hash = ?
            WHERE id = ?""",
         (
             new_receipt,
@@ -333,6 +382,8 @@ def update_expense(
             1 if new_rc else 0,
             new_vat_input,
             new_vat_output,
+            1 if new_is_private_paid else 0,
+            new_private_classification,
             new_hash,
             record_id,
         ),
@@ -353,6 +404,8 @@ def update_expense(
         "is_rc": 1 if new_rc else 0,
         "vat_input": new_vat_input,
         "vat_output": new_vat_output,
+        "is_private_paid": 1 if new_is_private_paid else 0,
+        "private_classification": new_private_classification,
     }
     log_audit(
         conn,
@@ -381,6 +434,8 @@ def update_expense(
         is_rc=new_rc,
         vat_input=new_vat_input,
         vat_output=new_vat_output,
+        is_private_paid=new_is_private_paid,
+        private_classification=new_private_classification,
         hash=new_hash,
     )
 

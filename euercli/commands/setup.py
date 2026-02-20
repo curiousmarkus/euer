@@ -25,6 +25,7 @@ def cmd_setup(args):
     exports_config = dict(config.get("exports", {}))
     tax_config = dict(config.get("tax", {}))
     user_config = dict(config.get("user", {}))
+    accounts_config = dict(config.get("accounts", {}))
 
     expenses_input = prompt_path(
         "Beleg-Pfad für Ausgaben", receipts_config.get("expenses")
@@ -69,19 +70,24 @@ def cmd_setup(args):
     exports_config["directory"] = export_path
     tax_config["mode"] = tax_mode
     user_config["name"] = audit_user_input
+    private_accounts = accounts_config.get("private")
+    if not isinstance(private_accounts, list) or not private_accounts:
+        accounts_config["private"] = ["privat"]
     config["receipts"] = receipts_config
     config["exports"] = exports_config
     config["tax"] = tax_config
     config["user"] = user_config
+    config["accounts"] = accounts_config
 
     ordered_config = {
         "receipts": receipts_config,
         "exports": exports_config,
         "tax": tax_config,
         "user": user_config,
+        "accounts": accounts_config,
     }
     for key, value in config.items():
-        if key not in ("receipts", "exports", "tax", "user"):
+        if key not in ("receipts", "exports", "tax", "user", "accounts"):
             ordered_config[key] = value
 
     save_config(ordered_config)
@@ -98,6 +104,8 @@ def cmd_setup(args):
     print(f"  mode = {tax_mode}")
     print("[user]")
     print(f"  name = {audit_user_input}")
+    print("[accounts]")
+    print(f"  private = {accounts_config.get('private', ['privat'])}")
 
     for path in (expenses_path, income_path, export_path):
         if path and not Path(path).exists():

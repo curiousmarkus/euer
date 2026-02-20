@@ -7,6 +7,7 @@ from ..db import get_db_connection
 from ..services.categories import get_category_list
 from ..services.expenses import list_expenses
 from ..services.income import list_income
+from ..services.private_transfers import get_private_transfer_list, get_sacheinlagen
 
 
 def cmd_list_expenses(args):
@@ -240,3 +241,163 @@ def cmd_list_categories(args):
     for r in rows:
         eur = str(r.eur_line) if r.eur_line else "-"
         print(f"{r.id:<4} {r.type:<8} {eur:<5} {r.name:<40}")
+
+
+def cmd_list_private_deposits(args):
+    """Listet Privateinlagen (direkt + Sacheinlagen)."""
+    db_path = Path(args.db)
+    conn = get_db_connection(db_path)
+    year = args.year or datetime.now().year
+
+    transfers = get_private_transfer_list(conn, transfer_type="deposit", year=year)
+    sacheinlagen = get_sacheinlagen(conn, year=year)
+    conn.close()
+
+    if args.format == "csv":
+        writer = csv.writer(sys.stdout)
+        writer.writerow(["ID", "Datum", "Beschreibung", "EUR", "Quelle"])
+        for row in transfers:
+            writer.writerow([row.id, row.date, row.description, f"{row.amount_eur:.2f}", "Direktbuchung"])
+        for row in sacheinlagen:
+            writer.writerow(
+                [
+                    "",
+                    row.date,
+                    row.vendor,
+                    f"{abs(row.amount_eur):.2f}",
+                    f"Ausgabe #{row.id} (Sacheinlage)",
+                ]
+            )
+        return
+
+    if not transfers and not sacheinlagen:
+        print("Keine Privateinlagen gefunden.")
+        return
+
+    print(f"Privateinlagen {year}")
+    print("=" * 60)
+    print(f"{'ID':<5} {'Datum':<12} {'Beschreibung':<30} {'EUR':>10} {'Quelle':<20}")
+    print("-" * 85)
+
+    total = 0.0
+    for row in transfers:
+        print(
+            f"{row.id:<5} {row.date:<12} {row.description[:30]:<30} {row.amount_eur:>10.2f} {'Direktbuchung':<20}"
+        )
+        total += row.amount_eur
+
+    for row in sacheinlagen:
+        amount = abs(row.amount_eur)
+        source = f"Ausgabe #{row.id}"
+        print(
+            f"{'--':<5} {row.date:<12} {row.vendor[:30]:<30} {amount:>10.2f} {source:<20}"
+        )
+        total += amount
+
+    print("-" * 85)
+    print(f"{'GESAMT':<49} {total:>10.2f}")
+
+
+def cmd_list_private_withdrawals(args):
+    """Listet Privatentnahmen."""
+    db_path = Path(args.db)
+    conn = get_db_connection(db_path)
+    year = args.year or datetime.now().year
+    transfers = get_private_transfer_list(conn, transfer_type="withdrawal", year=year)
+    conn.close()
+
+    if args.format == "csv":
+        writer = csv.writer(sys.stdout)
+        writer.writerow(["ID", "Datum", "Beschreibung", "EUR", "Quelle"])
+        for row in transfers:
+            writer.writerow([row.id, row.date, row.description, f"{row.amount_eur:.2f}", "Direktbuchung"])
+        return
+
+    if not transfers:
+        print("Keine Privatentnahmen gefunden.")
+        return
+
+    print(f"Privatentnahmen {year}")
+    print("=" * 60)
+    print(f"{'ID':<5} {'Datum':<12} {'Beschreibung':<40} {'EUR':>10}")
+    print("-" * 72)
+    total = 0.0
+    for row in transfers:
+        print(f"{row.id:<5} {row.date:<12} {row.description[:40]:<40} {row.amount_eur:>10.2f}")
+        total += row.amount_eur
+    print("-" * 72)
+    print(f"{'GESAMT':<59} {total:>10.2f}")
+
+
+def cmd_list_private_transfers(args):
+    """Listet Privateinlagen und Privatentnahmen."""
+    db_path = Path(args.db)
+    conn = get_db_connection(db_path)
+    year = args.year or datetime.now().year
+    deposits = get_private_transfer_list(conn, transfer_type="deposit", year=year)
+    withdrawals = get_private_transfer_list(conn, transfer_type="withdrawal", year=year)
+    sacheinlagen = get_sacheinlagen(conn, year=year)
+    conn.close()
+
+    if args.format == "csv":
+        writer = csv.writer(sys.stdout)
+        writer.writerow(["type", "id", "date", "description", "amount_eur", "source"])
+        for row in deposits:
+            writer.writerow(["deposit", row.id, row.date, row.description, f"{row.amount_eur:.2f}", "direct"])
+        for row in sacheinlagen:
+            writer.writerow(
+                [
+                    "deposit",
+                    "",
+                    row.date,
+                    row.vendor,
+                    f"{abs(row.amount_eur):.2f}",
+                    f"expense:{row.id}",
+                ]
+            )
+        for row in withdrawals:
+            writer.writerow(
+                [
+                    "withdrawal",
+                    row.id,
+                    row.date,
+                    row.description,
+                    f"{row.amount_eur:.2f}",
+                    "direct",
+                ]
+            )
+        return
+
+    deposits_total = sum(row.amount_eur for row in deposits) + sum(
+        abs(row.amount_eur) for row in sacheinlagen
+    )
+    withdrawals_total = sum(row.amount_eur for row in withdrawals)
+
+    print(f"Privateinlagen & Privatentnahmen {year}")
+    print("=" * 50)
+    print()
+
+    print("Privateinlagen (Geld/Werte -> Geschäft):")
+    print(f"{'ID':<5} {'Datum':<12} {'Beschreibung':<30} {'EUR':>10} {'Quelle':<20}")
+    print("-" * 85)
+    for row in deposits:
+        print(
+            f"{row.id:<5} {row.date:<12} {row.description[:30]:<30} {row.amount_eur:>10.2f} {'Direktbuchung':<20}"
+        )
+    for row in sacheinlagen:
+        print(
+            f"{'--':<5} {row.date:<12} {row.vendor[:30]:<30} {abs(row.amount_eur):>10.2f} {f'Ausgabe #{row.id}':<20}"
+        )
+    print("-" * 85)
+    print(f"{'SUMME':<49} {deposits_total:>10.2f} EUR")
+    print()
+
+    print("Privatentnahmen (Geld/Werte <- Geschäft):")
+    print(f"{'ID':<5} {'Datum':<12} {'Beschreibung':<30} {'EUR':>10} {'Quelle':<20}")
+    print("-" * 85)
+    for row in withdrawals:
+        print(
+            f"{row.id:<5} {row.date:<12} {row.description[:30]:<30} {row.amount_eur:>10.2f} {'Direktbuchung':<20}"
+        )
+    print("-" * 85)
+    print(f"{'SUMME':<49} {withdrawals_total:>10.2f} EUR")

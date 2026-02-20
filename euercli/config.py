@@ -141,6 +141,19 @@ def get_audit_user(config: dict) -> str:
     return str(user)
 
 
+def get_private_accounts(config: dict) -> list[str]:
+    """Liest private Kontobezeichner aus der Config."""
+    accounts = config.get("accounts", {}).get("private")
+    if not accounts:
+        return ["privat"]
+    result: list[str] = []
+    for item in accounts:
+        text = str(item).strip()
+        if text:
+            result.append(text)
+    return result or ["privat"]
+
+
 def resolve_receipt_path(
     receipt_name: str,
     date: str,  # YYYY-MM-DD

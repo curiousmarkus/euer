@@ -24,7 +24,7 @@ python -m euercli <command>
 ### Datenbank & Config
 
 - Standard‑DB: `euer.db` im Projekt (oder via `--db PFAD`).
-- Config: `~/.config/euer/config.toml` (Beleg‑Pfade, Export‑Verzeichnis, Steuer‑Modus).
+- Config: `~/.config/euer/config.toml` (Beleg‑Pfade, Export‑Verzeichnis, Steuer‑Modus, private Konten).
 - Direkter sqlite3‑Zugriff ist **verboten**, da sonst Inkonsistenzen auftreten können und das Audit-Log umgangen wird.
 - Für fortgeschrittene Abfragen **nur** `euer query` verwenden (nur SELECT, keine Writes).
 
@@ -56,14 +56,15 @@ euer add expense \
     [--foreign "Betrag Währung"] \
     [--notes "Bemerkung"] \
     [--vat 3.50]  # Manueller Steuerbetrag in EUR (nicht %) \
-    [--rc]  # Reverse-Charge für ausländische Anbieter
+    [--rc]  # Reverse-Charge für ausländische Anbieter \
+    [--private-paid]  # Als privat bezahlt markieren (Sacheinlage)
 
 # Ausgaben anzeigen
 euer list expenses [--year YYYY] [--month MM] [--category "..."]
 # Zeigt RC-Flag, USt (Output) und VorSt (Input) an, falls vorhanden.
 
 # Ausgabe aktualisieren
-euer update expense <ID> [--date ...] [--vendor ...] [--amount ...] [--rc] ...
+euer update expense <ID> [--date ...] [--vendor ...] [--amount ...] [--rc] [--private-paid] ...
 
 # Ausgabe löschen
 euer delete expense <ID> [--force]
@@ -93,11 +94,35 @@ euer update income <ID> [--date ...] [--source ...] [--amount ...] ...
 euer delete income <ID> [--force]
 ```
 
+### Privatvorgänge
+
+```bash
+# Privateinlage/Privatentnahme direkt buchen
+euer add private-deposit --date YYYY-MM-DD --amount XX.XX --description "..."
+euer add private-withdrawal --date YYYY-MM-DD --amount XX.XX --description "..."
+
+# Optional mit Referenz auf Ausgabe (Ausgleich)
+euer add private-withdrawal --date YYYY-MM-DD --amount XX.XX --description "..." --related-expense-id <EXPENSE_ID>
+
+# Anzeigen
+euer list private-transfers [--year YYYY]
+euer list private-deposits [--year YYYY]
+euer list private-withdrawals [--year YYYY]
+
+# Ändern/Löschen
+euer update private-transfer <ID> [--amount ...] [--description ...]
+euer delete private-transfer <ID> [--force]
+```
+
 ### Übersicht & Export
 
 ```bash
 # Zusammenfassung (Kategorien + Gewinn/Verlust)
 euer summary [--year YYYY]
+euer summary [--year YYYY] [--include-private]
+
+# Privat-Zusammenfassung (ELSTER Zeile 121/122)
+euer private-summary --year YYYY
 
 # Export als CSV oder XLSX
 euer export [--year YYYY] [--format csv|xlsx]
@@ -109,7 +134,7 @@ euer query "SELECT ... FROM ... WHERE ..."
 euer list categories [--type expense|income]
 
 # Audit-Log für Transaktion
-euer audit <ID> [--table expenses|income]
+euer audit <ID> [--table expenses|income|private_transfers]
 ```
 
 ### Bulk-Import
@@ -151,6 +176,8 @@ Import-Schema (Kurzfassung):
     `vat_input` wird auf `0.0` gesetzt (Felder können weggelassen werden).
   - `standard`: `vat_input` wird **nicht** automatisch berechnet (außer bei RC). Ohne `vat_input`
     bleibt es `0.0`. `amount_eur` wird immer 1:1 gespeichert (keine Netto/Brutto‑Umrechnung).
+- `private_transfers`/`Sacheinlagen` aus dem Export sind kein Standard-Bulk-Importformat.
+
 ### Beleg-Verwaltung
 
 ```bash
@@ -175,6 +202,7 @@ Der Betrag (`--amount`) entspricht immer dem tatsächlichen **Zahlfluss auf dem 
     - Reverse-Charge: Das ist der Netto-Preis (da keine USt überwiesen wurde).
 - **Einnahmen**: Immer POSITIV (z.B. `--amount 119.00`).
     - Standard-Fall: Brutto-Rechnungsbetrag, den der Kunde überwiesen hat.
+- **Privateinlagen/Privatentnahmen**: Immer POSITIV (`add private-deposit`, `add private-withdrawal`), Richtung ergibt sich aus dem Typ.
 
 ### Steuermodus (Config)
 
@@ -270,6 +298,16 @@ der nicht abziehbare 30%-Anteil wird nur im Summary ausgewiesen.
 | `vat_output`| Umsatzsteuer | Schuld an FA (positiv), nur bei Regelbest. |
 | `receipt_name`| Belegdatei | Name der Rechnungsdatei |
 | `notes` | Notizen | Optionale Bemerkungen |
+
+#### Privatvorgänge (private_transfers)
+| Spalte | Bedeutung | Format / Hinweis |
+|--------|-----------|------------------|
+| `id` | Eindeutige ID | Automatisch vergeben |
+| `date` | Buchungsdatum | `YYYY-MM-DD` |
+| `type` | Richtung | `deposit` oder `withdrawal` |
+| `amount_eur` | Betrag | **Immer positiv** |
+| `description` | Beschreibung | Pflichtfeld |
+| `related_expense_id` | Referenz | Optional, z.B. Ausgleich |
 
 ### Belegnamen
 

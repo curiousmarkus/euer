@@ -29,6 +29,8 @@ class Expense:
     is_rc: bool = False
     vat_input: float | None = None
     vat_output: float | None = None
+    is_private_paid: bool = False
+    private_classification: str = "none"
     hash: str | None = None
 
 
@@ -46,4 +48,17 @@ class Income:
     foreign_amount: str | None = None
     notes: str | None = None
     vat_output: float | None = None
+    hash: str | None = None
+
+
+@dataclass
+class PrivateTransfer:
+    id: int | None
+    uuid: str
+    date: str
+    type: str
+    amount_eur: float
+    description: str
+    notes: str | None = None
+    related_expense_id: int | None = None
     hash: str | None = None

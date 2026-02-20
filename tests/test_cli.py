@@ -116,6 +116,52 @@ class EuerCLITestCase(unittest.TestCase):
             args += ["--notes", data["notes"]]
         return self.run_cli(args)
 
+    def add_private_deposit(self, **overrides):
+        data = {
+            "date": "2026-01-10",
+            "amount": "500.00",
+            "description": "Überweisung Privatkonto",
+        }
+        data.update(overrides)
+        args = [
+            "add",
+            "private-deposit",
+            "--date",
+            data["date"],
+            "--amount",
+            str(data["amount"]),
+            "--description",
+            data["description"],
+        ]
+        if "notes" in data:
+            args += ["--notes", data["notes"]]
+        if "related_expense_id" in data:
+            args += ["--related-expense-id", str(data["related_expense_id"])]
+        return self.run_cli(args)
+
+    def add_private_withdrawal(self, **overrides):
+        data = {
+            "date": "2026-01-20",
+            "amount": "1000.00",
+            "description": "Überweisung Privatkonto",
+        }
+        data.update(overrides)
+        args = [
+            "add",
+            "private-withdrawal",
+            "--date",
+            data["date"],
+            "--amount",
+            str(data["amount"]),
+            "--description",
+            data["description"],
+        ]
+        if "notes" in data:
+            args += ["--notes", data["notes"]]
+        if "related_expense_id" in data:
+            args += ["--related-expense-id", str(data["related_expense_id"])]
+        return self.run_cli(args)
+
     def list_expenses_csv(self):
         result = self.run_cli(["list", "expenses", "--year", "2026", "--format", "csv"])
         self.assertEqual(result.returncode, 0, msg=result.stderr)
@@ -243,6 +289,7 @@ class EuerCLITestCase(unittest.TestCase):
     def test_export_csv(self):
         self.add_expense()
         self.add_income()
+        self.add_private_deposit()
         export_dir = self.root / "exports"
         export_dir.mkdir()
 
@@ -265,22 +312,32 @@ class EuerCLITestCase(unittest.TestCase):
             for line in result.stdout.splitlines()
             if line.startswith("Exportiert: ")
         ]
-        self.assertEqual(len(exported), 2)
+        self.assertEqual(len(exported), 4)
         exp_file = Path(exported[0])
         inc_file = Path(exported[1])
+        private_file = Path(exported[2])
+        sache_file = Path(exported[3])
         self.assertTrue(exp_file.exists())
         self.assertTrue(inc_file.exists())
+        self.assertTrue(private_file.exists())
+        self.assertTrue(sache_file.exists())
 
         exp_header = exp_file.read_text(encoding="utf-8-sig").splitlines()[0]
         inc_header = inc_file.read_text(encoding="utf-8-sig").splitlines()[0]
+        private_header = private_file.read_text(encoding="utf-8-sig").splitlines()[0]
+        sache_header = sache_file.read_text(encoding="utf-8-sig").splitlines()[0]
         self.assertIn("Belegname", exp_header)
         self.assertIn("Belegname", inc_header)
+        self.assertIn("Typ", private_header)
+        self.assertIn("expense_id", sache_header)
 
     def test_export_csv_all_years_default(self):
         self.add_expense(date="2025-12-31", vendor="Alt")
         self.add_expense(date="2026-01-15", vendor="Neu")
         self.add_income(date="2025-12-05", source="Alt")
         self.add_income(date="2026-02-01", source="Neu")
+        self.add_private_deposit(date="2025-12-20", amount="100.00", description="Alt")
+        self.add_private_deposit(date="2026-02-20", amount="200.00", description="Neu")
         export_dir = self.root / "exports"
         export_dir.mkdir()
 
@@ -292,17 +349,22 @@ class EuerCLITestCase(unittest.TestCase):
             for line in result.stdout.splitlines()
             if line.startswith("Exportiert: ")
         ]
-        self.assertEqual(len(exported), 2)
+        self.assertEqual(len(exported), 4)
         exp_file = Path(exported[0])
         inc_file = Path(exported[1])
+        private_file = Path(exported[2])
         self.assertTrue(exp_file.exists())
         self.assertTrue(inc_file.exists())
+        self.assertTrue(private_file.exists())
 
         exp_rows = list(
             csv.reader(exp_file.read_text(encoding="utf-8-sig").splitlines())
         )
         inc_rows = list(
             csv.reader(inc_file.read_text(encoding="utf-8-sig").splitlines())
+        )
+        private_rows = list(
+            csv.reader(private_file.read_text(encoding="utf-8-sig").splitlines())
         )
 
         exp_dates = {row[1] for row in exp_rows[1:]}
@@ -311,6 +373,9 @@ class EuerCLITestCase(unittest.TestCase):
         self.assertIn("2026-01-15", exp_dates)
         self.assertIn("2025-12-05", inc_dates)
         self.assertIn("2026-02-01", inc_dates)
+        private_dates = {row[1] for row in private_rows[1:]}
+        self.assertIn("2025-12-20", private_dates)
+        self.assertIn("2026-02-20", private_dates)
 
     def test_query_select(self):
         self.add_expense(vendor="QueryTest")
@@ -339,6 +404,36 @@ class EuerCLITestCase(unittest.TestCase):
         self.assertIn("GESAMT Ausgaben", result.stdout)
         self.assertIn("GESAMT Einnahmen", result.stdout)
         self.assertIn("Umsatzsteuer (Kleinunternehmer)", result.stdout)
+
+    def test_summary_include_private(self):
+        self.add_private_deposit(amount="250.00", description="Einlage")
+        result = self.run_cli(
+            ["summary", "--year", "2026", "--include-private"],
+            check=True,
+        )
+        self.assertIn("Privatvorgänge", result.stdout)
+        self.assertIn("Privateinlagen (Zeile 122)", result.stdout)
+
+    def test_private_summary_command(self):
+        self.add_expense(account="privat", amount="-25.00")
+        self.add_private_deposit(amount="500.00", description="Einlage")
+        self.add_private_withdrawal(amount="100.00", description="Entnahme")
+        result = self.run_cli(["private-summary", "--year", "2026"], check=True)
+        self.assertIn("GESAMT Privateinlagen", result.stdout)
+        self.assertIn("525.00 EUR", result.stdout)
+        self.assertIn("100.00 EUR", result.stdout)
+
+    def test_private_totals_unchanged_after_config_edit(self):
+        self.add_expense(account="privat", amount="-50.00")
+        first = self.run_cli(["private-summary", "--year", "2026"], check=True)
+        self.assertIn("50.00 EUR", first.stdout)
+
+        config_path = self.expected_config_path()
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text("[accounts]\nprivate = [\"completely_other\"]\n", encoding="utf-8")
+
+        second = self.run_cli(["private-summary", "--year", "2026"], check=True)
+        self.assertIn("50.00 EUR", second.stdout)
 
     def test_audit_log(self):
         self.add_expense()
@@ -371,6 +466,7 @@ class EuerCLITestCase(unittest.TestCase):
         self.assertEqual(config.get("receipts", {}).get("income"), str(income_dir))
         self.assertEqual(config.get("exports", {}).get("directory"), str(export_dir))
         self.assertEqual(config.get("tax", {}).get("mode"), "small_business")
+        self.assertEqual(config.get("accounts", {}).get("private"), ["privat"])
 
     def test_setup_writes_tax_mode_standard(self):
         expenses_dir = self.root / "receipts" / "expenses"

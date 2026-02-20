@@ -8,10 +8,13 @@ import sys
 from .commands import (
     cmd_add_expense,
     cmd_add_income,
+    cmd_add_private_deposit,
+    cmd_add_private_withdrawal,
     cmd_audit,
     cmd_config_show,
     cmd_delete_expense,
     cmd_delete_income,
+    cmd_delete_private_transfer,
     cmd_export,
     cmd_import,
     cmd_incomplete_list,
@@ -19,6 +22,10 @@ from .commands import (
     cmd_list_categories,
     cmd_list_expenses,
     cmd_list_income,
+    cmd_list_private_deposits,
+    cmd_list_private_transfers,
+    cmd_list_private_withdrawals,
+    cmd_private_summary,
     cmd_query,
     cmd_receipt_check,
     cmd_receipt_open,
@@ -26,6 +33,7 @@ from .commands import (
     cmd_summary,
     cmd_update_expense,
     cmd_update_income,
+    cmd_update_private_transfer,
 )
 from .constants import DEFAULT_DB_PATH, DEFAULT_EXPORT_DIR
 
@@ -113,6 +121,11 @@ def main() -> None:
     add_expense_parser.add_argument("--notes", help="Bemerkung")
     add_expense_parser.add_argument("--vat", type=float, help="USt-VA Betrag (manuell)")
     add_expense_parser.add_argument(
+        "--private-paid",
+        action="store_true",
+        help="Markiert Ausgabe als privat bezahlt (Sacheinlage)",
+    )
+    add_expense_parser.add_argument(
         "--rc",
         action="store_true",
         help="Reverse-Charge: berechnet 19%% USt automatisch",
@@ -134,6 +147,46 @@ def main() -> None:
         "--vat", type=float, help="Umsatzsteuer-Betrag (für Regelb.)"
     )
     add_income_parser.set_defaults(func=cmd_add_income)
+
+    # add private-deposit
+    add_private_deposit_parser = add_subparsers.add_parser(
+        "private-deposit", help="Privateinlage hinzufügen"
+    )
+    add_private_deposit_parser.add_argument("--date", required=True, help="Datum (YYYY-MM-DD)")
+    add_private_deposit_parser.add_argument(
+        "--amount", required=True, type=float, help="Betrag in EUR (positiv)"
+    )
+    add_private_deposit_parser.add_argument(
+        "--description", required=True, help="Beschreibung"
+    )
+    add_private_deposit_parser.add_argument("--notes", help="Bemerkung")
+    add_private_deposit_parser.add_argument(
+        "--related-expense-id",
+        type=int,
+        help="Optionale Referenz auf Ausgabe-ID",
+    )
+    add_private_deposit_parser.set_defaults(func=cmd_add_private_deposit)
+
+    # add private-withdrawal
+    add_private_withdrawal_parser = add_subparsers.add_parser(
+        "private-withdrawal", help="Privatentnahme hinzufügen"
+    )
+    add_private_withdrawal_parser.add_argument(
+        "--date", required=True, help="Datum (YYYY-MM-DD)"
+    )
+    add_private_withdrawal_parser.add_argument(
+        "--amount", required=True, type=float, help="Betrag in EUR (positiv)"
+    )
+    add_private_withdrawal_parser.add_argument(
+        "--description", required=True, help="Beschreibung"
+    )
+    add_private_withdrawal_parser.add_argument("--notes", help="Bemerkung")
+    add_private_withdrawal_parser.add_argument(
+        "--related-expense-id",
+        type=int,
+        help="Optionale Referenz auf Ausgabe-ID",
+    )
+    add_private_withdrawal_parser.set_defaults(func=cmd_add_private_withdrawal)
 
     # --- list ---
     list_parser = subparsers.add_parser("list", help="Listet Daten")
@@ -172,6 +225,30 @@ def main() -> None:
     )
     list_cat_parser.set_defaults(func=cmd_list_categories)
 
+    # list private-deposits
+    list_private_dep_parser = list_subparsers.add_parser(
+        "private-deposits", help="Privateinlagen anzeigen"
+    )
+    list_private_dep_parser.add_argument("--year", type=int, help="Jahr filtern")
+    list_private_dep_parser.add_argument("--format", choices=["table", "csv"], default="table")
+    list_private_dep_parser.set_defaults(func=cmd_list_private_deposits)
+
+    # list private-withdrawals
+    list_private_wdr_parser = list_subparsers.add_parser(
+        "private-withdrawals", help="Privatentnahmen anzeigen"
+    )
+    list_private_wdr_parser.add_argument("--year", type=int, help="Jahr filtern")
+    list_private_wdr_parser.add_argument("--format", choices=["table", "csv"], default="table")
+    list_private_wdr_parser.set_defaults(func=cmd_list_private_withdrawals)
+
+    # list private-transfers
+    list_private_all_parser = list_subparsers.add_parser(
+        "private-transfers", help="Privateinlagen und Privatentnahmen anzeigen"
+    )
+    list_private_all_parser.add_argument("--year", type=int, help="Jahr filtern")
+    list_private_all_parser.add_argument("--format", choices=["table", "csv"], default="table")
+    list_private_all_parser.set_defaults(func=cmd_list_private_transfers)
+
     # --- update ---
     update_parser = subparsers.add_parser("update", help="Aktualisiert Transaktion")
     update_subparsers = update_parser.add_subparsers(dest="type", required=True)
@@ -190,6 +267,11 @@ def main() -> None:
     upd_exp_parser.add_argument("--receipt", help="Neuer Belegname")
     upd_exp_parser.add_argument("--notes", help="Neue Bemerkung")
     upd_exp_parser.add_argument("--vat", type=float, help="Neuer USt-VA Betrag")
+    upd_exp_parser.add_argument(
+        "--private-paid",
+        action="store_true",
+        help="Markiert Ausgabe als privat bezahlt (Sacheinlage)",
+    )
     upd_exp_parser.add_argument(
         "--rc",
         action="store_true",
@@ -212,6 +294,22 @@ def main() -> None:
     upd_inc_parser.add_argument("--vat", type=float, help="Neue Umsatzsteuer")
     upd_inc_parser.set_defaults(func=cmd_update_income)
 
+    # update private-transfer
+    upd_private_parser = update_subparsers.add_parser(
+        "private-transfer", help="Privatvorgang aktualisieren"
+    )
+    upd_private_parser.add_argument("id", type=int, help="ID des Privatvorgangs")
+    upd_private_parser.add_argument("--date", help="Neues Datum")
+    upd_private_parser.add_argument("--amount", type=float, help="Neuer Betrag")
+    upd_private_parser.add_argument("--description", help="Neue Beschreibung")
+    upd_private_parser.add_argument("--notes", help="Neue Bemerkung")
+    upd_private_parser.add_argument(
+        "--related-expense-id",
+        type=int,
+        help="Optionale Referenz auf Ausgabe-ID",
+    )
+    upd_private_parser.set_defaults(func=cmd_update_private_transfer)
+
     # --- delete ---
     delete_parser = subparsers.add_parser("delete", help="Löscht Transaktion")
     delete_subparsers = delete_parser.add_subparsers(dest="type", required=True)
@@ -227,6 +325,16 @@ def main() -> None:
     del_inc_parser.add_argument("id", type=int, help="ID der Einnahme")
     del_inc_parser.add_argument("--force", action="store_true", help="Keine Rückfrage")
     del_inc_parser.set_defaults(func=cmd_delete_income)
+
+    # delete private-transfer
+    del_private_parser = delete_subparsers.add_parser(
+        "private-transfer", help="Privatvorgang löschen"
+    )
+    del_private_parser.add_argument("id", type=int, help="ID des Privatvorgangs")
+    del_private_parser.add_argument(
+        "--force", action="store_true", help="Keine Rückfrage"
+    )
+    del_private_parser.set_defaults(func=cmd_delete_private_transfer)
 
     # --- export ---
     export_parser = subparsers.add_parser("export", help="Exportiert Daten")
@@ -249,7 +357,21 @@ def main() -> None:
     # --- summary ---
     summary_parser = subparsers.add_parser("summary", help="Zeigt Zusammenfassung")
     summary_parser.add_argument("--year", type=int, help="Jahr (default: aktuelles)")
+    summary_parser.add_argument(
+        "--include-private",
+        action="store_true",
+        help="Zeigt zusätzlich Privateinlagen und Privatentnahmen",
+    )
     summary_parser.set_defaults(func=cmd_summary)
+
+    # --- private-summary ---
+    private_summary_parser = subparsers.add_parser(
+        "private-summary", help="Zeigt ELSTER-Summen für Privatvorgänge"
+    )
+    private_summary_parser.add_argument(
+        "--year", type=int, required=True, help="Jahr"
+    )
+    private_summary_parser.set_defaults(func=cmd_private_summary)
 
     # --- query ---
     query_parser = subparsers.add_parser(
@@ -268,7 +390,7 @@ def main() -> None:
     audit_parser.add_argument("id", type=int, help="Datensatz-ID")
     audit_parser.add_argument(
         "--table",
-        choices=["expenses", "income"],
+        choices=["expenses", "income", "private_transfers"],
         default="expenses",
         help="Tabelle (default: expenses)",
     )

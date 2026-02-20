@@ -3,9 +3,10 @@ import sys
 import uuid
 from pathlib import Path
 
-from ..config import get_audit_user, load_config
+from ..config import get_audit_user, get_private_accounts, load_config
 from ..db import get_category_id, get_db_connection, log_audit
 from ..importers import get_tax_config, iter_import_rows, normalize_import_row
+from ..services.private_transfers import classify_expense_private_paid
 from ..utils import compute_hash
 
 
@@ -70,6 +71,7 @@ def cmd_import(args):
     conn = get_db_connection(db_path)
     config = load_config()
     audit_user = get_audit_user(config)
+    private_accounts = get_private_accounts(config)
     tax_mode = get_tax_config(config)
 
     try:
@@ -165,6 +167,11 @@ def cmd_import(args):
             tx_hash = compute_hash(
                 str(date), str(party), float(amount), receipt_name or ""
             )
+            is_private_paid, private_classification = classify_expense_private_paid(
+                account=str(account) if account is not None else None,
+                category_name=str(category_name) if category_name is not None else None,
+                private_accounts=private_accounts,
+            )
             existing = conn.execute(
                 "SELECT id FROM expenses WHERE hash = ?", (tx_hash,)
             ).fetchone()
@@ -180,8 +187,9 @@ def cmd_import(args):
             cursor = conn.execute(
                 """INSERT INTO expenses 
                    (uuid, receipt_name, date, vendor, category_id, amount_eur, account,
-                    foreign_amount, notes, is_rc, vat_input, vat_output, hash)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    foreign_amount, notes, is_rc, vat_input, vat_output,
+                    is_private_paid, private_classification, hash)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     record_uuid,
                     receipt_name,
@@ -195,6 +203,8 @@ def cmd_import(args):
                     1 if rc else 0,
                     vat_input,
                     vat_output,
+                    1 if is_private_paid else 0,
+                    private_classification,
                     tx_hash,
                 ),
             )
@@ -214,6 +224,8 @@ def cmd_import(args):
                 "is_rc": 1 if rc else 0,
                 "vat_input": vat_input,
                 "vat_output": vat_output,
+                "is_private_paid": 1 if is_private_paid else 0,
+                "private_classification": private_classification,
             }
             log_audit(
                 conn,

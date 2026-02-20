@@ -95,11 +95,20 @@ Erkläre kurz den Unterschied und frage dann:
 
 8. **Weiteres Konto** (optional): "Nutzt du noch ein weiteres Konto für Geschäftsausgaben (z.B. Privatkonto für einzelne Käufe, PayPal)?"
 
+9. **Private Kontobezeichnungen für Sacheinlagen**:
+
+   Frage: "Welche Kontonamen sollen als privat gelten, wenn Betriebsausgaben privat bezahlt wurden?"
+
+   Beispiele:
+   - `privat`
+   - `private Kreditkarte`
+   - `Barauslagen`
+
 ---
 
 ### Abschnitt 5: Kategorie-Zuordnungen
 
-9. **Wiederkehrende Lieferanten**: "Welche Lieferanten/Dienste nutzt du regelmäßig? Ich ordne sie dann den passenden EÜR-Kategorien zu."
+10. **Wiederkehrende Lieferanten**: "Welche Lieferanten/Dienste nutzt du regelmäßig? Ich ordne sie dann den passenden EÜR-Kategorien zu."
 
    Zeige die verfügbaren Kategorien als Referenz:
    
@@ -131,7 +140,7 @@ Erkläre kurz den Unterschied und frage dann:
 
    Frage: "Nenne deine typischen Lieferanten und ich schlage die Kategorie vor. Du kannst auch direkt zuordnen, z.B. 'Vodafone → Telekommunikation'."
 
-10. **Besonderheiten** (optional): "Gibt es steuerliche Besonderheiten bei dir?"
+11. **Besonderheiten** (optional): "Gibt es steuerliche Besonderheiten bei dir?"
    - Anteilige Nutzung (z.B. Arbeitszimmer, Fahrzeug)
    - Home-Office-Pauschale
    - Andere
@@ -187,6 +196,14 @@ Flag `--rc` erforderlich bei: {{RC_ANBIETER_LISTE}}
 
 ---
 
+## Private Konten (für Sacheinlagen)
+
+Kontobezeichnungen, die als privat gelten (für `accounts.private`):
+
+{{PRIVATE_ACCOUNTS_LISTE}}
+
+---
+
 ## Kategorie-Zuordnungen wiederkehrender Lieferanten
 
 {{KATEGORIE_MAPPING}}
@@ -227,9 +244,9 @@ Sage zum Abschluss:
 "Fertig! 🎉 Hier ist deine persönliche `Agents.md` Datei. 
 
 **Nächste Schritte für den User:**
-2. Speichere die `Agents.md` in deinem Buchhaltungs-Ordner
-3. Stelle sicher, dass du auch die account-agent.md und SKILL.md Datei richtig konfiguriert hast
-4. Führe `euer init` und dann `euer setup` aus, um die Pfade auch im CLI zu konfigurieren
+1. Speichere die `Agents.md` in deinem Buchhaltungs-Ordner
+2. Stelle sicher, dass du auch die accountant-agent.md und SKILL.md Datei richtig konfiguriert hast
+3. Führe `euer init` und dann `euer setup` aus, um die Pfade auch im CLI zu konfigurieren
 
 Bei Fragen oder Änderungen kannst du jederzeit hierher zurückkommen!"
 

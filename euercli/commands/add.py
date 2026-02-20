@@ -1,13 +1,14 @@
 import sys
 from pathlib import Path
 
-from ..config import get_audit_user, load_config, warn_missing_receipt
+from ..config import get_audit_user, get_private_accounts, load_config, warn_missing_receipt
 from ..db import get_db_connection
 from ..importers import get_tax_config
 from ..services.categories import get_category_list
 from ..services.errors import ValidationError
 from ..services.expenses import create_expense
 from ..services.income import create_income
+from ..services.private_transfers import create_private_transfer
 from ..utils import format_amount
 
 
@@ -17,6 +18,7 @@ def cmd_add_expense(args):
     conn = get_db_connection(db_path)
     config = load_config()
     audit_user = get_audit_user(config)
+    private_accounts = get_private_accounts(config)
     tax_mode = get_tax_config(config)
 
     if tax_mode == "small_business" and not args.rc and args.vat is not None:
@@ -38,6 +40,8 @@ def cmd_add_expense(args):
             notes=args.notes,
             is_rc=bool(args.rc),
             vat=args.vat,
+            private_paid=bool(args.private_paid),
+            private_accounts=private_accounts,
             tax_mode=tax_mode,
             audit_user=audit_user,
         )
@@ -133,3 +137,52 @@ def cmd_add_income(args):
     )
 
     warn_missing_receipt(income.receipt_name, income.date, "income", config)
+
+
+def _cmd_add_private_transfer(args, *, transfer_type: str) -> None:
+    db_path = Path(args.db)
+    conn = get_db_connection(db_path)
+    config = load_config()
+    audit_user = get_audit_user(config)
+
+    try:
+        transfer = create_private_transfer(
+            conn,
+            date=args.date,
+            transfer_type=transfer_type,
+            amount_eur=args.amount,
+            description=args.description,
+            notes=args.notes,
+            related_expense_id=args.related_expense_id,
+            audit_user=audit_user,
+        )
+    except ValidationError as exc:
+        if exc.code == "duplicate":
+            existing_id = exc.details.get("existing_id")
+            print(
+                f"Warnung: Duplikat erkannt (ID {existing_id}), überspringe.",
+                file=sys.stderr,
+            )
+            conn.close()
+            return
+        print(f"Fehler: {exc.message}", file=sys.stderr)
+        conn.close()
+        sys.exit(1)
+
+    conn.close()
+
+    label = "Privateinlage" if transfer_type == "deposit" else "Privatentnahme"
+    print(
+        f"{label} #{transfer.id} hinzugefügt: {transfer.description} "
+        f"{format_amount(transfer.amount_eur)} EUR"
+    )
+
+
+def cmd_add_private_deposit(args):
+    """Fügt eine direkte Privateinlage hinzu."""
+    _cmd_add_private_transfer(args, transfer_type="deposit")
+
+
+def cmd_add_private_withdrawal(args):
+    """Fügt eine direkte Privatentnahme hinzu."""
+    _cmd_add_private_transfer(args, transfer_type="withdrawal")

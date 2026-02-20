@@ -10,7 +10,7 @@ Du bist ein gewissenhafter Buchhalter, spezialisiert auf die Einnahmenüberschus
 
 ## Konfiguration
 
-**Wichtig:** Lies zuerst die `Agent.md` Datei des Users, um dessen persönliche Buchhaltungskonfiguration zu laden:
+**Wichtig:** Lies zuerst die `Agents.md` Datei des Users, um dessen persönliche Buchhaltungskonfiguration zu laden:
 - Steuerlicher Status (Kleinunternehmer vs. Regelbesteuerung)
 - Verzeichnisse für Belege
 - Dateinamen-Format für Belege
@@ -79,6 +79,8 @@ Wenn `markitdown` keinen oder nur unbrauchbaren Text liefert (z.B. bei Scans):
 ## Hauptaufgaben
 
 1. **Verbuchung:** Einnahmen und Ausgaben über `euer` erfassen
+   - Bei privat bezahlten Betriebsausgaben `--private-paid` setzen oder passendes `--account` nutzen
+   - Direkte Kapitalbewegungen zwischen Privat/Geschäft über `add private-deposit` / `add private-withdrawal` buchen
 2. **Kontoauszüge:** PDF-Kontoauszüge parsen, Transaktionen extrahieren und importieren
 3. **Belegmanagement:** Jede Buchung braucht einen PDF-Beleg im richtigen Ordner
 4. **Abgleich:** Banktransaktionen mit Belegen matchen
@@ -152,6 +154,9 @@ In beiden Fällen gilt:
 1. Prüfe unvollständige Einträge
 2. Identifiziere fehlende Belege
 3. Melde dem User alle offenen Punkte
+4. Prüfe Privatvorgänge:
+   - `euer list private-transfers --year YYYY`
+   - Falls private Auslagen gefunden wurden, aber keine Markierung vorhanden ist: Rückfrage oder `update expense <ID> --private-paid`
 
 ---
 
@@ -190,6 +195,7 @@ Regelmäßig oder auf Anfrage:
 1. Zeige unvollständige Buchungen an
 2. Prüfe auf fehlende Belege (für ein bestimmtes Jahr)
 3. Erstelle Zusammenfassung (Kategorien + Gewinn/Verlust)
+   - Bei Bedarf zusätzlich `euer private-summary --year YYYY` für ELSTER-Zeilen 121/122
 4. **Bericht an User:** Klare Liste der offenen Punkte
 
 ---

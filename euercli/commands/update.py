@@ -1,12 +1,19 @@
+import argparse
 import sys
 from pathlib import Path
 
-from ..config import get_audit_user, load_config, warn_missing_receipt
+from ..config import (
+    get_audit_user,
+    get_private_accounts,
+    load_config,
+    warn_missing_receipt,
+)
 from ..db import get_db_connection
 from ..importers import get_tax_config
 from ..services.errors import RecordNotFoundError, ValidationError
 from ..services.expenses import update_expense
 from ..services.income import update_income
+from ..services.private_transfers import update_private_transfer
 
 
 def cmd_update_expense(args):
@@ -15,6 +22,7 @@ def cmd_update_expense(args):
     conn = get_db_connection(db_path)
     config = load_config()
     audit_user = get_audit_user(config)
+    private_accounts = get_private_accounts(config)
     tax_mode = get_tax_config(config)
 
     try:
@@ -31,6 +39,8 @@ def cmd_update_expense(args):
             notes=args.notes,
             vat=args.vat,
             is_rc=bool(args.rc),
+            private_paid=bool(args.private_paid),
+            private_accounts=private_accounts,
             tax_mode=tax_mode,
             audit_user=audit_user,
         )
@@ -95,3 +105,38 @@ def cmd_update_income(args):
     print(f"Einnahme #{args.id} aktualisiert.")
 
     warn_missing_receipt(income.receipt_name, income.date, "income", config)
+
+
+def cmd_update_private_transfer(args):
+    """Aktualisiert einen Privatvorgang."""
+    db_path = Path(args.db)
+    conn = get_db_connection(db_path)
+    config = load_config()
+    audit_user = get_audit_user(config)
+
+    try:
+        transfer = update_private_transfer(
+            conn,
+            args.id,
+            date=args.date,
+            amount_eur=args.amount,
+            description=args.description,
+            notes=args.notes,
+            related_expense_id=args.related_expense_id,
+            audit_user=audit_user,
+        )
+    except RecordNotFoundError:
+        print(f"Fehler: Privatvorgang #{args.id} nicht gefunden.", file=sys.stderr)
+        conn.close()
+        sys.exit(1)
+    except ValidationError as exc:
+        print(f"Fehler: {exc.message}", file=sys.stderr)
+        conn.close()
+        sys.exit(1)
+    except argparse.ArgumentTypeError as exc:
+        print(f"Fehler: {exc}", file=sys.stderr)
+        conn.close()
+        sys.exit(1)
+
+    conn.close()
+    print(f"Privatvorgang #{transfer.id} aktualisiert.")

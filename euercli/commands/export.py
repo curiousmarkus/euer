@@ -39,11 +39,34 @@ def cmd_export(args):
         year_params = (str(year),)
         income_filter = "WHERE strftime('%Y', i.date) = ?"
         income_params = (str(year),)
+        private_filter = "WHERE strftime('%Y', p.date) = ?"
+        private_params = (str(year),)
+        sacheinlagen_filter = "WHERE e.is_private_paid = 1 AND strftime('%Y', e.date) = ?"
+        sacheinlagen_params = (str(year),)
     else:
         year_filter = ""
         year_params = ()
         income_filter = ""
         income_params = ()
+        private_filter = ""
+        private_params = ()
+        sacheinlagen_filter = "WHERE e.is_private_paid = 1"
+        sacheinlagen_params = ()
+
+    has_private_transfers = (
+        conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='private_transfers'"
+        ).fetchone()
+        is not None
+    )
+    expense_columns = {
+        row["name"]
+        for row in conn.execute("PRAGMA table_info(expenses)").fetchall()
+    }
+    has_private_expense_cols = {
+        "is_private_paid",
+        "private_classification",
+    }.issubset(expense_columns)
 
     # Ausgaben laden
     expenses = conn.execute(
@@ -66,6 +89,31 @@ def cmd_export(args):
            ORDER BY i.date, i.id""",
         income_params,
     ).fetchall()
+
+    if has_private_transfers:
+        private_transfers = conn.execute(
+            f"""SELECT p.id, p.date, p.type, p.amount_eur, p.description,
+                      p.notes, p.related_expense_id
+               FROM private_transfers p
+               {private_filter}
+               ORDER BY p.date, p.id""",
+            private_params,
+        ).fetchall()
+    else:
+        private_transfers = []
+
+    if has_private_expense_cols:
+        sacheinlagen = conn.execute(
+            f"""SELECT e.id, e.date, e.vendor, c.name as category, e.amount_eur,
+                      e.account, e.private_classification
+               FROM expenses e
+               LEFT JOIN categories c ON e.category_id = c.id
+               {sacheinlagen_filter}
+               ORDER BY e.date, e.id""",
+            sacheinlagen_params,
+        ).fetchall()
+    else:
+        sacheinlagen = []
 
     conn.close()
 
@@ -154,6 +202,62 @@ def cmd_export(args):
                 )
         print(f"Exportiert: {inc_path}")
 
+        private_path = output_dir / f"EÜR{exp_suffix}_PrivateTransfers.csv"
+        with open(private_path, "w", newline="", encoding="utf-8-sig") as f:
+            writer = csv.writer(f)
+            writer.writerow(
+                [
+                    "ID",
+                    "Datum",
+                    "Typ",
+                    "EUR",
+                    "Beschreibung",
+                    "Bemerkung",
+                    "related_expense_id",
+                ]
+            )
+            for r in private_transfers:
+                writer.writerow(
+                    [
+                        r["id"],
+                        r["date"],
+                        r["type"],
+                        f"{r['amount_eur']:.2f}",
+                        r["description"],
+                        r["notes"] or "",
+                        r["related_expense_id"] or "",
+                    ]
+                )
+        print(f"Exportiert: {private_path}")
+
+        sache_path = output_dir / f"EÜR{exp_suffix}_Sacheinlagen.csv"
+        with open(sache_path, "w", newline="", encoding="utf-8-sig") as f:
+            writer = csv.writer(f)
+            writer.writerow(
+                [
+                    "expense_id",
+                    "Datum",
+                    "Lieferant",
+                    "Kategorie",
+                    "EUR",
+                    "Konto",
+                    "Klassifikation",
+                ]
+            )
+            for r in sacheinlagen:
+                writer.writerow(
+                    [
+                        r["id"],
+                        r["date"],
+                        r["vendor"],
+                        r["category"] or "",
+                        f"{abs(r['amount_eur']):.2f}",
+                        r["account"] or "",
+                        r["private_classification"] or "",
+                    ]
+                )
+        print(f"Exportiert: {sache_path}")
+
     else:
         # XLSX Export
         if not HAS_OPENPYXL:
@@ -203,7 +307,7 @@ def cmd_export(args):
                     r["foreign_amount"] or "",
                     r["notes"] or "",
                     "X" if r["is_rc"] else "",
-                    r["vat_amount"] if r["vat_amount"] else None,
+                    r["vat_output"] if r["vat_output"] else None,
                 ]
             )
         wb.save(exp_path)
@@ -247,3 +351,58 @@ def cmd_export(args):
             )
         wb.save(inc_path)
         print(f"Exportiert: {inc_path}")
+
+        private_path = output_dir / f"EÜR{exp_suffix}_Privatvorgaenge.xlsx"
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "PrivateTransfers"
+        ws.append(
+            [
+                "ID",
+                "Datum",
+                "Typ",
+                "EUR",
+                "Beschreibung",
+                "Bemerkung",
+                "related_expense_id",
+            ]
+        )
+        for r in private_transfers:
+            ws.append(
+                [
+                    r["id"],
+                    r["date"],
+                    r["type"],
+                    r["amount_eur"],
+                    r["description"],
+                    r["notes"] or "",
+                    r["related_expense_id"] or None,
+                ]
+            )
+
+        ws2 = wb.create_sheet("Sacheinlagen")
+        ws2.append(
+            [
+                "expense_id",
+                "Datum",
+                "Lieferant",
+                "Kategorie",
+                "EUR",
+                "Konto",
+                "Klassifikation",
+            ]
+        )
+        for r in sacheinlagen:
+            ws2.append(
+                [
+                    r["id"],
+                    r["date"],
+                    r["vendor"],
+                    r["category"] or "",
+                    abs(r["amount_eur"]),
+                    r["account"] or "",
+                    r["private_classification"] or "",
+                ]
+            )
+        wb.save(private_path)
+        print(f"Exportiert: {private_path}")

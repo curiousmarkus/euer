@@ -4,6 +4,7 @@ from pathlib import Path
 from ..config import load_config
 from ..db import get_db_connection
 from ..importers import get_tax_config
+from ..services.private_transfers import get_private_summary
 
 BEWIRTUNG_CATEGORY = "Bewirtungsaufwendungen"
 BEWIRTUNG_DEDUCTIBLE_RATE = 0.7
@@ -142,5 +143,18 @@ def cmd_summary(args):
     result = income_total + expense_total  # expense_total ist negativ
     label = "GEWINN" if result >= 0 else "VERLUST"
     print(f"  {label:<40} {result:>12.2f} EUR")
+
+    if args.include_private:
+        summary = get_private_summary(conn, year=year)
+        print()
+        print("Privatvorgänge (ELSTER Zeilen 121/122):")
+        print(
+            f"  {'Privateinlagen (Zeile 122)':<40} "
+            f"{summary['deposits_total']:>12.2f} EUR"
+        )
+        print(
+            f"  {'Privatentnahmen (Zeile 121)':<40} "
+            f"{summary['withdrawals_total']:>12.2f} EUR"
+        )
 
     conn.close()

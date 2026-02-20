@@ -31,6 +31,14 @@ Flag `--rc` erforderlich bei: {{RC_ANBIETER_LISTE}}
 
 ---
 
+## Private Konten (für Sacheinlagen)
+
+Kontobezeichnungen, die als privat gelten (für `accounts.private` in der Config):
+
+{{PRIVATE_ACCOUNTS_LISTE}}
+
+---
+
 ## Kategorie-Zuordnungen wiederkehrender Lieferanten
 
 {{KATEGORIE_MAPPING}}
@@ -57,5 +65,10 @@ Flag `--rc` erforderlich bei: {{RC_ANBIETER_LISTE}}
 - Dateiname: **Rechnungsdatum** aus dem Beleg verwenden (nicht Wertstellung, nicht Download-Datum)
 - Ordner: Gemäß Ordner-Struktur oben ablegen
 - Verknüpfung: Belegnamen in Buchung eintragen
+
+### Privatvorgänge
+- Betriebsausgabe privat bezahlt: `euer add expense ... --private-paid` (oder privates Konto nutzen)
+- Reine Kapitalbewegung: `euer add private-deposit|private-withdrawal ...`
+- Jahrescheck: `euer private-summary --year YYYY`
 
 ---
