@@ -51,7 +51,7 @@ def dump_toml(config: dict) -> str:
 
 
 def save_config(config: dict) -> None:
-    """Schreibt Config nach ~/.config/euer/config.toml."""
+    """Schreibt Config in den plattformabhängigen Config-Pfad."""
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(CONFIG_PATH, "w", encoding="utf-8") as f:
         f.write(dump_toml(config))

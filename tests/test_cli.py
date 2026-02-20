@@ -1,9 +1,11 @@
 import csv
 import io
 import os
+import platform
 import subprocess
 import sys
 import tempfile
+import tomllib
 import unittest
 from pathlib import Path
 
@@ -20,6 +22,8 @@ class EuerCLITestCase(unittest.TestCase):
         self.db_path = self.root / "test.db"
         self.env = os.environ.copy()
         self.env["HOME"] = str(self.home)
+        self.env["USERPROFILE"] = str(self.home)
+        self.env["APPDATA"] = str(self.home / "AppData" / "Roaming")
         self.env["PYTHONIOENCODING"] = "utf-8"
         self.run_cli(["init"], check=True)
 
@@ -44,6 +48,11 @@ class EuerCLITestCase(unittest.TestCase):
 
     def parse_csv(self, output: str) -> list[list[str]]:
         return list(csv.reader(io.StringIO(output)))
+
+    def expected_config_path(self) -> Path:
+        if platform.system() == "Windows":
+            return Path(self.env["APPDATA"]) / "euer" / "config.toml"
+        return Path(self.env["HOME"]) / ".config" / "euer" / "config.toml"
 
     def add_expense(self, **overrides):
         data = {
@@ -355,15 +364,13 @@ class EuerCLITestCase(unittest.TestCase):
         result = self.run_cli(["setup"], input=input_data, check=True)
         self.assertIn("Konfiguration gespeichert", result.stdout)
 
-        config_path = self.home / ".config" / "euer" / "config.toml"
+        config_path = self.expected_config_path()
         content = config_path.read_text(encoding="utf-8")
-        self.assertIn("[receipts]", content)
-        self.assertIn(f'expenses = "{expenses_dir}"', content)
-        self.assertIn(f'income = "{income_dir}"', content)
-        self.assertIn("[exports]", content)
-        self.assertIn(f'directory = "{export_dir}"', content)
-        self.assertIn("[tax]", content)
-        self.assertIn('mode = "small_business"', content)
+        config = tomllib.loads(content)
+        self.assertEqual(config.get("receipts", {}).get("expenses"), str(expenses_dir))
+        self.assertEqual(config.get("receipts", {}).get("income"), str(income_dir))
+        self.assertEqual(config.get("exports", {}).get("directory"), str(export_dir))
+        self.assertEqual(config.get("tax", {}).get("mode"), "small_business")
 
     def test_setup_writes_tax_mode_standard(self):
         expenses_dir = self.root / "receipts" / "expenses"
@@ -373,9 +380,10 @@ class EuerCLITestCase(unittest.TestCase):
 
         self.run_cli(["setup"], input=input_data, check=True)
 
-        config_path = self.home / ".config" / "euer" / "config.toml"
+        config_path = self.expected_config_path()
         content = config_path.read_text(encoding="utf-8")
-        self.assertIn('mode = "standard"', content)
+        config = tomllib.loads(content)
+        self.assertEqual(config.get("tax", {}).get("mode"), "standard")
 
     def test_receipt_check_requires_config(self):
         result = self.run_cli(["receipt", "check"])

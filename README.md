@@ -49,10 +49,20 @@ Danach ist `euer` sofort und dauerhaft in jedem Terminal verfügbar.
 <summary>Alternativ: manuell mit venv (für Entwickler)</summary>
 
 ```bash
+# macOS / Linux
 git clone https://github.com/curiousmarkus/euer.git
 cd euer
 make install
 source .venv/bin/activate
+```
+
+```powershell
+# Windows (PowerShell)
+git clone https://github.com/curiousmarkus/euer.git
+cd euer
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -e .
 ```
 </details>
 
