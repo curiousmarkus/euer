@@ -32,11 +32,29 @@ Die meisten Tools zwingen dich zu einer Entscheidung: Entweder du nutzt unflexib
 ## Quickstart: In 30 Sekunden startklar
 
 ### 1. Installation
+
+`pipx` installiert `euer` global, ohne dass du je eine virtuelle Umgebung aktivieren musst:
+
+```bash
+# pipx einmalig installieren (falls noch nicht vorhanden)
+brew install pipx
+
+# euer installieren
+pipx install git+https://github.com/curiousmarkus/euer.git
+```
+
+Danach ist `euer` sofort und dauerhaft in jedem Terminal verfügbar.
+
+<details>
+<summary>Alternativ: manuell mit venv (für Entwickler)</summary>
+
 ```bash
 git clone https://github.com/curiousmarkus/euer.git
 cd euer
-python -m pip install -e .
+make install
+source .venv/bin/activate
 ```
+</details>
 
 ### 2. Initialisierung
 Wechsle in deinen Buchhaltungs-Ordner und erstelle deine Datenbank:
