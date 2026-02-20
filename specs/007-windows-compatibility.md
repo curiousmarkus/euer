@@ -174,3 +174,34 @@ pip install -e .
 2. `euer setup`
 3. `euer config show`
 4. Prüfen, dass Pfad unter `%APPDATA%\euer\config.toml` liegt.
+
+
+### NOTE:
+
+aus dem Projekt entfernt fürs erste:
+```
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install package
+        run: python -m pip install -e .
+
+      - name: Run tests
+        run: python -m unittest discover -s tests
+```
