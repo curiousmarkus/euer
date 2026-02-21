@@ -33,29 +33,31 @@ def cmd_receipt_check(args):
     # Ausgaben prüfen
     if args.type in (None, "expense") and receipts_config.get("expenses"):
         expenses = conn.execute(
-            """SELECT e.id, e.date, e.vendor, e.receipt_name
+            """SELECT e.id, e.payment_date, e.invoice_date, e.vendor, e.receipt_name
                FROM expenses e
-               WHERE strftime('%Y', e.date) = ?
-               ORDER BY e.date, e.id""",
+               WHERE strftime('%Y', COALESCE(e.payment_date, e.invoice_date)) = ?
+               ORDER BY COALESCE(e.payment_date, e.invoice_date), e.id""",
             (str(year),),
         ).fetchall()
 
         missing_expenses = []
         for r in expenses:
+            receipt_date = r["invoice_date"] or r["payment_date"]
+            display_date = r["payment_date"] or r["invoice_date"] or ""
             total_count["expenses"] += 1
             if not r["receipt_name"]:
                 missing_expenses.append(
-                    (r["id"], r["date"], r["vendor"], "(kein Beleg)")
+                    (r["id"], display_date, r["vendor"], "(kein Beleg)")
                 )
                 missing_count["expenses"] += 1
                 continue
 
             path, _ = resolve_receipt_path(
-                r["receipt_name"], r["date"], "expenses", config
+                r["receipt_name"], receipt_date, "expenses", config
             )
             if path is None:
                 missing_expenses.append(
-                    (r["id"], r["date"], r["vendor"], r["receipt_name"])
+                    (r["id"], display_date, r["vendor"], r["receipt_name"])
                 )
                 missing_count["expenses"] += 1
 
@@ -69,29 +71,31 @@ def cmd_receipt_check(args):
     # Einnahmen prüfen
     if args.type in (None, "income") and receipts_config.get("income"):
         income = conn.execute(
-            """SELECT i.id, i.date, i.source, i.receipt_name
+            """SELECT i.id, i.payment_date, i.invoice_date, i.source, i.receipt_name
                FROM income i
-               WHERE strftime('%Y', i.date) = ?
-               ORDER BY i.date, i.id""",
+               WHERE strftime('%Y', COALESCE(i.payment_date, i.invoice_date)) = ?
+               ORDER BY COALESCE(i.payment_date, i.invoice_date), i.id""",
             (str(year),),
         ).fetchall()
 
         missing_income = []
         for r in income:
+            receipt_date = r["invoice_date"] or r["payment_date"]
+            display_date = r["payment_date"] or r["invoice_date"] or ""
             total_count["income"] += 1
             if not r["receipt_name"]:
                 missing_income.append(
-                    (r["id"], r["date"], r["source"], "(kein Beleg)")
+                    (r["id"], display_date, r["source"], "(kein Beleg)")
                 )
                 missing_count["income"] += 1
                 continue
 
             path, _ = resolve_receipt_path(
-                r["receipt_name"], r["date"], "income", config
+                r["receipt_name"], receipt_date, "income", config
             )
             if path is None:
                 missing_income.append(
-                    (r["id"], r["date"], r["source"], r["receipt_name"])
+                    (r["id"], display_date, r["source"], r["receipt_name"])
                 )
                 missing_count["income"] += 1
 
@@ -142,11 +146,13 @@ def cmd_receipt_open(args):
     table = args.table
     if table == "expenses":
         row = conn.execute(
-            "SELECT id, date, receipt_name FROM expenses WHERE id = ?", (args.id,)
+            "SELECT id, payment_date, invoice_date, receipt_name FROM expenses WHERE id = ?",
+            (args.id,),
         ).fetchone()
     else:
         row = conn.execute(
-            "SELECT id, date, receipt_name FROM income WHERE id = ?", (args.id,)
+            "SELECT id, payment_date, invoice_date, receipt_name FROM income WHERE id = ?",
+            (args.id,),
         ).fetchone()
 
     conn.close()
@@ -161,7 +167,7 @@ def cmd_receipt_open(args):
 
     receipt_type = "expenses" if table == "expenses" else "income"
     found_path, checked_paths = resolve_receipt_path(
-        row["receipt_name"], row["date"], receipt_type, config
+        row["receipt_name"], row["invoice_date"] or row["payment_date"], receipt_type, config
     )
 
     if not found_path:

@@ -338,7 +338,8 @@ def get_sacheinlagen(
     year: int | None = None,
 ) -> list[Expense]:
     query = """
-        SELECT e.id, e.uuid, e.date, e.vendor, e.category_id, c.name as category_name,
+        SELECT e.id, e.uuid, e.payment_date, e.invoice_date, e.vendor, e.category_id,
+               c.name as category_name,
                c.eur_line as category_eur_line, e.amount_eur, e.account, e.receipt_name,
                e.foreign_amount, e.notes, e.is_rc, e.vat_input, e.vat_output,
                e.is_private_paid, e.private_classification, e.hash
@@ -349,10 +350,10 @@ def get_sacheinlagen(
     params: list[object] = []
 
     if year:
-        query += " AND strftime('%Y', e.date) = ?"
+        query += " AND strftime('%Y', COALESCE(e.payment_date, e.invoice_date)) = ?"
         params.append(str(year))
 
-    query += " ORDER BY e.date DESC, e.id DESC"
+    query += " ORDER BY COALESCE(e.payment_date, e.invoice_date) DESC, e.id DESC"
 
     rows = conn.execute(query, params).fetchall()
     return [row_to_expense(row) for row in rows]
@@ -375,7 +376,8 @@ def get_private_summary(
     sacheinlagen = conn.execute(
         """SELECT SUM(ABS(amount_eur)) AS deposits_sacheinlagen
            FROM expenses
-           WHERE is_private_paid = 1 AND strftime('%Y', date) = ?""",
+           WHERE is_private_paid = 1
+             AND strftime('%Y', COALESCE(payment_date, invoice_date)) = ?""",
         (str(year),),
     ).fetchone()
 

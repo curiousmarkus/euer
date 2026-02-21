@@ -129,7 +129,7 @@ euer setup --set accounts.private "privat, Sparkasse Kreditkarte"
 euer config show
 
 # Erste Buchung
-euer add expense --date 2026-02-02 --vendor "Test" --category "Laufende EDV-Kosten" --amount -10.00
+euer add expense --payment-date 2026-02-02 --vendor "Test" --category "Laufende EDV-Kosten" --amount -10.00
 ```
 
 ### Wo liegen meine Daten?
@@ -145,6 +145,8 @@ euer add expense --date 2026-02-02 --vendor "Test" --category "Laufende EDV-Kost
 - **Einnahmen** haben immer **positive** Beträge (`--amount 10.00`).
 - **Privateinlagen/Privatentnahmen** (`add private-*`) verwenden immer **positive** Beträge; die Richtung ergibt sich aus dem Command.
 - **Kategorien** sind vorgegeben und müssen existieren: `euer list categories`.
+- **Datumsfelder**: `payment_date` (Wertstellung, EÜR-relevant) und `invoice_date` (Rechnungsdatum).
+  Mindestens eines der beiden muss gesetzt sein.
 - **Belege** können geprüft und geöffnet werden, wenn Pfade konfiguriert sind.
 - **Datenbank**: Standard `euer.db` im **aktuellen Verzeichnis**; alternativ via `--db PFAD`.
 - **Arbeitsverzeichnis**: Das Tool sucht nach `euer.db` dort, wo du es aufrufst. 
@@ -156,11 +158,11 @@ euer add expense --date 2026-02-02 --vendor "Test" --category "Laufende EDV-Kost
 
 ```bash
 # Ausgabe
-euer add expense --date 2026-01-15 --vendor "1und1" \
+euer add expense --payment-date 2026-01-15 --invoice-date 2026-01-14 --vendor "1und1" \
     --category "Telekommunikation" --amount -39.99 --account "Sparkasse Giro"
 
 # Einnahme
-euer add income --date 2026-01-20 --source "Kunde ABC" \
+euer add income --payment-date 2026-01-20 --invoice-date 2026-01-18 --source "Kunde ABC" \
     --category "Umsatzsteuerpflichtige Betriebseinnahmen" --amount 1500.00
 ```
 
@@ -192,7 +194,7 @@ euer list private-withdrawals --year 2026
 Bei Ausgaben kannst du private Zahlung explizit markieren:
 
 ```bash
-euer add expense --date 2026-01-10 --vendor "Adobe" \
+euer add expense --payment-date 2026-01-10 --vendor "Adobe" \
   --category "Laufende EDV-Kosten" --amount -22.99 --private-paid
 ```
 
@@ -201,6 +203,8 @@ euer add expense --date 2026-01-10 --vendor "Adobe" \
 ```bash
 # Ausgabe korrigieren
 euer update expense 42 --amount -25.00 --notes "Korrigiert"
+euer update expense 42 --payment-date 2026-01-17
+euer update expense 42 --invoice-date 2026-01-15
 euer update expense 42 --private-paid
 euer update expense 42 --no-private-paid
 
@@ -247,7 +251,7 @@ den Aufwand automatisch als **70% abziehbar / 30% nicht abziehbar**. In
 
 ```bash
 # Ausgabe als CSV auf stdout (nur SELECT)
-euer query "SELECT id, date, vendor, amount_eur FROM expenses WHERE vendor LIKE '%OpenAI%' ORDER BY date DESC"
+euer query "SELECT id, payment_date, invoice_date, vendor, amount_eur FROM expenses WHERE vendor LIKE '%OpenAI%' ORDER BY payment_date DESC"
 ```
 
 Hinweis: `query` ist **nur** für SELECT‑Abfragen. Keine Änderungen/Schreiboperationen.
@@ -263,7 +267,7 @@ euer incomplete list --format csv
 ```
 
 Hinweise zum Import:
-- Pflichtfelder: `type`, `date`, `party`, `amount_eur`
+- Pflichtfelder: `type`, `party`, `amount_eur` und mindestens eines aus `payment_date`/`invoice_date` (`date` ist Alias für `payment_date`)
 - Optionale Felder: `category`, `account`, `foreign_amount`, `receipt_name`, `notes`, `rc`, `private_paid`, `vat_input`, `vat_output`
 - Fehlende Pflichtfelder führen zu einem Import-Abbruch.
 - `type` kann fehlen, wenn `amount_eur` ein Vorzeichen hat (negativ = Ausgabe, positiv = Einnahme).
@@ -281,7 +285,7 @@ Hinweise zum Import:
 Workflow für unvollständige Einträge:
 1. Import/Add ausführen → Buchungen werden angelegt (Pflichtfelder müssen vorhanden sein).
 2. `euer incomplete list` zeigt fehlende **Qualitätsfelder**:
-   `category`, `receipt`, `vat`, `account` (abhängig von Typ/Steuermodus).
+   `payment_date`, `invoice_date`, `category`, `receipt`, `vat`, `account` (abhängig von Typ/Steuermodus).
 3. Fehlende Infos per `euer update expense|income <ID>` nachpflegen.
 Hinweis: Für die Kategorie **Gezahlte USt (58)** ist kein Beleg erforderlich.
 

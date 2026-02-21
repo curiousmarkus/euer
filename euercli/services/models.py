@@ -16,7 +16,8 @@ class Category:
 class Expense:
     id: int | None
     uuid: str
-    date: str
+    payment_date: str | None
+    invoice_date: str | None
     vendor: str
     amount_eur: float
     category_id: int | None
@@ -33,12 +34,18 @@ class Expense:
     private_classification: str = "none"
     hash: str | None = None
 
+    @property
+    def date(self) -> str:
+        """Kompatibilitätsalias: priorisiert Wertstellungsdatum."""
+        return self.payment_date or self.invoice_date or ""
+
 
 @dataclass
 class Income:
     id: int | None
     uuid: str
-    date: str
+    payment_date: str | None
+    invoice_date: str | None
     source: str
     amount_eur: float
     category_id: int | None
@@ -49,6 +56,11 @@ class Income:
     notes: str | None = None
     vat_output: float | None = None
     hash: str | None = None
+
+    @property
+    def date(self) -> str:
+        """Kompatibilitätsalias: priorisiert Wertstellungsdatum."""
+        return self.payment_date or self.invoice_date or ""
 
 
 @dataclass

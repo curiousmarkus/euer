@@ -15,6 +15,17 @@ from ..services.income import update_income
 from ..services.private_transfers import UNSET, update_private_transfer
 
 
+def _warn_unusual_date_order(
+    payment_date: str | None,
+    invoice_date: str | None,
+) -> None:
+    if payment_date and invoice_date and payment_date < invoice_date:
+        print(
+            "Warnung: Wertstellungsdatum liegt vor Rechnungsdatum. Bitte prüfen.",
+            file=sys.stderr,
+        )
+
+
 def cmd_update_expense(args):
     """Aktualisiert eine Ausgabe."""
     db_path = Path(args.db)
@@ -28,7 +39,8 @@ def cmd_update_expense(args):
         expense = update_expense(
             conn,
             record_id=args.id,
-            date=args.date,
+            payment_date=args.payment_date,
+            invoice_date=args.invoice_date,
             vendor=args.vendor,
             category_name=args.category,
             amount_eur=args.amount,
@@ -57,10 +69,16 @@ def cmd_update_expense(args):
         sys.exit(1)
 
     conn.close()
+    _warn_unusual_date_order(expense.payment_date, expense.invoice_date)
 
     print(f"Ausgabe #{args.id} aktualisiert.")
 
-    warn_missing_receipt(expense.receipt_name, expense.date, "expenses", config)
+    warn_missing_receipt(
+        expense.receipt_name,
+        expense.invoice_date or expense.payment_date,
+        "expenses",
+        config,
+    )
 
 
 def cmd_update_income(args):
@@ -75,7 +93,8 @@ def cmd_update_income(args):
         income = update_income(
             conn,
             record_id=args.id,
-            date=args.date,
+            payment_date=args.payment_date,
+            invoice_date=args.invoice_date,
             source=args.source,
             category_name=args.category,
             amount_eur=args.amount,
@@ -100,10 +119,16 @@ def cmd_update_income(args):
         sys.exit(1)
 
     conn.close()
+    _warn_unusual_date_order(income.payment_date, income.invoice_date)
 
     print(f"Einnahme #{args.id} aktualisiert.")
 
-    warn_missing_receipt(income.receipt_name, income.date, "income", config)
+    warn_missing_receipt(
+        income.receipt_name,
+        income.invoice_date or income.payment_date,
+        "income",
+        config,
+    )
 
 
 def cmd_update_private_transfer(args):

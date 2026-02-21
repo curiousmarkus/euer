@@ -118,7 +118,16 @@ def main() -> None:
 
     # add expense
     add_expense_parser = add_subparsers.add_parser("expense", help="Ausgabe hinzufügen")
-    add_expense_parser.add_argument("--date", required=True, help="Datum (YYYY-MM-DD)")
+    add_expense_parser.add_argument(
+        "--payment-date",
+        "--date",
+        dest="payment_date",
+        help="Wertstellungsdatum (YYYY-MM-DD)",
+    )
+    add_expense_parser.add_argument(
+        "--invoice-date",
+        help="Rechnungsdatum (YYYY-MM-DD)",
+    )
     add_expense_parser.add_argument("--vendor", required=True, help="Lieferant/Zweck")
     add_expense_parser.add_argument("--category", help="Kategorie")
     add_expense_parser.add_argument(
@@ -143,7 +152,16 @@ def main() -> None:
 
     # add income
     add_income_parser = add_subparsers.add_parser("income", help="Einnahme hinzufügen")
-    add_income_parser.add_argument("--date", required=True, help="Datum (YYYY-MM-DD)")
+    add_income_parser.add_argument(
+        "--payment-date",
+        "--date",
+        dest="payment_date",
+        help="Wertstellungsdatum (YYYY-MM-DD)",
+    )
+    add_income_parser.add_argument(
+        "--invoice-date",
+        help="Rechnungsdatum (YYYY-MM-DD)",
+    )
     add_income_parser.add_argument("--source", required=True, help="Quelle/Zweck")
     add_income_parser.add_argument("--category", help="Kategorie")
     add_income_parser.add_argument(
@@ -267,7 +285,13 @@ def main() -> None:
         "expense", help="Ausgabe aktualisieren"
     )
     upd_exp_parser.add_argument("id", type=int, help="ID der Ausgabe")
-    upd_exp_parser.add_argument("--date", help="Neues Datum")
+    upd_exp_parser.add_argument(
+        "--payment-date",
+        "--date",
+        dest="payment_date",
+        help="Neues Wertstellungsdatum",
+    )
+    upd_exp_parser.add_argument("--invoice-date", help="Neues Rechnungsdatum")
     upd_exp_parser.add_argument("--vendor", help="Neuer Lieferant")
     upd_exp_parser.add_argument("--category", help="Neue Kategorie")
     upd_exp_parser.add_argument("--amount", type=float, help="Neuer Betrag")
@@ -304,7 +328,13 @@ def main() -> None:
         "income", help="Einnahme aktualisieren"
     )
     upd_inc_parser.add_argument("id", type=int, help="ID der Einnahme")
-    upd_inc_parser.add_argument("--date", help="Neues Datum")
+    upd_inc_parser.add_argument(
+        "--payment-date",
+        "--date",
+        dest="payment_date",
+        help="Neues Wertstellungsdatum",
+    )
+    upd_inc_parser.add_argument("--invoice-date", help="Neues Rechnungsdatum")
     upd_inc_parser.add_argument("--source", help="Neue Quelle")
     upd_inc_parser.add_argument("--category", help="Neue Kategorie")
     upd_inc_parser.add_argument("--amount", type=float, help="Neuer Betrag")

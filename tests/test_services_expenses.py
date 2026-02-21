@@ -110,6 +110,31 @@ class ExpenseServiceTestCase(unittest.TestCase):
         assert row is not None
         self.assertEqual(row["record_uuid"], expense.uuid)
 
+    def test_create_expense_with_invoice_date_only(self) -> None:
+        expense = create_expense(
+            self.conn,
+            invoice_date="2026-01-10",
+            vendor="InvoiceOnly",
+            amount_eur=-12.0,
+            category_name="Arbeitsmittel",
+            tax_mode="small_business",
+            audit_user="tester",
+        )
+        self.assertIsNone(expense.payment_date)
+        self.assertEqual(expense.invoice_date, "2026-01-10")
+
+    def test_create_expense_requires_any_date(self) -> None:
+        with self.assertRaises(ValidationError) as ctx:
+            create_expense(
+                self.conn,
+                vendor="NoDate",
+                amount_eur=-12.0,
+                category_name="Arbeitsmittel",
+                tax_mode="small_business",
+                audit_user="tester",
+            )
+        self.assertEqual(ctx.exception.code, "missing_dates")
+
 
 if __name__ == "__main__":
     unittest.main()

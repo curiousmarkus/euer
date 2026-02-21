@@ -241,3 +241,14 @@ Jede Spec in `specs/` hat ein `## Status`-Feld mit einem der Werte:
 - Eine neue Spec angelegt wird → Status `Offen`, neue Zeile in Tabelle
 - Eine Spec fertig implementiert ist → Status `Implementiert`
 - Change Requests hinzukommen → innerhalb der Spec dokumentieren und Status ggf. auf `Offen` zurücksetzen
+
+## Dokumentation nach Implementierung
+
+Nach jeder abgeschlossenen Feature-Implementierung müssen die betroffenen Dokumente
+geprüft und ggf. aktualisiert werden:
+
+- `docs/USER_GUIDE.md` — neue Befehle, Optionen, Workflows dokumentieren
+- `docs/skills/euer-buchhaltung/SKILL.md` — Buchungsbeispiele und Regeln für AI-Agenten
+- `docs/templates/onboarding-prompt.md` — falls neue Interview-Fragen nötig sind
+- `README.md` — falls sich der Feature-Überblick ändert
+- `DEVELOPMENT.md` — Architektur, Datenmodell, Spec-Tabelle aktualisieren

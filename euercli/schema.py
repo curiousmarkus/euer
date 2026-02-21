@@ -13,7 +13,8 @@ CREATE TABLE IF NOT EXISTS expenses (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     uuid TEXT UNIQUE NOT NULL,
     receipt_name TEXT,
-    date DATE NOT NULL,
+    payment_date DATE,
+    invoice_date DATE,
     vendor TEXT NOT NULL,
     category_id INTEGER REFERENCES categories(id),
     amount_eur REAL NOT NULL,
@@ -27,10 +28,11 @@ CREATE TABLE IF NOT EXISTS expenses (
     private_classification TEXT NOT NULL DEFAULT 'none'
         CHECK(private_classification IN ('none', 'account_rule', 'category_rule', 'manual')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    hash TEXT UNIQUE NOT NULL
+    hash TEXT UNIQUE NOT NULL,
+    CHECK(invoice_date IS NOT NULL OR payment_date IS NOT NULL)
 );
 
-CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(date);
+CREATE INDEX IF NOT EXISTS idx_expenses_payment_date ON expenses(payment_date);
 CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses(category_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_vendor ON expenses(vendor);
 
@@ -38,7 +40,8 @@ CREATE TABLE IF NOT EXISTS income (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     uuid TEXT UNIQUE NOT NULL,
     receipt_name TEXT,
-    date DATE NOT NULL,
+    payment_date DATE,
+    invoice_date DATE,
     source TEXT NOT NULL,
     category_id INTEGER REFERENCES categories(id),
     amount_eur REAL NOT NULL,
@@ -46,10 +49,11 @@ CREATE TABLE IF NOT EXISTS income (
     notes TEXT,
     vat_output REAL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    hash TEXT UNIQUE NOT NULL
+    hash TEXT UNIQUE NOT NULL,
+    CHECK(invoice_date IS NOT NULL OR payment_date IS NOT NULL)
 );
 
-CREATE INDEX IF NOT EXISTS idx_income_date ON income(date);
+CREATE INDEX IF NOT EXISTS idx_income_payment_date ON income(payment_date);
 CREATE INDEX IF NOT EXISTS idx_income_category ON income(category_id);
 
 CREATE TABLE IF NOT EXISTS private_transfers (

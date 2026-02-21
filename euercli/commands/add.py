@@ -12,6 +12,17 @@ from ..services.private_transfers import create_private_transfer
 from ..utils import format_amount
 
 
+def _warn_unusual_date_order(
+    payment_date: str | None,
+    invoice_date: str | None,
+) -> None:
+    if payment_date and invoice_date and payment_date < invoice_date:
+        print(
+            "Warnung: Wertstellungsdatum liegt vor Rechnungsdatum. Bitte prüfen.",
+            file=sys.stderr,
+        )
+
+
 def cmd_add_expense(args):
     """Fügt eine Ausgabe hinzu."""
     db_path = Path(args.db)
@@ -30,7 +41,8 @@ def cmd_add_expense(args):
     try:
         expense = create_expense(
             conn,
-            date=args.date,
+            payment_date=args.payment_date,
+            invoice_date=args.invoice_date,
             vendor=args.vendor,
             amount_eur=args.amount,
             category_name=args.category,
@@ -66,6 +78,7 @@ def cmd_add_expense(args):
         sys.exit(1)
 
     conn.close()
+    _warn_unusual_date_order(expense.payment_date, expense.invoice_date)
 
     vat_info = ""
     vat_output_val = expense.vat_output or 0.0
@@ -83,7 +96,12 @@ def cmd_add_expense(args):
         f"Ausgabe #{expense.id} hinzugefügt: {expense.vendor} {format_amount(expense.amount_eur)} EUR{vat_info}"
     )
 
-    warn_missing_receipt(expense.receipt_name, expense.date, "expenses", config)
+    warn_missing_receipt(
+        expense.receipt_name,
+        expense.invoice_date or expense.payment_date,
+        "expenses",
+        config,
+    )
 
 
 def cmd_add_income(args):
@@ -97,7 +115,8 @@ def cmd_add_income(args):
     try:
         income = create_income(
             conn,
-            date=args.date,
+            payment_date=args.payment_date,
+            invoice_date=args.invoice_date,
             source=args.source,
             amount_eur=args.amount,
             category_name=args.category,
@@ -129,6 +148,7 @@ def cmd_add_income(args):
         sys.exit(1)
 
     conn.close()
+    _warn_unusual_date_order(income.payment_date, income.invoice_date)
 
     vat_info = f" (USt: {income.vat_output:.2f})" if income.vat_output else ""
 
@@ -136,7 +156,12 @@ def cmd_add_income(args):
         f"Einnahme #{income.id} hinzugefügt: {income.source} {format_amount(income.amount_eur)} EUR{vat_info}"
     )
 
-    warn_missing_receipt(income.receipt_name, income.date, "income", config)
+    warn_missing_receipt(
+        income.receipt_name,
+        income.invoice_date or income.payment_date,
+        "income",
+        config,
+    )
 
 
 def _cmd_add_private_transfer(args, *, transfer_type: str) -> None:

@@ -16,7 +16,7 @@ def print_import_schema() -> None:
     print()
     print("Pflichtfelder:")
     print("  - type: expense|income (oder aus Vorzeichen von amount_eur abgeleitet)")
-    print("  - date: YYYY-MM-DD")
+    print("  - payment_date oder invoice_date: YYYY-MM-DD (mindestens eins)")
     print("  - party: Lieferant/Quelle")
     print("  - amount_eur: Betrag in EUR (Ausgaben negativ, Einnahmen positiv)")
     print()
@@ -49,6 +49,8 @@ def print_import_schema() -> None:
     print("  notes: notes, Bemerkung, Notiz")
     print("  account: account, Konto")
     print("  foreign_amount: foreign_amount, foreign, Fremdwährung")
+    print("  payment_date: payment_date, date, Datum, Wertstellung")
+    print("  invoice_date: invoice_date, Rechnungsdatum")
     print()
     print("Hinweis:")
     print("  - CSV-Exporte von 'euer export' können direkt re-importiert werden.")
@@ -100,8 +102,8 @@ def cmd_import(args):
         missing_fields = []
         if not normalized["type"]:
             missing_fields.append("type")
-        if not normalized["date"]:
-            missing_fields.append("date")
+        if not normalized["payment_date"] and not normalized["invoice_date"]:
+            missing_fields.append("payment_date|invoice_date")
         if normalized["amount_eur"] is None:
             missing_fields.append("amount_eur")
         if not normalized["party"]:
@@ -129,7 +131,8 @@ def cmd_import(args):
 
     for normalized in normalized_rows:
         row_type = normalized["type"]
-        date = normalized["date"]
+        payment_date = normalized["payment_date"]
+        invoice_date = normalized["invoice_date"]
         party = normalized["party"]
         category_name = normalized["category"]
         amount = normalized["amount_eur"]
@@ -171,7 +174,7 @@ def cmd_import(args):
                         vat_output = 0.0
 
             tx_hash = compute_hash(
-                str(date), str(party), float(amount), receipt_name or ""
+                str(payment_date or invoice_date), str(party), float(amount), receipt_name or ""
             )
             is_private_paid, private_classification = classify_expense_private_paid(
                 account=str(account) if account is not None else None,
@@ -193,14 +196,15 @@ def cmd_import(args):
             record_uuid = str(uuid.uuid4())
             cursor = conn.execute(
                 """INSERT INTO expenses 
-                   (uuid, receipt_name, date, vendor, category_id, amount_eur, account,
+                   (uuid, receipt_name, payment_date, invoice_date, vendor, category_id, amount_eur, account,
                     foreign_amount, notes, is_rc, vat_input, vat_output,
                     is_private_paid, private_classification, hash)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     record_uuid,
                     receipt_name,
-                    str(date),
+                    str(payment_date) if payment_date is not None else None,
+                    str(invoice_date) if invoice_date is not None else None,
                     str(party),
                     cat_id,
                     amount,
@@ -221,7 +225,8 @@ def cmd_import(args):
             new_data = {
                 "uuid": record_uuid,
                 "receipt_name": receipt_name,
-                "date": str(date),
+                "payment_date": str(payment_date) if payment_date is not None else None,
+                "invoice_date": str(invoice_date) if invoice_date is not None else None,
                 "vendor": str(party),
                 "category_id": cat_id,
                 "amount_eur": amount,
@@ -249,7 +254,7 @@ def cmd_import(args):
                     vat_output = 0.0
 
             tx_hash = compute_hash(
-                str(date), str(party), float(amount), receipt_name or ""
+                str(payment_date or invoice_date), str(party), float(amount), receipt_name or ""
             )
             existing = conn.execute(
                 "SELECT id FROM income WHERE hash = ?", (tx_hash,)
@@ -265,13 +270,14 @@ def cmd_import(args):
             record_uuid = str(uuid.uuid4())
             cursor = conn.execute(
                 """INSERT INTO income
-                   (uuid, receipt_name, date, source, category_id, amount_eur,
+                   (uuid, receipt_name, payment_date, invoice_date, source, category_id, amount_eur,
                     foreign_amount, notes, vat_output, hash)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     record_uuid,
                     receipt_name,
-                    str(date),
+                    str(payment_date) if payment_date is not None else None,
+                    str(invoice_date) if invoice_date is not None else None,
                     str(party),
                     cat_id,
                     amount,
@@ -287,7 +293,8 @@ def cmd_import(args):
             new_data = {
                 "uuid": record_uuid,
                 "receipt_name": receipt_name,
-                "date": str(date),
+                "payment_date": str(payment_date) if payment_date is not None else None,
+                "invoice_date": str(invoice_date) if invoice_date is not None else None,
                 "source": str(party),
                 "category_id": cat_id,
                 "amount_eur": amount,

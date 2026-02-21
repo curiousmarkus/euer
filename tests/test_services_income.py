@@ -111,6 +111,31 @@ class IncomeServiceTestCase(unittest.TestCase):
         assert row is not None
         self.assertEqual(row["record_uuid"], income.uuid)
 
+    def test_create_income_with_invoice_date_only(self) -> None:
+        income = create_income(
+            self.conn,
+            invoice_date="2026-01-11",
+            source="InvoiceOnly",
+            amount_eur=500.0,
+            category_name="Umsatzsteuerpflichtige Betriebseinnahmen",
+            tax_mode="standard",
+            audit_user="tester",
+        )
+        self.assertIsNone(income.payment_date)
+        self.assertEqual(income.invoice_date, "2026-01-11")
+
+    def test_create_income_requires_any_date(self) -> None:
+        with self.assertRaises(ValidationError) as ctx:
+            create_income(
+                self.conn,
+                source="NoDate",
+                amount_eur=500.0,
+                category_name="Umsatzsteuerpflichtige Betriebseinnahmen",
+                tax_mode="standard",
+                audit_user="tester",
+            )
+        self.assertEqual(ctx.exception.code, "missing_dates")
+
 
 if __name__ == "__main__":
     unittest.main()

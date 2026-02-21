@@ -10,6 +10,30 @@ from ..services.income import list_income
 from ..services.private_transfers import get_private_transfer_list, get_sacheinlagen
 
 
+def infer_booking_status(
+    payment_date: str | None,
+    invoice_date: str | None,
+    receipt_name: str | None,
+) -> str:
+    has_payment = bool(payment_date)
+    has_invoice = bool(invoice_date)
+    has_receipt = bool(receipt_name)
+
+    if has_payment and has_invoice and has_receipt:
+        return "Vollständig"
+    if has_payment and not has_receipt:
+        return "Zahlung erfolgt, Beleg fehlt"
+    if has_invoice and not has_payment and has_receipt:
+        return "Rechnung liegt vor, Zahlung ausstehend"
+    if has_invoice and not has_payment and not has_receipt:
+        return "Rechnung liegt vor, kein Beleg, Zahlung ausstehend"
+    if has_payment and has_receipt and not has_invoice:
+        return "Zahlung erfolgt, Rechnungsdatum fehlt"
+    if has_payment and has_invoice and not has_receipt:
+        return "Zahlung erfolgt, Beleg fehlt"
+    return "Unvollständig"
+
+
 def cmd_list_expenses(args):
     """Listet Ausgaben."""
     db_path = Path(args.db)
@@ -30,12 +54,14 @@ def cmd_list_expenses(args):
         writer.writerow(
             [
                 "ID",
-                "Datum",
+                "Wertstellung",
+                "Rechnung",
                 "Lieferant",
                 "Kategorie",
                 "EUR",
                 "Konto",
                 "Beleg",
+                "Status",
                 "Fremdwährung",
                 "Bemerkung",
                 "RC",
@@ -55,12 +81,14 @@ def cmd_list_expenses(args):
             writer.writerow(
                 [
                     r.id,
-                    r.date,
+                    r.payment_date or "",
+                    r.invoice_date or "",
                     r.vendor,
                     cat_str,
                     f"{r.amount_eur:.2f}",
                     r.account or "",
                     r.receipt_name or "",
+                    infer_booking_status(r.payment_date, r.invoice_date, r.receipt_name),
                     r.foreign_amount or "",
                     r.notes or "",
                     "X" if r.is_rc else "",
@@ -82,14 +110,14 @@ def cmd_list_expenses(args):
 
         if has_vat:
             print(
-                f"{'ID':<5} {'Datum':<12} {'Lieferant':<20} {'Kategorie':<25} {'EUR':>10} {'RC':<3} {'USt':>8} {'VorSt':>8} {'Konto':<10}"
+                f"{'ID':<5} {'Payment':<12} {'Invoice':<12} {'Lieferant':<18} {'Kategorie':<20} {'EUR':>10} {'Status':<35} {'RC':<3} {'USt':>8} {'VorSt':>8}"
             )
-            print("-" * 110)
+            print("-" * 150)
         else:
             print(
-                f"{'ID':<5} {'Datum':<12} {'Lieferant':<20} {'Kategorie':<30} {'EUR':>10} {'Konto':<12}"
+                f"{'ID':<5} {'Payment':<12} {'Invoice':<12} {'Lieferant':<20} {'Kategorie':<24} {'EUR':>10} {'Status':<35} {'Konto':<12}"
             )
-            print("-" * 95)
+            print("-" * 140)
 
         total = 0.0
         vat_out_total = 0.0
@@ -103,12 +131,13 @@ def cmd_list_expenses(args):
                 )
             else:
                 cat_str = "Ohne Kategorie"
+            status = infer_booking_status(r.payment_date, r.invoice_date, r.receipt_name)
             if has_vat:
                 vout_str = f"{r.vat_output:.2f}" if r.vat_output else ""
                 vin_str = f"{r.vat_input:.2f}" if r.vat_input else ""
                 rc_str = "X" if r.is_rc else ""
                 print(
-                    f"{r.id:<5} {r.date:<12} {r.vendor[:20]:<20} {cat_str[:25]:<25} {r.amount_eur:>10.2f} {rc_str:<3} {vout_str:>8} {vin_str:>8} {(r.account or ''):<10}"
+                    f"{r.id:<5} {(r.payment_date or ''):<12} {(r.invoice_date or ''):<12} {r.vendor[:18]:<18} {cat_str[:20]:<20} {r.amount_eur:>10.2f} {status[:35]:<35} {rc_str:<3} {vout_str:>8} {vin_str:>8}"
                 )
                 if r.vat_output:
                     vat_out_total += r.vat_output
@@ -116,16 +145,16 @@ def cmd_list_expenses(args):
                     vat_in_total += r.vat_input
             else:
                 print(
-                    f"{r.id:<5} {r.date:<12} {r.vendor[:20]:<20} {cat_str[:30]:<30} {r.amount_eur:>10.2f} {(r.account or ''):<12}"
+                    f"{r.id:<5} {(r.payment_date or ''):<12} {(r.invoice_date or ''):<12} {r.vendor[:20]:<20} {cat_str[:24]:<24} {r.amount_eur:>10.2f} {status[:35]:<35} {(r.account or ''):<12}"
                 )
             total += r.amount_eur
-        print("-" * (110 if has_vat else 95))
+        print("-" * (150 if has_vat else 140))
         if has_vat:
             print(
-                f"{'GESAMT':<68} {total:>10.2f}     {vat_out_total:>8.2f} {vat_in_total:>8.2f}"
+                f"{'GESAMT':<90} {total:>10.2f} {'':<39} {vat_out_total:>8.2f} {vat_in_total:>8.2f}"
             )
         else:
-            print(f"{'GESAMT':<69} {total:>10.2f}")
+            print(f"{'GESAMT':<76} {total:>10.2f}")
 
 
 def cmd_list_income(args):
@@ -148,11 +177,13 @@ def cmd_list_income(args):
         writer.writerow(
             [
                 "ID",
-                "Datum",
+                "Wertstellung",
+                "Rechnung",
                 "Quelle",
                 "Kategorie",
                 "EUR",
                 "Beleg",
+                "Status",
                 "Fremdwährung",
                 "Bemerkung",
                 "Umsatzsteuer",
@@ -170,11 +201,13 @@ def cmd_list_income(args):
             writer.writerow(
                 [
                     r.id,
-                    r.date,
+                    r.payment_date or "",
+                    r.invoice_date or "",
                     r.source,
                     cat_str,
                     f"{r.amount_eur:.2f}",
                     r.receipt_name or "",
+                    infer_booking_status(r.payment_date, r.invoice_date, r.receipt_name),
                     r.foreign_amount or "",
                     r.notes or "",
                     f"{r.vat_output:.2f}" if r.vat_output else "",
@@ -189,12 +222,14 @@ def cmd_list_income(args):
 
         if has_vat:
             print(
-                f"{'ID':<5} {'Datum':<12} {'Quelle':<25} {'Kategorie':<35} {'EUR':>12} {'USt':>8}"
+                f"{'ID':<5} {'Payment':<12} {'Invoice':<12} {'Quelle':<20} {'Kategorie':<26} {'EUR':>12} {'Status':<30} {'USt':>8}"
             )
-            print("-" * 105)
+            print("-" * 140)
         else:
-            print(f"{'ID':<5} {'Datum':<12} {'Quelle':<25} {'Kategorie':<35} {'EUR':>12}")
-            print("-" * 95)
+            print(
+                f"{'ID':<5} {'Payment':<12} {'Invoice':<12} {'Quelle':<25} {'Kategorie':<25} {'EUR':>12} {'Status':<30}"
+            )
+            print("-" * 130)
 
         total = 0.0
         vat_out_total = 0.0
@@ -208,24 +243,25 @@ def cmd_list_income(args):
                 )
             else:
                 cat_str = "Ohne Kategorie"
+            status = infer_booking_status(r.payment_date, r.invoice_date, r.receipt_name)
             amount_str = f"{r.amount_eur:>12.2f}"
             if has_vat:
                 vat_str = f"{r.vat_output:.2f}" if r.vat_output else ""
                 print(
-                    f"{r.id:<5} {r.date:<12} {r.source[:25]:<25} {cat_str[:35]:<35} {amount_str} {vat_str:>8}"
+                    f"{r.id:<5} {(r.payment_date or ''):<12} {(r.invoice_date or ''):<12} {r.source[:20]:<20} {cat_str[:26]:<26} {amount_str} {status[:30]:<30} {vat_str:>8}"
                 )
                 if r.vat_output:
                     vat_out_total += r.vat_output
             else:
                 print(
-                    f"{r.id:<5} {r.date:<12} {r.source[:25]:<25} {cat_str[:35]:<35} {amount_str}"
+                    f"{r.id:<5} {(r.payment_date or ''):<12} {(r.invoice_date or ''):<12} {r.source[:25]:<25} {cat_str[:25]:<25} {amount_str} {status[:30]:<30}"
                 )
             total += r.amount_eur
-        print("-" * (105 if has_vat else 95))
+        print("-" * (140 if has_vat else 130))
         if has_vat:
-            print(f"{'GESAMT':<79} {total:>12.2f} {vat_out_total:>8.2f}")
+            print(f"{'GESAMT':<107} {total:>12.2f} {'':<30} {vat_out_total:>8.2f}")
         else:
-            print(f"{'GESAMT':<79} {total:>12.2f}")
+            print(f"{'GESAMT':<81} {total:>12.2f}")
 
 
 def cmd_list_categories(args):

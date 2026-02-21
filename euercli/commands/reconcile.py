@@ -16,9 +16,9 @@ def _reconcile_private_expenses(
     query = "SELECT * FROM expenses WHERE 1=1"
     params: list[object] = []
     if year is not None:
-        query += " AND strftime('%Y', date) = ?"
+        query += " AND strftime('%Y', COALESCE(payment_date, invoice_date)) = ?"
         params.append(str(year))
-    query += " ORDER BY date ASC, id ASC"
+    query += " ORDER BY COALESCE(payment_date, invoice_date) ASC, id ASC"
 
     category_rows = conn.execute(
         "SELECT id, name FROM categories WHERE type = 'expense'"

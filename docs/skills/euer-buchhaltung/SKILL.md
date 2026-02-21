@@ -35,10 +35,10 @@ Nutze `euer query` für komplexe Filter. Ausgabe ist CSV auf stdout.
 
 ```bash
 # Ausgaben eines Lieferanten in einem Zeitraum
-euer query "SELECT id, date, vendor, amount_eur FROM expenses WHERE vendor LIKE '%OpenAI%' AND date BETWEEN '2026-01-01' AND '2026-12-31' ORDER BY date DESC"
+euer query "SELECT id, payment_date, invoice_date, vendor, amount_eur FROM expenses WHERE vendor LIKE '%OpenAI%' AND payment_date BETWEEN '2026-01-01' AND '2026-12-31' ORDER BY payment_date DESC"
 
 # Große Ausgaben (Betrag <= -500)
-euer query "SELECT id, date, vendor, amount_eur FROM expenses WHERE amount_eur <= -500 ORDER BY amount_eur ASC"
+euer query "SELECT id, payment_date, invoice_date, vendor, amount_eur FROM expenses WHERE amount_eur <= -500 ORDER BY amount_eur ASC"
 ```
 
 ## Verfügbare Commands
@@ -48,7 +48,8 @@ euer query "SELECT id, date, vendor, amount_eur FROM expenses WHERE amount_eur <
 ```bash
 # Ausgabe hinzufügen
 euer add expense \
-    --date YYYY-MM-DD \
+    --payment-date YYYY-MM-DD \
+    [--invoice-date YYYY-MM-DD] \
     --vendor "Lieferant" \
     --category "Kategorie" \
     --amount -XX.XX  # Brutto-Betrag (negativ, was vom Konto abgeht) \
@@ -65,7 +66,7 @@ euer list expenses [--year YYYY] [--month MM] [--category "..."]
 # Zeigt RC-Flag, USt (Output) und VorSt (Input) an, falls vorhanden.
 
 # Ausgabe aktualisieren
-euer update expense <ID> [--date ...] [--vendor ...] [--amount ...] [--rc] [--private-paid|--no-private-paid] ...
+euer update expense <ID> [--payment-date ...] [--invoice-date ...] [--vendor ...] [--amount ...] [--rc] [--private-paid|--no-private-paid] ...
 
 # Ausgabe löschen
 euer delete expense <ID> [--force]
@@ -76,7 +77,8 @@ euer delete expense <ID> [--force]
 ```bash
 # Einnahme hinzufügen
 euer add income \
-    --date YYYY-MM-DD \
+    --payment-date YYYY-MM-DD \
+    [--invoice-date YYYY-MM-DD] \
     --source "Kunde/Quelle" \
     --category "Kategorie" \
     --amount XX.XX  # Brutto-Betrag (positiv, was auf dem Konto eingeht) \
@@ -89,7 +91,7 @@ euer add income \
 euer list income [--year YYYY] [--month MM]
 
 # Einnahme aktualisieren
-euer update income <ID> [--date ...] [--source ...] [--amount ...] ...
+euer update income <ID> [--payment-date ...] [--invoice-date ...] [--source ...] [--amount ...] ...
 
 # Einnahme löschen
 euer delete income <ID> [--force]
@@ -162,13 +164,13 @@ Hinweis:
 Workflow:
 1. Importieren bzw. Eintrag erfassen, Pflichtfelder müssen vorhanden sein.
 2. `euer incomplete list` prüfen und offene Aufgaben festhalten
-   (fehlende `category`, `receipt`, `vat`, `account`).
+   (fehlende `payment_date`, `invoice_date`, `category`, `receipt`, `vat`, `account`).
 3. Fehlende Felder per `euer update expense <ID>` /
    `euer update income <ID>` ergänzen.
 Hinweis: Für die Kategorie **Gezahlte USt (57)** ist kein Beleg erforderlich.
 
 Import-Schema (Kurzfassung):
-- Pflichtfelder: `type`, `date`, `party`, `amount_eur`
+- Pflichtfelder: `type`, `party`, `amount_eur` und mindestens eines aus `payment_date`/`invoice_date` (`date` gilt als Alias für `payment_date`)
 - Optional: `category`, `account`, `foreign_amount`, `receipt_name`, `notes`, `rc`,
   `private_paid`, `vat_input`, `vat_output`
 - Fehlende Pflichtfelder führen zu einem Import-Abbruch.
@@ -281,7 +283,8 @@ der nicht abziehbare 30%-Anteil wird nur im Summary ausgewiesen.
 | Spalte | Bedeutung | Format / Hinweis |
 |--------|-----------|------------------|
 | `id` | Eindeutige ID | Automatisch vergeben |
-| `date` | Buchungsdatum | `YYYY-MM-DD` |
+| `payment_date` | Wertstellungsdatum (EÜR) | `YYYY-MM-DD`, kann leer sein |
+| `invoice_date` | Rechnungsdatum | `YYYY-MM-DD`, kann leer sein |
 | `vendor` | Lieferant | Name des Anbieters |
 | `category` | Kategorie | Name der Ausgabenkategorie |
 | `amount_eur`| Bruttobetrag | **Immer negativ** (z.B. -10.00) |
@@ -296,7 +299,8 @@ der nicht abziehbare 30%-Anteil wird nur im Summary ausgewiesen.
 | Spalte | Bedeutung | Format / Hinweis |
 |--------|-----------|------------------|
 | `id` | Eindeutige ID | Automatisch vergeben |
-| `date` | Buchungsdatum | `YYYY-MM-DD` |
+| `payment_date` | Wertstellungsdatum (EÜR) | `YYYY-MM-DD`, kann leer sein |
+| `invoice_date` | Rechnungsdatum | `YYYY-MM-DD`, kann leer sein |
 | `source` | Kunde/Quelle | Wer hat gezahlt? |
 | `category` | Kategorie | Name der Einnahmenkategorie |
 | `amount_eur`| Bruttobetrag | **Immer positiv** (z.B. 1500.00) |

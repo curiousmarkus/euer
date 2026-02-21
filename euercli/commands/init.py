@@ -7,6 +7,148 @@ from ..db import get_db_connection
 from ..schema import SCHEMA, SEED_CATEGORIES
 
 
+def _get_table_columns(conn, table_name: str) -> dict[str, dict]:
+    rows = conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+    return {row["name"]: dict(row) for row in rows}
+
+
+def _migrate_expenses_dates(conn) -> None:
+    columns = _get_table_columns(conn, "expenses")
+    payment_expr = "payment_date" if "payment_date" in columns else "date"
+    invoice_expr = "invoice_date" if "invoice_date" in columns else "NULL"
+    is_private_paid_expr = "is_private_paid" if "is_private_paid" in columns else "0"
+    private_classification_expr = (
+        "private_classification" if "private_classification" in columns else "'none'"
+    )
+
+    conn.execute("ALTER TABLE expenses RENAME TO expenses_old")
+    conn.execute(
+        """
+        CREATE TABLE expenses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            uuid TEXT UNIQUE NOT NULL,
+            receipt_name TEXT,
+            payment_date DATE,
+            invoice_date DATE,
+            vendor TEXT NOT NULL,
+            category_id INTEGER REFERENCES categories(id),
+            amount_eur REAL NOT NULL,
+            account TEXT,
+            foreign_amount TEXT,
+            notes TEXT,
+            is_rc INTEGER NOT NULL DEFAULT 0,
+            vat_input REAL,
+            vat_output REAL,
+            is_private_paid INTEGER NOT NULL DEFAULT 0 CHECK(is_private_paid IN (0, 1)),
+            private_classification TEXT NOT NULL DEFAULT 'none'
+                CHECK(private_classification IN ('none', 'account_rule', 'category_rule', 'manual')),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            hash TEXT UNIQUE NOT NULL,
+            CHECK(invoice_date IS NOT NULL OR payment_date IS NOT NULL)
+        )
+        """
+    )
+    conn.execute(
+        f"""
+        INSERT INTO expenses (
+            id, uuid, receipt_name, payment_date, invoice_date, vendor, category_id,
+            amount_eur, account, foreign_amount, notes, is_rc, vat_input, vat_output,
+            is_private_paid, private_classification, created_at, hash
+        )
+        SELECT
+            id, uuid, receipt_name, {payment_expr}, {invoice_expr}, vendor, category_id,
+            amount_eur, account, foreign_amount, notes, is_rc, vat_input, vat_output,
+            {is_private_paid_expr}, {private_classification_expr}, created_at, hash
+        FROM expenses_old
+        """
+    )
+    conn.execute("DROP TABLE expenses_old")
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_expenses_payment_date ON expenses(payment_date)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses(category_id)"
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_expenses_vendor ON expenses(vendor)")
+
+
+def _migrate_income_dates(conn) -> None:
+    columns = _get_table_columns(conn, "income")
+    payment_expr = "payment_date" if "payment_date" in columns else "date"
+    invoice_expr = "invoice_date" if "invoice_date" in columns else "NULL"
+
+    conn.execute("ALTER TABLE income RENAME TO income_old")
+    conn.execute(
+        """
+        CREATE TABLE income (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            uuid TEXT UNIQUE NOT NULL,
+            receipt_name TEXT,
+            payment_date DATE,
+            invoice_date DATE,
+            source TEXT NOT NULL,
+            category_id INTEGER REFERENCES categories(id),
+            amount_eur REAL NOT NULL,
+            foreign_amount TEXT,
+            notes TEXT,
+            vat_output REAL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            hash TEXT UNIQUE NOT NULL,
+            CHECK(invoice_date IS NOT NULL OR payment_date IS NOT NULL)
+        )
+        """
+    )
+    conn.execute(
+        f"""
+        INSERT INTO income (
+            id, uuid, receipt_name, payment_date, invoice_date, source, category_id,
+            amount_eur, foreign_amount, notes, vat_output, created_at, hash
+        )
+        SELECT
+            id, uuid, receipt_name, {payment_expr}, {invoice_expr}, source, category_id,
+            amount_eur, foreign_amount, notes, vat_output, created_at, hash
+        FROM income_old
+        """
+    )
+    conn.execute("DROP TABLE income_old")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_income_payment_date ON income(payment_date)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_income_category ON income(category_id)")
+
+
+def ensure_payment_invoice_columns(conn) -> None:
+    expense_columns = _get_table_columns(conn, "expenses")
+    income_columns = _get_table_columns(conn, "income")
+
+    migrate_expenses = (
+        "date" in expense_columns
+        or "invoice_date" not in expense_columns
+        or expense_columns.get("payment_date", {}).get("notnull") == 1
+    )
+    migrate_income = (
+        "date" in income_columns
+        or "invoice_date" not in income_columns
+        or income_columns.get("payment_date", {}).get("notnull") == 1
+    )
+
+    if not migrate_expenses and not migrate_income:
+        conn.execute("DROP INDEX IF EXISTS idx_expenses_date")
+        conn.execute("DROP INDEX IF EXISTS idx_income_date")
+        return
+
+    conn.execute("PRAGMA foreign_keys = OFF")
+    try:
+        if migrate_expenses:
+            _migrate_expenses_dates(conn)
+        if migrate_income:
+            _migrate_income_dates(conn)
+    finally:
+        conn.execute("PRAGMA foreign_keys = ON")
+
+    conn.execute("DROP INDEX IF EXISTS idx_expenses_date")
+    conn.execute("DROP INDEX IF EXISTS idx_income_date")
+    conn.commit()
+
+
 def ensure_expenses_private_columns(conn) -> None:
     """Ergänzt fehlende private-Spalten in bestehenden Datenbanken."""
     columns = {
@@ -33,6 +175,7 @@ def cmd_init(args):
 
     conn = get_db_connection(db_path)
     conn.executescript(SCHEMA)
+    ensure_payment_invoice_columns(conn)
     ensure_expenses_private_columns(conn)
 
     # Kategorien seeden (nur wenn leer)

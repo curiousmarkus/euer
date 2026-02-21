@@ -84,9 +84,28 @@ def normalize_import_row(row: dict) -> dict:
 
     category_value = get_row_value(row, "category", "category_name", "Kategorie")
 
+    payment_date = get_row_value(
+        row,
+        "payment_date",
+        "value_date",
+        "date",
+        "Datum",
+        "Wertstellung",
+        "Wertstellungsdatum",
+    )
+    invoice_date = get_row_value(
+        row,
+        "invoice_date",
+        "Rechnungsdatum",
+        "Rechnung",
+        "invoice",
+    )
+
     return {
         "type": row_type,
-        "date": get_row_value(row, "date", "Datum"),
+        "date": payment_date,
+        "payment_date": payment_date,
+        "invoice_date": invoice_date,
         "party": get_row_value(
             row,
             "party",

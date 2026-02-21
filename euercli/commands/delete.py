@@ -28,7 +28,8 @@ def cmd_delete_expense(args):
 
     if not args.force:
         print(f"Ausgabe #{args.id}:")
-        print(f"  Datum:     {expense.date}")
+        print(f"  Wertstellung: {expense.payment_date or '-'}")
+        print(f"  Rechnung:     {expense.invoice_date or '-'}")
         print(f"  Lieferant: {expense.vendor}")
         print(f"  Kategorie: {expense.category_name or '-'}")
         print(f"  Betrag:    {expense.amount_eur:.2f} EUR")
@@ -67,7 +68,8 @@ def cmd_delete_income(args):
 
     if not args.force:
         print(f"Einnahme #{args.id}:")
-        print(f"  Datum:    {income.date}")
+        print(f"  Wertstellung: {income.payment_date or '-'}")
+        print(f"  Rechnung:     {income.invoice_date or '-'}")
         print(f"  Quelle:   {income.source}")
         print(f"  Kategorie: {income.category_name or '-'}")
         print(f"  Betrag:   {income.amount_eur:.2f} EUR")

@@ -28,7 +28,8 @@ def cmd_summary(args):
         """SELECT c.name, c.eur_line, SUM(e.amount_eur) as total
            FROM expenses e
            LEFT JOIN categories c ON e.category_id = c.id
-           WHERE strftime('%Y', e.date) = ?
+           WHERE e.payment_date IS NOT NULL
+             AND strftime('%Y', e.payment_date) = ?
            GROUP BY c.id
            ORDER BY c.eur_line, c.name""",
         (str(year),),
@@ -72,7 +73,8 @@ def cmd_summary(args):
     vat_stats_expenses = conn.execute(
         """SELECT SUM(vat_input) as sum_input, SUM(vat_output) as sum_output
            FROM expenses
-           WHERE strftime('%Y', date) = ?""",
+           WHERE payment_date IS NOT NULL
+             AND strftime('%Y', payment_date) = ?""",
         (str(year),),
     ).fetchone()
 
@@ -84,7 +86,8 @@ def cmd_summary(args):
     vat_stats_income = conn.execute(
         """SELECT SUM(vat_output) as sum_output
            FROM income
-           WHERE strftime('%Y', date) = ?""",
+           WHERE payment_date IS NOT NULL
+             AND strftime('%Y', payment_date) = ?""",
         (str(year),),
     ).fetchone()
 
@@ -120,7 +123,8 @@ def cmd_summary(args):
         """SELECT c.name, c.eur_line, SUM(i.amount_eur) as total
            FROM income i
            LEFT JOIN categories c ON i.category_id = c.id
-           WHERE strftime('%Y', i.date) = ?
+           WHERE i.payment_date IS NOT NULL
+             AND strftime('%Y', i.payment_date) = ?
            GROUP BY c.id
            ORDER BY c.eur_line, c.name""",
         (str(year),),

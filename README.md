@@ -80,7 +80,7 @@ euer setup
 
 ### 3. Erste Buchung (lass es deinen AI-Agent machen!)
 ```bash
-euer add expense --date 2026-02-02 --vendor "Hetzner" --category "Laufende EDV-Kosten" --amount -10.00
+euer add expense --payment-date 2026-02-02 --vendor "Hetzner" --category "Laufende EDV-Kosten" --amount -10.00
 ```
 
 ---
@@ -92,7 +92,7 @@ Gib es an deinen KI-Agenten:
 > "Buche diese Belege in euer ein."
 
 1. Der Agent holt sich die korrekten Steuerkategorien mit `euer list categories`
-2. Fügt die Belege in die EÜR mit `euer add expense --date ... --vendor ...`
+2. Fügt die Belege in die EÜR mit `euer add expense --payment-date ... --vendor ...`
 3. kontrolliert die Vollständigkeit mit `euer incomplete list`
 4. gibt dir eine Übersicht über deine EÜR mit `euer summary --year 2026`
 

@@ -228,7 +228,7 @@ Offene Change Requests werden innerhalb der jeweiligen Spec dokumentiert.
 | 003 | Modularisierung | Implementiert |
 | 004 | Steuerlogik (KU/Standard) | Implementiert |
 | 005 | Refactoring Open Core | Implementiert |
-| 006 | Rechnungs-/Wertstellungsdatum | Offen |
+| 006 | Rechnungs-/Wertstellungsdatum | Implementiert |
 | 007 | Windows-Kompatibilität | Implementiert |
 | 008 | Privateinlagen & Privatentnahmen | Implementiert |
 | 009 | Service-Layer-Architektur (Import) | Offen |

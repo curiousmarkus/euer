@@ -191,14 +191,31 @@ class EuerCLITestCase(unittest.TestCase):
 
         rows = self.list_expenses_csv()
         self.assertEqual(len(rows), 2)
-        # ID, Datum, Lieferant, Kategorie, EUR, Konto, Beleg, Fremdwährung, Bemerkung, RC, Vorsteuer, Umsatzsteuer
-        rec_id, date, vendor, category, amount, account, receipt, foreign, notes, rc, vat_input, vat_output = rows[1]
-        self.assertEqual(date, "2026-01-15")
+        # ID, Wertstellung, Rechnung, Lieferant, Kategorie, EUR, Konto, Beleg, Status, Fremdwährung, Bemerkung, RC, Vorsteuer, Umsatzsteuer
+        (
+            rec_id,
+            payment_date,
+            invoice_date,
+            vendor,
+            category,
+            amount,
+            account,
+            receipt,
+            status,
+            foreign,
+            notes,
+            rc,
+            vat_input,
+            vat_output,
+        ) = rows[1]
+        self.assertEqual(payment_date, "2026-01-15")
+        self.assertEqual(invoice_date, "")
         self.assertEqual(vendor, "TestVendor")
         self.assertEqual(category, "Arbeitsmittel (51)")
         self.assertEqual(amount, "-10.00")
         self.assertEqual(account, "Bank")
         self.assertEqual(receipt, "receipt.pdf")
+        self.assertIn("Zahlung erfolgt", status)
         self.assertEqual(foreign, "")
         self.assertEqual(notes, "")
         self.assertEqual(rc, "")
@@ -212,16 +229,58 @@ class EuerCLITestCase(unittest.TestCase):
 
         rows = self.list_income_csv()
         self.assertEqual(len(rows), 2)
-        # ID, Datum, Quelle, Kategorie, EUR, Beleg, Fremdwährung, Bemerkung, Umsatzsteuer
-        rec_id, date, source, category, amount, receipt, foreign, notes, vat_output = rows[1]
-        self.assertEqual(date, "2026-01-20")
+        # ID, Wertstellung, Rechnung, Quelle, Kategorie, EUR, Beleg, Status, Fremdwährung, Bemerkung, Umsatzsteuer
+        (
+            rec_id,
+            payment_date,
+            invoice_date,
+            source,
+            category,
+            amount,
+            receipt,
+            status,
+            foreign,
+            notes,
+            vat_output,
+        ) = rows[1]
+        self.assertEqual(payment_date, "2026-01-20")
+        self.assertEqual(invoice_date, "")
         self.assertEqual(source, "TestClient")
         self.assertEqual(category, "Umsatzsteuerpflichtige Betriebseinnahmen (14)")
         self.assertEqual(amount, "1500.00")
         self.assertEqual(receipt, "invoice.pdf")
+        self.assertIn("Zahlung erfolgt", status)
         self.assertEqual(foreign, "")
         self.assertEqual(notes, "")
         self.assertEqual(vat_output, "")
+
+    def test_add_expense_with_invoice_date_only(self):
+        result = self.run_cli(
+            [
+                "add",
+                "expense",
+                "--invoice-date",
+                "2026-01-16",
+                "--vendor",
+                "InvoiceOnly",
+                "--amount",
+                "-22.99",
+            ],
+            check=True,
+        )
+        self.assertIn("Ausgabe #1 hinzugefügt", result.stdout)
+
+        rows = self.list_expenses_csv()
+        self.assertEqual(rows[1][1], "")
+        self.assertEqual(rows[1][2], "2026-01-16")
+        self.assertIn("Zahlung ausstehend", rows[1][8])
+
+    def test_add_expense_requires_any_date(self):
+        result = self.run_cli(
+            ["add", "expense", "--vendor", "NoDate", "--amount", "-10.00"]
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("payment_date", result.stderr)
 
     def test_add_private_deposit(self):
         result = self.add_private_deposit(amount="250.00", description="Eigenkapital")
@@ -387,8 +446,8 @@ class EuerCLITestCase(unittest.TestCase):
         self.assertIn("Ausgabe #1 aktualisiert", result.stdout)
 
         rows = self.list_expenses_csv()
-        self.assertEqual(rows[1][4], "-15.50")
-        self.assertEqual(rows[1][8], "Korrigiert")
+        self.assertEqual(rows[1][5], "-15.50")
+        self.assertEqual(rows[1][10], "Korrigiert")
 
     def test_update_income(self):
         self.add_income()
@@ -399,8 +458,8 @@ class EuerCLITestCase(unittest.TestCase):
         self.assertIn("Einnahme #1 aktualisiert", result.stdout)
 
         rows = self.list_income_csv()
-        self.assertEqual(rows[1][4], "1750.00")
-        self.assertEqual(rows[1][7], "Korrigiert")
+        self.assertEqual(rows[1][5], "1750.00")
+        self.assertEqual(rows[1][9], "Korrigiert")
 
     def test_update_expense_can_clear_private_paid(self):
         self.add_expense(private_paid=True)
@@ -900,8 +959,8 @@ class EuerCLITestCase(unittest.TestCase):
 
         rows = self.list_expenses_csv()
         self.assertEqual(len(rows), 2)
-        self.assertEqual(rows[1][3], "Arbeitsmittel (51)")
-        self.assertEqual(rows[1][2], "1und1")
+        self.assertEqual(rows[1][4], "Arbeitsmittel (51)")
+        self.assertEqual(rows[1][3], "1und1")
 
     def test_import_missing_required_fails(self):
         import_file = self.root / "import_missing.csv"

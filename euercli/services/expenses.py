@@ -12,11 +12,32 @@ from .private_classification import classify_expense_private_paid
 from .utils import get_optional
 
 
+def _resolve_dates(
+    *,
+    payment_date: str | None,
+    invoice_date: str | None,
+    legacy_date: str | None = None,
+) -> tuple[str | None, str | None]:
+    resolved_payment_date = payment_date if payment_date is not None else legacy_date
+    resolved_invoice_date = invoice_date
+    if not resolved_payment_date and not resolved_invoice_date:
+        raise ValidationError(
+            "Mindestens eines der Felder payment_date oder invoice_date muss gesetzt sein.",
+            code="missing_dates",
+        )
+    return resolved_payment_date, resolved_invoice_date
+
+
+def _hash_date(payment_date: str | None, invoice_date: str | None) -> str:
+    return payment_date or invoice_date or ""
+
+
 def row_to_expense(row: sqlite3.Row) -> Expense:
     return Expense(
         id=row["id"],
         uuid=row["uuid"],
-        date=row["date"],
+        payment_date=get_optional(row, "payment_date"),
+        invoice_date=get_optional(row, "invoice_date"),
         vendor=row["vendor"],
         amount_eur=row["amount_eur"],
         category_id=get_optional(row, "category_id"),
@@ -38,9 +59,11 @@ def row_to_expense(row: sqlite3.Row) -> Expense:
 def create_expense(
     conn: sqlite3.Connection,
     *,
-    date: str,
     vendor: str,
     amount_eur: float,
+    payment_date: str | None = None,
+    invoice_date: str | None = None,
+    date: str | None = None,
     category_name: str | None = None,
     account: str | None = None,
     foreign_amount: str | None = None,
@@ -53,6 +76,12 @@ def create_expense(
     tax_mode: str,
     audit_user: str,
 ) -> Expense:
+    resolved_payment_date, resolved_invoice_date = _resolve_dates(
+        payment_date=payment_date,
+        invoice_date=invoice_date,
+        legacy_date=date,
+    )
+
     category_id: int | None = None
     if category_name:
         category = get_category_by_name(conn, category_name, "expense")
@@ -93,7 +122,12 @@ def create_expense(
             details={"tax_mode": tax_mode},
         )
 
-    tx_hash = compute_hash(date, vendor, amount_eur, receipt_name or "")
+    tx_hash = compute_hash(
+        _hash_date(resolved_payment_date, resolved_invoice_date),
+        vendor,
+        amount_eur,
+        receipt_name or "",
+    )
     existing = conn.execute(
         "SELECT id FROM expenses WHERE hash = ?",
         (tx_hash,),
@@ -115,14 +149,15 @@ def create_expense(
 
     cursor = conn.execute(
         """INSERT INTO expenses
-           (uuid, receipt_name, date, vendor, category_id, amount_eur, account,
+           (uuid, receipt_name, payment_date, invoice_date, vendor, category_id, amount_eur, account,
             foreign_amount, notes, is_rc, vat_input, vat_output,
             is_private_paid, private_classification, hash)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             record_uuid,
             receipt_name,
-            date,
+            resolved_payment_date,
+            resolved_invoice_date,
             vendor,
             category_id,
             amount_eur,
@@ -143,7 +178,8 @@ def create_expense(
     new_data = {
         "uuid": record_uuid,
         "receipt_name": receipt_name,
-        "date": date,
+        "payment_date": resolved_payment_date,
+        "invoice_date": resolved_invoice_date,
         "vendor": vendor,
         "category_id": category_id,
         "amount_eur": amount_eur,
@@ -171,7 +207,8 @@ def create_expense(
     return Expense(
         id=record_id,
         uuid=record_uuid,
-        date=date,
+        payment_date=resolved_payment_date,
+        invoice_date=resolved_invoice_date,
         vendor=vendor,
         amount_eur=amount_eur,
         category_id=category_id,
@@ -196,7 +233,8 @@ def list_expenses(
     category_name: str | None = None,
 ) -> list[Expense]:
     query = """
-        SELECT e.id, e.uuid, e.date, e.vendor, e.category_id, c.name as category_name,
+        SELECT e.id, e.uuid, e.payment_date, e.invoice_date, e.vendor, e.category_id,
+               c.name as category_name,
                c.eur_line as category_eur_line, e.amount_eur, e.account, e.receipt_name,
                e.foreign_amount, e.notes, e.is_rc, e.vat_input, e.vat_output,
                e.is_private_paid, e.private_classification, e.hash
@@ -207,16 +245,16 @@ def list_expenses(
     params: list[object] = []
 
     if year:
-        query += " AND strftime('%Y', e.date) = ?"
+        query += " AND strftime('%Y', COALESCE(e.payment_date, e.invoice_date)) = ?"
         params.append(str(year))
     if month:
-        query += " AND strftime('%m', e.date) = ?"
+        query += " AND strftime('%m', COALESCE(e.payment_date, e.invoice_date)) = ?"
         params.append(f"{month:02d}")
     if category_name:
         query += " AND LOWER(c.name) = LOWER(?)"
         params.append(category_name)
 
-    query += " ORDER BY e.date DESC, e.id DESC"
+    query += " ORDER BY COALESCE(e.payment_date, e.invoice_date) DESC, e.id DESC"
 
     rows = conn.execute(query, params).fetchall()
     return [row_to_expense(row) for row in rows]
@@ -224,7 +262,8 @@ def list_expenses(
 
 def get_expense_detail(conn: sqlite3.Connection, record_id: int) -> Expense:
     row = conn.execute(
-        """SELECT e.id, e.uuid, e.date, e.vendor, e.category_id, c.name as category_name,
+        """SELECT e.id, e.uuid, e.payment_date, e.invoice_date, e.vendor, e.category_id,
+                  c.name as category_name,
                   c.eur_line as category_eur_line, e.amount_eur, e.account, e.receipt_name,
                   e.foreign_amount, e.notes, e.is_rc, e.vat_input, e.vat_output,
                   e.is_private_paid, e.private_classification, e.hash
@@ -246,6 +285,8 @@ def update_expense(
     conn: sqlite3.Connection,
     *,
     record_id: int,
+    payment_date: str | None = None,
+    invoice_date: str | None = None,
     date: str | None = None,
     vendor: str | None = None,
     category_name: str | None = None,
@@ -275,7 +316,16 @@ def update_expense(
     old_data = row_to_dict(row)
 
     new_receipt = receipt_name if receipt_name is not None else row["receipt_name"]
-    new_date = date if date else row["date"]
+    new_payment_date = (
+        payment_date
+        if payment_date is not None
+        else (date if date is not None else row["payment_date"])
+    )
+    new_invoice_date = invoice_date if invoice_date is not None else row["invoice_date"]
+    new_payment_date, new_invoice_date = _resolve_dates(
+        payment_date=new_payment_date,
+        invoice_date=new_invoice_date,
+    )
     new_vendor = vendor if vendor else row["vendor"]
     new_amount = amount_eur if amount_eur is not None else row["amount_eur"]
     new_account = account if account is not None else row["account"]
@@ -362,17 +412,23 @@ def update_expense(
         new_is_private_paid = bool(row["is_private_paid"])
         new_private_classification = row["private_classification"]
 
-    new_hash = compute_hash(new_date, new_vendor, new_amount, new_receipt or "")
+    new_hash = compute_hash(
+        _hash_date(new_payment_date, new_invoice_date),
+        new_vendor,
+        new_amount,
+        new_receipt or "",
+    )
 
     conn.execute(
         """UPDATE expenses SET
-           receipt_name = ?, date = ?, vendor = ?, category_id = ?, amount_eur = ?,
+           receipt_name = ?, payment_date = ?, invoice_date = ?, vendor = ?, category_id = ?, amount_eur = ?,
            account = ?, foreign_amount = ?, notes = ?, is_rc = ?, vat_input = ?, vat_output = ?,
            is_private_paid = ?, private_classification = ?, hash = ?
            WHERE id = ?""",
         (
             new_receipt,
-            new_date,
+            new_payment_date,
+            new_invoice_date,
             new_vendor,
             category_id,
             new_amount,
@@ -394,7 +450,8 @@ def update_expense(
     new_data = {
         "uuid": record_uuid,
         "receipt_name": new_receipt,
-        "date": new_date,
+        "payment_date": new_payment_date,
+        "invoice_date": new_invoice_date,
         "vendor": new_vendor,
         "category_id": category_id,
         "amount_eur": new_amount,
@@ -423,7 +480,8 @@ def update_expense(
     return Expense(
         id=record_id,
         uuid=record_uuid,
-        date=new_date,
+        payment_date=new_payment_date,
+        invoice_date=new_invoice_date,
         vendor=new_vendor,
         amount_eur=new_amount,
         category_id=category_id,

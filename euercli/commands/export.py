@@ -35,13 +35,16 @@ def cmd_export(args):
     year = args.year
 
     if year is not None:
-        year_filter = "WHERE strftime('%Y', e.date) = ?"
+        year_filter = "WHERE strftime('%Y', COALESCE(e.payment_date, e.invoice_date)) = ?"
         year_params = (str(year),)
-        income_filter = "WHERE strftime('%Y', i.date) = ?"
+        income_filter = "WHERE strftime('%Y', COALESCE(i.payment_date, i.invoice_date)) = ?"
         income_params = (str(year),)
         private_filter = "WHERE strftime('%Y', p.date) = ?"
         private_params = (str(year),)
-        sacheinlagen_filter = "WHERE e.is_private_paid = 1 AND strftime('%Y', e.date) = ?"
+        sacheinlagen_filter = (
+            "WHERE e.is_private_paid = 1 "
+            "AND strftime('%Y', COALESCE(e.payment_date, e.invoice_date)) = ?"
+        )
         sacheinlagen_params = (str(year),)
     else:
         year_filter = ""
@@ -70,23 +73,25 @@ def cmd_export(args):
 
     # Ausgaben laden
     expenses = conn.execute(
-        f"""SELECT e.receipt_name, e.date, e.vendor, c.name as category, c.eur_line,
+        f"""SELECT e.receipt_name, e.payment_date, e.invoice_date, e.vendor,
+                  c.name as category, c.eur_line,
                   e.amount_eur, e.account, e.foreign_amount, e.notes, e.is_rc, e.vat_input, e.vat_output
            FROM expenses e
            LEFT JOIN categories c ON e.category_id = c.id
            {year_filter}
-           ORDER BY e.date, e.id""",
+           ORDER BY COALESCE(e.payment_date, e.invoice_date), e.id""",
         year_params,
     ).fetchall()
 
     # Einnahmen laden
     income = conn.execute(
-        f"""SELECT i.receipt_name, i.date, i.source, c.name as category, c.eur_line,
+        f"""SELECT i.receipt_name, i.payment_date, i.invoice_date, i.source,
+                  c.name as category, c.eur_line,
                   i.amount_eur, i.foreign_amount, i.notes, i.vat_output
            FROM income i
            LEFT JOIN categories c ON i.category_id = c.id
            {income_filter}
-           ORDER BY i.date, i.id""",
+           ORDER BY COALESCE(i.payment_date, i.invoice_date), i.id""",
         income_params,
     ).fetchall()
 
@@ -104,12 +109,13 @@ def cmd_export(args):
 
     if has_private_expense_cols:
         sacheinlagen = conn.execute(
-            f"""SELECT e.id, e.date, e.vendor, c.name as category, e.amount_eur,
+            f"""SELECT e.id, e.payment_date, e.invoice_date, e.vendor,
+                      c.name as category, e.amount_eur,
                       e.account, e.private_classification
                FROM expenses e
                LEFT JOIN categories c ON e.category_id = c.id
                {sacheinlagen_filter}
-               ORDER BY e.date, e.id""",
+               ORDER BY COALESCE(e.payment_date, e.invoice_date), e.id""",
             sacheinlagen_params,
         ).fetchall()
     else:
@@ -126,7 +132,8 @@ def cmd_export(args):
             writer.writerow(
                 [
                     "Belegname",
-                    "Datum",
+                    "Wertstellung",
+                    "Rechnungsdatum",
                     "Lieferant",
                     "Kategorie",
                     "EUR",
@@ -150,7 +157,8 @@ def cmd_export(args):
                 writer.writerow(
                     [
                         r["receipt_name"] or "",
-                        r["date"],
+                        r["payment_date"] or "",
+                        r["invoice_date"] or "",
                         r["vendor"],
                         cat,
                         f"{r['amount_eur']:.2f}",
@@ -170,7 +178,8 @@ def cmd_export(args):
             writer.writerow(
                 [
                     "Belegname",
-                    "Datum",
+                    "Wertstellung",
+                    "Rechnungsdatum",
                     "Quelle",
                     "Kategorie",
                     "EUR",
@@ -191,7 +200,8 @@ def cmd_export(args):
                 writer.writerow(
                     [
                         r["receipt_name"] or "",
-                        r["date"],
+                        r["payment_date"] or "",
+                        r["invoice_date"] or "",
                         r["source"],
                         cat,
                         f"{r['amount_eur']:.2f}",
@@ -236,7 +246,8 @@ def cmd_export(args):
             writer.writerow(
                 [
                     "expense_id",
-                    "Datum",
+                    "Wertstellung",
+                    "Rechnungsdatum",
                     "Lieferant",
                     "Kategorie",
                     "EUR",
@@ -248,7 +259,8 @@ def cmd_export(args):
                 writer.writerow(
                     [
                         r["id"],
-                        r["date"],
+                        r["payment_date"] or "",
+                        r["invoice_date"] or "",
                         r["vendor"],
                         r["category"] or "",
                         f"{abs(r['amount_eur']):.2f}",
@@ -276,7 +288,8 @@ def cmd_export(args):
         ws.append(
             [
                 "Belegname",
-                "Datum",
+                "Wertstellung",
+                "Rechnungsdatum",
                 "Lieferant",
                 "Kategorie",
                 "EUR",
@@ -299,7 +312,8 @@ def cmd_export(args):
             ws.append(
                 [
                     r["receipt_name"] or "",
-                    r["date"],
+                    r["payment_date"] or "",
+                    r["invoice_date"] or "",
                     r["vendor"],
                     cat,
                     r["amount_eur"],
@@ -321,7 +335,8 @@ def cmd_export(args):
         ws.append(
             [
                 "Belegname",
-                "Datum",
+                "Wertstellung",
+                "Rechnungsdatum",
                 "Quelle",
                 "Kategorie",
                 "EUR",
@@ -341,7 +356,8 @@ def cmd_export(args):
             ws.append(
                 [
                     r["receipt_name"] or "",
-                    r["date"],
+                    r["payment_date"] or "",
+                    r["invoice_date"] or "",
                     r["source"],
                     cat,
                     r["amount_eur"],
@@ -384,7 +400,8 @@ def cmd_export(args):
         ws2.append(
             [
                 "expense_id",
-                "Datum",
+                "Wertstellung",
+                "Rechnungsdatum",
                 "Lieferant",
                 "Kategorie",
                 "EUR",
@@ -396,7 +413,8 @@ def cmd_export(args):
             ws2.append(
                 [
                     r["id"],
-                    r["date"],
+                    r["payment_date"] or "",
+                    r["invoice_date"] or "",
                     r["vendor"],
                     r["category"] or "",
                     abs(r["amount_eur"]),

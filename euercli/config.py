@@ -172,7 +172,7 @@ def get_private_accounts(config: dict) -> list[str]:
 
 def resolve_receipt_path(
     receipt_name: str,
-    date: str,  # YYYY-MM-DD
+    date: str | None,  # YYYY-MM-DD
     receipt_type: str,  # 'expenses' oder 'income'
     config: dict,
 ) -> tuple[Path | None, list[Path]]:
@@ -188,7 +188,7 @@ def resolve_receipt_path(
         return (None, [])
 
     base_path = Path(base)
-    year = date[:4]  # "2026" aus "2026-01-15"
+    year = date[:4] if date else None
 
     names = [receipt_name]
     if not Path(receipt_name).suffix:
@@ -203,7 +203,8 @@ def resolve_receipt_path(
 
     candidates: list[Path] = []
     for name in names:
-        candidates.append(base_path / year / name)
+        if year:
+            candidates.append(base_path / year / name)
         candidates.append(base_path / name)
 
     for path in candidates:
@@ -215,7 +216,7 @@ def resolve_receipt_path(
 
 def warn_missing_receipt(
     receipt_name: str | None,
-    date: str,
+    date: str | None,
     receipt_type: str,  # 'expenses' oder 'income'
     config: dict,
 ) -> None:
