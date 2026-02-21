@@ -13,13 +13,13 @@ Die meisten Tools zwingen dich zu einer Entscheidung: Entweder du nutzt unflexib
 ### 🤖 Built for AI Agents, not humans
 *   **CLI first:** Perfekt für LLMs – Text Input, strukturierter Text Output. Kein Halluzinieren von GUI-Klicks.
 *   **Do one thing well:** Kein Feature-Bloat. Nur EÜR. Agenten lieben Tools mit klarem Scope.
-*   **SQL Superpowers:** Wenn das CLI nicht reicht, darf der Agent direkt auf die SQLite-DB zugreifen für komplexe Analysen.
+*   **SQL Superpowers:** Für komplexe Abfragen kann der Agent direkt SQL nutzen. Volle Flexibilität für intelligente Automatisierung.
 
 ### 🔒 Revisionssicher & Lokal
 *   **Local First:** Eine SQLite-Datei. Deine Daten. Dein Backup. Deine Kontrolle.
 *   **Audit-Log:** Jede Änderung wird unveränderbar protokolliert. Sicherheit für dich und das Finanzamt.
 *   **Leichtgewichtig:** Nur Python 3.11+. Keine schweren Abhängigkeiten. Läuft überall.
-*   **Kein Lock-in:** Daten exportieren ist so einfach wie cp euer.db.
+*   **Kein Lock-in:** Daten einfach in CSV oder Excel exportieren.
 
 ### ✅ Alles, was du steuerlich brauchst
 - **EÜR-konforme Kategorien:** Direkt einsatzbereit mit den offiziellen Zeilennummern für die Anlage EÜR.
@@ -50,35 +50,19 @@ Danach ist `euer` sofort und dauerhaft in jedem Terminal verfügbar.
 pipx upgrade euercli
 ```
 
-<details>
-<summary>Alternativ: manuell mit venv (für Entwickler)</summary>
+### 2. Personalisierung
 
-```bash
-# macOS / Linux
-git clone https://github.com/curiousmarkus/euer.git
-cd euer
-make install
-source .venv/bin/activate
-```
+Kopiere den onboarding-prompt (`docs/templates/onboarding-prompt.md`) in einen LLM-Chat und beantworte die Fragen. 
+Du erhältst eine personalisierte `AGENTS.md` mit dem nötigen Kontext für deine KI-Agenten sowie die konkreten nächsten Schritte, um loszulegen.
 
-```powershell
-# Windows (PowerShell)
-git clone https://github.com/curiousmarkus/euer.git
-cd euer
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -e .
-```
-</details>
-
-### 2. Initialisierung
-Wechsle in deinen Buchhaltungs-Ordner und erstelle deine Datenbank:
+### 3. Initialisierung
+Wechsle (wie beim Onboarding erklärt) in deinen Buchhaltungs-Ordner und erstelle deine Datenbank:
 ```bash
 euer init
 euer setup
 ```
 
-### 3. Erste Buchung (lass es deinen AI-Agent machen!)
+### 4. Erste Buchung (lass es deinen AI-Agent machen!)
 ```bash
 euer add expense --payment-date 2026-02-02 --vendor "Hetzner" --category "Laufende EDV-Kosten" --amount -10.00
 ```
