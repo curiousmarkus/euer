@@ -120,7 +120,7 @@ In beiden Fällen gilt:
 3. **Bei Unsicherheit:** User fragen!
 
 **Schritt 3: Buchungen erfassen**
-1. Importiere via JSONL (für mehrere) oder einzeln hinzufügen
+1. Einzeln buchen oder in Massenimport packen (z.B. CSV/JSONL)
 2. Verwende das **Wertstellungsdatum** als Buchungsdatum (Zufluss-/Abflussprinzip)
 
 ### Einstieg B: Von neuen Belegen ausgehend
