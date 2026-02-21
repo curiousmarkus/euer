@@ -25,17 +25,20 @@ Flag `--rc` erforderlich bei: {{RC_ANBIETER_LISTE}}
 
 ---
 
-## Bankkonten
+## Bankkonten & Konto-Kennungen
 
-{{BANKKONTEN_LISTE}}
+Alle Konten verwenden das Kennungsformat `<g|p>-<name>` (`g-` = geschäftlich, `p-` = privat).
 
----
+### Geschäftskonto(en)
 
-## Private Konten (für Sacheinlagen)
+{{GESCHAEFTSKONTEN_TABELLE}}
 
-Kontobezeichnungen, die als privat gelten (für `accounts.private` in der Config):
+### Private Konten (→ `accounts.private`)
 
-{{PRIVATE_ACCOUNTS_LISTE}}
+Diese Kennungen sind in der Config als `accounts.private` hinterlegt.
+Bei Buchungen mit einer dieser Kennungen wird die Ausgabe automatisch als Sacheinlage erkannt.
+
+{{PRIVATE_KONTEN_TABELLE}}
 
 ---
 
@@ -67,7 +70,8 @@ Kontobezeichnungen, die als privat gelten (für `accounts.private` in der Config
 - Verknüpfung: Belegnamen in Buchung eintragen
 
 ### Privatvorgänge
-- Betriebsausgabe privat bezahlt: `euer add expense ... --private-paid` (oder privates Konto nutzen)
+- Betriebsausgabe privat bezahlt: `euer add expense ... --account <private-kennung>` (erkennt Sacheinlage automatisch)
+- Alternativ explizit: `euer add expense ... --private-paid`
 - Reine Kapitalbewegung: `euer add private-deposit|private-withdrawal ...`
 - Jahrescheck: `euer private-summary --year YYYY`
 

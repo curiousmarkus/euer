@@ -29,6 +29,31 @@ python -m euercli <command>
 - Direkter sqlite3‑Zugriff ist **verboten**, da sonst Inkonsistenzen auftreten können und das Audit-Log umgangen wird.
 - Für fortgeschrittene Abfragen **nur** `euer query` verwenden (nur SELECT, keine Writes).
 
+### Config-Verwaltung
+
+Alle Config-Werte lassen sich mit `euer setup` lesen und ändern:
+
+```bash
+# Aktuelle Config anzeigen
+euer config show
+
+# Einzelne Werte setzen
+euer setup --set tax.mode "small_business"           # oder "standard"
+euer setup --set receipts.expenses "/pfad/zu/belegen"
+euer setup --set receipts.income "/pfad/zu/rechnungen"
+euer setup --set exports.directory "/pfad/zu/exports"
+euer setup --set user.name "Max"
+
+# Private Konten (kommasepariert)
+euer setup --set accounts.private "p-sparkasse-giro, p-sparkasse-kk"
+```
+
+**`accounts.private`** — Liste von Konto-Kennungen, die als privat gelten.
+Wenn eine Ausgabe mit `--account <kennung>` gebucht wird und die Kennung in dieser Liste steht,
+wird die Ausgabe automatisch als Sacheinlage (Privateinlage) klassifiziert.
+Das Matching ist **case-insensitiv**. Nach Änderung der Liste: `euer reconcile private`
+ausführen, um bestehende Buchungen gegen die neue Config abzugleichen.
+
 ### SQL‑Abfragen (nur lesend)
 
 Nutze `euer query` für komplexe Filter. Ausgabe ist CSV auf stdout.
@@ -389,12 +414,12 @@ euer add expense \
     --vendor "Amazon" \
     --category "Arbeitsmittel" \
     --amount -19.99 \
-    --account "privat" \
+    --account "p-sparkasse-giro" \
     --receipt "2026-01-15_Amazon.pdf"
 ```
 
 Hinweis: Wenn `account` einen in `config.toml [accounts].private` konfigurierten Wert hat
-(Default: `"privat"`), wird die Ausgabe automatisch als Sacheinlage (Privateinlage) erfasst.
+(z.B. `p-sparkasse-giro`), wird die Ausgabe automatisch als Sacheinlage (Privateinlage) erfasst.
 Alternativ kann `--private-paid` explizit gesetzt werden.
 
 ### Anteilig absetzbare Ausgabe buchen (gemischte Nutzung)
@@ -410,7 +435,7 @@ euer add expense \
     --vendor "Vodafone" \
     --category "Telekommunikation" \
     --amount -24.95 \
-    --account "privat" \
+    --account "p-sparkasse-giro" \
     --receipt "2026-01-20_Vodafone.pdf" \
     --notes "Internet 49,90 EUR, 50% geschäftlich"
 ```

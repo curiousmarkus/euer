@@ -88,22 +88,36 @@ Erkläre kurz den Unterschied und frage dann:
 
 ### Abschnitt 4: Bankkonten
 
-7. **Geschäftskonto**: "Wie heißt dein Geschäftskonto? Ich brauche:"
-   - Kurzname (z.B. "N26 Business", "Sparkasse Giro")
-   - Bank
-   - Letzte 4 Ziffern der IBAN (zur Identifikation)
-   - Bei Debit-/Kreditkarten: Kartentyp (z.B. "Mastercard", "Visa") und letzte 4 Ziffern
+7. **Geschäftskonto**: "Über welches Konto läuft dein Geschäft? Ich brauche:"
+   - Bank (z.B. "N26", "Sparkasse")
+   - Letzte 4 Ziffern der IBAN
+   - Falls zugehörige Debit-/Kreditkarte vorhanden: Kartentyp und letzte 4 Ziffern
+   - Wie nennst du das Konto? (z.B. "n26", "sparkasse-giro")
 
-8. **Weiteres Konto** (optional): "Nutzt du noch ein weiteres Konto für Geschäftsausgaben (z.B. Privatkonto für einzelne Käufe, PayPal)?"
+8. **Private Konten**: "Bezahlst du manchmal Betriebsausgaben privat? Wenn ja, über welche Konten?"
+   - z.B. privates Girokonto, private Kreditkarte
+   - Gleiche Infos wie oben: Bank, letzte 4 IBAN-/Kartennummer-Ziffern
+   - Wie nennst du das Konto?
 
-9. **Private Kontobezeichnungen für Sacheinlagen**:
+   Generiere aus den gesammelten Konten Kennungen nach dem Muster `<g|p>-<name>`.
+   Prefix `g-` = geschäftlich, `p-` = privat. `<name>` ist der Kurzname, den der
+   User für das Konto angibt (lowercase, Bindestriche statt Leerzeichen).
+   Ein Girokonto mit zugehöriger Debitkarte ist EIN Konto (eine Kennung).
+   Eine separate Kreditkarte ist ein eigenes Konto.
 
-   Frage: "Welche Kontonamen sollen als privat gelten, wenn Betriebsausgaben privat bezahlt wurden?"
+   Beispiel:
 
-   Beispiele:
-   - `privat`
-   - `private Kreditkarte`
-   - `Barauslagen`
+   | Eingabe | Kennung |
+   |---------|---------|
+   | N26 Business (Giro + Debit MC 9271), IBAN ...3391 | `g-n26` |
+   | Sparkasse Girokonto, IBAN ...6272 | `p-sparkasse-giro` |
+   | Sparkasse Kreditkarte, Nr. ...5849 | `p-sparkasse-kk` |
+
+   Zeige dem User die generierten Kennungen zur Bestätigung.
+   Im Template: Geschäftskonten unter `### Geschäftskonto(en)`,
+   private Konten unter `### Private Konten` eintragen.
+   Alle `p-`-Kennungen kommasepariert für den Setup-Befehl
+   `euer setup --set accounts.private "..."` verwenden.
 
 ---
 
@@ -231,17 +245,20 @@ Flag `--rc` erforderlich bei: {{RC_ANBIETER_LISTE}}
 
 ---
 
-## Bankkonten
+## Bankkonten & Konto-Kennungen
 
-{{BANKKONTEN_LISTE}}
+Alle Konten verwenden das Kennungsformat `<g|p>-<name>` (`g-` = geschäftlich, `p-` = privat).
 
----
+### Geschäftskonto(en)
 
-## Private Konten (für Sacheinlagen)
+{{GESCHAEFTSKONTEN_TABELLE}}
 
-Kontobezeichnungen, die als privat gelten (für `accounts.private`):
+### Private Konten (→ `accounts.private`)
 
-{{PRIVATE_ACCOUNTS_LISTE}}
+Diese Kennungen sind in der Config als `accounts.private` hinterlegt.
+Bei Buchungen mit einer dieser Kennungen wird die Ausgabe automatisch als Sacheinlage erkannt.
+
+{{PRIVATE_KONTEN_TABELLE}}
 
 ---
 
@@ -251,7 +268,7 @@ Folgende Ausgaben werden regelmäßig privat bezahlt und sind als Sacheinlage zu
 
 {{PRIVAT_BEZAHLTE_AUSGABEN}}
 
-Bei Buchung: `--account privat` (oder den passenden privaten Kontonamen) verwenden.  
+Bei Buchung: `--account <private-kennung>` verwenden (z.B. `--account p-sparkasse-giro`).  
 Bei Ausgleichsüberweisungen: `euer add private-withdrawal` buchen.
 
 ---
@@ -265,7 +282,7 @@ Folgende Ausgaben werden nur anteilig als Betriebsausgabe gebucht:
 {{ANTEILIGE_AUSGABEN}}
 
 **Buchungsregel:** Nur den geschäftlichen Anteil als `amount_eur` buchen. Den vollen Rechnungsbetrag in `--notes` dokumentieren, z.B.:  
-`euer add expense --vendor "Vodafone" --amount -20.00 --notes "Mobilfunk 40 EUR, 50% geschäftlich" --account privat`
+`euer add expense --vendor "Vodafone" --amount -20.00 --notes "Mobilfunk 40 EUR, 50% geschäftlich" --account <private-kennung>`
 
 ---
 
@@ -335,8 +352,5 @@ euer setup --set accounts.private "{{PRIVATE_ACCOUNTS_KOMMASEPARIERT}}"
 \`\`\`
 ```
 
-**Wichtig:** Verwende die exakten Werte aus dem Interview. Die privaten Kontonamen müssen genau so geschrieben werden, wie der User sie bei seinen Buchungen als `--account` verwenden wird. Beispiel:
-- Wenn der User "Sparkasse Kreditkarte" als privates Konto nutzt → `euer setup --set accounts.private "privat, Sparkasse Kreditkarte"`
-- Die Kontonamen sind case-insensitive beim Matching, aber die Schreibweise sollte konsistent sein.
 
 ```
