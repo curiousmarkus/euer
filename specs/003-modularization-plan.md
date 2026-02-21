@@ -1,5 +1,9 @@
 # Modularisierung - Technischer Plan (Stand 2026-02-01)
 
+## Status
+
+Implementiert
+
 Hinweis: Umsetzung abgeschlossen. CLI läuft über `euer` (Console-Script) oder
 `python -m euercli`. `euer.py` wurde entfernt.
 

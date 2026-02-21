@@ -1,7 +1,7 @@
 # Beleg-Management - Spezifikation
 
 ## Status
-**Implemented** (2026-01-31)
+Implementiert (2026-01-31)
 
 ## Zusammenfassung
 

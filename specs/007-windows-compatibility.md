@@ -2,7 +2,7 @@
 
 ## Status
 
-Offen
+Implementiert
 
 ## Kontext
 

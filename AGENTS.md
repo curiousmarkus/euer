@@ -2,6 +2,12 @@
 
 Guidelines for AI coding agents working in this repository.
 
+> **PFLICHTLEKTÜRE VOR JEDER CODE-ÄNDERUNG:**
+> Lies `DEVELOPMENT.md` bevor du Code schreibst oder änderst.
+> Insbesondere den Abschnitt **Service Layer: Pflichtregeln** — alle
+> Schreiboperationen auf DB-Tabellen MÜSSEN über den Service Layer laufen.
+> Prüfe auch `specs/` auf offene Change Requests, die dein Feature betreffen.
+
 ## Project Overview
 
 EÜR (Einnahmenüberschussrechnung) - SQLite-based bookkeeping CLI for German freelancers.
@@ -155,9 +161,14 @@ log_audit(conn, "expenses", args.id, "DELETE", old_data=old_data)
 
 ### New Command Pattern
 
-1. Create function `cmd_<name>(args)`
-2. Add parser in `main()` under appropriate subparser
-3. Set defaults: `parser.set_defaults(func=cmd_<name>)`
+> **Wichtig:** Lies zuerst `DEVELOPMENT.md` → Abschnitt „Service Layer: Pflichtregeln“
+> und „Neue Commands hinzufügen“. Commands dürfen keine direkten SQL-INSERTs/UPDATEs/DELETEs
+> enthalten — alle Schreiboperationen müssen über `euercli/services/` laufen.
+
+1. Create service function in `euercli/services/` (Dataclass return, Exceptions)
+2. Create `cmd_<name>(args)` in `euercli/commands/` as view-controller
+3. Add parser in `main()` under appropriate subparser
+4. Set defaults: `parser.set_defaults(func=cmd_<name>)`
 
 ```python
 def cmd_new_feature(args):
@@ -193,8 +204,13 @@ print(f"{row['id']:<5} {row['date']:<12} {row['vendor'][:20]:<20} {row['amount_e
 euer/
 ├── euercli/             # Core package
 │   ├── cli.py           # CLI parser/dispatch
-│   └── schema.py        # DB schema + seeds
-├── tests/               # CLI integration tests
+│   ├── commands/        # View-Controllers (keine Business-Logik, keine SQL-Writes)
+│   ├── services/        # Service Layer (Business-Logik, Validierung, Audit)
+│   ├── db.py            # DB helpers
+│   ├── schema.py        # DB schema + seeds
+│   ├── config.py        # Config load/save
+│   └── importers.py     # Import normalization
+├── tests/               # CLI integration tests + service unit tests
 ├── exports/             # CSV/XLSX exports
 ├── docs/                # User-facing documentation
 │   ├── skills/          # AI agent skills
@@ -202,15 +218,26 @@ euer/
 │   └── USER_GUIDE.md    # User documentation
 ├── specs/               # Feature specs + backlog items
 ├── README.md            # Project overview
-├── DEVELOPMENT.md       # Developer documentation
+├── DEVELOPMENT.md       # Developer documentation (❗ Pflichtlektüre)
 ├── TESTING.md           # Test strategy
 └── AGENTS.md            # This file
 ```
 
 ## Key References
 
+- **Developer guide: `DEVELOPMENT.md`** — Architektur, Service-Layer-Regeln, Checkliste (PFLICHTLEKTÜRE)
+- Active specs: `specs/` — offene Change Requests und Backlog
 - Skill for agents: `docs/skills/euer-buchhaltung/SKILL.md`
 - DB schema: `euercli/schema.py`
-- Developer guide: `DEVELOPMENT.md`
 - User guide: `docs/USER_GUIDE.md`
 - Agent templates: `docs/templates/`
+
+## Spec-Status pflegen
+
+Jede Spec in `specs/` hat ein `## Status`-Feld mit einem der Werte:
+`Offen` · `Implementiert`
+
+**Pflicht:** Aktualisiere den Status und die Tabelle in `DEVELOPMENT.md` wenn:
+- Eine neue Spec angelegt wird → Status `Offen`, neue Zeile in Tabelle
+- Eine Spec fertig implementiert ist → Status `Implementiert`
+- Change Requests hinzukommen → innerhalb der Spec dokumentieren und Status ggf. auf `Offen` zurücksetzen

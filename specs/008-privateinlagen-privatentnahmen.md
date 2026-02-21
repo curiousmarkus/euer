@@ -2,7 +2,7 @@
 
 ## Status
 
-Überarbeitet (Architektur-Review eingearbeitet)
+Implementiert
 
 ## Problem
 

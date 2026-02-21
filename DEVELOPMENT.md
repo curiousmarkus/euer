@@ -40,6 +40,20 @@ euer/
 
 ## Architektur
 
+### Schichtenmodell
+
+```
+┌─────────────────────────────────────────────┐
+│  CLI Layer (euercli/cli.py + commands/)      │  argparse, Ausgabe, sys.exit
+├─────────────────────────────────────────────┤
+│  Service Layer (euercli/services/)           │  Business-Logik, Validierung, Audit
+├─────────────────────────────────────────────┤
+│  Data Layer (euercli/db.py, schema.py)       │  DB-Zugriff, Schema, Helpers
+├─────────────────────────────────────────────┤
+│  SQLite (euer.db)                            │  Persistenz
+└─────────────────────────────────────────────┘
+```
+
 - **CLI Entry Point**: `euercli/cli.py` (argparse + Dispatch).
 - **Commands**: je Feature in `euercli/commands/` (View-Controller, keine Logik).
 - **Service Layer**: `euercli/services/` als stabile API (keine Prints, keine argparse-Abhängigkeit).
@@ -48,6 +62,47 @@ euer/
 - **Config**: `euercli/config.py` (`~/.config/euer/config.toml`).
 - **Import**: `euercli/importers.py` (CSV/JSONL Normalisierung).
 - **Plugins**: CLI lädt Entry Points `euer.commands` und ruft `setup(subparsers)`.
+
+### Service Layer: Pflichtregeln
+
+> **Jede Schreiboperation (INSERT, UPDATE, DELETE) auf `expenses`, `income` oder
+> `private_transfers` MUSS über den Service Layer laufen.**
+
+Der Service Layer (`euercli/services/`) ist die einzige Stelle für:
+
+1. **Validierung** (Beträge, Datumsformate, Pflichtfelder)
+2. **Geschäftslogik** (Steuerberechnung, Private Klassifikation, Hash-Duplikatprüfung)
+3. **Audit-Logging** (jede Mutation wird protokolliert)
+4. **Datenrückgabe** (typisierte Dataclasses, keine dicts)
+
+**Vertrag:**
+
+| Eigenschaft | Service Layer | Commands |
+|-------------|--------------|----------|
+| SQL INSERT/UPDATE/DELETE | ✅ Erlaubt | ❌ Verboten |
+| SQL SELECT (einfach) | ✅ Erlaubt | ✅ Erlaubt (nur Lesen) |
+| `print()` / `sys.exit()` | ❌ Verboten | ✅ Erlaubt |
+| `args` (argparse) | ❌ Verboten | ✅ Erlaubt |
+| Exceptions werfen | ✅ `ValidationError`, `RecordNotFoundError` | ❌ Fangen und in Ausgabe übersetzen |
+| `conn.commit()` | ✅ Nach einzelner Operation | ⚠️ Nur bei Batch-Steuerung |
+
+**Beispiel (korrekt):**
+```python
+# commands/add.py — delegiert an Service
+def cmd_add_expense(args):
+    conn = get_db_connection(db_path)
+    expense = create_expense(conn, date=args.date, vendor=args.vendor, ...)
+    print(f"Ausgabe #{expense.id} angelegt.")
+    conn.close()
+```
+
+**Anti-Pattern (VERBOTEN):**
+```python
+# commands/import_data.py — NICHT SO! Direkte SQL-INSERTs umgehen den Service Layer
+def cmd_import(args):
+    conn.execute("INSERT INTO expenses (...) VALUES (...)", (...))
+    log_audit(conn, ...)  # Audit manuell → fehleranfällig
+```
 
 ## Implementierte Funktionalitaeten (Kurzueberblick)
 
@@ -69,17 +124,19 @@ Wenn du ein Feature erweiterst, beachte:
 - **Konventionen**: deutschsprachige Ausgaben, parametrisierte SQL, Audit-Log.
 - **Kompatibilitaet**: CLI-Argumente sollten abwaertskompatibel bleiben.
 - **Tests**: Passe `tests/test_cli.py` an oder erweitere es bei Feature-Aenderungen.
+- **Service Layer**: Alle Schreiboperationen gehören in `euercli/services/` (siehe Pflichtregeln oben).
 
 ## Datenmodell (Überblick)
 
 Die vollständigen DDLs stehen in `euercli/schema.py`.
 
 - **categories**: UUID, Name, EÜR‑Zeile, Typ (expense/income).
-- **expenses**: UUID, Ausgaben inkl. Beleg, Konto, Fremdwährung, RC‑Flags, Steuern.
+- **expenses**: UUID, Ausgaben inkl. Beleg, Konto, Fremdwährung, RC‑Flags, Steuern, Private Klassifikation.
 - **income**: UUID, Einnahmen inkl. Beleg, Fremdwährung, Umsatzsteuer.
+- **private_transfers**: UUID, Privateinlagen/-entnahmen, Betrag, optionale Referenz auf Expense.
 - **audit_log**: Protokolliert INSERT/UPDATE/DELETE inkl. Vorher/Nachher + `record_uuid`.
 
-Hinweis: Es gibt keine Migrationen. Datenbanken müssen bei Schema-Änderungen neu angelegt werden.
+Hinweis: `euer init` legt fehlende Tabellen/Spalten an.
 
 ## Audit‑Logging (Pflicht)
 
@@ -105,10 +162,14 @@ Fehlende Pflichtfelder brechen den Import ab. Unvollständige Buchungen werden
 
 ## Neue Commands hinzufügen
 
-1. Service-Funktion in `euercli/services/` implementieren (Dataclass-Return, Exceptions).
-2. `cmd_<name>(args)` in `euercli/commands/` als View-Controller implementieren.
-3. Parser in `euercli/cli.py` registrieren.
+1. **Service-Funktion** in `euercli/services/` implementieren (Dataclass-Return, Exceptions).
+2. **Command** `cmd_<name>(args)` in `euercli/commands/` als View-Controller implementieren.
+   - Command ruft Service-Funktionen auf, keine direkten SQL-INSERTs/UPDATEs/DELETEs.
+   - Command fängt `ValidationError` / `RecordNotFoundError` und gibt Fehlermeldung aus.
+3. **Parser** in `euercli/cli.py` registrieren.
 4. `set_defaults(func=cmd_<name>)` setzen.
+5. **Tests** in `tests/test_cli.py` (CLI-Integration) und ggf. `tests/test_services_*.py` (Service-Unit-Tests) ergänzen.
+6. **Spec** in `specs/` dokumentieren, falls das Feature nicht-trivial ist.
 
 ### Plugins (Entry Points)
 
@@ -141,7 +202,33 @@ Weitere Details: `TESTING.md`.
 - Bitte relevante Doku aktualisieren (`README.md`, `docs/USER_GUIDE.md`, `DEVELOPMENT.md`).
 - User‑Facing Texte auf Deutsch halten.
 
+## Checkliste vor dem Entwickeln
+
+Bevor du Code schreibst oder änderst:
+
+- [ ] `DEVELOPMENT.md` gelesen (dieses Dokument)
+- [ ] Betroffene Service-Funktionen in `euercli/services/` identifiziert
+- [ ] Keine direkten SQL-Writes in `euercli/commands/` geplant
+- [ ] Bestehende Tests laufen: `python -m unittest discover -s tests`
+- [ ] Bei Schema-Änderungen: `euercli/schema.py` + Migration in `commands/init.py`
+- [ ] Bei neuen Features: Spec in `specs/` angelegt oder bestehendes Spec erweitert
+
 ## Backlog & Spezifikationen
 
-`specs/` enthält historische Implementierungs‑Specs und zukünftige Backlog‑Items.
-Neue Features sollten dort kurz beschrieben werden.
+`specs/` enthält Feature-Specs mit standardisierten Status-Werten.
+
+**Status-Werte:** `Offen` · `Implementiert`
+
+Offene Change Requests werden innerhalb der jeweiligen Spec dokumentiert.
+
+| Spec | Titel | Status |
+|------|-------|--------|
+| 001 | Init & Core CLI | Implementiert |
+| 002 | Beleg-Management | Implementiert |
+| 003 | Modularisierung | Implementiert |
+| 004 | Steuerlogik (KU/Standard) | Implementiert |
+| 005 | Refactoring Open Core | Implementiert |
+| 006 | Rechnungs-/Wertstellungsdatum | Offen |
+| 007 | Windows-Kompatibilität | Implementiert |
+| 008 | Privateinlagen & Privatentnahmen | Implementiert |
+| 009 | Service-Layer-Architektur (Import) | Offen |

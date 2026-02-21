@@ -1,5 +1,9 @@
 # Spec 006: Rechnungs- und Wertstellungsdatum erfassen
 
+## Status
+
+Offen
+
 ## Problem
 
 Aktuell wird in der Datenbank nur **ein** Datum pro Buchung gespeichert (das Feld `date` - eigentlich Wertstellungsdatum im Sinne der EÜR). Es ist aber für den User verwirrend und führt zu mehreren Problemen:

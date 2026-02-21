@@ -1,5 +1,9 @@
 # 005 - Refactoring für Open Core (Lightweight Architecture)
 
+## Status
+
+Implementiert
+
 ## Strategischer Kontext
 
 Dieses Dokument beschreibt das Refactoring von `euercli`, um das Projekt von einem "Single-User Tool" zu einem "Open Core Produkt" zu transformieren.

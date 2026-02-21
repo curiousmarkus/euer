@@ -1,7 +1,7 @@
 # Modularisierung - Spezifikation
 
 ## Status
-**Implemented** (2026-02-01)
+Implementiert (2026-02-01)
 
 ## Zusammenfassung
 
