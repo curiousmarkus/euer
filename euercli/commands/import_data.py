@@ -1,13 +1,14 @@
 import json
 import sys
-import uuid
 from pathlib import Path
 
 from ..config import get_audit_user, get_private_accounts, load_config
-from ..db import get_category_id, get_db_connection, log_audit
+from ..db import get_category_id, get_db_connection
 from ..importers import get_tax_config, iter_import_rows, normalize_import_row
-from ..services.private_classification import classify_expense_private_paid
-from ..utils import compute_hash
+from ..services.duplicates import DuplicateAction
+from ..services.errors import ValidationError
+from ..services.expenses import create_expense
+from ..services.income import create_income
 
 
 def print_import_schema() -> None:
@@ -111,14 +112,16 @@ def cmd_import(args):
         if missing_fields:
             errors.append((idx, missing_fields))
         else:
-            if normalized["category"]:
+            resolved_category_name = normalized["category"]
+            if resolved_category_name:
                 cat_id = get_category_id(
                     conn,
-                    str(normalized["category"]),
+                    str(resolved_category_name),
                     normalized["type"],
                 )
-                if cat_id:
-                    normalized["_category_id"] = cat_id
+                if not cat_id:
+                    resolved_category_name = None
+            normalized["_resolved_category_name"] = resolved_category_name
         normalized_rows.append(normalized)
 
     if errors:
@@ -129,190 +132,79 @@ def cmd_import(args):
         conn.close()
         sys.exit(1)
 
-    for normalized in normalized_rows:
-        row_type = normalized["type"]
-        payment_date = normalized["payment_date"]
-        invoice_date = normalized["invoice_date"]
-        party = normalized["party"]
-        category_name = normalized["category"]
-        amount = normalized["amount_eur"]
-        account = normalized["account"]
-        foreign_amount = normalized["foreign_amount"]
-        receipt_name = normalized["receipt_name"]
-        notes = normalized["notes"]
-        rc = normalized["rc"]
-        private_paid = normalized["private_paid"]
-        vat_input = normalized["vat_input"]
-        vat_output = normalized["vat_output"]
+    try:
+        for normalized in normalized_rows:
+            row_type = normalized["type"]
+            payment_date = normalized["payment_date"]
+            invoice_date = normalized["invoice_date"]
+            party = normalized["party"]
+            category_name = normalized["_resolved_category_name"]
+            amount = normalized["amount_eur"]
+            account = normalized["account"]
+            foreign_amount = normalized["foreign_amount"]
+            receipt_name = normalized["receipt_name"]
+            notes = normalized["notes"]
+            rc = normalized["rc"]
+            private_paid = normalized["private_paid"]
+            vat_input = normalized["vat_input"]
+            vat_output = normalized["vat_output"]
 
-        cat_id = normalized.get("_category_id")
-
-        if row_type == "expense":
-            # Automatische VAT-Berechnung für RC, falls nicht im Import
-            if rc and amount is not None:
-                calc_vat = round(abs(amount) * 0.19, 2)
-                if tax_mode == "small_business":
-                    if vat_output is None:
-                        vat_output = calc_vat
-                    if vat_input is None:
-                        vat_input = 0.0
-                else:
-                    # Standard: RC = Nullsumme
-                    if vat_output is None:
-                        vat_output = calc_vat
-                    if vat_input is None:
-                        vat_input = calc_vat
+            if row_type == "expense":
+                created = create_expense(
+                    conn,
+                    payment_date=str(payment_date) if payment_date is not None else None,
+                    invoice_date=str(invoice_date) if invoice_date is not None else None,
+                    vendor=str(party),
+                    category_name=str(category_name) if category_name is not None else None,
+                    amount_eur=float(amount),
+                    account=str(account) if account is not None else None,
+                    foreign_amount=str(foreign_amount) if foreign_amount is not None else None,
+                    receipt_name=str(receipt_name) if receipt_name is not None else None,
+                    notes=str(notes) if notes is not None else None,
+                    is_rc=bool(rc),
+                    vat_input=vat_input,
+                    vat_output=vat_output,
+                    private_paid=bool(private_paid),
+                    private_accounts=private_accounts,
+                    audit_user=audit_user,
+                    tax_mode=tax_mode,
+                    on_duplicate=DuplicateAction.SKIP,
+                    auto_commit=False,
+                )
+                if created is None:
+                    duplicates += 1
+                    continue
+                inserted_expenses += 1
             else:
-                # Normale Ausgabe: im Standard-Modus bleibt vat_input optional
-                if tax_mode == "small_business":
-                    if vat_input is None:
-                        vat_input = 0.0
-                    if vat_output is None:
-                        vat_output = 0.0
-                else:
-                    if vat_output is None:
-                        vat_output = 0.0
+                created = create_income(
+                    conn,
+                    payment_date=str(payment_date) if payment_date is not None else None,
+                    invoice_date=str(invoice_date) if invoice_date is not None else None,
+                    source=str(party),
+                    category_name=str(category_name) if category_name is not None else None,
+                    amount_eur=float(amount),
+                    foreign_amount=str(foreign_amount) if foreign_amount is not None else None,
+                    receipt_name=str(receipt_name) if receipt_name is not None else None,
+                    notes=str(notes) if notes is not None else None,
+                    vat_output=vat_output,
+                    audit_user=audit_user,
+                    tax_mode=tax_mode,
+                    on_duplicate=DuplicateAction.SKIP,
+                    auto_commit=False,
+                )
+                if created is None:
+                    duplicates += 1
+                    continue
+                inserted_income += 1
+    except ValidationError as exc:
+        conn.rollback()
+        conn.close()
+        print(f"Fehler: {exc.message}", file=sys.stderr)
+        sys.exit(1)
 
-            tx_hash = compute_hash(
-                str(payment_date or invoice_date), str(party), float(amount), receipt_name or ""
-            )
-            is_private_paid, private_classification = classify_expense_private_paid(
-                account=str(account) if account is not None else None,
-                category_name=str(category_name) if category_name is not None else None,
-                private_accounts=private_accounts,
-                manual_override=bool(private_paid),
-            )
-            existing = conn.execute(
-                "SELECT id FROM expenses WHERE hash = ?", (tx_hash,)
-            ).fetchone()
-            if existing:
-                duplicates += 1
-                continue
-
-            inserted_expenses += 1
-            if args.dry_run:
-                continue
-
-            record_uuid = str(uuid.uuid4())
-            cursor = conn.execute(
-                """INSERT INTO expenses 
-                   (uuid, receipt_name, payment_date, invoice_date, vendor, category_id, amount_eur, account,
-                    foreign_amount, notes, is_rc, vat_input, vat_output,
-                    is_private_paid, private_classification, hash)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    record_uuid,
-                    receipt_name,
-                    str(payment_date) if payment_date is not None else None,
-                    str(invoice_date) if invoice_date is not None else None,
-                    str(party),
-                    cat_id,
-                    amount,
-                    account,
-                    foreign_amount,
-                    notes,
-                    1 if rc else 0,
-                    vat_input,
-                    vat_output,
-                    1 if is_private_paid else 0,
-                    private_classification,
-                    tx_hash,
-                ),
-            )
-            record_id = cursor.lastrowid
-            assert record_id is not None
-
-            new_data = {
-                "uuid": record_uuid,
-                "receipt_name": receipt_name,
-                "payment_date": str(payment_date) if payment_date is not None else None,
-                "invoice_date": str(invoice_date) if invoice_date is not None else None,
-                "vendor": str(party),
-                "category_id": cat_id,
-                "amount_eur": amount,
-                "account": account,
-                "foreign_amount": foreign_amount,
-                "notes": notes,
-                "is_rc": 1 if rc else 0,
-                "vat_input": vat_input,
-                "vat_output": vat_output,
-                "is_private_paid": 1 if is_private_paid else 0,
-                "private_classification": private_classification,
-            }
-            log_audit(
-                conn,
-                "expenses",
-                record_id,
-                "INSERT",
-                record_uuid=record_uuid,
-                new_data=new_data,
-                user=audit_user,
-            )
-        else:
-            if tax_mode == "small_business":
-                if vat_output is None:
-                    vat_output = 0.0
-
-            tx_hash = compute_hash(
-                str(payment_date or invoice_date), str(party), float(amount), receipt_name or ""
-            )
-            existing = conn.execute(
-                "SELECT id FROM income WHERE hash = ?", (tx_hash,)
-            ).fetchone()
-            if existing:
-                duplicates += 1
-                continue
-
-            inserted_income += 1
-            if args.dry_run:
-                continue
-
-            record_uuid = str(uuid.uuid4())
-            cursor = conn.execute(
-                """INSERT INTO income
-                   (uuid, receipt_name, payment_date, invoice_date, source, category_id, amount_eur,
-                    foreign_amount, notes, vat_output, hash)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    record_uuid,
-                    receipt_name,
-                    str(payment_date) if payment_date is not None else None,
-                    str(invoice_date) if invoice_date is not None else None,
-                    str(party),
-                    cat_id,
-                    amount,
-                    foreign_amount,
-                    notes,
-                    vat_output,
-                    tx_hash,
-                ),
-            )
-            record_id = cursor.lastrowid
-            assert record_id is not None
-
-            new_data = {
-                "uuid": record_uuid,
-                "receipt_name": receipt_name,
-                "payment_date": str(payment_date) if payment_date is not None else None,
-                "invoice_date": str(invoice_date) if invoice_date is not None else None,
-                "source": str(party),
-                "category_id": cat_id,
-                "amount_eur": amount,
-                "foreign_amount": foreign_amount,
-                "notes": notes,
-                "vat_output": vat_output,
-            }
-            log_audit(
-                conn,
-                "income",
-                record_id,
-                "INSERT",
-                record_uuid=record_uuid,
-                new_data=new_data,
-                user=audit_user,
-            )
-
-    if not args.dry_run:
+    if args.dry_run:
+        conn.rollback()
+    else:
         conn.commit()
     conn.close()
 

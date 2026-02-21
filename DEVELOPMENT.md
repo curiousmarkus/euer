@@ -231,4 +231,4 @@ Offene Change Requests werden innerhalb der jeweiligen Spec dokumentiert.
 | 006 | Rechnungs-/Wertstellungsdatum | Implementiert |
 | 007 | Windows-Kompatibilität | Implementiert |
 | 008 | Privateinlagen & Privatentnahmen | Implementiert |
-| 009 | Service-Layer-Architektur (Import) | Offen |
+| 009 | Service-Layer-Architektur (Import) | Implementiert |

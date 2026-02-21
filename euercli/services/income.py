@@ -6,6 +6,7 @@ import uuid
 from ..db import log_audit, row_to_dict
 from ..utils import compute_hash
 from .categories import get_category_by_name
+from .duplicates import DuplicateAction
 from .errors import RecordNotFoundError, ValidationError
 from .models import Income
 from .utils import get_optional
@@ -63,9 +64,13 @@ def create_income(
     receipt_name: str | None = None,
     notes: str | None = None,
     vat: float | None = None,
-    tax_mode: str,
-    audit_user: str,
-) -> Income:
+    vat_output: float | None = None,
+    tax_mode: str = "small_business",
+    audit_user: str = "default",
+    skip_vat_auto: bool = False,
+    on_duplicate: DuplicateAction = DuplicateAction.RAISE,
+    auto_commit: bool = True,
+) -> Income | None:
     resolved_payment_date, resolved_invoice_date = _resolve_dates(
         payment_date=payment_date,
         invoice_date=invoice_date,
@@ -83,20 +88,22 @@ def create_income(
             )
         category_id = category.id
 
-    vat_output: float | None = 0.0
-    if tax_mode == "standard":
-        if vat is not None:
-            vat_output = vat
-        else:
-            vat_output = None
-    elif tax_mode == "small_business":
-        vat_output = 0.0
-    else:
+    if tax_mode not in {"small_business", "standard"}:
         raise ValidationError(
             f"Unbekannter Steuermodus: {tax_mode}",
             code="invalid_tax_mode",
             details={"tax_mode": tax_mode},
         )
+
+    resolved_vat_output = vat_output
+    if resolved_vat_output is None and tax_mode == "standard" and vat is not None:
+        resolved_vat_output = vat
+
+    if not skip_vat_auto:
+        if tax_mode == "small_business" and resolved_vat_output is None:
+            resolved_vat_output = 0.0
+        if tax_mode == "standard" and resolved_vat_output is None:
+            resolved_vat_output = None
 
     tx_hash = compute_hash(
         _hash_date(resolved_payment_date, resolved_invoice_date),
@@ -109,6 +116,8 @@ def create_income(
         (tx_hash,),
     ).fetchone()
     if existing:
+        if on_duplicate == DuplicateAction.SKIP:
+            return None
         raise ValidationError(
             f"Duplikat erkannt (ID {existing['id']})",
             code="duplicate",
@@ -132,7 +141,7 @@ def create_income(
             amount_eur,
             foreign_amount,
             notes,
-            vat_output,
+            resolved_vat_output,
             tx_hash,
         ),
     )
@@ -149,7 +158,7 @@ def create_income(
         "amount_eur": amount_eur,
         "foreign_amount": foreign_amount,
         "notes": notes,
-        "vat_output": vat_output,
+        "vat_output": resolved_vat_output,
     }
     log_audit(
         conn,
@@ -161,7 +170,8 @@ def create_income(
         user=audit_user,
     )
 
-    conn.commit()
+    if auto_commit:
+        conn.commit()
 
     return Income(
         id=record_id,
@@ -174,7 +184,7 @@ def create_income(
         receipt_name=receipt_name,
         foreign_amount=foreign_amount,
         notes=notes,
-        vat_output=vat_output,
+        vat_output=resolved_vat_output,
         hash=tx_hash,
     )
 

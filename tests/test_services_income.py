@@ -3,6 +3,7 @@ import unittest
 import uuid
 
 from euercli.schema import SCHEMA, SEED_CATEGORIES
+from euercli.services.duplicates import DuplicateAction
 from euercli.services.errors import ValidationError
 from euercli.services.income import (
     create_income,
@@ -92,6 +93,64 @@ class IncomeServiceTestCase(unittest.TestCase):
                 audit_user="tester",
             )
         self.assertEqual(ctx.exception.code, "duplicate")
+
+    def test_duplicate_skip_returns_none(self) -> None:
+        create_income(
+            self.conn,
+            date="2026-01-20",
+            source="TestClient",
+            amount_eur=1500.0,
+            category_name="Umsatzsteuerpflichtige Betriebseinnahmen",
+            tax_mode="standard",
+            audit_user="tester",
+        )
+        duplicate = create_income(
+            self.conn,
+            date="2026-01-20",
+            source="TestClient",
+            amount_eur=1500.0,
+            category_name="Umsatzsteuerpflichtige Betriebseinnahmen",
+            tax_mode="standard",
+            audit_user="tester",
+            on_duplicate=DuplicateAction.SKIP,
+        )
+        self.assertIsNone(duplicate)
+
+    def test_create_income_auto_commit_false_rolls_back(self) -> None:
+        create_income(
+            self.conn,
+            date="2026-01-20",
+            source="NoCommit",
+            amount_eur=1500.0,
+            category_name="Umsatzsteuerpflichtige Betriebseinnahmen",
+            tax_mode="standard",
+            audit_user="tester",
+            auto_commit=False,
+        )
+        before_rollback = self.conn.execute("SELECT COUNT(*) AS cnt FROM income").fetchone()
+        self.assertIsNotNone(before_rollback)
+        assert before_rollback is not None
+        self.assertEqual(before_rollback["cnt"], 1)
+        self.conn.rollback()
+        after_rollback = self.conn.execute("SELECT COUNT(*) AS cnt FROM income").fetchone()
+        self.assertIsNotNone(after_rollback)
+        assert after_rollback is not None
+        self.assertEqual(after_rollback["cnt"], 0)
+
+    def test_create_income_allows_explicit_vat_output_in_small_business(self) -> None:
+        income = create_income(
+            self.conn,
+            date="2026-01-20",
+            source="KuVat",
+            amount_eur=1500.0,
+            category_name="Umsatzsteuerpflichtige Betriebseinnahmen",
+            vat_output=20.0,
+            tax_mode="small_business",
+            audit_user="tester",
+        )
+        self.assertIsNotNone(income)
+        assert income is not None
+        self.assertEqual(income.vat_output, 20.0)
 
     def test_audit_log_includes_uuid(self) -> None:
         income = create_income(

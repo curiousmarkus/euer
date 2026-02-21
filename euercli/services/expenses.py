@@ -6,6 +6,7 @@ import uuid
 from ..db import log_audit, row_to_dict
 from ..utils import compute_hash
 from .categories import get_category_by_name
+from .duplicates import DuplicateAction
 from .errors import RecordNotFoundError, ValidationError
 from .models import Expense
 from .private_classification import classify_expense_private_paid
@@ -56,6 +57,67 @@ def row_to_expense(row: sqlite3.Row) -> Expense:
     )
 
 
+def _resolve_create_vat(
+    *,
+    tax_mode: str,
+    is_rc: bool,
+    amount_eur: float,
+    legacy_vat: float | None,
+    vat_input: float | None,
+    vat_output: float | None,
+    skip_vat_auto: bool,
+) -> tuple[float | None, float | None]:
+    if tax_mode not in {"small_business", "standard"}:
+        raise ValidationError(
+            f"Unbekannter Steuermodus: {tax_mode}",
+            code="invalid_tax_mode",
+            details={"tax_mode": tax_mode},
+        )
+
+    resolved_vat_input = vat_input
+    resolved_vat_output = vat_output
+    calc_vat = round(abs(amount_eur) * 0.19, 2)
+
+    if legacy_vat is not None:
+        if is_rc:
+            if resolved_vat_output is None:
+                resolved_vat_output = legacy_vat
+            if tax_mode == "standard":
+                if resolved_vat_input is None:
+                    resolved_vat_input = legacy_vat
+            else:
+                if resolved_vat_input is None:
+                    resolved_vat_input = 0.0
+        elif tax_mode == "standard":
+            if resolved_vat_input is None:
+                resolved_vat_input = legacy_vat
+
+    if skip_vat_auto:
+        return resolved_vat_input, resolved_vat_output
+
+    if tax_mode == "small_business":
+        if is_rc:
+            if resolved_vat_output is None:
+                resolved_vat_output = calc_vat
+            if resolved_vat_input is None:
+                resolved_vat_input = 0.0
+        else:
+            if resolved_vat_input is None:
+                resolved_vat_input = 0.0
+            if resolved_vat_output is None:
+                resolved_vat_output = 0.0
+    else:
+        if is_rc:
+            if resolved_vat_output is None:
+                resolved_vat_output = calc_vat
+            if resolved_vat_input is None:
+                resolved_vat_input = calc_vat
+        elif resolved_vat_output is None:
+            resolved_vat_output = 0.0
+
+    return resolved_vat_input, resolved_vat_output
+
+
 def create_expense(
     conn: sqlite3.Connection,
     *,
@@ -71,11 +133,16 @@ def create_expense(
     notes: str | None = None,
     is_rc: bool = False,
     vat: float | None = None,
+    vat_input: float | None = None,
+    vat_output: float | None = None,
     private_paid: bool = False,
     private_accounts: list[str] | None = None,
-    tax_mode: str,
-    audit_user: str,
-) -> Expense:
+    tax_mode: str = "small_business",
+    audit_user: str = "default",
+    skip_vat_auto: bool = False,
+    on_duplicate: DuplicateAction = DuplicateAction.RAISE,
+    auto_commit: bool = True,
+) -> Expense | None:
     resolved_payment_date, resolved_invoice_date = _resolve_dates(
         payment_date=payment_date,
         invoice_date=invoice_date,
@@ -93,34 +160,15 @@ def create_expense(
             )
         category_id = category.id
 
-    vat_input: float | None = None
-    vat_output: float | None = None
-    manual_vat = vat
-
-    if tax_mode == "small_business":
-        if is_rc:
-            if manual_vat is not None:
-                vat_output = manual_vat
-            else:
-                vat_output = round(abs(amount_eur) * 0.19, 2)
-            vat_input = 0.0
-        else:
-            vat_input = 0.0
-            vat_output = 0.0
-    elif tax_mode == "standard":
-        if is_rc:
-            vat_val = manual_vat if manual_vat is not None else round(abs(amount_eur) * 0.19, 2)
-            vat_input = vat_val
-            vat_output = vat_val
-        else:
-            vat_input = manual_vat if manual_vat is not None else None
-            vat_output = 0.0
-    else:
-        raise ValidationError(
-            f"Unbekannter Steuermodus: {tax_mode}",
-            code="invalid_tax_mode",
-            details={"tax_mode": tax_mode},
-        )
+    resolved_vat_input, resolved_vat_output = _resolve_create_vat(
+        tax_mode=tax_mode,
+        is_rc=is_rc,
+        amount_eur=amount_eur,
+        legacy_vat=vat,
+        vat_input=vat_input,
+        vat_output=vat_output,
+        skip_vat_auto=skip_vat_auto,
+    )
 
     tx_hash = compute_hash(
         _hash_date(resolved_payment_date, resolved_invoice_date),
@@ -133,6 +181,8 @@ def create_expense(
         (tx_hash,),
     ).fetchone()
     if existing:
+        if on_duplicate == DuplicateAction.SKIP:
+            return None
         raise ValidationError(
             f"Duplikat erkannt (ID {existing['id']})",
             code="duplicate",
@@ -165,8 +215,8 @@ def create_expense(
             foreign_amount,
             notes,
             1 if is_rc else 0,
-            vat_input,
-            vat_output,
+            resolved_vat_input,
+            resolved_vat_output,
             1 if is_private_paid else 0,
             private_classification,
             tx_hash,
@@ -187,8 +237,8 @@ def create_expense(
         "foreign_amount": foreign_amount,
         "notes": notes,
         "is_rc": 1 if is_rc else 0,
-        "vat_input": vat_input,
-        "vat_output": vat_output,
+        "vat_input": resolved_vat_input,
+        "vat_output": resolved_vat_output,
         "is_private_paid": 1 if is_private_paid else 0,
         "private_classification": private_classification,
     }
@@ -202,7 +252,8 @@ def create_expense(
         user=audit_user,
     )
 
-    conn.commit()
+    if auto_commit:
+        conn.commit()
 
     return Expense(
         id=record_id,
@@ -217,8 +268,8 @@ def create_expense(
         foreign_amount=foreign_amount,
         notes=notes,
         is_rc=is_rc,
-        vat_input=vat_input,
-        vat_output=vat_output,
+        vat_input=resolved_vat_input,
+        vat_output=resolved_vat_output,
         is_private_paid=is_private_paid,
         private_classification=private_classification,
         hash=tx_hash,

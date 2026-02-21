@@ -115,6 +115,7 @@ def cmd_receipt_check(args):
     print("-" * 60)
     print(f"  Ausgaben geprüft: {total_count['expenses']}")
     print(f"  Einnahmen geprüft: {total_count['income']}")
+    print(f"  Gesamt geprüft:    {total_checked}")
     print(f"  Fehlende Belege:   {total_missing}")
 
     if total_missing > 0:

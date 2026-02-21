@@ -1,4 +1,5 @@
 from .categories import get_category_by_name, get_category_list
+from .duplicates import DuplicateAction
 from .errors import EuerError, RecordNotFoundError, ValidationError
 from .expenses import (
     create_expense,
@@ -23,6 +24,7 @@ __all__ = [
     "EuerError",
     "RecordNotFoundError",
     "ValidationError",
+    "DuplicateAction",
     "get_category_list",
     "get_category_by_name",
     "create_expense",
