@@ -10,17 +10,7 @@ from ..services.expenses import create_expense
 from ..services.income import create_income
 from ..services.private_transfers import create_private_transfer
 from ..utils import format_amount
-
-
-def _warn_unusual_date_order(
-    payment_date: str | None,
-    invoice_date: str | None,
-) -> None:
-    if payment_date and invoice_date and payment_date < invoice_date:
-        print(
-            "Warnung: Wertstellungsdatum liegt vor Rechnungsdatum. Bitte prüfen.",
-            file=sys.stderr,
-        )
+from .helpers import warn_unusual_date_order
 
 
 def cmd_add_expense(args):
@@ -78,7 +68,7 @@ def cmd_add_expense(args):
         sys.exit(1)
 
     conn.close()
-    _warn_unusual_date_order(expense.payment_date, expense.invoice_date)
+    warn_unusual_date_order(expense.payment_date, expense.invoice_date)
 
     vat_info = ""
     vat_output_val = expense.vat_output or 0.0
@@ -148,7 +138,7 @@ def cmd_add_income(args):
         sys.exit(1)
 
     conn.close()
-    _warn_unusual_date_order(income.payment_date, income.invoice_date)
+    warn_unusual_date_order(income.payment_date, income.invoice_date)
 
     vat_info = f" (USt: {income.vat_output:.2f})" if income.vat_output else ""
 

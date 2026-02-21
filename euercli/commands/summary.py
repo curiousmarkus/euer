@@ -23,6 +23,32 @@ def cmd_summary(args):
     print("=" * 50)
     print()
 
+    # Hinweis auf ausgelassene Buchungen ohne Wertstellungsdatum
+    skipped_expenses = conn.execute(
+        """SELECT COUNT(*) as cnt FROM expenses
+           WHERE payment_date IS NULL
+             AND invoice_date IS NOT NULL
+             AND strftime('%Y', invoice_date) = ?""",
+        (str(year),),
+    ).fetchone()["cnt"]
+    skipped_income = conn.execute(
+        """SELECT COUNT(*) as cnt FROM income
+           WHERE payment_date IS NULL
+             AND invoice_date IS NOT NULL
+             AND strftime('%Y', invoice_date) = ?""",
+        (str(year),),
+    ).fetchone()["cnt"]
+    skipped_total = skipped_expenses + skipped_income
+    if skipped_total > 0:
+        print(
+            f"Hinweis: {skipped_total} Buchung(en) ohne Wertstellungsdatum ausgelassen "
+            f"({skipped_expenses} Ausgaben, {skipped_income} Einnahmen)."
+        )
+        print(
+            "  → Wertstellungsdatum per `euer update expense|income <ID> --payment-date` ergänzen."
+        )
+        print()
+
     # Ausgaben nach Kategorie
     expenses = conn.execute(
         """SELECT c.name, c.eur_line, SUM(e.amount_eur) as total

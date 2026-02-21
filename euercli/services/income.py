@@ -9,27 +9,7 @@ from .categories import get_category_by_name
 from .duplicates import DuplicateAction
 from .errors import RecordNotFoundError, ValidationError
 from .models import Income
-from .utils import get_optional
-
-
-def _resolve_dates(
-    *,
-    payment_date: str | None,
-    invoice_date: str | None,
-    legacy_date: str | None = None,
-) -> tuple[str | None, str | None]:
-    resolved_payment_date = payment_date if payment_date is not None else legacy_date
-    resolved_invoice_date = invoice_date
-    if not resolved_payment_date and not resolved_invoice_date:
-        raise ValidationError(
-            "Mindestens eines der Felder payment_date oder invoice_date muss gesetzt sein.",
-            code="missing_dates",
-        )
-    return resolved_payment_date, resolved_invoice_date
-
-
-def _hash_date(payment_date: str | None, invoice_date: str | None) -> str:
-    return payment_date or invoice_date or ""
+from .utils import get_optional, hash_date, resolve_dates
 
 
 def _row_to_income(row: sqlite3.Row) -> Income:
@@ -71,7 +51,7 @@ def create_income(
     on_duplicate: DuplicateAction = DuplicateAction.RAISE,
     auto_commit: bool = True,
 ) -> Income | None:
-    resolved_payment_date, resolved_invoice_date = _resolve_dates(
+    resolved_payment_date, resolved_invoice_date = resolve_dates(
         payment_date=payment_date,
         invoice_date=invoice_date,
         legacy_date=date,
@@ -106,7 +86,7 @@ def create_income(
             resolved_vat_output = None
 
     tx_hash = compute_hash(
-        _hash_date(resolved_payment_date, resolved_invoice_date),
+        hash_date(resolved_payment_date, resolved_invoice_date),
         source,
         amount_eur,
         receipt_name or "",
@@ -259,6 +239,7 @@ def update_income(
     vat: float | None = None,
     tax_mode: str,
     audit_user: str,
+    auto_commit: bool = True,
 ) -> Income:
     row = conn.execute(
         "SELECT * FROM income WHERE id = ?",
@@ -280,7 +261,7 @@ def update_income(
         else (date if date is not None else row["payment_date"])
     )
     new_invoice_date = invoice_date if invoice_date is not None else row["invoice_date"]
-    new_payment_date, new_invoice_date = _resolve_dates(
+    new_payment_date, new_invoice_date = resolve_dates(
         payment_date=new_payment_date,
         invoice_date=new_invoice_date,
     )
@@ -307,7 +288,7 @@ def update_income(
         category_id = row["category_id"]
 
     new_hash = compute_hash(
-        _hash_date(new_payment_date, new_invoice_date),
+        hash_date(new_payment_date, new_invoice_date),
         new_source,
         new_amount,
         new_receipt or "",
@@ -358,7 +339,8 @@ def update_income(
         user=audit_user,
     )
 
-    conn.commit()
+    if auto_commit:
+        conn.commit()
 
     return Income(
         id=record_id,
@@ -381,6 +363,7 @@ def delete_income(
     *,
     record_id: int,
     audit_user: str,
+    auto_commit: bool = True,
 ) -> None:
     row = conn.execute(
         "SELECT * FROM income WHERE id = ?",
@@ -407,4 +390,5 @@ def delete_income(
         user=audit_user,
     )
 
-    conn.commit()
+    if auto_commit:
+        conn.commit()

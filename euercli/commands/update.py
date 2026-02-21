@@ -13,17 +13,7 @@ from ..services.errors import RecordNotFoundError, ValidationError
 from ..services.expenses import update_expense
 from ..services.income import update_income
 from ..services.private_transfers import UNSET, update_private_transfer
-
-
-def _warn_unusual_date_order(
-    payment_date: str | None,
-    invoice_date: str | None,
-) -> None:
-    if payment_date and invoice_date and payment_date < invoice_date:
-        print(
-            "Warnung: Wertstellungsdatum liegt vor Rechnungsdatum. Bitte prüfen.",
-            file=sys.stderr,
-        )
+from .helpers import warn_unusual_date_order
 
 
 def cmd_update_expense(args):
@@ -69,7 +59,7 @@ def cmd_update_expense(args):
         sys.exit(1)
 
     conn.close()
-    _warn_unusual_date_order(expense.payment_date, expense.invoice_date)
+    warn_unusual_date_order(expense.payment_date, expense.invoice_date)
 
     print(f"Ausgabe #{args.id} aktualisiert.")
 
@@ -119,7 +109,7 @@ def cmd_update_income(args):
         sys.exit(1)
 
     conn.close()
-    _warn_unusual_date_order(income.payment_date, income.invoice_date)
+    warn_unusual_date_order(income.payment_date, income.invoice_date)
 
     print(f"Einnahme #{args.id} aktualisiert.")
 

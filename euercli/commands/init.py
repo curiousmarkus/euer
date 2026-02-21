@@ -119,6 +119,11 @@ def ensure_payment_invoice_columns(conn) -> None:
     expense_columns = _get_table_columns(conn, "expenses")
     income_columns = _get_table_columns(conn, "income")
 
+    # Migration ist nötig wenn:
+    # - Altes Schema mit 'date'-Spalte statt 'payment_date' vorliegt
+    # - 'invoice_date'-Spalte fehlt (Spec 006 noch nicht migriert)
+    # - 'payment_date' als NOT NULL definiert ist (muss nullable sein,
+    #   da Buchungen auch nur mit invoice_date erfasst werden können)
     migrate_expenses = (
         "date" in expense_columns
         or "invoice_date" not in expense_columns

@@ -212,6 +212,36 @@ class ExpenseServiceTestCase(unittest.TestCase):
             )
         self.assertEqual(ctx.exception.code, "missing_dates")
 
+    def test_list_expenses_finds_invoice_date_only_entries(self) -> None:
+        """Einträge nur mit invoice_date (ohne payment_date) müssen per COALESCE gefunden werden."""
+        create_expense(
+            self.conn,
+            invoice_date="2026-03-10",
+            vendor="InvoiceOnlyVendor",
+            amount_eur=-20.0,
+            category_name="Arbeitsmittel",
+            tax_mode="small_business",
+            audit_user="tester",
+        )
+        create_expense(
+            self.conn,
+            date="2026-03-12",
+            vendor="PaymentDateVendor",
+            amount_eur=-30.0,
+            category_name="Arbeitsmittel",
+            tax_mode="small_business",
+            audit_user="tester",
+        )
+        rows = list_expenses(self.conn, year=2026, month=3)
+        self.assertEqual(len(rows), 2)
+        vendors = {r.vendor for r in rows}
+        self.assertIn("InvoiceOnlyVendor", vendors)
+        self.assertIn("PaymentDateVendor", vendors)
+
+        # Anderes Jahr sollte leer sein
+        rows_other = list_expenses(self.conn, year=2025)
+        self.assertEqual(len(rows_other), 0)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -195,6 +195,36 @@ class IncomeServiceTestCase(unittest.TestCase):
             )
         self.assertEqual(ctx.exception.code, "missing_dates")
 
+    def test_list_income_finds_invoice_date_only_entries(self) -> None:
+        """Einträge nur mit invoice_date (ohne payment_date) müssen per COALESCE gefunden werden."""
+        create_income(
+            self.conn,
+            invoice_date="2026-04-05",
+            source="InvoiceOnlyClient",
+            amount_eur=800.0,
+            category_name="Umsatzsteuerpflichtige Betriebseinnahmen",
+            tax_mode="standard",
+            audit_user="tester",
+        )
+        create_income(
+            self.conn,
+            date="2026-04-10",
+            source="PaymentDateClient",
+            amount_eur=1200.0,
+            category_name="Umsatzsteuerpflichtige Betriebseinnahmen",
+            tax_mode="standard",
+            audit_user="tester",
+        )
+        rows = list_income(self.conn, year=2026, month=4)
+        self.assertEqual(len(rows), 2)
+        sources = {r.source for r in rows}
+        self.assertIn("InvoiceOnlyClient", sources)
+        self.assertIn("PaymentDateClient", sources)
+
+        # Anderes Jahr sollte leer sein
+        rows_other = list_income(self.conn, year=2025)
+        self.assertEqual(len(rows_other), 0)
+
 
 if __name__ == "__main__":
     unittest.main()
