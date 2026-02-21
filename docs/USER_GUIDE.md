@@ -194,9 +194,19 @@ euer add expense --date 2026-01-10 --vendor "Adobe" \
 ### Korrigieren & Löschen
 
 ```bash
+# Ausgabe korrigieren
 euer update expense 42 --amount -25.00 --notes "Korrigiert"
+euer update expense 42 --private-paid
+euer update expense 42 --no-private-paid
+
+# Privatvorgang korrigieren
+euer update private-transfer 7 --amount 600 --description "Korrektur"
+euer update private-transfer 7 --clear-related-expense
+
+# Löschen
 euer delete expense 42
 euer delete expense 42 --force
+euer delete private-transfer 7 --force
 
 # Änderungshistorie
 euer audit 42 --table expenses

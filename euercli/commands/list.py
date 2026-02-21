@@ -250,6 +250,7 @@ def cmd_list_private_deposits(args):
     year = args.year or datetime.now().year
 
     transfers = get_private_transfer_list(conn, transfer_type="deposit", year=year)
+    # Sacheinlagen kommen aus persistierten Flags in expenses, nicht aus aktueller Config.
     sacheinlagen = get_sacheinlagen(conn, year=year)
     conn.close()
 

@@ -8,14 +8,14 @@ from ..utils import compute_hash
 from .categories import get_category_by_name
 from .errors import RecordNotFoundError, ValidationError
 from .models import Expense
-from .private_transfers import classify_expense_private_paid
+from .private_classification import classify_expense_private_paid
 
 
 def _get_optional(row: sqlite3.Row, key: str):
     return row[key] if key in row.keys() else None
 
 
-def _row_to_expense(row: sqlite3.Row) -> Expense:
+def row_to_expense(row: sqlite3.Row) -> Expense:
     return Expense(
         id=row["id"],
         uuid=row["uuid"],
@@ -222,7 +222,7 @@ def list_expenses(
     query += " ORDER BY e.date DESC, e.id DESC"
 
     rows = conn.execute(query, params).fetchall()
-    return [_row_to_expense(row) for row in rows]
+    return [row_to_expense(row) for row in rows]
 
 
 def get_expense_detail(conn: sqlite3.Connection, record_id: int) -> Expense:
@@ -242,7 +242,7 @@ def get_expense_detail(conn: sqlite3.Connection, record_id: int) -> Expense:
             code="expense_not_found",
             details={"id": record_id},
         )
-    return _row_to_expense(row)
+    return row_to_expense(row)
 
 
 def update_expense(
@@ -259,7 +259,7 @@ def update_expense(
     notes: str | None = None,
     vat: float | None = None,
     is_rc: bool = False,
-    private_paid: bool = False,
+    private_paid: bool | None = None,
     private_accounts: list[str] | None = None,
     tax_mode: str,
     audit_user: str,
@@ -345,13 +345,16 @@ def update_expense(
             if cat_row:
                 resolved_category_name = cat_row["name"]
 
-    if private_paid:
+    if private_paid is True:
         new_is_private_paid, new_private_classification = classify_expense_private_paid(
             account=new_account,
             category_name=resolved_category_name,
             private_accounts=private_accounts or [],
             manual_override=True,
         )
+    elif private_paid is False:
+        new_is_private_paid = False
+        new_private_classification = "none"
     elif account is not None or category_name is not None:
         new_is_private_paid, new_private_classification = classify_expense_private_paid(
             account=new_account,

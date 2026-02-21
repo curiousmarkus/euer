@@ -64,7 +64,7 @@ euer list expenses [--year YYYY] [--month MM] [--category "..."]
 # Zeigt RC-Flag, USt (Output) und VorSt (Input) an, falls vorhanden.
 
 # Ausgabe aktualisieren
-euer update expense <ID> [--date ...] [--vendor ...] [--amount ...] [--rc] [--private-paid] ...
+euer update expense <ID> [--date ...] [--vendor ...] [--amount ...] [--rc] [--private-paid|--no-private-paid] ...
 
 # Ausgabe löschen
 euer delete expense <ID> [--force]
@@ -110,7 +110,7 @@ euer list private-deposits [--year YYYY]
 euer list private-withdrawals [--year YYYY]
 
 # Ändern/Löschen
-euer update private-transfer <ID> [--amount ...] [--description ...]
+euer update private-transfer <ID> [--amount ...] [--description ...] [--related-expense-id <ID>|--clear-related-expense]
 euer delete private-transfer <ID> [--force]
 ```
 

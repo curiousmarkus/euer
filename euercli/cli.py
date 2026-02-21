@@ -267,11 +267,22 @@ def main() -> None:
     upd_exp_parser.add_argument("--receipt", help="Neuer Belegname")
     upd_exp_parser.add_argument("--notes", help="Neue Bemerkung")
     upd_exp_parser.add_argument("--vat", type=float, help="Neuer USt-VA Betrag")
-    upd_exp_parser.add_argument(
+    upd_private_paid_group = upd_exp_parser.add_mutually_exclusive_group()
+    upd_private_paid_group.add_argument(
         "--private-paid",
-        action="store_true",
+        dest="private_paid",
+        action="store_const",
+        const=True,
         help="Markiert Ausgabe als privat bezahlt (Sacheinlage)",
     )
+    upd_private_paid_group.add_argument(
+        "--no-private-paid",
+        dest="private_paid",
+        action="store_const",
+        const=False,
+        help="Entfernt Markierung als privat bezahlt",
+    )
+    upd_exp_parser.set_defaults(private_paid=None)
     upd_exp_parser.add_argument(
         "--rc",
         action="store_true",
@@ -303,11 +314,18 @@ def main() -> None:
     upd_private_parser.add_argument("--amount", type=float, help="Neuer Betrag")
     upd_private_parser.add_argument("--description", help="Neue Beschreibung")
     upd_private_parser.add_argument("--notes", help="Neue Bemerkung")
-    upd_private_parser.add_argument(
+    upd_private_related_group = upd_private_parser.add_mutually_exclusive_group()
+    upd_private_related_group.add_argument(
         "--related-expense-id",
         type=int,
         help="Optionale Referenz auf Ausgabe-ID",
     )
+    upd_private_related_group.add_argument(
+        "--clear-related-expense",
+        action="store_true",
+        help="Entfernt die Referenz auf eine Ausgabe",
+    )
+    upd_private_parser.set_defaults(clear_related_expense=False)
     upd_private_parser.set_defaults(func=cmd_update_private_transfer)
 
     # --- delete ---

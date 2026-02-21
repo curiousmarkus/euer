@@ -157,6 +157,7 @@ In beiden Fällen gilt:
 4. Prüfe Privatvorgänge:
    - `euer list private-transfers --year YYYY`
    - Falls private Auslagen gefunden wurden, aber keine Markierung vorhanden ist: Rückfrage oder `update expense <ID> --private-paid`
+   - Falls fälschlich als privat markiert: `update expense <ID> --no-private-paid`
 
 ---
 

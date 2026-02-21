@@ -84,6 +84,8 @@ class EuerCLITestCase(unittest.TestCase):
             args += ["--notes", data["notes"]]
         if data.get("rc"):
             args.append("--rc")
+        if data.get("private_paid"):
+            args.append("--private-paid")
         if "vat" in data:
             args += ["--vat", str(data["vat"])]
         return self.run_cli(args)
@@ -250,6 +252,15 @@ class EuerCLITestCase(unittest.TestCase):
         rows = self.list_income_csv()
         self.assertEqual(rows[1][4], "1750.00")
         self.assertEqual(rows[1][7], "Korrigiert")
+
+    def test_update_expense_can_clear_private_paid(self):
+        self.add_expense(private_paid=True)
+        before = self.run_cli(["list", "private-deposits", "--year", "2026"], check=True)
+        self.assertIn("TestVendor", before.stdout)
+
+        self.run_cli(["update", "expense", "1", "--no-private-paid"], check=True)
+        after = self.run_cli(["list", "private-deposits", "--year", "2026"], check=True)
+        self.assertIn("Keine Privateinlagen gefunden", after.stdout)
 
     def test_delete_expense_force(self):
         self.add_expense()
@@ -434,6 +445,60 @@ class EuerCLITestCase(unittest.TestCase):
 
         second = self.run_cli(["private-summary", "--year", "2026"], check=True)
         self.assertIn("50.00 EUR", second.stdout)
+
+    def test_update_private_transfer_cli(self):
+        self.add_expense()
+        self.add_private_withdrawal(related_expense_id=1, amount="100.00")
+
+        result = self.run_cli(
+            [
+                "update",
+                "private-transfer",
+                "1",
+                "--amount",
+                "110.00",
+                "--description",
+                "Korrigiert",
+                "--clear-related-expense",
+            ],
+            check=True,
+        )
+        self.assertIn("Privatvorgang #1 aktualisiert", result.stdout)
+
+        query = self.run_cli(
+            [
+                "query",
+                "SELECT",
+                "amount_eur,description,related_expense_id",
+                "FROM",
+                "private_transfers",
+                "WHERE",
+                "id",
+                "=",
+                "1",
+            ],
+            check=True,
+        )
+        rows = self.parse_csv(query.stdout)
+        self.assertEqual(rows[1][1], "Korrigiert")
+        self.assertEqual(rows[1][2], "")
+        self.assertIn(rows[1][0], {"110.0", "110.00", "110"})
+
+    def test_delete_private_transfer_cli(self):
+        self.add_private_deposit(amount="100.00", description="Einlage")
+
+        result = self.run_cli(
+            ["delete", "private-transfer", "1", "--force"],
+            check=True,
+        )
+        self.assertIn("Privatvorgang #1 gelöscht", result.stdout)
+
+        query = self.run_cli(
+            ["query", "SELECT", "COUNT(*)", "as", "cnt", "FROM", "private_transfers"],
+            check=True,
+        )
+        rows = self.parse_csv(query.stdout)
+        self.assertEqual(rows[1][0], "0")
 
     def test_audit_log(self):
         self.add_expense()

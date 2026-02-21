@@ -6,7 +6,7 @@ from pathlib import Path
 from ..config import get_audit_user, get_private_accounts, load_config
 from ..db import get_category_id, get_db_connection, log_audit
 from ..importers import get_tax_config, iter_import_rows, normalize_import_row
-from ..services.private_transfers import classify_expense_private_paid
+from ..services.private_classification import classify_expense_private_paid
 from ..utils import compute_hash
 
 

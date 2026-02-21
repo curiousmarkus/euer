@@ -1,4 +1,3 @@
-import argparse
 import sys
 from pathlib import Path
 
@@ -13,7 +12,7 @@ from ..importers import get_tax_config
 from ..services.errors import RecordNotFoundError, ValidationError
 from ..services.expenses import update_expense
 from ..services.income import update_income
-from ..services.private_transfers import update_private_transfer
+from ..services.private_transfers import UNSET, update_private_transfer
 
 
 def cmd_update_expense(args):
@@ -39,7 +38,7 @@ def cmd_update_expense(args):
             notes=args.notes,
             vat=args.vat,
             is_rc=bool(args.rc),
-            private_paid=bool(args.private_paid),
+            private_paid=args.private_paid,
             private_accounts=private_accounts,
             tax_mode=tax_mode,
             audit_user=audit_user,
@@ -113,6 +112,11 @@ def cmd_update_private_transfer(args):
     conn = get_db_connection(db_path)
     config = load_config()
     audit_user = get_audit_user(config)
+    related_expense_id: int | None | object = UNSET
+    if args.clear_related_expense:
+        related_expense_id = None
+    elif args.related_expense_id is not None:
+        related_expense_id = args.related_expense_id
 
     try:
         transfer = update_private_transfer(
@@ -122,7 +126,7 @@ def cmd_update_private_transfer(args):
             amount_eur=args.amount,
             description=args.description,
             notes=args.notes,
-            related_expense_id=args.related_expense_id,
+            related_expense_id=related_expense_id,
             audit_user=audit_user,
         )
     except RecordNotFoundError:
@@ -131,10 +135,6 @@ def cmd_update_private_transfer(args):
         sys.exit(1)
     except ValidationError as exc:
         print(f"Fehler: {exc.message}", file=sys.stderr)
-        conn.close()
-        sys.exit(1)
-    except argparse.ArgumentTypeError as exc:
-        print(f"Fehler: {exc}", file=sys.stderr)
         conn.close()
         sys.exit(1)
 

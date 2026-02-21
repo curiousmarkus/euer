@@ -5,10 +5,11 @@ import uuid
 
 from ..db import log_audit, row_to_dict
 from ..utils import compute_hash
+from .expenses import row_to_expense
 from .errors import RecordNotFoundError, ValidationError
 from .models import Expense, PrivateTransfer
 
-USAGE_CONTRIBUTION_CATEGORY = "Fahrtkosten (Nutzungseinlage)"
+UNSET = object()
 
 
 def _get_optional(row: sqlite3.Row, key: str):
@@ -27,52 +28,6 @@ def _row_to_private_transfer(row: sqlite3.Row) -> PrivateTransfer:
         related_expense_id=_get_optional(row, "related_expense_id"),
         hash=_get_optional(row, "hash"),
     )
-
-
-def _row_to_expense(row: sqlite3.Row) -> Expense:
-    return Expense(
-        id=row["id"],
-        uuid=row["uuid"],
-        date=row["date"],
-        vendor=row["vendor"],
-        amount_eur=row["amount_eur"],
-        category_id=_get_optional(row, "category_id"),
-        category_name=_get_optional(row, "category_name"),
-        category_eur_line=_get_optional(row, "category_eur_line"),
-        account=_get_optional(row, "account"),
-        receipt_name=_get_optional(row, "receipt_name"),
-        foreign_amount=_get_optional(row, "foreign_amount"),
-        notes=_get_optional(row, "notes"),
-        is_rc=bool(_get_optional(row, "is_rc") or 0),
-        vat_input=_get_optional(row, "vat_input"),
-        vat_output=_get_optional(row, "vat_output"),
-        is_private_paid=bool(_get_optional(row, "is_private_paid") or 0),
-        private_classification=_get_optional(row, "private_classification") or "none",
-        hash=_get_optional(row, "hash"),
-    )
-
-
-def classify_expense_private_paid(
-    *,
-    account: str | None,
-    category_name: str | None,
-    private_accounts: list[str],
-    manual_override: bool = False,
-) -> tuple[bool, str]:
-    """Klassifiziert eine Ausgabe als private Sacheinlage."""
-    if manual_override:
-        return (True, "manual")
-
-    if category_name and category_name == USAGE_CONTRIBUTION_CATEGORY:
-        return (True, "category_rule")
-
-    if account:
-        normalized = account.strip().lower()
-        for item in private_accounts:
-            if normalized == item.strip().lower():
-                return (True, "account_rule")
-
-    return (False, "none")
 
 
 def create_private_transfer(
@@ -233,7 +188,7 @@ def update_private_transfer(
     amount_eur: float | None = None,
     description: str | None = None,
     notes: str | None = None,
-    related_expense_id: int | None = None,
+    related_expense_id: int | None | object = UNSET,
     audit_user: str,
 ) -> PrivateTransfer:
     row = conn.execute(
@@ -253,9 +208,10 @@ def update_private_transfer(
     new_amount = amount_eur if amount_eur is not None else row["amount_eur"]
     new_description = description if description is not None else row["description"]
     new_notes = notes if notes is not None else row["notes"]
-    new_related_expense_id = (
-        related_expense_id if related_expense_id is not None else row["related_expense_id"]
-    )
+    if related_expense_id is UNSET:
+        new_related_expense_id = row["related_expense_id"]
+    else:
+        new_related_expense_id = related_expense_id
 
     if new_amount <= 0:
         raise ValidationError(
@@ -402,7 +358,7 @@ def get_sacheinlagen(
     query += " ORDER BY e.date DESC, e.id DESC"
 
     rows = conn.execute(query, params).fetchall()
-    return [_row_to_expense(row) for row in rows]
+    return [row_to_expense(row) for row in rows]
 
 
 def get_private_summary(
