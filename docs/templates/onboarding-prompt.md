@@ -92,6 +92,7 @@ Erkläre kurz den Unterschied und frage dann:
    - Kurzname (z.B. "N26 Business", "Sparkasse Giro")
    - Bank
    - Letzte 4 Ziffern der IBAN (zur Identifikation)
+   - Bei Debit-/Kreditkarten: Kartentyp (z.B. "Mastercard", "Visa") und letzte 4 Ziffern
 
 8. **Weiteres Konto** (optional): "Nutzt du noch ein weiteres Konto für Geschäftsausgaben (z.B. Privatkonto für einzelne Käufe, PayPal)?"
 
