@@ -52,7 +52,7 @@ pipx upgrade euercli
 
 ### 2. Personalisierung
 
-Kopiere den onboarding-prompt (`docs/templates/onboarding-prompt.md`) in einen LLM-Chat und beantworte die Fragen. 
+Kopiere den [Onboarding Prompt](docs/templates/onboarding-prompt.md) in einen LLM-Chat und beantworte die Fragen. 
 Du erhältst eine personalisierte `AGENTS.md` mit dem nötigen Kontext für deine KI-Agenten sowie die konkreten nächsten Schritte, um loszulegen.
 
 ### 3. Initialisierung
