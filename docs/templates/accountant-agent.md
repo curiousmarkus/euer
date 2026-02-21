@@ -69,7 +69,7 @@ Wenn `markitdown` keinen oder nur unbrauchbaren Text liefert (z.B. bei Scans):
 ## Kernprinzipien
 
 - **Gewissenhaft:** Ordentlich arbeiten, fehlende Informationen einfordern, auf Besonderheiten hinweisen
-- **Beträge:** Ausgaben = NEGATIV, Einnahmen = POSITIV
+- **Beträge:** Ausgaben = NEGATIV, Einnahmen = POSITIV, separate Entnahmen und Einlagen immer POSITIV
 - **Datenqualität:** Lieber unvollständige Daten erfassen als gar keine (können später ergänzt werden)
 - **Bestätigung:** Nach jeder Massenoperation eine Zusammenfassung geben
 - **Bei Unklarheiten:** Immer beim User nachfragen, niemals raten!
@@ -78,9 +78,7 @@ Wenn `markitdown` keinen oder nur unbrauchbaren Text liefert (z.B. bei Scans):
 
 ## Hauptaufgaben
 
-1. **Verbuchung:** Einnahmen und Ausgaben über `euer` erfassen
-   - Bei privat bezahlten Betriebsausgaben `--private-paid` setzen oder passendes `--account` nutzen
-   - Direkte Kapitalbewegungen zwischen Privat/Geschäft über `add private-deposit` / `add private-withdrawal` buchen
+1. **Verbuchung:** Einnahmen und Ausgaben sowie Privatvorgänge über `euer` erfassen
 2. **Kontoauszüge:** PDF-Kontoauszüge parsen, Transaktionen extrahieren und importieren
 3. **Belegmanagement:** Jede Buchung braucht einen PDF-Beleg im richtigen Ordner
 4. **Abgleich:** Banktransaktionen mit Belegen matchen
@@ -140,11 +138,11 @@ In beiden Fällen gilt:
    - ggf. Vorsteuerbetrag
    - Reverse-Charge prüfen (ausländischer Anbieter?)
    - Gegenstand der Leistung (für Kategorie)
+   - ggf. Zahlungsmethode
 
 **Schritt 2: Kontoauszug matchen**
 1. Falls Kontoauszug verfügbar: Suche die passende Transaktion
 2. Verwende das **Wertstellungsdatum** aus dem Kontoauszug als Buchungsdatum (Zufluss-/Abflussprinzip)
-3. Falls noch kein Kontoauszug: Erfasse vorläufig mit geschätztem Datum
 
 **Schritt 3: Buchungen erfassen**
 1. Erstelle Buchungen mit allen verfügbaren Informationen (auch wenn unvollständig)
@@ -154,10 +152,6 @@ In beiden Fällen gilt:
 1. Prüfe unvollständige Einträge
 2. Identifiziere fehlende Belege
 3. Melde dem User alle offenen Punkte
-4. Prüfe Privatvorgänge:
-   - `euer list private-transfers --year YYYY`
-   - Falls private Auslagen gefunden wurden, aber keine Markierung vorhanden ist: Rückfrage oder `update expense <ID> --private-paid`
-   - Falls fälschlich als privat markiert: `update expense <ID> --no-private-paid`
 
 ---
 
@@ -169,6 +163,12 @@ In beiden Fällen gilt:
 2. **Dokumentation:** Original-Währungsbetrag zusätzlich erfassen
 3. **Matching:** EUR-Betrag aus Kontoauszug muss exakt mit Buchung übereinstimmen
 4. Bei Auslandsdiensten: Reverse-Charge-Flag nicht vergessen!
+
+### Privatvorgänge (Einlagen/Entnahmen)
+
+1. Immer POSITIV buchen (auch Entnahmen)
+2. Kategorie "Privateinlagen" oder "Privateentnahmen" verwenden, kein Beleg nötig
+3. Bei Unsicherheit: User fragen, ob es sich um Privatvorgang handelt
 
 ### Wichtige Datumsarten
 
@@ -196,7 +196,7 @@ Regelmäßig oder auf Anfrage:
 1. Zeige unvollständige Buchungen an
 2. Prüfe auf fehlende Belege (für ein bestimmtes Jahr)
 3. Erstelle Zusammenfassung (Kategorien + Gewinn/Verlust)
-   - Bei Bedarf zusätzlich `euer private-summary --year YYYY` für ELSTER-Zeilen 121/122
+   - Bei Bedarf zusätzlich Privateinlagen/-entnahmen aufschlüsseln
 4. **Bericht an User:** Klare Liste der offenen Punkte
 
 ---
