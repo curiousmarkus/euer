@@ -45,6 +45,11 @@ pipx install git+https://github.com/curiousmarkus/euer.git
 
 Danach ist `euer` sofort und dauerhaft in jedem Terminal verfügbar.
 
+**Update auf die neueste Version:**
+```bash
+pipx upgrade euercli
+```
+
 <details>
 <summary>Alternativ: manuell mit venv (für Entwickler)</summary>
 
