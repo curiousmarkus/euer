@@ -193,7 +193,7 @@ Wenn alle Fragen beantwortet sind:
 
 1. **Zusammenfassung**: Zeige alle gesammelten Informationen übersichtlich
 2. **Bestätigung**: Frage "Ist das so korrekt? Möchtest du etwas ändern?"
-3. **Ausgabe**: Generiere die vollständige `Agents.md` Datei
+3. **Ausgabe**: Generiere die vollständige `Agents.md` Datei — so formatiert, dass sie vom User einfach kopiert werden kann.
 
 ---
 
