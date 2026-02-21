@@ -29,7 +29,7 @@ Die meisten Tools zwingen dich zu einer Entscheidung: Entweder du nutzt unflexib
 
 ---
 
-## Quickstart: In 30 Sekunden startklar
+## Quickstart: In 2 Minuten startklar
 
 ### 1. Installation
 
