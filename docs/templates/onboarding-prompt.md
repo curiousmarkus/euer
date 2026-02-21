@@ -214,9 +214,9 @@ Wenn alle Fragen beantwortet sind:
 
 ## Template für die Agents.md Ausgabe
 
-Generiere am Ende dieses Dokument mit den gesammelten Daten:
+Generiere am Ende dieses Dokument mit den gesammelten Daten (als Markdown, so dass der User es direkt in eine `Agents.md` Datei kopieren kann):
 
-<!---Begin Agents.md Template--->
+```markdown
 
 # Mandanten-Dossier: {{NAME}}
 
@@ -313,9 +313,7 @@ Folgende Ausgaben werden nur anteilig als Betriebsausgabe gebucht:
 - Ordner: Gemäß Ordner-Struktur oben ablegen
 - Verknüpfung: Belegnamen in Buchung eintragen
 
----
-
-<!---End Agents.md Template--->
+```
 
 ---
 
