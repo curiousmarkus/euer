@@ -4,10 +4,12 @@ from pathlib import Path
 from ..config import (
     get_audit_user,
     get_export_dir,
+    get_private_accounts,
     load_config,
     normalize_export_path,
     normalize_receipt_path,
     normalize_tax_mode,
+    prompt_list,
     prompt_path,
     prompt_text,
     save_config,
@@ -61,6 +63,17 @@ def cmd_setup(args):
         get_audit_user(config),
     )
 
+    existing_private = get_private_accounts(config)
+    print()
+    print("Private Konten (für Sacheinlagen/Privateinlagen):")
+    print("  Ausgaben mit diesen Kontonamen werden automatisch als")
+    print("  Privateinlage (Sacheinlage) erfasst.")
+    print("  Mehrere Konten kommasepariert angeben.")
+    private_accounts_input = prompt_list(
+        "Private Konten",
+        existing_private,
+    )
+
     expenses_path = normalize_receipt_path(expenses_input)
     income_path = normalize_receipt_path(income_input)
     export_path = normalize_export_path(export_input)
@@ -70,9 +83,7 @@ def cmd_setup(args):
     exports_config["directory"] = export_path
     tax_config["mode"] = tax_mode
     user_config["name"] = audit_user_input
-    private_accounts = accounts_config.get("private")
-    if not isinstance(private_accounts, list) or not private_accounts:
-        accounts_config["private"] = ["privat"]
+    accounts_config["private"] = private_accounts_input or ["privat"]
     config["receipts"] = receipts_config
     config["exports"] = exports_config
     config["tax"] = tax_config
@@ -106,6 +117,9 @@ def cmd_setup(args):
     print(f"  name = {audit_user_input}")
     print("[accounts]")
     print(f"  private = {accounts_config.get('private', ['privat'])}")
+    print()
+    print("Hinweis: Ausgaben mit diesen Kontonamen (--account) werden")
+    print("automatisch als Sacheinlage (Privateinlage) erkannt.")
 
     for path in (expenses_path, income_path, export_path):
         if path and not Path(path).exists():

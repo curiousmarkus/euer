@@ -91,6 +91,22 @@ def prompt_text(label: str, default: str | None) -> str:
     return value
 
 
+def prompt_list(label: str, defaults: list[str] | None) -> list[str]:
+    """Fragt interaktiv eine kommaseparierte Liste ab."""
+    default_str = ", ".join(defaults) if defaults else ""
+    prompt = f"{label}"
+    if default_str:
+        prompt += f" [{default_str}]"
+    prompt += ": "
+    try:
+        value = input(prompt).strip()
+    except EOFError:
+        return defaults or []
+    if not value:
+        return defaults or []
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
 def normalize_receipt_path(value: str) -> str:
     """Normalisiert Pfad-Eingaben."""
     if not value:
