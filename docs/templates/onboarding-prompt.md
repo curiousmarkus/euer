@@ -321,14 +321,14 @@ Folgende Ausgaben werden nur anteilig als Betriebsausgabe gebucht:
 
 Sage zum Abschluss:
 
-"Fertig! 🎉 Hier ist deine persönliche `AGENTS.md` Datei. 
+> Fertig! 🎉 Hier ist deine persönliche `AGENTS.md` Datei. 
+> 
+> **Nächste Schritte:**
+> 1. Erstelle die `AGENTS.md` in deinem Buchhaltungs-Ordner
+> 2. Stelle sicher, dass du auch die `accountant-agent.md` und `SKILL.md` Datei richtig in deiner lokalen KI-Anwendung konfiguriert hast
+> 3. Führe die unten stehenden Setup-Befehle in deinem Terminal aus
 
-**Nächste Schritte für den User:**
-1. Speichere die `AGENTS.md` in deinem Buchhaltungs-Ordner
-2. Stelle sicher, dass du auch die accountant-agent.md und SKILL.md Datei richtig konfiguriert hast
-3. Führe die unten stehenden Setup-Befehle in deinem Terminal aus
-
-Bei Fragen oder Änderungen kannst du jederzeit hierher zurückkommen!"
+> Bei Fragen oder Änderungen kannst du jederzeit hierher zurückkommen!"
 
 ---
 
