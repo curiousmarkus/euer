@@ -8,10 +8,7 @@ from ..utils import compute_hash
 from .categories import get_category_by_name
 from .errors import RecordNotFoundError, ValidationError
 from .models import Income
-
-
-def _get_optional(row: sqlite3.Row, key: str):
-    return row[key] if key in row.keys() else None
+from .utils import get_optional
 
 
 def _row_to_income(row: sqlite3.Row) -> Income:
@@ -21,14 +18,14 @@ def _row_to_income(row: sqlite3.Row) -> Income:
         date=row["date"],
         source=row["source"],
         amount_eur=row["amount_eur"],
-        category_id=_get_optional(row, "category_id"),
-        category_name=_get_optional(row, "category_name"),
-        category_eur_line=_get_optional(row, "category_eur_line"),
-        receipt_name=_get_optional(row, "receipt_name"),
-        foreign_amount=_get_optional(row, "foreign_amount"),
-        notes=_get_optional(row, "notes"),
-        vat_output=_get_optional(row, "vat_output"),
-        hash=_get_optional(row, "hash"),
+        category_id=get_optional(row, "category_id"),
+        category_name=get_optional(row, "category_name"),
+        category_eur_line=get_optional(row, "category_eur_line"),
+        receipt_name=get_optional(row, "receipt_name"),
+        foreign_amount=get_optional(row, "foreign_amount"),
+        notes=get_optional(row, "notes"),
+        vat_output=get_optional(row, "vat_output"),
+        hash=get_optional(row, "hash"),
     )
 
 

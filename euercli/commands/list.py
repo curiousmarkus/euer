@@ -256,9 +256,18 @@ def cmd_list_private_deposits(args):
 
     if args.format == "csv":
         writer = csv.writer(sys.stdout)
-        writer.writerow(["ID", "Datum", "Beschreibung", "EUR", "Quelle"])
+        writer.writerow(["ID", "Datum", "Beschreibung", "EUR", "Quelle", "Klassifikation"])
         for row in transfers:
-            writer.writerow([row.id, row.date, row.description, f"{row.amount_eur:.2f}", "Direktbuchung"])
+            writer.writerow(
+                [
+                    row.id,
+                    row.date,
+                    row.description,
+                    f"{row.amount_eur:.2f}",
+                    "Direktbuchung",
+                    "direct",
+                ]
+            )
         for row in sacheinlagen:
             writer.writerow(
                 [
@@ -267,6 +276,7 @@ def cmd_list_private_deposits(args):
                     row.vendor,
                     f"{abs(row.amount_eur):.2f}",
                     f"Ausgabe #{row.id} (Sacheinlage)",
+                    row.private_classification,
                 ]
             )
         return
@@ -277,13 +287,17 @@ def cmd_list_private_deposits(args):
 
     print(f"Privateinlagen {year}")
     print("=" * 60)
-    print(f"{'ID':<5} {'Datum':<12} {'Beschreibung':<30} {'EUR':>10} {'Quelle':<20}")
-    print("-" * 85)
+    print(
+        f"{'ID':<5} {'Datum':<12} {'Beschreibung':<30} {'EUR':>10} "
+        f"{'Quelle':<20} {'Klass.':<12}"
+    )
+    print("-" * 98)
 
     total = 0.0
     for row in transfers:
         print(
-            f"{row.id:<5} {row.date:<12} {row.description[:30]:<30} {row.amount_eur:>10.2f} {'Direktbuchung':<20}"
+            f"{row.id:<5} {row.date:<12} {row.description[:30]:<30} {row.amount_eur:>10.2f} "
+            f"{'Direktbuchung':<20} {'direct':<12}"
         )
         total += row.amount_eur
 
@@ -291,12 +305,13 @@ def cmd_list_private_deposits(args):
         amount = abs(row.amount_eur)
         source = f"Ausgabe #{row.id}"
         print(
-            f"{'--':<5} {row.date:<12} {row.vendor[:30]:<30} {amount:>10.2f} {source:<20}"
+            f"{'--':<5} {row.date:<12} {row.vendor[:30]:<30} {amount:>10.2f} "
+            f"{source:<20} {row.private_classification:<12}"
         )
         total += amount
 
-    print("-" * 85)
-    print(f"{'GESAMT':<49} {total:>10.2f}")
+    print("-" * 98)
+    print(f"{'GESAMT':<62} {total:>10.2f}")
 
 
 def cmd_list_private_withdrawals(args):

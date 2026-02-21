@@ -89,6 +89,7 @@ Im Ordner `docs/templates/` findest du Vorlagen für die Agent-Konfiguration.
 
 3. **CLI einrichten:**
    - Führe `euer setup` aus, um die gleichen Pfade auch im CLI zu konfigurieren
+   - Alternativ non-interaktiv: `euer setup --set tax.mode "small_business"` usw.
    - Die Konfiguration wird unter macOS/Linux in `~/.config/euer/config.toml` gespeichert, unter Windows in `%APPDATA%\\euer\\config.toml`
 
 ### Empfohlene Tools für Agenten
@@ -119,6 +120,10 @@ euer init
 
 # Beleg-/Export-Pfade und Steuermodus konfigurieren (empfohlen)
 euer setup
+
+# Oder non-interaktiv (z.B. aus Onboarding-Output)
+euer setup --set tax.mode "small_business"
+euer setup --set accounts.private "privat, Sparkasse Kreditkarte"
 
 # Konfiguration prüfen
 euer config show
@@ -218,6 +223,8 @@ euer audit 42 --table expenses
 euer summary --year 2026
 euer summary --year 2026 --include-private
 euer private-summary --year 2026
+euer reconcile private --year 2026 --dry-run
+euer reconcile private --year 2026
 
 # Default: CSV, ohne --year = alle Jahre
 euer export
@@ -257,13 +264,14 @@ euer incomplete list --format csv
 
 Hinweise zum Import:
 - Pflichtfelder: `type`, `date`, `party`, `amount_eur`
-- Optionale Felder: `category`, `account`, `foreign_amount`, `receipt_name`, `notes`, `rc`, `vat_input`, `vat_output`
+- Optionale Felder: `category`, `account`, `foreign_amount`, `receipt_name`, `notes`, `rc`, `private_paid`, `vat_input`, `vat_output`
 - Fehlende Pflichtfelder führen zu einem Import-Abbruch.
 - `type` kann fehlen, wenn `amount_eur` ein Vorzeichen hat (negativ = Ausgabe, positiv = Einnahme).
 - CSV‑Exports für **Ausgaben/Einnahmen** können direkt re‑importiert werden (Spaltennamen sind gemappt).
 - Exporte `PrivateTransfers` und `Sacheinlagen` sind nicht als Standard-Importquelle vorgesehen.
 - Kategorien mit `"(NN)"` werden beim Import automatisch bereinigt.
 - Alias‑Keys werden akzeptiert (z.B. `EUR`, `Belegname`, `Lieferant`, `Quelle`, `RC`).
+- `private_paid=true|1|yes|X` markiert eine importierte Ausgabe manuell als Sacheinlage.
 - Steuerfelder:
   - `small_business` + `rc=true`: `vat_output` wird automatisch aus `amount_eur * 0.19` berechnet,
     `vat_input` wird auf `0.0` gesetzt (Felder können weggelassen werden).
@@ -283,6 +291,7 @@ Hinweis: Für die Kategorie **Gezahlte USt (58)** ist kein Beleg erforderlich.
 
 `euer setup` legt Pfade und den Audit‑User in `~/.config/euer/config.toml` an.
 Belege werden in Jahres‑Unterordnern erwartet: `<base>/<Jahr>/<Belegname>`.
+Mit `euer setup --set section.key value` kannst du einzelne Werte ohne Prompt setzen.
 
 ```toml
 [receipts]
@@ -362,7 +371,19 @@ euer add expense --date 2026-01-04 --vendor "RENDER.COM" \
 
 Hinweis: Bei `small_business` setzt RC automatisch `vat_output`, `vat_input` bleibt `0.0`.
 
-## Einmaliger Backfill für bestehende DB (direkt in SQLite)
+## Backfill / Reklassifikation für bestehende DB
+
+Empfohlen ist zuerst der CLI-Abgleich:
+
+```bash
+euer reconcile private --year 2026 --dry-run
+euer reconcile private --year 2026
+```
+
+Das Kommando reklassifiziert persistierte `expenses.is_private_paid`-Werte auf Basis der
+aktuellen Config (`[accounts].private`) und lässt manuelle Markierungen unverändert.
+
+### Alternativ: Einmaliger Backfill direkt in SQLite
 
 Wenn du alte Ausgaben nachträglich als private Sacheinlagen markieren willst:
 

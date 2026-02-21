@@ -17,8 +17,68 @@ from ..config import (
 from ..constants import CONFIG_PATH, DEFAULT_EXPORT_DIR
 
 
+def _ordered_config(config: dict) -> dict:
+    ordered = {}
+    for section in ("receipts", "exports", "tax", "user", "accounts"):
+        if section in config:
+            ordered[section] = config[section]
+    for key, value in config.items():
+        if key not in ordered:
+            ordered[key] = value
+    return ordered
+
+
+def _normalize_setup_set_value(key: str, value: str):
+    if key == "tax.mode":
+        return normalize_tax_mode(value)
+    if key in {"receipts.expenses", "receipts.income"}:
+        return normalize_receipt_path(value)
+    if key == "exports.directory":
+        return normalize_export_path(value)
+    if key == "accounts.private":
+        accounts = [item.strip() for item in value.split(",") if item.strip()]
+        if not accounts:
+            raise ValueError("accounts.private darf nicht leer sein.")
+        return accounts
+    return value
+
+
+def cmd_setup_set(key: str, value: str) -> None:
+    """Setzt einen einzelnen Config-Wert ohne interaktiven Prompt."""
+    if "." not in key:
+        raise ValueError("Ungültiger Key. Verwende das Format section.key (z.B. tax.mode).")
+
+    section, config_key = key.split(".", 1)
+    if not section or not config_key:
+        raise ValueError("Ungültiger Key. Verwende das Format section.key.")
+
+    config = load_config()
+    section_config = dict(config.get(section, {}))
+    section_config[config_key] = _normalize_setup_set_value(key, value)
+    config[section] = section_config
+
+    save_config(_ordered_config(config))
+
+    print(f"Konfiguration gespeichert: {CONFIG_PATH}")
+    print(f"  {key} = {section_config[config_key]}")
+
+    if key in {"receipts.expenses", "receipts.income", "exports.directory"}:
+        path_value = section_config[config_key]
+        if path_value and not Path(path_value).exists():
+            print(f"! Hinweis: Pfad existiert nicht: {path_value}", file=sys.stderr)
+
+
 def cmd_setup(args):
-    """Interaktive Ersteinrichtung."""
+    """Interaktive Ersteinrichtung oder Setzen einzelner Config-Werte."""
+    if args.set:
+        key, value = args.set
+        try:
+            cmd_setup_set(key, value)
+        except ValueError as exc:
+            print(f"Fehler: {exc}", file=sys.stderr)
+            sys.exit(1)
+        return
+
     print("Willkommen! Konfiguriere deine EÜR...")
     print()
 
@@ -90,18 +150,7 @@ def cmd_setup(args):
     config["user"] = user_config
     config["accounts"] = accounts_config
 
-    ordered_config = {
-        "receipts": receipts_config,
-        "exports": exports_config,
-        "tax": tax_config,
-        "user": user_config,
-        "accounts": accounts_config,
-    }
-    for key, value in config.items():
-        if key not in ("receipts", "exports", "tax", "user", "accounts"):
-            ordered_config[key] = value
-
-    save_config(ordered_config)
+    save_config(_ordered_config(config))
 
     print()
     print(f"Konfiguration gespeichert: {CONFIG_PATH}")

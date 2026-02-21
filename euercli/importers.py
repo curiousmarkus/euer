@@ -108,6 +108,9 @@ def normalize_import_row(row: dict) -> dict:
         ),
         "notes": get_row_value(row, "notes", "Bemerkung", "Notiz"),
         "rc": parse_bool(get_row_value(row, "rc", "is_rc", "RC")),
+        "private_paid": parse_bool(
+            get_row_value(row, "private_paid", "Privat bezahlt")
+        ),
         "vat_input": parse_amount(
             get_row_value(row, "vat_input", "Vorsteuer", "USt-VA")
         ),

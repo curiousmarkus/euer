@@ -25,6 +25,7 @@ python -m euercli <command>
 
 - Standard‑DB: `euer.db` im Projekt (oder via `--db PFAD`).
 - Config: `~/.config/euer/config.toml` (Beleg‑Pfade, Export‑Verzeichnis, Steuer‑Modus, private Konten).
+- Non-interaktiv setzen: `euer setup --set <section.key> <value>` (z.B. `tax.mode`, `accounts.private`).
 - Direkter sqlite3‑Zugriff ist **verboten**, da sonst Inkonsistenzen auftreten können und das Audit-Log umgangen wird.
 - Für fortgeschrittene Abfragen **nur** `euer query` verwenden (nur SELECT, keine Writes).
 
@@ -124,6 +125,9 @@ euer summary [--year YYYY] [--include-private]
 # Privat-Zusammenfassung (ELSTER Zeile 121/122)
 euer private-summary --year YYYY
 
+# Persistierte private Klassifikation nachziehen (z.B. nach Setup-Änderung)
+euer reconcile private [--year YYYY] [--dry-run]
+
 # Export als CSV oder XLSX
 euer export [--year YYYY] [--format csv|xlsx]
 
@@ -166,10 +170,11 @@ Hinweis: Für die Kategorie **Gezahlte USt (57)** ist kein Beleg erforderlich.
 Import-Schema (Kurzfassung):
 - Pflichtfelder: `type`, `date`, `party`, `amount_eur`
 - Optional: `category`, `account`, `foreign_amount`, `receipt_name`, `notes`, `rc`,
-  `vat_input`, `vat_output`
+  `private_paid`, `vat_input`, `vat_output`
 - Fehlende Pflichtfelder führen zu einem Import-Abbruch.
 - Alias-Keys (Auszug): `EUR`, `Belegname`, `Lieferant`, `Quelle`, `RC`,
-  `Vorsteuer`, `Umsatzsteuer`
+  `Vorsteuer`, `Umsatzsteuer`, `Privat bezahlt`
+- `private_paid=true|1|yes|X` markiert die Ausgabe manuell als Sacheinlage.
 - Kategorien wie `Arbeitsmittel (51)` werden automatisch auf `Arbeitsmittel` bereinigt.
 - Steuerfelder:
   - `small_business` + `rc=true`: `vat_output` wird automatisch aus `amount_eur * 0.19` berechnet,

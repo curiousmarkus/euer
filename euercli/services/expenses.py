@@ -9,10 +9,7 @@ from .categories import get_category_by_name
 from .errors import RecordNotFoundError, ValidationError
 from .models import Expense
 from .private_classification import classify_expense_private_paid
-
-
-def _get_optional(row: sqlite3.Row, key: str):
-    return row[key] if key in row.keys() else None
+from .utils import get_optional
 
 
 def row_to_expense(row: sqlite3.Row) -> Expense:
@@ -22,19 +19,19 @@ def row_to_expense(row: sqlite3.Row) -> Expense:
         date=row["date"],
         vendor=row["vendor"],
         amount_eur=row["amount_eur"],
-        category_id=_get_optional(row, "category_id"),
-        category_name=_get_optional(row, "category_name"),
-        category_eur_line=_get_optional(row, "category_eur_line"),
-        account=_get_optional(row, "account"),
-        receipt_name=_get_optional(row, "receipt_name"),
-        foreign_amount=_get_optional(row, "foreign_amount"),
-        notes=_get_optional(row, "notes"),
-        is_rc=bool(_get_optional(row, "is_rc") or 0),
-        vat_input=_get_optional(row, "vat_input"),
-        vat_output=_get_optional(row, "vat_output"),
-        is_private_paid=bool(_get_optional(row, "is_private_paid") or 0),
-        private_classification=_get_optional(row, "private_classification") or "none",
-        hash=_get_optional(row, "hash"),
+        category_id=get_optional(row, "category_id"),
+        category_name=get_optional(row, "category_name"),
+        category_eur_line=get_optional(row, "category_eur_line"),
+        account=get_optional(row, "account"),
+        receipt_name=get_optional(row, "receipt_name"),
+        foreign_amount=get_optional(row, "foreign_amount"),
+        notes=get_optional(row, "notes"),
+        is_rc=bool(get_optional(row, "is_rc") or 0),
+        vat_input=get_optional(row, "vat_input"),
+        vat_output=get_optional(row, "vat_output"),
+        is_private_paid=bool(get_optional(row, "is_private_paid") or 0),
+        private_classification=get_optional(row, "private_classification") or "none",
+        hash=get_optional(row, "hash"),
     )
 
 

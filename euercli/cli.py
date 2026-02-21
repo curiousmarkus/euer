@@ -27,6 +27,7 @@ from .commands import (
     cmd_list_private_withdrawals,
     cmd_private_summary,
     cmd_query,
+    cmd_reconcile_private,
     cmd_receipt_check,
     cmd_receipt_open,
     cmd_setup,
@@ -76,7 +77,15 @@ def main() -> None:
     init_parser.set_defaults(func=cmd_init)
 
     # --- setup ---
-    setup_parser = subparsers.add_parser("setup", help="Interaktive Ersteinrichtung")
+    setup_parser = subparsers.add_parser(
+        "setup", help="Ersteinrichtung (interaktiv oder --set KEY VALUE)"
+    )
+    setup_parser.add_argument(
+        "--set",
+        nargs=2,
+        metavar=("KEY", "VALUE"),
+        help="Setzt einen Config-Wert direkt (z.B. tax.mode small_business)",
+    )
     setup_parser.set_defaults(func=cmd_setup)
 
     # --- import ---
@@ -390,6 +399,29 @@ def main() -> None:
         "--year", type=int, required=True, help="Jahr"
     )
     private_summary_parser.set_defaults(func=cmd_private_summary)
+
+    # --- reconcile ---
+    reconcile_parser = subparsers.add_parser(
+        "reconcile",
+        help="Abgleich/Fix für persistierte Daten",
+    )
+    reconcile_subparsers = reconcile_parser.add_subparsers(dest="type", required=True)
+
+    reconcile_private_parser = reconcile_subparsers.add_parser(
+        "private",
+        help="Reklassifiziert Sacheinlagen anhand aktueller Config",
+    )
+    reconcile_private_parser.add_argument(
+        "--year",
+        type=int,
+        help="Optionales Jahr (ohne Angabe: alle Jahre)",
+    )
+    reconcile_private_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Nur geplante Änderungen anzeigen",
+    )
+    reconcile_private_parser.set_defaults(func=cmd_reconcile_private)
 
     # --- query ---
     query_parser = subparsers.add_parser(

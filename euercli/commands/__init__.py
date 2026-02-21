@@ -21,6 +21,7 @@ from .list import (
 )
 from .private_summary import cmd_private_summary
 from .query import cmd_query
+from .reconcile import cmd_reconcile_private
 from .receipt import cmd_receipt_check, cmd_receipt_open
 from .setup import cmd_setup
 from .summary import cmd_summary
@@ -48,6 +49,7 @@ __all__ = [
     "cmd_list_private_withdrawals",
     "cmd_private_summary",
     "cmd_query",
+    "cmd_reconcile_private",
     "cmd_receipt_check",
     "cmd_receipt_open",
     "cmd_setup",

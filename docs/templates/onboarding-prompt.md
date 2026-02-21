@@ -310,8 +310,32 @@ Sage zum Abschluss:
 **Nächste Schritte für den User:**
 1. Speichere die `Agents.md` in deinem Buchhaltungs-Ordner
 2. Stelle sicher, dass du auch die accountant-agent.md und SKILL.md Datei richtig konfiguriert hast
-3. Führe `euer init` und dann `euer setup` aus, um die Pfade auch im CLI zu konfigurieren
+3. Führe die unten stehenden Setup-Befehle in deinem Terminal aus
 
 Bei Fragen oder Änderungen kannst du jederzeit hierher zurückkommen!"
+
+---
+
+Generiere anschließend einen Block mit **copy-paste-fertigen Setup-Befehlen**. Nutze die gesammelten Daten aus dem Interview:
+
+```markdown
+## Setup-Befehle (copy & paste in dein Terminal)
+
+Wechsle zuerst in deinen Buchhaltungs-Ordner, dann führe diese Befehle aus:
+
+\`\`\`bash
+euer init
+euer setup --set tax.mode "{{STEUERMODUS}}"
+euer setup --set receipts.expenses "{{PFAD_AUSGABEN}}"
+euer setup --set receipts.income "{{PFAD_EINNAHMEN}}"
+euer setup --set exports.directory "{{PFAD_EXPORTS}}"
+euer setup --set user.name "{{NAME}}"
+euer setup --set accounts.private "{{PRIVATE_ACCOUNTS_KOMMASEPARIERT}}"
+\`\`\`
+```
+
+**Wichtig:** Verwende die exakten Werte aus dem Interview. Die privaten Kontonamen müssen genau so geschrieben werden, wie der User sie bei seinen Buchungen als `--account` verwenden wird. Beispiel:
+- Wenn der User "Sparkasse Kreditkarte" als privates Konto nutzt → `euer setup --set accounts.private "privat, Sparkasse Kreditkarte"`
+- Die Kontonamen sind case-insensitive beim Matching, aber die Schreibweise sollte konsistent sein.
 
 ```

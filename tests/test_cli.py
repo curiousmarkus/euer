@@ -54,6 +54,11 @@ class EuerCLITestCase(unittest.TestCase):
             return Path(self.env["APPDATA"]) / "euer" / "config.toml"
         return Path(self.env["HOME"]) / ".config" / "euer" / "config.toml"
 
+    def write_config(self, content: str) -> None:
+        config_path = self.expected_config_path()
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text(content, encoding="utf-8")
+
     def add_expense(self, **overrides):
         data = {
             "date": "2026-01-15",
@@ -217,6 +222,150 @@ class EuerCLITestCase(unittest.TestCase):
         self.assertEqual(foreign, "")
         self.assertEqual(notes, "")
         self.assertEqual(vat_output, "")
+
+    def test_add_private_deposit(self):
+        result = self.add_private_deposit(amount="250.00", description="Eigenkapital")
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        self.assertIn("Privateinlage #1 hinzugefügt", result.stdout)
+
+        query = self.run_cli(
+            [
+                "query",
+                "SELECT",
+                "type,amount_eur,description",
+                "FROM",
+                "private_transfers",
+                "WHERE",
+                "id",
+                "=",
+                "1",
+            ],
+            check=True,
+        )
+        rows = self.parse_csv(query.stdout)
+        self.assertEqual(rows[1][0], "deposit")
+        self.assertIn(rows[1][1], {"250.0", "250.00", "250"})
+        self.assertEqual(rows[1][2], "Eigenkapital")
+
+    def test_add_private_withdrawal(self):
+        result = self.add_private_withdrawal(amount="125.00", description="Privat")
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        self.assertIn("Privatentnahme #1 hinzugefügt", result.stdout)
+
+        query = self.run_cli(
+            [
+                "query",
+                "SELECT",
+                "type,amount_eur,description",
+                "FROM",
+                "private_transfers",
+                "WHERE",
+                "id",
+                "=",
+                "1",
+            ],
+            check=True,
+        )
+        rows = self.parse_csv(query.stdout)
+        self.assertEqual(rows[1][0], "withdrawal")
+        self.assertIn(rows[1][1], {"125.0", "125.00", "125"})
+        self.assertEqual(rows[1][2], "Privat")
+
+    def test_add_private_withdrawal_with_related_expense(self):
+        self.add_expense()
+        result = self.add_private_withdrawal(
+            amount="10.00",
+            description="Ausgleich",
+            related_expense_id=1,
+        )
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+
+        query = self.run_cli(
+            [
+                "query",
+                "SELECT",
+                "related_expense_id",
+                "FROM",
+                "private_transfers",
+                "WHERE",
+                "id",
+                "=",
+                "1",
+            ],
+            check=True,
+        )
+        rows = self.parse_csv(query.stdout)
+        self.assertEqual(rows[1][0], "1")
+
+    def test_list_private_transfers(self):
+        self.add_private_deposit(amount="100.00", description="Direkt")
+        self.add_expense(account="privat", amount="-25.00", vendor="Sacheinlage")
+        self.add_private_withdrawal(amount="40.00", description="Entnahme")
+
+        result = self.run_cli(
+            ["list", "private-transfers", "--year", "2026"],
+            check=True,
+        )
+        self.assertIn("Privateinlagen & Privatentnahmen 2026", result.stdout)
+        self.assertIn("Direkt", result.stdout)
+        self.assertIn("Sacheinlage", result.stdout)
+        self.assertIn("Entnahme", result.stdout)
+
+    def test_expense_private_paid_flag_persisted(self):
+        self.add_expense(private_paid=True, account="Geschäft")
+
+        query = self.run_cli(
+            [
+                "query",
+                "SELECT",
+                "is_private_paid,private_classification",
+                "FROM",
+                "expenses",
+                "WHERE",
+                "id",
+                "=",
+                "1",
+            ],
+            check=True,
+        )
+        rows = self.parse_csv(query.stdout)
+        self.assertEqual(rows[1][0], "1")
+        self.assertEqual(rows[1][1], "manual")
+
+    def test_import_with_private_classification(self):
+        import_file = self.root / "import_private.jsonl"
+        import_file.write_text(
+            (
+                '{"type":"expense","date":"2026-02-03","party":"Tool","'
+                'category":"Arbeitsmittel","amount_eur":-30.00,'
+                '"private_paid":true}\n'
+            ),
+            encoding="utf-8",
+        )
+
+        result = self.run_cli(
+            ["import", "--file", str(import_file), "--format", "jsonl"],
+            check=True,
+        )
+        self.assertIn("Ausgaben angelegt: 1", result.stdout)
+
+        query = self.run_cli(
+            [
+                "query",
+                "SELECT",
+                "is_private_paid,private_classification",
+                "FROM",
+                "expenses",
+                "WHERE",
+                "id",
+                "=",
+                "1",
+            ],
+            check=True,
+        )
+        rows = self.parse_csv(query.stdout)
+        self.assertEqual(rows[1][0], "1")
+        self.assertEqual(rows[1][1], "manual")
 
 
     def test_duplicate_detection(self):
@@ -433,6 +582,8 @@ class EuerCLITestCase(unittest.TestCase):
         self.assertIn("GESAMT Privateinlagen", result.stdout)
         self.assertIn("525.00 EUR", result.stdout)
         self.assertIn("100.00 EUR", result.stdout)
+        self.assertIn("SALDO (Einlagen - Entnahmen)", result.stdout)
+        self.assertIn("425.00 EUR", result.stdout)
 
     def test_private_totals_unchanged_after_config_edit(self):
         self.add_expense(account="privat", amount="-50.00")
@@ -445,6 +596,135 @@ class EuerCLITestCase(unittest.TestCase):
 
         second = self.run_cli(["private-summary", "--year", "2026"], check=True)
         self.assertIn("50.00 EUR", second.stdout)
+
+    def test_reconcile_private_updates_and_logs(self):
+        self.write_config("[accounts]\nprivate = [\"privat\"]\n")
+        self.add_expense(account="Sparkasse Kreditkarte", amount="-35.00")
+
+        before = self.run_cli(
+            [
+                "query",
+                "SELECT",
+                "is_private_paid,private_classification",
+                "FROM",
+                "expenses",
+                "WHERE",
+                "id",
+                "=",
+                "1",
+            ],
+            check=True,
+        )
+        before_rows = self.parse_csv(before.stdout)
+        self.assertEqual(before_rows[1][0], "0")
+        self.assertEqual(before_rows[1][1], "none")
+
+        self.write_config("[accounts]\nprivate = [\"Sparkasse Kreditkarte\"]\n")
+        result = self.run_cli(
+            ["reconcile", "private", "--year", "2026"],
+            check=True,
+        )
+        self.assertIn("Geändert: 1", result.stdout)
+
+        after = self.run_cli(
+            [
+                "query",
+                "SELECT",
+                "is_private_paid,private_classification",
+                "FROM",
+                "expenses",
+                "WHERE",
+                "id",
+                "=",
+                "1",
+            ],
+            check=True,
+        )
+        after_rows = self.parse_csv(after.stdout)
+        self.assertEqual(after_rows[1][0], "1")
+        self.assertEqual(after_rows[1][1], "account_rule")
+
+        audit = self.run_cli(
+            [
+                "query",
+                "SELECT",
+                "COUNT(*)",
+                "as",
+                "cnt",
+                "FROM",
+                "audit_log",
+                "WHERE",
+                "table_name",
+                "=",
+                "'expenses'",
+                "AND",
+                "record_id",
+                "=",
+                "1",
+                "AND",
+                "action",
+                "=",
+                "'MIGRATE'",
+            ],
+            check=True,
+        )
+        audit_rows = self.parse_csv(audit.stdout)
+        self.assertEqual(audit_rows[1][0], "1")
+
+    def test_reconcile_private_dry_run_changes_nothing(self):
+        self.write_config("[accounts]\nprivate = [\"privat\"]\n")
+        self.add_expense(account="Kreditkarte Privat", amount="-45.00")
+        self.write_config("[accounts]\nprivate = [\"Kreditkarte Privat\"]\n")
+
+        result = self.run_cli(
+            ["reconcile", "private", "--year", "2026", "--dry-run"],
+            check=True,
+        )
+        self.assertIn("Dry-Run", result.stdout)
+        self.assertIn("Geändert: 1", result.stdout)
+
+        row = self.run_cli(
+            [
+                "query",
+                "SELECT",
+                "is_private_paid,private_classification",
+                "FROM",
+                "expenses",
+                "WHERE",
+                "id",
+                "=",
+                "1",
+            ],
+            check=True,
+        )
+        rows = self.parse_csv(row.stdout)
+        self.assertEqual(rows[1][0], "0")
+        self.assertEqual(rows[1][1], "none")
+
+    def test_reconcile_private_keeps_manual_classification(self):
+        self.add_expense(account="Geschäft", private_paid=True, amount="-18.00")
+        self.write_config("[accounts]\nprivate = [\"anderes konto\"]\n")
+
+        result = self.run_cli(["reconcile", "private", "--year", "2026"], check=True)
+        self.assertIn("Übersprungen (manuell): 1", result.stdout)
+
+        row = self.run_cli(
+            [
+                "query",
+                "SELECT",
+                "is_private_paid,private_classification",
+                "FROM",
+                "expenses",
+                "WHERE",
+                "id",
+                "=",
+                "1",
+            ],
+            check=True,
+        )
+        rows = self.parse_csv(row.stdout)
+        self.assertEqual(rows[1][0], "1")
+        self.assertEqual(rows[1][1], "manual")
 
     def test_update_private_transfer_cli(self):
         self.add_expense()
@@ -532,6 +812,20 @@ class EuerCLITestCase(unittest.TestCase):
         self.assertEqual(config.get("exports", {}).get("directory"), str(export_dir))
         self.assertEqual(config.get("tax", {}).get("mode"), "small_business")
         self.assertEqual(config.get("accounts", {}).get("private"), ["privat"])
+
+    def test_setup_set_accounts_private(self):
+        result = self.run_cli(
+            ["setup", "--set", "accounts.private", "privat, Sparkasse Kreditkarte"],
+            check=True,
+        )
+        self.assertIn("Konfiguration gespeichert", result.stdout)
+
+        config_path = self.expected_config_path()
+        config = tomllib.loads(config_path.read_text(encoding="utf-8"))
+        self.assertEqual(
+            config.get("accounts", {}).get("private"),
+            ["privat", "Sparkasse Kreditkarte"],
+        )
 
     def test_setup_writes_tax_mode_standard(self):
         expenses_dir = self.root / "receipts" / "expenses"

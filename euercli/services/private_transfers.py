@@ -8,12 +8,9 @@ from ..utils import compute_hash
 from .expenses import row_to_expense
 from .errors import RecordNotFoundError, ValidationError
 from .models import Expense, PrivateTransfer
+from .utils import get_optional
 
 UNSET = object()
-
-
-def _get_optional(row: sqlite3.Row, key: str):
-    return row[key] if key in row.keys() else None
 
 
 def _row_to_private_transfer(row: sqlite3.Row) -> PrivateTransfer:
@@ -24,9 +21,9 @@ def _row_to_private_transfer(row: sqlite3.Row) -> PrivateTransfer:
         type=row["type"],
         amount_eur=row["amount_eur"],
         description=row["description"],
-        notes=_get_optional(row, "notes"),
-        related_expense_id=_get_optional(row, "related_expense_id"),
-        hash=_get_optional(row, "hash"),
+        notes=get_optional(row, "notes"),
+        related_expense_id=get_optional(row, "related_expense_id"),
+        hash=get_optional(row, "hash"),
     )
 
 
@@ -393,4 +390,5 @@ def get_private_summary(
         "deposits_sacheinlagen": deposits_sacheinlagen,
         "deposits_total": deposits_direct + deposits_sacheinlagen,
         "withdrawals_total": withdrawals_total,
+        "balance": (deposits_direct + deposits_sacheinlagen) - withdrawals_total,
     }

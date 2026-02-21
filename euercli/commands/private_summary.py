@@ -42,6 +42,13 @@ def print_private_summary(conn, year: int) -> None:
         f"{'GESAMT Privatentnahmen:':<46}"
         f"{summary['withdrawals_total']:>10.2f} EUR"
     )
+    print()
+    print("  " + "=" * 58)
+    print(
+        "  "
+        f"{'SALDO (Einlagen - Entnahmen):':<46}"
+        f"{summary['balance']:>10.2f} EUR"
+    )
 
 
 def cmd_private_summary(args):

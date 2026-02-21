@@ -21,7 +21,10 @@ def print_import_schema() -> None:
     print("  - amount_eur: Betrag in EUR (Ausgaben negativ, Einnahmen positiv)")
     print()
     print("Optionale Felder:")
-    print("  category, account, foreign_amount, receipt_name, notes, rc, vat_input, vat_output")
+    print(
+        "  category, account, foreign_amount, receipt_name, notes, rc, private_paid, "
+        "vat_input, vat_output"
+    )
     print()
     print("Minimaler JSONL-Datensatz (Ausgabe):")
     print(
@@ -40,6 +43,7 @@ def print_import_schema() -> None:
     print("  amount_eur: amount_eur, amount, EUR, Betrag, Betrag in EUR")
     print("  receipt_name: receipt_name, receipt, Belegname, Beleg")
     print("  rc: rc, is_rc, RC")
+    print("  private_paid: private_paid, Privat bezahlt")
     print("  vat_input: vat_input, Vorsteuer, USt-VA")
     print("  vat_output: vat_output, Umsatzsteuer")
     print("  notes: notes, Bemerkung, Notiz")
@@ -49,6 +53,7 @@ def print_import_schema() -> None:
     print("Hinweis:")
     print("  - CSV-Exporte von 'euer export' können direkt re-importiert werden.")
     print("  - Kategorien mit '(NN)' werden automatisch bereinigt.")
+    print("  - private_paid=true|1|yes|X markiert manuell als Sacheinlage.")
     print("  - Unbekannte Kategorien werden als fehlend behandelt.")
     print("  - Unvollständige Felder (category/receipt/vat/account) werden später per")
     print("    `euer incomplete list` angezeigt.")
@@ -133,6 +138,7 @@ def cmd_import(args):
         receipt_name = normalized["receipt_name"]
         notes = normalized["notes"]
         rc = normalized["rc"]
+        private_paid = normalized["private_paid"]
         vat_input = normalized["vat_input"]
         vat_output = normalized["vat_output"]
 
@@ -171,6 +177,7 @@ def cmd_import(args):
                 account=str(account) if account is not None else None,
                 category_name=str(category_name) if category_name is not None else None,
                 private_accounts=private_accounts,
+                manual_override=bool(private_paid),
             )
             existing = conn.execute(
                 "SELECT id FROM expenses WHERE hash = ?", (tx_hash,)
