@@ -372,13 +372,36 @@ euer add income \
     --receipt "2026-01-20_Rechnung_001.pdf"
 ```
 
-### Telefon-Rechnung buchen
+### Privat bezahlte Rechnung buchen (Sacheinlage)
 
 ```bash
 euer add expense \
     --date 2026-01-15 \
-    --vendor "1und1" \
+    --vendor "Amazon" \
+    --category "Arbeitsmittel" \
+    --amount -19.99 \
+    --account "privat" \
+    --receipt "2026-01-15_Amazon.pdf"
+```
+
+Hinweis: Wenn `account` einen in `config.toml [accounts].private` konfigurierten Wert hat
+(Default: `"privat"`), wird die Ausgabe automatisch als Sacheinlage (Privateinlage) erfasst.
+Alternativ kann `--private-paid` explizit gesetzt werden.
+
+### Anteilig absetzbare Ausgabe buchen (gemischte Nutzung)
+
+Bei Ausgaben mit sowohl privater als auch geschäftlicher Nutzung wird **nur der geschäftliche Anteil** gebucht.
+Der volle Rechnungsbetrag wird in `--notes` dokumentiert.
+
+**Beispiel: Internet-Anschluss, 50% geschäftlich, privat bezahlt:**
+
+```bash
+euer add expense \
+    --date 2026-01-20 \
+    --vendor "Vodafone" \
     --category "Telekommunikation" \
-    --amount -39.99 \
-    --account "Sparkasse Giro"
+    --amount -24.95 \
+    --account "privat" \
+    --receipt "2026-01-20_Vodafone.pdf" \
+    --notes "Internet 49,90 EUR, 50% geschäftlich"
 ```
