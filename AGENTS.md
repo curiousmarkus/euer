@@ -34,6 +34,19 @@ euer --db test.db init
 euer --db test.db list expenses
 ```
 
+### Installation via pipx (Produktion)
+
+```bash
+# Erstinstallation aus lokalem Repo
+pipx install /pfad/zu/euer
+
+# Nach Code-Änderungen: Version bumpen (siehe unten), dann:
+pipx upgrade euercli
+
+# Alternativ ohne Version-Bump (erzwingt Neuinstallation):
+pipx reinstall euercli
+```
+
 ### Tests
 
 ```bash
@@ -232,6 +245,8 @@ euer/
 - User guide: `docs/USER_GUIDE.md`
 - Agent templates: `docs/templates/`
 
+---
+
 ## Spec-Status pflegen
 
 Jede Spec in `specs/` hat ein `## Status`-Feld mit einem der Werte:
@@ -251,4 +266,4 @@ geprüft und ggf. aktualisiert werden:
 - `docs/skills/euer-buchhaltung/SKILL.md` — Buchungsbeispiele und Regeln für AI-Agenten
 - `docs/templates/onboarding-prompt.md` — falls neue Interview-Fragen nötig sind
 - `README.md` — falls sich der Feature-Überblick ändert
-- `DEVELOPMENT.md` — Architektur, Datenmodell, Spec-Tabelle aktualisieren
+- `DEVELOPMENT.md` — Architektur, Datenmodell, Spec-Tabelle und Versionierung aktualisieren

@@ -27,6 +27,16 @@ lint:
 	$(VENV)/bin/ruff check euercli
 	$(VENV)/bin/ruff format euercli
 
+# Versioning
+bump-patch:
+	./scripts/bump-version.sh patch
+
+bump-minor:
+	./scripts/bump-version.sh minor
+
+bump-major:
+	./scripts/bump-version.sh major
+
 # Remove venv and build artifacts
 clean:
 	rm -rf $(VENV) *.egg-info euercli.egg-info __pycache__ euercli/__pycache__

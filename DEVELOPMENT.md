@@ -120,6 +120,40 @@ damit Erweiterungen konsistent und risikoarm umgesetzt werden koennen.
 - **Receipts**: Belegpfade in Config, Check + Open.
 - **Steuermodi**: `small_business` und `standard` (RC Handling inkl. USt/VoSt).
 
+## Versionierung
+
+Das Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/) (`MAJOR.MINOR.PATCH`).
+
+Die Version wird an **zwei Stellen** gepflegt — beide MÜSSEN synchron aktualisiert werden:
+
+| Datei | Feld |
+|-------|------|
+| `pyproject.toml` | `version = "X.Y.Z"` |
+| `euercli/__init__.py` | `VERSION = "X.Y.Z"` |
+
+### Automatisierung
+
+Ein Skript `scripts/bump-version.sh` automatisiert das Erhöhen der Version an beiden Stellen.
+Es kann auch bequem über `make bump-patch` (bzw. `bump-minor`, `bump-major`) aufgerufen werden.
+
+### Wann die Version erhöhen?
+
+| Änderungstyp | Bump | Beispiel |
+|--------------|------|----------|
+| Bugfixes, Refactoring, Doku | PATCH | `0.1.0` → `0.1.1` |
+| Neue Features, neue Commands | MINOR | `0.1.1` → `0.2.0` |
+| Breaking Changes (Schema, CLI-API) | MAJOR | `0.2.0` → `1.0.0` |
+
+### Pflicht bei Feature-Implementierung
+
+Nach Abschluss einer Spec-Implementierung oder eines größeren Feature-Bundles:
+
+1. Version in `pyproject.toml` und `euercli/__init__.py` erhöhen (bevorzugt via Script/Make)
+2. Sicherstellen, dass beide Dateien den **identischen** Versionsstring haben
+3. Alle Tests müssen grün sein (`python -m unittest discover -s tests`)
+
+## Entwicklungs-Richtlinien
+
 Wenn du ein Feature erweiterst, beachte:
 - **Konventionen**: deutschsprachige Ausgaben, parametrisierte SQL, Audit-Log.
 - **Kompatibilitaet**: CLI-Argumente sollten abwaertskompatibel bleiben.
@@ -232,3 +266,4 @@ Offene Change Requests werden innerhalb der jeweiligen Spec dokumentiert.
 | 007 | Windows-Kompatibilität | Implementiert |
 | 008 | Privateinlagen & Privatentnahmen | Implementiert |
 | 009 | Service-Layer-Architektur (Import) | Implementiert |
+| 010 | Optimierungen & Date Logic DRY | Implementiert |
