@@ -126,11 +126,17 @@ euer add income --payment-date 2026-01-20 --invoice-date 2026-01-18 --source "Ku
 # Default: aktuelles Jahr
 euer list expenses --year 2026
 euer list expenses --year 2026 --month 1
+euer list expenses --year 2026 --full
 euer list income --year 2026
+euer list income --year 2026 --full
 euer list categories
 ```
 
 Hinweis: `list ... --format csv` gibt die Liste als CSV auf stdout aus (für Pipes/Redirects).
+Hinweis: `euer list expenses --full` erweitert die Tabellenansicht um fachliche Details wie
+`Konto`, `Beleg`, `Fremdw.` und `Notiz`.
+Hinweis: `euer list income` zeigt in der Tabellenansicht die Spalte `USt` (vat_output) immer an.
+Hinweis: `euer list income --full` ergänzt die Tabellenansicht um die Spalte `Notiz`.
 
 ### Privatvorgänge
 

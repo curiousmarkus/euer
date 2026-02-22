@@ -229,6 +229,11 @@ def main() -> None:
     list_exp_parser.add_argument("--month", type=int, help="Monat filtern (1-12)")
     list_exp_parser.add_argument("--category", help="Kategorie filtern")
     list_exp_parser.add_argument("--format", choices=["table", "csv"], default="table")
+    list_exp_parser.add_argument(
+        "--full",
+        action="store_true",
+        help="Tabellenansicht mit zusätzlichen Spalten (Konto, Beleg, Fremdwährung, Notiz)",
+    )
     list_exp_parser.set_defaults(func=cmd_list_expenses)
 
     # list income
@@ -241,6 +246,11 @@ def main() -> None:
     list_inc_parser.add_argument("--month", type=int, help="Monat filtern (1-12)")
     list_inc_parser.add_argument("--category", help="Kategorie filtern")
     list_inc_parser.add_argument("--format", choices=["table", "csv"], default="table")
+    list_inc_parser.add_argument(
+        "--full",
+        action="store_true",
+        help="Tabellenansicht mit zusätzlicher Spalte (Notiz)",
+    )
     list_inc_parser.set_defaults(func=cmd_list_income)
 
     # list categories

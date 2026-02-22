@@ -121,6 +121,8 @@ class EuerCLITestCase(unittest.TestCase):
             args += ["--receipt", data["receipt"]]
         if "notes" in data:
             args += ["--notes", data["notes"]]
+        if "vat" in data:
+            args += ["--vat", str(data["vat"])]
         return self.run_cli(args)
 
     def add_private_deposit(self, **overrides):
@@ -499,11 +501,56 @@ class EuerCLITestCase(unittest.TestCase):
         self.assertIn("USt", list_result.stdout)
         self.assertIn("OpenAI", list_result.stdout)
 
+    def test_list_expenses_table_full_shows_receipt_notes_and_foreign(self):
+        self.add_expense(
+            vendor="Cloudflare",
+            category="Laufende EDV-Kosten",
+            amount="-39.99",
+            account="Bank",
+            receipt="cloudflare.pdf",
+            foreign="42.50 USD",
+            notes="Business Plan",
+        )
+
+        default_result = self.run_cli(["list", "expenses", "--year", "2026"], check=True)
+        self.assertNotIn("Notiz", default_result.stdout)
+        self.assertNotIn("Fremdw.", default_result.stdout)
+
+        full_result = self.run_cli(
+            ["list", "expenses", "--year", "2026", "--full"],
+            check=True,
+        )
+        self.assertIn("Beleg", full_result.stdout)
+        self.assertIn("Notiz", full_result.stdout)
+        self.assertIn("Fremdw.", full_result.stdout)
+        self.assertIn("cloudflare.pdf", full_result.stdout)
+        self.assertIn("42.50 USD", full_result.stdout)
+        self.assertIn("Business Plan", full_result.stdout)
+
     def test_list_income_table(self):
         self.add_income()
         list_result = self.run_cli(["list", "income", "--year", "2026"], check=True)
         self.assertIn("Quelle", list_result.stdout)
+        self.assertIn("USt", list_result.stdout)
+        self.assertNotIn("Notiz", list_result.stdout)
         self.assertIn("GESAMT", list_result.stdout)
+
+    def test_list_income_table_shows_vat_value(self):
+        self.run_cli(["setup"], input="\n\n\nstandard\n", check=True)
+        self.add_income(source="VAT Kunde", vat="285.00")
+        list_result = self.run_cli(["list", "income", "--year", "2026"], check=True)
+        self.assertIn("USt", list_result.stdout)
+        self.assertIn("285.00", list_result.stdout)
+
+    def test_list_income_table_full_shows_notes(self):
+        self.add_income(source="Notiz Kunde", notes="Abo verlängert")
+        list_result = self.run_cli(
+            ["list", "income", "--year", "2026", "--full"],
+            check=True,
+        )
+        self.assertIn("USt", list_result.stdout)
+        self.assertIn("Notiz", list_result.stdout)
+        self.assertIn("Abo verlängert", list_result.stdout)
 
     def test_export_csv(self):
         self.add_expense()

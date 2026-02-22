@@ -101,6 +101,7 @@ def cmd_list_expenses(args):
             print("Keine Ausgaben gefunden.")
             return
 
+        full_view = bool(getattr(args, "full", False))
         has_vat = any(
             (r.vat_input and r.vat_input != 0)
             or (r.vat_output and r.vat_output != 0)
@@ -108,7 +109,51 @@ def cmd_list_expenses(args):
             for r in rows
         )
 
-        if has_vat:
+        if full_view and has_vat:
+            row_fmt = (
+                "{id:<5} {payment:<12} {invoice:<12} {vendor:<18} {category:<20} {amount:>10} "
+                "{account:<12} {receipt:<20} {foreign:<14} {notes:<24} {status:<35} "
+                "{rc:<3} {vout:>8} {vin:>8}"
+            )
+            header = row_fmt.format(
+                id="ID",
+                payment="Payment",
+                invoice="Invoice",
+                vendor="Lieferant",
+                category="Kategorie",
+                amount="EUR",
+                account="Konto",
+                receipt="Beleg",
+                foreign="Fremdw.",
+                notes="Notiz",
+                status="Status",
+                rc="RC",
+                vout="USt",
+                vin="VorSt",
+            )
+            print(header)
+            print("-" * len(header))
+        elif full_view:
+            row_fmt = (
+                "{id:<5} {payment:<12} {invoice:<12} {vendor:<20} {category:<24} {amount:>10} "
+                "{account:<12} {receipt:<20} {foreign:<14} {notes:<24} {status:<35}"
+            )
+            header = row_fmt.format(
+                id="ID",
+                payment="Payment",
+                invoice="Invoice",
+                vendor="Lieferant",
+                category="Kategorie",
+                amount="EUR",
+                account="Konto",
+                receipt="Beleg",
+                foreign="Fremdw.",
+                notes="Notiz",
+                status="Status",
+            )
+            print(header)
+            print("-" * len(header))
+        elif has_vat:
             print(
                 f"{'ID':<5} {'Payment':<12} {'Invoice':<12} {'Lieferant':<18} {'Kategorie':<20} {'EUR':>10} {'Status':<35} {'RC':<3} {'USt':>8} {'VorSt':>8}"
             )
@@ -132,7 +177,49 @@ def cmd_list_expenses(args):
             else:
                 cat_str = "Ohne Kategorie"
             status = infer_booking_status(r.payment_date, r.invoice_date, r.receipt_name)
-            if has_vat:
+            if full_view and has_vat:
+                vout_str = f"{r.vat_output:.2f}" if r.vat_output else ""
+                vin_str = f"{r.vat_input:.2f}" if r.vat_input else ""
+                rc_str = "X" if r.is_rc else ""
+                print(
+                    row_fmt.format(
+                        id=r.id,
+                        payment=r.payment_date or "",
+                        invoice=r.invoice_date or "",
+                        vendor=r.vendor[:18],
+                        category=cat_str[:20],
+                        amount=f"{r.amount_eur:.2f}",
+                        account=(r.account or "")[:12],
+                        receipt=(r.receipt_name or "")[:20],
+                        foreign=(r.foreign_amount or "")[:14],
+                        notes=(r.notes or "")[:24],
+                        status=status[:35],
+                        rc=rc_str,
+                        vout=vout_str,
+                        vin=vin_str,
+                    )
+                )
+                if r.vat_output:
+                    vat_out_total += r.vat_output
+                if r.vat_input:
+                    vat_in_total += r.vat_input
+            elif full_view:
+                print(
+                    row_fmt.format(
+                        id=r.id,
+                        payment=r.payment_date or "",
+                        invoice=r.invoice_date or "",
+                        vendor=r.vendor[:20],
+                        category=cat_str[:24],
+                        amount=f"{r.amount_eur:.2f}",
+                        account=(r.account or "")[:12],
+                        receipt=(r.receipt_name or "")[:20],
+                        foreign=(r.foreign_amount or "")[:14],
+                        notes=(r.notes or "")[:24],
+                        status=status[:35],
+                    )
+                )
+            elif has_vat:
                 vout_str = f"{r.vat_output:.2f}" if r.vat_output else ""
                 vin_str = f"{r.vat_input:.2f}" if r.vat_input else ""
                 rc_str = "X" if r.is_rc else ""
@@ -148,8 +235,46 @@ def cmd_list_expenses(args):
                     f"{r.id:<5} {(r.payment_date or ''):<12} {(r.invoice_date or ''):<12} {r.vendor[:20]:<20} {cat_str[:24]:<24} {r.amount_eur:>10.2f} {status[:35]:<35} {(r.account or ''):<12}"
                 )
             total += r.amount_eur
-        print("-" * (150 if has_vat else 140))
-        if has_vat:
+        if full_view:
+            print("-" * len(header))
+        else:
+            print("-" * (150 if has_vat else 140))
+        if full_view and has_vat:
+            print(
+                row_fmt.format(
+                    id="GESAMT",
+                    payment="",
+                    invoice="",
+                    vendor="",
+                    category="",
+                    amount=f"{total:.2f}",
+                    account="",
+                    receipt="",
+                    foreign="",
+                    notes="",
+                    status="",
+                    rc="",
+                    vout=f"{vat_out_total:.2f}",
+                    vin=f"{vat_in_total:.2f}",
+                )
+            )
+        elif full_view:
+            print(
+                row_fmt.format(
+                    id="GESAMT",
+                    payment="",
+                    invoice="",
+                    vendor="",
+                    category="",
+                    amount=f"{total:.2f}",
+                    account="",
+                    receipt="",
+                    foreign="",
+                    notes="",
+                    status="",
+                )
+            )
+        elif has_vat:
             print(
                 f"{'GESAMT':<90} {total:>10.2f} {'':<39} {vat_out_total:>8.2f} {vat_in_total:>8.2f}"
             )
@@ -218,18 +343,40 @@ def cmd_list_income(args):
             print("Keine Einnahmen gefunden.")
             return
 
-        has_vat = any(r.vat_output and r.vat_output != 0 for r in rows)
-
-        if has_vat:
-            print(
-                f"{'ID':<5} {'Payment':<12} {'Invoice':<12} {'Quelle':<20} {'Kategorie':<26} {'EUR':>12} {'Status':<30} {'USt':>8}"
+        full_view = bool(getattr(args, "full", False))
+        if full_view:
+            row_fmt = (
+                "{id:<5} {payment:<12} {invoice:<12} {source:<20} {category:<26} "
+                "{amount:>12} {status:<30} {vat:>8} {notes:<24}"
             )
-            print("-" * 140)
+            header = row_fmt.format(
+                id="ID",
+                payment="Payment",
+                invoice="Invoice",
+                source="Quelle",
+                category="Kategorie",
+                amount="EUR",
+                status="Status",
+                vat="USt",
+                notes="Notiz",
+            )
         else:
-            print(
-                f"{'ID':<5} {'Payment':<12} {'Invoice':<12} {'Quelle':<25} {'Kategorie':<25} {'EUR':>12} {'Status':<30}"
+            row_fmt = (
+                "{id:<5} {payment:<12} {invoice:<12} {source:<20} {category:<26} "
+                "{amount:>12} {status:<30} {vat:>8}"
             )
-            print("-" * 130)
+            header = row_fmt.format(
+                id="ID",
+                payment="Payment",
+                invoice="Invoice",
+                source="Quelle",
+                category="Kategorie",
+                amount="EUR",
+                status="Status",
+                vat="USt",
+            )
+        print(header)
+        print("-" * len(header))
 
         total = 0.0
         vat_out_total = 0.0
@@ -244,24 +391,66 @@ def cmd_list_income(args):
             else:
                 cat_str = "Ohne Kategorie"
             status = infer_booking_status(r.payment_date, r.invoice_date, r.receipt_name)
-            amount_str = f"{r.amount_eur:>12.2f}"
-            if has_vat:
-                vat_str = f"{r.vat_output:.2f}" if r.vat_output else ""
+            amount_str = f"{r.amount_eur:.2f}"
+            vat_str = f"{r.vat_output:.2f}" if r.vat_output else ""
+            if full_view:
                 print(
-                    f"{r.id:<5} {(r.payment_date or ''):<12} {(r.invoice_date or ''):<12} {r.source[:20]:<20} {cat_str[:26]:<26} {amount_str} {status[:30]:<30} {vat_str:>8}"
+                    row_fmt.format(
+                        id=r.id,
+                        payment=r.payment_date or "",
+                        invoice=r.invoice_date or "",
+                        source=r.source[:20],
+                        category=cat_str[:26],
+                        amount=amount_str,
+                        status=status[:30],
+                        vat=vat_str,
+                        notes=(r.notes or "")[:24],
+                    )
                 )
-                if r.vat_output:
-                    vat_out_total += r.vat_output
             else:
                 print(
-                    f"{r.id:<5} {(r.payment_date or ''):<12} {(r.invoice_date or ''):<12} {r.source[:25]:<25} {cat_str[:25]:<25} {amount_str} {status[:30]:<30}"
+                    row_fmt.format(
+                        id=r.id,
+                        payment=r.payment_date or "",
+                        invoice=r.invoice_date or "",
+                        source=r.source[:20],
+                        category=cat_str[:26],
+                        amount=amount_str,
+                        status=status[:30],
+                        vat=vat_str,
+                    )
                 )
+            if r.vat_output:
+                vat_out_total += r.vat_output
             total += r.amount_eur
-        print("-" * (140 if has_vat else 130))
-        if has_vat:
-            print(f"{'GESAMT':<107} {total:>12.2f} {'':<30} {vat_out_total:>8.2f}")
+        print("-" * len(header))
+        if full_view:
+            print(
+                row_fmt.format(
+                    id="GESAMT",
+                    payment="",
+                    invoice="",
+                    source="",
+                    category="",
+                    amount=f"{total:.2f}",
+                    status="",
+                    vat=f"{vat_out_total:.2f}",
+                    notes="",
+                )
+            )
         else:
-            print(f"{'GESAMT':<81} {total:>12.2f}")
+            print(
+                row_fmt.format(
+                    id="GESAMT",
+                    payment="",
+                    invoice="",
+                    source="",
+                    category="",
+                    amount=f"{total:.2f}",
+                    status="",
+                    vat=f"{vat_out_total:.2f}",
+                )
+            )
 
 
 def cmd_list_categories(args):

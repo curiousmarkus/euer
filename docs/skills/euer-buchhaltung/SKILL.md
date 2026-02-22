@@ -87,8 +87,9 @@ euer add expense \
     [--private-paid]  # Als privat bezahlt markieren (Sacheinlage)
 
 # Ausgaben anzeigen
-euer list expenses [--year YYYY] [--month MM] [--category "..."]
+euer list expenses [--year YYYY] [--month MM] [--category "..."] [--full]
 # Zeigt RC-Flag, USt (Output) und VorSt (Input) an, falls vorhanden.
+# Mit --full zeigt die Tabelle zusätzlich Konto, Beleg, Fremdwährung und Notiz.
 
 # Ausgabe aktualisieren
 euer update expense <ID> [--payment-date ...] [--invoice-date ...] [--vendor ...] [--amount ...] [--rc] [--private-paid|--no-private-paid] ...
@@ -113,7 +114,9 @@ euer add income \
     [--vat 285.00]  # Ausgewiesener Umsatzsteuer-Betrag bei Regelbesteuerung (nicht %)
 
 # Einnahmen anzeigen
-euer list income [--year YYYY] [--month MM]
+euer list income [--year YYYY] [--month MM] [--full]
+# Tabellenansicht zeigt immer die Spalte USt (vat_output).
+# Mit --full kommt zusätzlich die Spalte Notiz hinzu.
 
 # Einnahme aktualisieren
 euer update income <ID> [--payment-date ...] [--invoice-date ...] [--source ...] [--amount ...] ...
