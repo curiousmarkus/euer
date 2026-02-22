@@ -6,60 +6,26 @@ Konfiguration und typische Workflows.
 ## Voraussetzungen
 
 - Python 3.11+
-- Git (für das Herunterladen des Projekts)
 - Optional: `openpyxl` für XLSX‑Export
-
-## Projekt herunterladen
-
-**Erster Schritt:** Lade das Projekt herunter und erstelle den Entwicklungsordner:
-
-```bash
-# Falls das Projekt auf GitHub/GitLab liegt:
-git clone https://github.com/curiousmarkus/euer.git
-cd euer
-
-# Falls du das Projekt als ZIP erhalten hast:
-unzip euer.zip
-cd euer
-
-# Falls du bereits im Projekt-Ordner bist:
-cd /pfad/zum/euer
-```
-
-Nach diesem Schritt hast du einen Ordner (z.B. `~/dev/euer` oder `/Users/name/euer`), 
-der den Quellcode enthält. **Hier** führst du die Installation aus.
 
 ## Installation
 
-**Wichtig:** Die Installation erfolgt **einmalig** im Entwicklungsordner und macht das `euer`-Kommando
-**systemweit verfügbar**. Deine Buchhaltungsdaten (Datenbank, Belege) liegen dann in einem
-**separaten Arbeitsordner** deiner Wahl.
+### Empfohlene Installation (pipx)
 
-### Empfohlene Installation
+`pipx` installiert `euer` global in einer isolierten Umgebung, ohne dass du je eine virtuelle
+Umgebung aktivieren musst:
 
 ```bash
-# Im Entwicklungsordner (einmalig)
-cd /pfad/zum/euer-repo
-python -m pip install -e .
+# euer installieren
+pipx install git+https://github.com/curiousmarkus/euer.git
 ```
 
-Der `-e` Flag (editable mode) sorgt dafür, dass Code-Änderungen sofort wirksam werden.
+Danach ist `euer` sofort und dauerhaft in jedem Terminal verfügbar.
 
-**Alternative mit pipx** (isolierte Umgebung):
-
-```bash
-brew install pipx
-pipx ensurepath
-cd /pfad/zum/euer-repo
-pipx install -e .
-```
-
-### Ohne Installation (direkter Aufruf)
+**Update auf die neueste Version:**
 
 ```bash
-# Im Entwicklungsordner
-cd /pfad/zum/euer-repo
-python -m euercli <command>
+pipx upgrade euercli
 ```
 
 ## KI-Agenten Konfiguration
@@ -71,8 +37,8 @@ Im Ordner `docs/templates/` findest du Vorlagen für die Agent-Konfiguration.
 
 | Datei | Beschreibung |
 |-------|--------------|
-| `Agents.md` | Template für persönliche Buchhaltungsdaten (Pfade, Konten, Kategorien) |
 | `accountant-agent.md` | Agent-Definition für KI-Buchhalter (Regeln, Workflows, Steuerlogik) |
+| `Agents.md` | Template für persönliche Buchhaltungsdaten (kann geführt mit dem Onboarding-Prompt erstellt werden) |
 | `onboarding-prompt.md` | Interview-Prompt zur Erstellung einer personalisierten `Agents.md` |
 
 ### Schnellstart für KI-Agenten
@@ -88,42 +54,30 @@ Im Ordner `docs/templates/` findest du Vorlagen für die Agent-Konfiguration.
    - Starte deinen KI-Agenten im Buchhaltungsordner (so hat er Zugriff auf `Agents.md` als Kontext)
 
 3. **CLI einrichten:**
-   - Führe `euer setup` aus, um die gleichen Pfade auch im CLI zu konfigurieren
-   - Alternativ non-interaktiv: `euer setup --set tax.mode "small_business"` usw.
+   - Führe `euer init` und `euer setup` aus, um die Datenbank und die Konfiguration anzulegen (achte darauf, dass du im Buchhaltungsordner bist!)
    - Die Konfiguration wird unter macOS/Linux in `~/.config/euer/config.toml` gespeichert, unter Windows in `%APPDATA%\\euer\\config.toml`
 
 ### Empfohlene Tools für Agenten
 
 - **PDF-Parsing:** `markitdown` – extrahiert Text aus PDFs (Kontoauszüge, Rechnungen)
-  ```bash
-  # Installation
-  pip install markitdown
-  
-  # Nutzung
-  markitdown "pfad/zur/rechnung.pdf"
-  ```
-
+  - siehe: https://github.com/microsoft/markitdown
 
 ## Erste Schritte
 
 ### Nach der Installation
 
-Wechsle in deinen **Buchhaltungs-Arbeitsordner** (nicht das Repo!), z.B.:
+Wechsle in deinen **Buchhaltungs-Arbeitsordner**, z.B.:
 
 ```bash
 # Beispiel: Separater Ordner für Buchhaltungsdaten
-mkdir -p ~/Documents/Buchhaltung_2026
-cd ~/Documents/Buchhaltung_2026
+mkdir -p ~/Documents/Buchhaltung
+cd ~/Documents/Buchhaltung
 
 # Datenbank anlegen (erstellt euer.db + exports/ hier)
 euer init
 
 # Beleg-/Export-Pfade und Steuermodus konfigurieren (empfohlen)
 euer setup
-
-# Oder non-interaktiv (z.B. aus Onboarding-Output)
-euer setup --set tax.mode "small_business"
-euer setup --set accounts.private "privat, Sparkasse Kreditkarte"
 
 # Konfiguration prüfen
 euer config show
