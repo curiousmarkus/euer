@@ -172,6 +172,32 @@ def ensure_expenses_private_columns(conn) -> None:
         )
 
 
+def ensure_seed_categories(conn) -> None:
+    """Ergänzt fehlende Seed-Kategorien und korrigiert EÜR-Zeilen in bestehenden DBs."""
+    # Fix: "Umsatzsteuerpflichtige Betriebseinnahmen" war fälschlich auf Zeile 14 (→ 15)
+    conn.execute(
+        "UPDATE categories SET eur_line = 15 WHERE name = ? AND type = ? AND eur_line = 14",
+        ("Umsatzsteuerpflichtige Betriebseinnahmen", "income"),
+    )
+
+    added = 0
+    for name, eur_line, cat_type in SEED_CATEGORIES:
+        exists = conn.execute(
+            "SELECT 1 FROM categories WHERE name = ? AND type = ?",
+            (name, cat_type),
+        ).fetchone()
+        if not exists:
+            conn.execute(
+                "INSERT INTO categories (uuid, name, eur_line, type) VALUES (?, ?, ?, ?)",
+                (str(uuid.uuid4()), name, eur_line, cat_type),
+            )
+            added += 1
+
+    if added:
+        conn.commit()
+        print(f"  {added} neue Kategorie(n) ergänzt")
+
+
 def cmd_init(args):
     """Initialisiert die Datenbank."""
     db_path = Path(args.db)
@@ -183,7 +209,7 @@ def cmd_init(args):
     ensure_payment_invoice_columns(conn)
     ensure_expenses_private_columns(conn)
 
-    # Kategorien seeden (nur wenn leer)
+    # Kategorien seeden (nur wenn leer) oder fehlende ergänzen
     existing = conn.execute("SELECT COUNT(*) as cnt FROM categories").fetchone()["cnt"]
     if existing == 0:
         print("Seede Kategorien...")
@@ -196,6 +222,7 @@ def cmd_init(args):
         print(f"  {len(SEED_CATEGORIES)} Kategorien angelegt")
     else:
         print(f"  Kategorien existieren bereits ({existing})")
+        ensure_seed_categories(conn)
 
     conn.close()
 

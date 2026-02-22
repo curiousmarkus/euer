@@ -34,6 +34,14 @@ def infer_booking_status(
     return "Unvollständig"
 
 
+def format_category_label(category_name: str | None, category_eur_line: int | None) -> str:
+    if not category_name:
+        return "Ohne Kategorie"
+    if category_eur_line:
+        return f"({category_eur_line}) {category_name}"
+    return category_name
+
+
 def cmd_list_expenses(args):
     """Listet Ausgaben."""
     db_path = Path(args.db)
@@ -70,14 +78,7 @@ def cmd_list_expenses(args):
             ]
         )
         for r in rows:
-            if r.category_name:
-                cat_str = (
-                    f"{r.category_name} ({r.category_eur_line})"
-                    if r.category_eur_line
-                    else r.category_name
-                )
-            else:
-                cat_str = "Ohne Kategorie"
+            cat_str = format_category_label(r.category_name, r.category_eur_line)
             writer.writerow(
                 [
                     r.id,
@@ -168,14 +169,7 @@ def cmd_list_expenses(args):
         vat_out_total = 0.0
         vat_in_total = 0.0
         for r in rows:
-            if r.category_name:
-                cat_str = (
-                    f"{r.category_name} ({r.category_eur_line})"
-                    if r.category_eur_line
-                    else r.category_name
-                )
-            else:
-                cat_str = "Ohne Kategorie"
+            cat_str = format_category_label(r.category_name, r.category_eur_line)
             status = infer_booking_status(r.payment_date, r.invoice_date, r.receipt_name)
             if full_view and has_vat:
                 vout_str = f"{r.vat_output:.2f}" if r.vat_output else ""
@@ -315,14 +309,7 @@ def cmd_list_income(args):
             ]
         )
         for r in rows:
-            if r.category_name:
-                cat_str = (
-                    f"{r.category_name} ({r.category_eur_line})"
-                    if r.category_eur_line
-                    else r.category_name
-                )
-            else:
-                cat_str = "Ohne Kategorie"
+            cat_str = format_category_label(r.category_name, r.category_eur_line)
             writer.writerow(
                 [
                     r.id,
@@ -382,14 +369,7 @@ def cmd_list_income(args):
         vat_out_total = 0.0
 
         for r in rows:
-            if r.category_name:
-                cat_str = (
-                    f"{r.category_name} ({r.category_eur_line})"
-                    if r.category_eur_line
-                    else r.category_name
-                )
-            else:
-                cat_str = "Ohne Kategorie"
+            cat_str = format_category_label(r.category_name, r.category_eur_line)
             status = infer_booking_status(r.payment_date, r.invoice_date, r.receipt_name)
             amount_str = f"{r.amount_eur:.2f}"
             vat_str = f"{r.vat_output:.2f}" if r.vat_output else ""

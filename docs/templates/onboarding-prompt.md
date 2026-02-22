@@ -190,8 +190,15 @@ Erkläre kurz den Unterschied und frage dann:
    **Einnahmen-Kategorien:**
    | Kategorie | EÜR |
    |-----------|-----|
-   | Umsatzsteuerpflichtige Betriebseinnahmen | 14 |
-   | Sonstige betriebsfremde Einnahme | - |
+   | Betriebseinnahmen als Kleinunternehmer | 12 |
+   | Nicht steuerbare Umsätze | 13 |
+   | Umsatzsteuerpflichtige Betriebseinnahmen | 15 |
+   | Umsatzsteuerfreie, nicht umsatzsteuerbare Betriebseinnahmen | 16 |
+   | Vereinnahmte Umsatzsteuer | 17 |
+   | Vom Finanzamt erstattete Umsatzsteuer | 18 |
+   | Veräußerung oder Entnahme von Anlagevermögen | 19 |
+   | Private Kfz-Nutzung | 20 |
+   | Sonstige Sach-, Nutzungs- und Leistungsentnahmen | 21 |
 
    Frage: "Nenne deine typischen Lieferanten und ich schlage die Kategorie vor. Du kannst auch direkt zuordnen, z.B. 'Vodafone → Telekommunikation'."
 

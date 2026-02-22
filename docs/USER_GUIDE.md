@@ -137,6 +137,8 @@ Hinweis: `euer list expenses --full` erweitert die Tabellenansicht um fachliche 
 `Konto`, `Beleg`, `Fremdw.` und `Notiz`.
 Hinweis: `euer list income` zeigt in der Tabellenansicht die Spalte `USt` (vat_output) immer an.
 Hinweis: `euer list income --full` ergänzt die Tabellenansicht um die Spalte `Notiz`.
+Hinweis: Kategorien werden in Listen als `(<EÜR-Zeile>) <Name>` dargestellt, z.B.
+`(51) Arbeitsmittel`.
 
 ### Privatvorgänge
 

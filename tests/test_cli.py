@@ -213,7 +213,7 @@ class EuerCLITestCase(unittest.TestCase):
         self.assertEqual(payment_date, "2026-01-15")
         self.assertEqual(invoice_date, "")
         self.assertEqual(vendor, "TestVendor")
-        self.assertEqual(category, "Arbeitsmittel (51)")
+        self.assertEqual(category, "(51) Arbeitsmittel")
         self.assertEqual(amount, "-10.00")
         self.assertEqual(account, "Bank")
         self.assertEqual(receipt, "receipt.pdf")
@@ -248,7 +248,7 @@ class EuerCLITestCase(unittest.TestCase):
         self.assertEqual(payment_date, "2026-01-20")
         self.assertEqual(invoice_date, "")
         self.assertEqual(source, "TestClient")
-        self.assertEqual(category, "Umsatzsteuerpflichtige Betriebseinnahmen (14)")
+        self.assertEqual(category, "(15) Umsatzsteuerpflichtige Betriebseinnahmen")
         self.assertEqual(amount, "1500.00")
         self.assertEqual(receipt, "invoice.pdf")
         self.assertIn("Zahlung erfolgt", status)
@@ -500,6 +500,7 @@ class EuerCLITestCase(unittest.TestCase):
         list_result = self.run_cli(["list", "expenses", "--year", "2026"], check=True)
         self.assertIn("USt", list_result.stdout)
         self.assertIn("OpenAI", list_result.stdout)
+        self.assertIn("(50)", list_result.stdout)
 
     def test_list_expenses_table_full_shows_receipt_notes_and_foreign(self):
         self.add_expense(
@@ -532,6 +533,7 @@ class EuerCLITestCase(unittest.TestCase):
         list_result = self.run_cli(["list", "income", "--year", "2026"], check=True)
         self.assertIn("Quelle", list_result.stdout)
         self.assertIn("USt", list_result.stdout)
+        self.assertIn("(15)", list_result.stdout)
         self.assertNotIn("Notiz", list_result.stdout)
         self.assertIn("GESAMT", list_result.stdout)
 
@@ -1006,7 +1008,7 @@ class EuerCLITestCase(unittest.TestCase):
 
         rows = self.list_expenses_csv()
         self.assertEqual(len(rows), 2)
-        self.assertEqual(rows[1][4], "Arbeitsmittel (51)")
+        self.assertEqual(rows[1][4], "(51) Arbeitsmittel")
         self.assertEqual(rows[1][3], "1und1")
 
     def test_import_missing_required_fails(self):

@@ -90,6 +90,7 @@ euer add expense \
 euer list expenses [--year YYYY] [--month MM] [--category "..."] [--full]
 # Zeigt RC-Flag, USt (Output) und VorSt (Input) an, falls vorhanden.
 # Mit --full zeigt die Tabelle zusätzlich Konto, Beleg, Fremdwährung und Notiz.
+# Kategorieanzeige in Listen: `(<EÜR-Zeile>) <Name>` (z.B. `(51) Arbeitsmittel`).
 
 # Ausgabe aktualisieren
 euer update expense <ID> [--payment-date ...] [--invoice-date ...] [--vendor ...] [--amount ...] [--rc] [--private-paid|--no-private-paid] ...
@@ -302,8 +303,15 @@ der nicht abziehbare 30%-Anteil wird nur im Summary ausgewiesen.
 **Einnahmen (income):**
 | Kategorie | EÜR-Zeile |
 |-----------|-----------|
-| Sonstige betriebsfremde Einnahme | - |
-| Umsatzsteuerpflichtige Betriebseinnahmen | 14 |
+| Betriebseinnahmen als Kleinunternehmer | 12 |
+| Nicht steuerbare Umsätze | 13 |
+| Umsatzsteuerpflichtige Betriebseinnahmen | 15 |
+| Umsatzsteuerfreie, nicht umsatzsteuerbare Betriebseinnahmen | 16 |
+| Vereinnahmte Umsatzsteuer | 17 |
+| Vom Finanzamt erstattete Umsatzsteuer | 18 |
+| Veräußerung oder Entnahme von Anlagevermögen | 19 |
+| Private Kfz-Nutzung | 20 |
+| Sonstige Sach-, Nutzungs- und Leistungsentnahmen | 21 |
 
 ### Datenmodell (Interpretation der Spalten)
 
