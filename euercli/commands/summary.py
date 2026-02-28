@@ -6,8 +6,8 @@ from ..db import get_db_connection
 from ..importers import get_tax_config
 from ..services.private_transfers import get_private_summary
 
-BEWIRTUNG_CATEGORY = "Bewirtungsaufwendungen"
-BEWIRTUNG_DEDUCTIBLE_RATE = 0.7
+ENTERTAINMENT_CATEGORY = "Bewirtungsaufwendungen"
+ENTERTAINMENT_DEDUCTIBLE_RATE = 0.7
 
 
 def cmd_summary(args):
@@ -67,9 +67,9 @@ def cmd_summary(args):
     for r in expenses:
         raw_total = r["total"] or 0.0
         display_total = raw_total
-        if r["name"] == BEWIRTUNG_CATEGORY:
+        if r["name"] == ENTERTAINMENT_CATEGORY:
             bewirtung_total += raw_total
-            display_total = raw_total * BEWIRTUNG_DEDUCTIBLE_RATE
+            display_total = raw_total * ENTERTAINMENT_DEDUCTIBLE_RATE
         if r["name"]:
             cat = f"{r['name']} ({r['eur_line']})" if r["eur_line"] else r["name"]
         else:
@@ -81,7 +81,7 @@ def cmd_summary(args):
     print()
 
     if bewirtung_total != 0.0:
-        deductible = bewirtung_total * BEWIRTUNG_DEDUCTIBLE_RATE
+        deductible = bewirtung_total * ENTERTAINMENT_DEDUCTIBLE_RATE
         non_deductible = bewirtung_total - deductible
         print("Bewirtungsaufwendungen (70/30):")
         print(f"  {'Gesamtbetrag (100%)':<40} {abs(bewirtung_total):>12.2f} EUR")

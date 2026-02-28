@@ -15,7 +15,7 @@ def print_private_summary(conn, year: int) -> None:
     print(
         "  "
         f"{'Sacheinlagen (persistiert in expenses):':<46}"
-        f"{summary['deposits_sacheinlagen']:>10.2f} EUR"
+        f"{summary['deposits_private_paid']:>10.2f} EUR"
     )
     print(
         "  "

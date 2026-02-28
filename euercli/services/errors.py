@@ -2,7 +2,7 @@ from __future__ import annotations
 
 
 class EuerError(Exception):
-    """Base error for service layer failures."""
+    """Basisfehler für Service-Layer-Fehler."""
 
     def __init__(self, message: str, code: str | None = None, details: dict | None = None):
         super().__init__(message)
@@ -12,8 +12,8 @@ class EuerError(Exception):
 
 
 class ValidationError(EuerError):
-    """Input or domain validation error."""
+    """Fehler bei Eingabe- oder Domänenvalidierung."""
 
 
 class RecordNotFoundError(EuerError):
-    """Raised when a database record is missing."""
+    """Wird ausgelöst, wenn ein Datensatz nicht gefunden wird."""

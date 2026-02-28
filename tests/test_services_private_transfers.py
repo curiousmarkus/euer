@@ -10,7 +10,7 @@ from euercli.services.private_transfers import (
     delete_private_transfer,
     get_private_summary,
     get_private_transfer_list,
-    get_sacheinlagen,
+    get_private_paid_expenses,
     update_private_transfer,
 )
 
@@ -193,7 +193,7 @@ class PrivateTransfersServiceTestCase(unittest.TestCase):
                 audit_user="tester",
             )
 
-    def test_sacheinlagen_from_persisted_flag(self) -> None:
+    def test_private_paid_expenses_from_persisted_flag(self) -> None:
         create_expense(
             self.conn,
             date="2026-01-10",
@@ -205,7 +205,7 @@ class PrivateTransfersServiceTestCase(unittest.TestCase):
             tax_mode="small_business",
             audit_user="tester",
         )
-        rows = get_sacheinlagen(self.conn, year=2026)
+        rows = get_private_paid_expenses(self.conn, year=2026)
         self.assertEqual(len(rows), 1)
         self.assertTrue(rows[0].is_private_paid)
 
@@ -252,7 +252,7 @@ class PrivateTransfersServiceTestCase(unittest.TestCase):
         )
         summary = get_private_summary(self.conn, year=2026)
         self.assertEqual(summary["deposits_direct"], 100.0)
-        self.assertEqual(summary["deposits_sacheinlagen"], 20.0)
+        self.assertEqual(summary["deposits_private_paid"], 20.0)
         self.assertEqual(summary["deposits_total"], 120.0)
         self.assertEqual(summary["withdrawals_total"], 50.0)
 
@@ -269,7 +269,7 @@ class PrivateTransfersServiceTestCase(unittest.TestCase):
             audit_user="tester",
         )
         summary = get_private_summary(self.conn, year=2026)
-        self.assertEqual(summary["deposits_sacheinlagen"], 40.0)
+        self.assertEqual(summary["deposits_private_paid"], 40.0)
 
 
 if __name__ == "__main__":

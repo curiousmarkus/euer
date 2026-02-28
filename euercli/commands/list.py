@@ -7,7 +7,7 @@ from ..db import get_db_connection
 from ..services.categories import get_category_list
 from ..services.expenses import list_expenses
 from ..services.income import list_income
-from ..services.private_transfers import get_private_transfer_list, get_sacheinlagen
+from ..services.private_transfers import get_private_transfer_list, get_private_paid_expenses
 
 
 def infer_booking_status(
@@ -118,8 +118,8 @@ def cmd_list_expenses(args):
             )
             header = row_fmt.format(
                 id="ID",
-                payment="Payment",
-                invoice="Invoice",
+                payment="Wertstellung",
+                invoice="Rechnung",
                 vendor="Lieferant",
                 category="Kategorie",
                 amount="EUR",
@@ -141,8 +141,8 @@ def cmd_list_expenses(args):
             )
             header = row_fmt.format(
                 id="ID",
-                payment="Payment",
-                invoice="Invoice",
+                payment="Wertstellung",
+                invoice="Rechnung",
                 vendor="Lieferant",
                 category="Kategorie",
                 amount="EUR",
@@ -156,12 +156,12 @@ def cmd_list_expenses(args):
             print("-" * len(header))
         elif has_vat:
             print(
-                f"{'ID':<5} {'Payment':<12} {'Invoice':<12} {'Lieferant':<18} {'Kategorie':<20} {'EUR':>10} {'Status':<35} {'RC':<3} {'USt':>8} {'VorSt':>8}"
+                f"{'ID':<5} {'Wertstellung':<12} {'Rechnung':<12} {'Lieferant':<18} {'Kategorie':<20} {'EUR':>10} {'Status':<35} {'RC':<3} {'USt':>8} {'VorSt':>8}"
             )
             print("-" * 150)
         else:
             print(
-                f"{'ID':<5} {'Payment':<12} {'Invoice':<12} {'Lieferant':<20} {'Kategorie':<24} {'EUR':>10} {'Status':<35} {'Konto':<12}"
+                f"{'ID':<5} {'Wertstellung':<12} {'Rechnung':<12} {'Lieferant':<20} {'Kategorie':<24} {'EUR':>10} {'Status':<35} {'Konto':<12}"
             )
             print("-" * 140)
 
@@ -338,8 +338,8 @@ def cmd_list_income(args):
             )
             header = row_fmt.format(
                 id="ID",
-                payment="Payment",
-                invoice="Invoice",
+                payment="Wertstellung",
+                invoice="Rechnung",
                 source="Quelle",
                 category="Kategorie",
                 amount="EUR",
@@ -354,8 +354,8 @@ def cmd_list_income(args):
             )
             header = row_fmt.format(
                 id="ID",
-                payment="Payment",
-                invoice="Invoice",
+                payment="Wertstellung",
+                invoice="Rechnung",
                 source="Quelle",
                 category="Kategorie",
                 amount="EUR",
@@ -456,7 +456,7 @@ def cmd_list_private_deposits(args):
 
     transfers = get_private_transfer_list(conn, transfer_type="deposit", year=year)
     # Sacheinlagen kommen aus persistierten Flags in expenses, nicht aus aktueller Config.
-    sacheinlagen = get_sacheinlagen(conn, year=year)
+    private_paid_expenses = get_private_paid_expenses(conn, year=year)
     conn.close()
 
     if args.format == "csv":
@@ -473,7 +473,7 @@ def cmd_list_private_deposits(args):
                     "direct",
                 ]
             )
-        for row in sacheinlagen:
+        for row in private_paid_expenses:
             writer.writerow(
                 [
                     "",
@@ -486,7 +486,7 @@ def cmd_list_private_deposits(args):
             )
         return
 
-    if not transfers and not sacheinlagen:
+    if not transfers and not private_paid_expenses:
         print("Keine Privateinlagen gefunden.")
         return
 
@@ -506,7 +506,7 @@ def cmd_list_private_deposits(args):
         )
         total += row.amount_eur
 
-    for row in sacheinlagen:
+    for row in private_paid_expenses:
         amount = abs(row.amount_eur)
         source = f"Ausgabe #{row.id}"
         print(
@@ -557,7 +557,7 @@ def cmd_list_private_transfers(args):
     year = args.year or datetime.now().year
     deposits = get_private_transfer_list(conn, transfer_type="deposit", year=year)
     withdrawals = get_private_transfer_list(conn, transfer_type="withdrawal", year=year)
-    sacheinlagen = get_sacheinlagen(conn, year=year)
+    private_paid_expenses = get_private_paid_expenses(conn, year=year)
     conn.close()
 
     if args.format == "csv":
@@ -565,7 +565,7 @@ def cmd_list_private_transfers(args):
         writer.writerow(["type", "id", "date", "description", "amount_eur", "source"])
         for row in deposits:
             writer.writerow(["deposit", row.id, row.date, row.description, f"{row.amount_eur:.2f}", "direct"])
-        for row in sacheinlagen:
+        for row in private_paid_expenses:
             writer.writerow(
                 [
                     "deposit",
@@ -590,7 +590,7 @@ def cmd_list_private_transfers(args):
         return
 
     deposits_total = sum(row.amount_eur for row in deposits) + sum(
-        abs(row.amount_eur) for row in sacheinlagen
+        abs(row.amount_eur) for row in private_paid_expenses
     )
     withdrawals_total = sum(row.amount_eur for row in withdrawals)
 
@@ -605,7 +605,7 @@ def cmd_list_private_transfers(args):
         print(
             f"{row.id:<5} {row.date:<12} {row.description[:30]:<30} {row.amount_eur:>10.2f} {'Direktbuchung':<20}"
         )
-    for row in sacheinlagen:
+    for row in private_paid_expenses:
         print(
             f"{'--':<5} {row.date:<12} {row.vendor[:30]:<30} {abs(row.amount_eur):>10.2f} {f'Ausgabe #{row.id}':<20}"
         )

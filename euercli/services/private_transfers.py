@@ -332,7 +332,7 @@ def delete_private_transfer(
     conn.commit()
 
 
-def get_sacheinlagen(
+def get_private_paid_expenses(
     conn: sqlite3.Connection,
     *,
     year: int | None = None,
@@ -374,7 +374,7 @@ def get_private_summary(
     ).fetchone()
 
     sacheinlagen = conn.execute(
-        """SELECT SUM(ABS(amount_eur)) AS deposits_sacheinlagen
+        """SELECT SUM(ABS(amount_eur)) AS deposits_private_paid
            FROM expenses
            WHERE is_private_paid = 1
              AND strftime('%Y', COALESCE(payment_date, invoice_date)) = ?""",
@@ -384,12 +384,12 @@ def get_private_summary(
     deposits_direct = (direct["deposits_direct"] if direct else 0.0) or 0.0
     withdrawals_total = (direct["withdrawals_total"] if direct else 0.0) or 0.0
     deposits_sacheinlagen = (
-        (sacheinlagen["deposits_sacheinlagen"] if sacheinlagen else 0.0) or 0.0
+        (sacheinlagen["deposits_private_paid"] if sacheinlagen else 0.0) or 0.0
     )
 
     return {
         "deposits_direct": deposits_direct,
-        "deposits_sacheinlagen": deposits_sacheinlagen,
+        "deposits_private_paid": deposits_sacheinlagen,
         "deposits_total": deposits_direct + deposits_sacheinlagen,
         "withdrawals_total": withdrawals_total,
         "balance": (deposits_direct + deposits_sacheinlagen) - withdrawals_total,

@@ -219,6 +219,25 @@ eine callable sein oder ein Objekt mit `setup(subparsers)`.
 
 Ausführliche Guidelines: `AGENTS.md`.
 
+### Sprachkonvention: Deutsch vs. Englisch
+
+Das Projekt folgt einer klaren Zweiteilung:
+
+| Schicht | Sprache | Beispiel |
+|---------|---------|----------|
+| **CLI-Ausgabe** (Fehlermeldungen, Prompts, Labels, Tabellen-Header, Zusammenfassungen) | **Deutsch** | `"Keine Ausgaben gefunden."`, `"Wertstellung"`, `"Kategorie"` |
+| **Code-Interna** (Funktionen, Variablen, Klassen, Module) | **Englisch** | `create_expense()`, `expense_total`, `PrivateTransfer` |
+| **Konstanten** (Namen) | **Englisch** | `ENTERTAINMENT_CATEGORY`, `DEFAULT_DB_PATH` |
+| **DB-Schema** (Tabellen, Spalten, Indizes, Enum-Werte) | **Englisch** | `expenses`, `payment_date`, `is_private_paid` |
+| **Kategorienamen** (`SEED_CATEGORIES`) | **Deutsch** | Bilden offizielle ELSTER-Positionen ab |
+| **CLI-Commands & Flags** | **Englisch** | `add`, `--vendor`, `--amount` |
+| **Docstrings & Kommentare** | **Deutsch** | `"""Erzeugt einen eindeutigen Hash."""` |
+| **Dokumentation** (README, Specs, User Guide) | **Deutsch** | Zielgruppe sind deutschsprachige Nutzer |
+| **Tests** (Methodennamen, Klassen) | **Englisch** | `test_create_expense()`, `ExpenseServiceTestCase` |
+
+**Kurzregel:** Alles, was der Nutzer sieht → Deutsch. Alles im Code → Englisch.
+Ausnahme: Kategorienamen und Fachbegriffe in User-Strings bleiben Deutsch (ELSTER-Bezug).
+
 ## Tests
 
 ```bash
