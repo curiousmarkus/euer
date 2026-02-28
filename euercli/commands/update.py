@@ -3,6 +3,7 @@ from pathlib import Path
 
 from ..config import (
     get_audit_user,
+    get_ledger_accounts,
     get_private_accounts,
     load_config,
     warn_missing_receipt,
@@ -24,6 +25,12 @@ def cmd_update_expense(args):
     audit_user = get_audit_user(config)
     private_accounts = get_private_accounts(config)
     tax_mode = get_tax_config(config)
+    try:
+        ledger_accounts = get_ledger_accounts(config)
+    except ValidationError as exc:
+        print(f"Fehler: {exc.message}", file=sys.stderr)
+        conn.close()
+        sys.exit(1)
 
     try:
         expense = update_expense(
@@ -33,6 +40,8 @@ def cmd_update_expense(args):
             invoice_date=args.invoice_date,
             vendor=args.vendor,
             category_name=args.category,
+            ledger_account_key=args.ledger_account,
+            ledger_accounts=ledger_accounts,
             amount_eur=args.amount,
             account=args.account,
             foreign_amount=args.foreign,
@@ -50,7 +59,7 @@ def cmd_update_expense(args):
         conn.close()
         sys.exit(1)
     except ValidationError as exc:
-        if exc.code == "category_not_found":
+        if exc.code == "category_not_found" and args.category:
             print(f"Fehler: Kategorie '{args.category}' nicht gefunden.", file=sys.stderr)
             conn.close()
             sys.exit(1)
@@ -78,6 +87,12 @@ def cmd_update_income(args):
     config = load_config()
     audit_user = get_audit_user(config)
     tax_mode = get_tax_config(config)
+    try:
+        ledger_accounts = get_ledger_accounts(config)
+    except ValidationError as exc:
+        print(f"Fehler: {exc.message}", file=sys.stderr)
+        conn.close()
+        sys.exit(1)
 
     try:
         income = update_income(
@@ -87,6 +102,8 @@ def cmd_update_income(args):
             invoice_date=args.invoice_date,
             source=args.source,
             category_name=args.category,
+            ledger_account_key=args.ledger_account,
+            ledger_accounts=ledger_accounts,
             amount_eur=args.amount,
             foreign_amount=args.foreign,
             receipt_name=args.receipt,
@@ -100,7 +117,7 @@ def cmd_update_income(args):
         conn.close()
         sys.exit(1)
     except ValidationError as exc:
-        if exc.code == "category_not_found":
+        if exc.code == "category_not_found" and args.category:
             print(f"Fehler: Kategorie '{args.category}' nicht gefunden.", file=sys.stderr)
             conn.close()
             sys.exit(1)

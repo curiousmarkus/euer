@@ -3,8 +3,10 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+from ..config import get_ledger_accounts, load_config
 from ..db import get_db_connection
 from ..services.categories import get_category_list
+from ..services.errors import ValidationError
 from ..services.expenses import list_expenses
 from ..services.income import list_income
 from ..services.private_transfers import get_private_transfer_list, get_private_paid_expenses
@@ -446,6 +448,81 @@ def cmd_list_categories(args):
     for r in rows:
         eur = str(r.eur_line) if r.eur_line else "-"
         print(f"{r.id:<4} {r.type:<8} {eur:<5} {r.name:<40}")
+
+
+def cmd_list_ledger_accounts(args):
+    """Listet konfigurierte Buchungskonten."""
+    config = load_config()
+    try:
+        ledger_accounts = get_ledger_accounts(config)
+    except ValidationError as exc:
+        print(f"Fehler: {exc.message}", file=sys.stderr)
+        sys.exit(1)
+
+    if not ledger_accounts:
+        print("Kein Kontenrahmen konfiguriert.")
+        return
+
+    db_path = Path(args.db)
+    conn = get_db_connection(db_path)
+    categories = get_category_list(conn)
+    conn.close()
+
+    category_map = {category.name.lower(): category for category in categories}
+    missing_categories = {
+        account.category
+        for account in ledger_accounts
+        if account.category.lower() not in category_map
+    }
+    if missing_categories:
+        first_missing = sorted(missing_categories)[0]
+        print(
+            f"Fehler: Kategorie '{first_missing}' aus dem Kontenrahmen existiert nicht in der DB.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    filtered_accounts = ledger_accounts
+    if args.category:
+        filtered_accounts = [
+            account
+            for account in ledger_accounts
+            if account.category.lower() == args.category.lower()
+        ]
+
+    if not filtered_accounts:
+        print("Keine Buchungskonten gefunden.")
+        return
+
+    print(f"Kontenrahmen ({len(filtered_accounts)} Konten konfiguriert):")
+    print()
+
+    for category in categories:
+        accounts_for_category = [
+            account
+            for account in filtered_accounts
+            if account.category.lower() == category.name.lower()
+        ]
+        if not accounts_for_category:
+            continue
+
+        category_info = category_map.get(category.name.lower())
+        if category_info is None:
+            print(f"Fehler: Kategorie '{category.name}' nicht gefunden.", file=sys.stderr)
+            sys.exit(1)
+
+        type_label = "Ausgabe" if category.type == "expense" else "Einnahme"
+        eur_line = str(category.eur_line) if category.eur_line else "-"
+        print(f"{category.name} (Zeile {eur_line}, {type_label}):")
+
+        key_width = max(len(account.key) for account in accounts_for_category) + 2
+        name_width = max(len(account.name) for account in accounts_for_category) + 2
+        for account in accounts_for_category:
+            line = f"  {account.key:<{key_width}} {account.name:<{name_width}}"
+            if account.account_number:
+                line += f" [{account.account_number}]"
+            print(line.rstrip())
+        print()
 
 
 def cmd_list_private_deposits(args):

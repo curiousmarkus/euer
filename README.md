@@ -23,6 +23,7 @@ Die meisten Tools zwingen dich zu einer Entscheidung: Entweder du nutzt unflexib
 
 ### ✅ Alles, was du steuerlich brauchst
 - **EÜR-konforme Kategorien:** Direkt einsatzbereit mit den offiziellen Zeilennummern für die Anlage EÜR.
+- **Optionaler Kontenrahmen:** Frei konfigurierbare Buchungskonten (`[[ledger_accounts]]`) mit automatischer Kategoriezuordnung.
 - **Umsatzsteuer-Logik:** Voller Support für Regelbesteuerung (USt/Vorsteuer) sowie Kleinunternehmerregelung (§19 UStG).
 - **Reverse-Charge Support:** Umsatzsteuerliche Behandlung von Dienstleistern aus dem EU/Drittland-Ausland (§13b UStG).
 - **Beleg-Management:** Verknüpfe digitale Belege (PDF/Bilder) direkt mit deinen Buchungen.
@@ -65,6 +66,9 @@ euer setup
 ### 4. Erste Buchung (lass es deinen AI-Agent machen!)
 ```bash
 euer add expense --payment-date 2026-02-02 --vendor "Hetzner" --category "Laufende EDV-Kosten" --amount -10.00
+
+# Optional mit Kontenrahmen:
+euer add expense --payment-date 2026-02-02 --vendor "Hetzner" --ledger-account hosting --amount -10.00
 ```
 
 ---
@@ -76,9 +80,10 @@ Gib es an deinen KI-Agenten:
 > "Buche diese Belege in euer ein."
 
 1. Der Agent holt sich die korrekten Steuerkategorien mit `euer list categories`
-2. Fügt die Belege in die EÜR mit `euer add expense --payment-date ... --vendor ...`
-3. kontrolliert die Vollständigkeit mit `euer incomplete list`
-4. gibt dir eine Übersicht über deine EÜR mit `euer summary --year 2026`
+2. Prüft optional den Kontenrahmen mit `euer list ledger-accounts`
+3. Fügt die Belege in die EÜR mit `euer add expense --payment-date ... --vendor ...`
+4. kontrolliert die Vollständigkeit mit `euer incomplete list`
+5. gibt dir eine Übersicht über deine EÜR mit `euer summary --year 2026`
 
 **Ergebnis:** Du kannst dich zurücklehnen — dein Agent übernimmt für dich die Buchhaltung!
 

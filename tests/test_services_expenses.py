@@ -11,6 +11,7 @@ from euercli.services.expenses import (
     list_expenses,
     update_expense,
 )
+from euercli.services.models import LedgerAccount
 
 
 def make_connection() -> sqlite3.Connection:
@@ -241,6 +242,57 @@ class ExpenseServiceTestCase(unittest.TestCase):
         # Anderes Jahr sollte leer sein
         rows_other = list_expenses(self.conn, year=2025)
         self.assertEqual(len(rows_other), 0)
+
+    def test_create_expense_resolves_ledger_account_category(self) -> None:
+        expense = create_expense(
+            self.conn,
+            date="2026-01-15",
+            vendor="Hetzner",
+            amount_eur=-29.0,
+            ledger_account_key="hosting",
+            ledger_accounts=[
+                LedgerAccount(
+                    key="hosting",
+                    name="Hosting & Cloud-Dienste",
+                    category="Laufende EDV-Kosten",
+                )
+            ],
+            tax_mode="small_business",
+            audit_user="tester",
+        )
+
+        self.assertEqual(expense.category_name, "Laufende EDV-Kosten")
+        self.assertEqual(expense.ledger_account, "hosting")
+
+    def test_update_expense_rejects_conflicting_ledger_account_category(self) -> None:
+        expense = create_expense(
+            self.conn,
+            date="2026-01-15",
+            vendor="Hetzner",
+            amount_eur=-29.0,
+            category_name="Laufende EDV-Kosten",
+            tax_mode="small_business",
+            audit_user="tester",
+        )
+
+        with self.assertRaises(ValidationError) as ctx:
+            update_expense(
+                self.conn,
+                record_id=expense.id,
+                category_name="Arbeitsmittel",
+                ledger_account_key="hosting",
+                ledger_accounts=[
+                    LedgerAccount(
+                        key="hosting",
+                        name="Hosting & Cloud-Dienste",
+                        category="Laufende EDV-Kosten",
+                    )
+                ],
+                tax_mode="small_business",
+                audit_user="tester",
+            )
+
+        self.assertEqual(ctx.exception.code, "ledger_account_category_mismatch")
 
 
 if __name__ == "__main__":

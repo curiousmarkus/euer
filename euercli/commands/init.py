@@ -17,6 +17,7 @@ def _migrate_expenses_dates(conn) -> None:
     payment_expr = "payment_date" if "payment_date" in columns else "date"
     invoice_expr = "invoice_date" if "invoice_date" in columns else "NULL"
     is_private_paid_expr = "is_private_paid" if "is_private_paid" in columns else "0"
+    ledger_account_expr = "ledger_account" if "ledger_account" in columns else "NULL"
     private_classification_expr = (
         "private_classification" if "private_classification" in columns else "'none'"
     )
@@ -34,6 +35,7 @@ def _migrate_expenses_dates(conn) -> None:
             category_id INTEGER REFERENCES categories(id),
             amount_eur REAL NOT NULL,
             account TEXT,
+            ledger_account TEXT,
             foreign_amount TEXT,
             notes TEXT,
             is_rc INTEGER NOT NULL DEFAULT 0,
@@ -52,12 +54,14 @@ def _migrate_expenses_dates(conn) -> None:
         f"""
         INSERT INTO expenses (
             id, uuid, receipt_name, payment_date, invoice_date, vendor, category_id,
-            amount_eur, account, foreign_amount, notes, is_rc, vat_input, vat_output,
+            amount_eur, account, ledger_account, foreign_amount, notes, is_rc, vat_input,
+            vat_output,
             is_private_paid, private_classification, created_at, hash
         )
         SELECT
             id, uuid, receipt_name, {payment_expr}, {invoice_expr}, vendor, category_id,
-            amount_eur, account, foreign_amount, notes, is_rc, vat_input, vat_output,
+            amount_eur, account, {ledger_account_expr}, foreign_amount, notes, is_rc,
+            vat_input, vat_output,
             {is_private_paid_expr}, {private_classification_expr}, created_at, hash
         FROM expenses_old
         """
@@ -76,6 +80,7 @@ def _migrate_income_dates(conn) -> None:
     columns = _get_table_columns(conn, "income")
     payment_expr = "payment_date" if "payment_date" in columns else "date"
     invoice_expr = "invoice_date" if "invoice_date" in columns else "NULL"
+    ledger_account_expr = "ledger_account" if "ledger_account" in columns else "NULL"
 
     conn.execute("ALTER TABLE income RENAME TO income_old")
     conn.execute(
@@ -89,6 +94,7 @@ def _migrate_income_dates(conn) -> None:
             source TEXT NOT NULL,
             category_id INTEGER REFERENCES categories(id),
             amount_eur REAL NOT NULL,
+            ledger_account TEXT,
             foreign_amount TEXT,
             notes TEXT,
             vat_output REAL,
@@ -102,11 +108,12 @@ def _migrate_income_dates(conn) -> None:
         f"""
         INSERT INTO income (
             id, uuid, receipt_name, payment_date, invoice_date, source, category_id,
-            amount_eur, foreign_amount, notes, vat_output, created_at, hash
+            amount_eur, ledger_account, foreign_amount, notes, vat_output, created_at, hash
         )
         SELECT
             id, uuid, receipt_name, {payment_expr}, {invoice_expr}, source, category_id,
-            amount_eur, foreign_amount, notes, vat_output, created_at, hash
+            amount_eur, {ledger_account_expr}, foreign_amount, notes, vat_output, created_at,
+            hash
         FROM income_old
         """
     )
@@ -172,6 +179,22 @@ def ensure_expenses_private_columns(conn) -> None:
         )
 
 
+def ensure_ledger_account_columns(conn) -> None:
+    """Ergänzt fehlende ledger_account-Spalten in bestehenden Datenbanken."""
+    expense_columns = {
+        row["name"]
+        for row in conn.execute("PRAGMA table_info(expenses)").fetchall()
+    }
+    income_columns = {
+        row["name"]
+        for row in conn.execute("PRAGMA table_info(income)").fetchall()
+    }
+    if "ledger_account" not in expense_columns:
+        conn.execute("ALTER TABLE expenses ADD COLUMN ledger_account TEXT")
+    if "ledger_account" not in income_columns:
+        conn.execute("ALTER TABLE income ADD COLUMN ledger_account TEXT")
+
+
 def ensure_seed_categories(conn) -> None:
     """Ergänzt fehlende Seed-Kategorien und korrigiert EÜR-Zeilen in bestehenden DBs."""
     # Fix: "Umsatzsteuerpflichtige Betriebseinnahmen" war fälschlich auf Zeile 14 (→ 15)
@@ -208,6 +231,7 @@ def cmd_init(args):
     conn.executescript(SCHEMA)
     ensure_payment_invoice_columns(conn)
     ensure_expenses_private_columns(conn)
+    ensure_ledger_account_columns(conn)
 
     # Kategorien seeden (nur wenn leer) oder fehlende ergänzen
     existing = conn.execute("SELECT COUNT(*) as cnt FROM categories").fetchone()["cnt"]

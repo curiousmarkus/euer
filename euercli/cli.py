@@ -22,6 +22,7 @@ from .commands import (
     cmd_list_categories,
     cmd_list_expenses,
     cmd_list_income,
+    cmd_list_ledger_accounts,
     cmd_list_private_deposits,
     cmd_list_private_transfers,
     cmd_list_private_withdrawals,
@@ -131,6 +132,10 @@ def main() -> None:
     add_expense_parser.add_argument("--vendor", required=True, help="Lieferant/Zweck")
     add_expense_parser.add_argument("--category", help="Kategorie")
     add_expense_parser.add_argument(
+        "--ledger-account",
+        help="Buchungskonto aus dem Kontenrahmen (setzt Kategorie automatisch)",
+    )
+    add_expense_parser.add_argument(
         "--amount", required=True, type=float, help="Betrag in EUR"
     )
     add_expense_parser.add_argument("--account", help="Bankkonto")
@@ -164,6 +169,10 @@ def main() -> None:
     )
     add_income_parser.add_argument("--source", required=True, help="Quelle/Zweck")
     add_income_parser.add_argument("--category", help="Kategorie")
+    add_income_parser.add_argument(
+        "--ledger-account",
+        help="Buchungskonto aus dem Kontenrahmen (setzt Kategorie automatisch)",
+    )
     add_income_parser.add_argument(
         "--amount", required=True, type=float, help="Betrag in EUR"
     )
@@ -262,6 +271,12 @@ def main() -> None:
     )
     list_cat_parser.set_defaults(func=cmd_list_categories)
 
+    list_ledger_parser = list_subparsers.add_parser(
+        "ledger-accounts", help="Kontenrahmen anzeigen"
+    )
+    list_ledger_parser.add_argument("--category", help="Kategorie filtern")
+    list_ledger_parser.set_defaults(func=cmd_list_ledger_accounts)
+
     # list private-deposits
     list_private_dep_parser = list_subparsers.add_parser(
         "private-deposits", help="Privateinlagen anzeigen"
@@ -304,6 +319,10 @@ def main() -> None:
     upd_exp_parser.add_argument("--invoice-date", help="Neues Rechnungsdatum")
     upd_exp_parser.add_argument("--vendor", help="Neuer Lieferant")
     upd_exp_parser.add_argument("--category", help="Neue Kategorie")
+    upd_exp_parser.add_argument(
+        "--ledger-account",
+        help="Neues Buchungskonto aus dem Kontenrahmen",
+    )
     upd_exp_parser.add_argument("--amount", type=float, help="Neuer Betrag")
     upd_exp_parser.add_argument("--account", help="Neues Konto")
     upd_exp_parser.add_argument("--foreign", help="Neuer Fremdwährungsbetrag")
@@ -347,6 +366,10 @@ def main() -> None:
     upd_inc_parser.add_argument("--invoice-date", help="Neues Rechnungsdatum")
     upd_inc_parser.add_argument("--source", help="Neue Quelle")
     upd_inc_parser.add_argument("--category", help="Neue Kategorie")
+    upd_inc_parser.add_argument(
+        "--ledger-account",
+        help="Neues Buchungskonto aus dem Kontenrahmen",
+    )
     upd_inc_parser.add_argument("--amount", type=float, help="Neuer Betrag")
     upd_inc_parser.add_argument("--foreign", help="Neuer Fremdwährungsbetrag")
     upd_inc_parser.add_argument("--receipt", help="Neuer Belegname")

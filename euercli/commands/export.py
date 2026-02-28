@@ -2,9 +2,10 @@ import csv
 import sys
 from pathlib import Path
 
-from ..config import get_export_dir, load_config
+from ..config import get_export_dir, get_ledger_accounts, load_config
 from ..constants import DEFAULT_EXPORT_DIR
 from ..db import get_db_connection
+from ..services.errors import ValidationError
 
 # Optional: openpyxl für XLSX-Export
 try:
@@ -22,6 +23,16 @@ def cmd_export(args):
 
     config = load_config()
     config_export_dir = get_export_dir(config)
+    try:
+        ledger_accounts = get_ledger_accounts(config)
+    except ValidationError as exc:
+        conn.close()
+        print(f"Fehler: {exc.message}", file=sys.stderr)
+        sys.exit(1)
+    ledger_account_numbers = {
+        account.key.lower(): account.account_number or ""
+        for account in ledger_accounts
+    }
 
     if args.output:
         output_dir = Path(args.output)
@@ -75,7 +86,8 @@ def cmd_export(args):
     expenses = conn.execute(
         f"""SELECT e.receipt_name, e.payment_date, e.invoice_date, e.vendor,
                   c.name as category, c.eur_line,
-                  e.amount_eur, e.account, e.foreign_amount, e.notes, e.is_rc, e.vat_input, e.vat_output
+                  e.amount_eur, e.account, e.ledger_account, e.foreign_amount, e.notes,
+                  e.is_rc, e.vat_input, e.vat_output
            FROM expenses e
            LEFT JOIN categories c ON e.category_id = c.id
            {year_filter}
@@ -87,7 +99,7 @@ def cmd_export(args):
     income = conn.execute(
         f"""SELECT i.receipt_name, i.payment_date, i.invoice_date, i.source,
                   c.name as category, c.eur_line,
-                  i.amount_eur, i.foreign_amount, i.notes, i.vat_output
+                  i.amount_eur, i.ledger_account, i.foreign_amount, i.notes, i.vat_output
            FROM income i
            LEFT JOIN categories c ON i.category_id = c.id
            {income_filter}
@@ -138,6 +150,8 @@ def cmd_export(args):
                     "Kategorie",
                     "EUR",
                     "Konto",
+                    "Buchungskonto",
+                    "Kontonummer",
                     "Fremdwährung",
                     "Bemerkung",
                     "RC",
@@ -163,6 +177,8 @@ def cmd_export(args):
                         cat,
                         f"{r['amount_eur']:.2f}",
                         r["account"] or "",
+                        r["ledger_account"] or "",
+                        ledger_account_numbers.get((r["ledger_account"] or "").lower(), ""),
                         r["foreign_amount"] or "",
                         r["notes"] or "",
                         "X" if r["is_rc"] else "",
@@ -183,6 +199,8 @@ def cmd_export(args):
                     "Quelle",
                     "Kategorie",
                     "EUR",
+                    "Buchungskonto",
+                    "Kontonummer",
                     "Fremdwährung",
                     "Bemerkung",
                     "Umsatzsteuer",
@@ -205,6 +223,8 @@ def cmd_export(args):
                         r["source"],
                         cat,
                         f"{r['amount_eur']:.2f}",
+                        r["ledger_account"] or "",
+                        ledger_account_numbers.get((r["ledger_account"] or "").lower(), ""),
                         r["foreign_amount"] or "",
                         r["notes"] or "",
                         f"{r['vat_output']:.2f}" if r["vat_output"] else "",
@@ -294,6 +314,8 @@ def cmd_export(args):
                 "Kategorie",
                 "EUR",
                 "Konto",
+                "Buchungskonto",
+                "Kontonummer",
                 "Fremdwährung",
                 "Bemerkung",
                 "RC",
@@ -318,6 +340,8 @@ def cmd_export(args):
                     cat,
                     r["amount_eur"],
                     r["account"] or "",
+                    r["ledger_account"] or "",
+                    ledger_account_numbers.get((r["ledger_account"] or "").lower(), ""),
                     r["foreign_amount"] or "",
                     r["notes"] or "",
                     "X" if r["is_rc"] else "",
@@ -340,6 +364,8 @@ def cmd_export(args):
                 "Quelle",
                 "Kategorie",
                 "EUR",
+                "Buchungskonto",
+                "Kontonummer",
                 "Fremdwährung",
                 "Bemerkung",
             ]
@@ -361,6 +387,8 @@ def cmd_export(args):
                     r["source"],
                     cat,
                     r["amount_eur"],
+                    r["ledger_account"] or "",
+                    ledger_account_numbers.get((r["ledger_account"] or "").lower(), ""),
                     r["foreign_amount"] or "",
                     r["notes"] or "",
                 ]

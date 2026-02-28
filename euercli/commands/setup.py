@@ -4,6 +4,7 @@ from pathlib import Path
 from ..config import (
     get_audit_user,
     get_export_dir,
+    get_ledger_accounts,
     get_private_accounts,
     load_config,
     normalize_export_path,
@@ -15,17 +16,83 @@ from ..config import (
     save_config,
 )
 from ..constants import CONFIG_PATH, DEFAULT_EXPORT_DIR
+from ..db import get_db_connection
+from ..services.categories import get_category_list
+from ..services.errors import ValidationError
 
 
 def _ordered_config(config: dict) -> dict:
     ordered = {}
-    for section in ("receipts", "exports", "tax", "user", "accounts"):
+    for section in ("receipts", "exports", "tax", "user", "accounts", "ledger_accounts"):
         if section in config:
             ordered[section] = config[section]
     for key, value in config.items():
         if key not in ordered:
             ordered[key] = value
     return ordered
+
+
+def _prompt_yes_no(label: str, default: bool = False) -> bool:
+    suffix = "J/n" if default else "j/N"
+    try:
+        value = input(f"{label} [{suffix}]: ").strip().lower()
+    except EOFError:
+        return default
+    if not value:
+        return default
+    return value in {"j", "ja", "y", "yes"}
+
+
+def _prompt_ledger_accounts(db_path: str) -> list[dict]:
+    conn = get_db_connection(Path(db_path))
+    categories = get_category_list(conn)
+    conn.close()
+
+    result: list[dict] = []
+    while True:
+        key = prompt_text("Konto-Schlüssel", None).strip()
+        if not key:
+            print("Schlüssel darf nicht leer sein.", file=sys.stderr)
+            continue
+        if any(entry["key"].lower() == key.lower() for entry in result):
+            print(f"Schlüssel '{key}' ist bereits vergeben.", file=sys.stderr)
+            continue
+
+        name = prompt_text("Anzeigename", None).strip()
+        if not name:
+            print("Name darf nicht leer sein.", file=sys.stderr)
+            continue
+
+        print("Kategorie wählen:")
+        for index, category in enumerate(categories, start=1):
+            type_label = "Ausgabe" if category.type == "expense" else "Einnahme"
+            eur_line = str(category.eur_line) if category.eur_line else "-"
+            print(f"  {index}. {category.name} (Zeile {eur_line}, {type_label})")
+
+        selected_category = None
+        while selected_category is None:
+            selection = prompt_text("Kategorie-Nummer", None).strip()
+            if not selection.isdigit():
+                print("Bitte eine gültige Nummer eingeben.", file=sys.stderr)
+                continue
+            category_index = int(selection)
+            if category_index < 1 or category_index > len(categories):
+                print("Bitte eine gültige Nummer eingeben.", file=sys.stderr)
+                continue
+            selected_category = categories[category_index - 1]
+
+        account_number = prompt_text("SKR-Nummer (optional)", None).strip()
+        entry = {
+            "key": key,
+            "name": name,
+            "category": selected_category.name,
+        }
+        if account_number:
+            entry["account_number"] = account_number
+        result.append(entry)
+
+        if not _prompt_yes_no("Weiteres Konto?", default=False):
+            return result
 
 
 def _normalize_setup_set_value(key: str, value: str):
@@ -83,6 +150,11 @@ def cmd_setup(args):
     print()
 
     config = load_config()
+    try:
+        existing_ledger_accounts = get_ledger_accounts(config)
+    except ValidationError as exc:
+        print(f"Fehler: {exc.message}", file=sys.stderr)
+        sys.exit(1)
     receipts_config = dict(config.get("receipts", {}))
     exports_config = dict(config.get("exports", {}))
     tax_config = dict(config.get("tax", {}))
@@ -133,6 +205,15 @@ def cmd_setup(args):
         "Private Konten",
         existing_private,
     )
+    print()
+
+    ledger_accounts_config = config.get("ledger_accounts", [])
+    wants_ledger_accounts = _prompt_yes_no(
+        "Möchtest du Buchungskonten konfigurieren?",
+        default=False,
+    )
+    if wants_ledger_accounts:
+        ledger_accounts_config = _prompt_ledger_accounts(args.db)
 
     expenses_path = normalize_receipt_path(expenses_input)
     income_path = normalize_receipt_path(income_input)
@@ -149,6 +230,10 @@ def cmd_setup(args):
     config["tax"] = tax_config
     config["user"] = user_config
     config["accounts"] = accounts_config
+    if ledger_accounts_config:
+        config["ledger_accounts"] = ledger_accounts_config
+    elif "ledger_accounts" in config:
+        del config["ledger_accounts"]
 
     save_config(_ordered_config(config))
 
@@ -166,6 +251,9 @@ def cmd_setup(args):
     print(f"  name = {audit_user_input}")
     print("[accounts]")
     print(f"  private = {accounts_config.get('private', ['privat'])}")
+    if ledger_accounts_config:
+        print("[ledger_accounts]")
+        print(f"  {len(ledger_accounts_config)} Konto/Konten konfiguriert")
     print()
     print("Hinweis: Ausgaben mit diesen Kontonamen (--account) werden")
     print("automatisch als Sacheinlage (Privateinlage) erkannt.")

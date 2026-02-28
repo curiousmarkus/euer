@@ -13,6 +13,14 @@ class Category:
 
 
 @dataclass
+class LedgerAccount:
+    key: str
+    name: str
+    category: str
+    account_number: str | None = None
+
+
+@dataclass
 class Expense:
     id: int | None
     uuid: str
@@ -24,6 +32,7 @@ class Expense:
     category_name: str | None = None
     category_eur_line: int | None = None
     account: str | None = None
+    ledger_account: str | None = None
     receipt_name: str | None = None
     foreign_amount: str | None = None
     notes: str | None = None
@@ -51,6 +60,7 @@ class Income:
     category_id: int | None
     category_name: str | None = None
     category_eur_line: int | None = None
+    ledger_account: str | None = None
     receipt_name: str | None = None
     foreign_amount: str | None = None
     notes: str | None = None

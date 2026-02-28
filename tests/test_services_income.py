@@ -11,6 +11,7 @@ from euercli.services.income import (
     list_income,
     update_income,
 )
+from euercli.services.models import LedgerAccount
 
 
 def make_connection() -> sqlite3.Connection:
@@ -224,6 +225,57 @@ class IncomeServiceTestCase(unittest.TestCase):
         # Anderes Jahr sollte leer sein
         rows_other = list_income(self.conn, year=2025)
         self.assertEqual(len(rows_other), 0)
+
+    def test_create_income_resolves_ledger_account_category(self) -> None:
+        income = create_income(
+            self.conn,
+            date="2026-01-20",
+            source="TestClient",
+            amount_eur=1500.0,
+            ledger_account_key="erloese-19",
+            ledger_accounts=[
+                LedgerAccount(
+                    key="erloese-19",
+                    name="Erlöse 19% USt",
+                    category="Umsatzsteuerpflichtige Betriebseinnahmen",
+                )
+            ],
+            tax_mode="standard",
+            audit_user="tester",
+        )
+
+        self.assertEqual(income.category_name, "Umsatzsteuerpflichtige Betriebseinnahmen")
+        self.assertEqual(income.ledger_account, "erloese-19")
+
+    def test_update_income_rejects_conflicting_ledger_account_category(self) -> None:
+        income = create_income(
+            self.conn,
+            date="2026-01-20",
+            source="TestClient",
+            amount_eur=1500.0,
+            category_name="Umsatzsteuerpflichtige Betriebseinnahmen",
+            tax_mode="standard",
+            audit_user="tester",
+        )
+
+        with self.assertRaises(ValidationError) as ctx:
+            update_income(
+                self.conn,
+                record_id=income.id,
+                category_name="Nicht steuerbare Umsätze",
+                ledger_account_key="erloese-19",
+                ledger_accounts=[
+                    LedgerAccount(
+                        key="erloese-19",
+                        name="Erlöse 19% USt",
+                        category="Umsatzsteuerpflichtige Betriebseinnahmen",
+                    )
+                ],
+                tax_mode="standard",
+                audit_user="tester",
+            )
+
+        self.assertEqual(ctx.exception.code, "ledger_account_category_mismatch")
 
 
 if __name__ == "__main__":

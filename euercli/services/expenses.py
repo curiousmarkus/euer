@@ -5,10 +5,10 @@ import uuid
 
 from ..db import log_audit, row_to_dict
 from ..utils import compute_hash
-from .categories import get_category_by_name
+from .categories import get_category_by_name, resolve_ledger_account
 from .duplicates import DuplicateAction
 from .errors import RecordNotFoundError, ValidationError
-from .models import Expense
+from .models import Expense, LedgerAccount
 from .private_classification import classify_expense_private_paid
 from .utils import get_optional, hash_date, resolve_dates
 
@@ -25,6 +25,7 @@ def row_to_expense(row: sqlite3.Row) -> Expense:
         category_name=get_optional(row, "category_name"),
         category_eur_line=get_optional(row, "category_eur_line"),
         account=get_optional(row, "account"),
+        ledger_account=get_optional(row, "ledger_account"),
         receipt_name=get_optional(row, "receipt_name"),
         foreign_amount=get_optional(row, "foreign_amount"),
         notes=get_optional(row, "notes"),
@@ -98,6 +99,52 @@ def _resolve_create_vat(
     return resolved_vat_input, resolved_vat_output
 
 
+def _resolve_expense_category(
+    conn: sqlite3.Connection,
+    *,
+    category_name: str | None,
+    ledger_account_key: str | None,
+    ledger_accounts: list[LedgerAccount] | None,
+) -> tuple[int | None, str | None, str | None]:
+    resolved_category_name = category_name
+    resolved_ledger_account_key: str | None = None
+
+    if ledger_account_key is not None:
+        resolved_ledger_account = resolve_ledger_account(
+            conn,
+            ledger_account_key,
+            ledger_accounts or [],
+            "expense",
+        )
+        if category_name and category_name.lower() != resolved_ledger_account.category.lower():
+            raise ValidationError(
+                f"Buchungskonto '{resolved_ledger_account.key}' gehört zur Kategorie "
+                f"'{resolved_ledger_account.category}', nicht zu '{category_name}'.",
+                code="ledger_account_category_mismatch",
+                details={
+                    "ledger_account": resolved_ledger_account.key,
+                    "ledger_category": resolved_ledger_account.category,
+                    "category": category_name,
+                },
+            )
+        resolved_category_name = resolved_ledger_account.category
+        resolved_ledger_account_key = resolved_ledger_account.key
+
+    category_id: int | None = None
+    if resolved_category_name:
+        category = get_category_by_name(conn, resolved_category_name, "expense")
+        if not category:
+            raise ValidationError(
+                f"Kategorie '{resolved_category_name}' nicht gefunden.",
+                code="category_not_found",
+                details={"category": resolved_category_name, "type": "expense"},
+            )
+        category_id = category.id
+        resolved_category_name = category.name
+
+    return category_id, resolved_category_name, resolved_ledger_account_key
+
+
 def create_expense(
     conn: sqlite3.Connection,
     *,
@@ -107,6 +154,8 @@ def create_expense(
     invoice_date: str | None = None,
     date: str | None = None,
     category_name: str | None = None,
+    ledger_account_key: str | None = None,
+    ledger_accounts: list[LedgerAccount] | None = None,
     account: str | None = None,
     foreign_amount: str | None = None,
     receipt_name: str | None = None,
@@ -129,16 +178,12 @@ def create_expense(
         legacy_date=date,
     )
 
-    category_id: int | None = None
-    if category_name:
-        category = get_category_by_name(conn, category_name, "expense")
-        if not category:
-            raise ValidationError(
-                f"Kategorie '{category_name}' nicht gefunden.",
-                code="category_not_found",
-                details={"category": category_name, "type": "expense"},
-            )
-        category_id = category.id
+    category_id, resolved_category_name, resolved_ledger_account_key = _resolve_expense_category(
+        conn,
+        category_name=category_name,
+        ledger_account_key=ledger_account_key,
+        ledger_accounts=ledger_accounts,
+    )
 
     resolved_vat_input, resolved_vat_output = _resolve_create_vat(
         tax_mode=tax_mode,
@@ -172,7 +217,7 @@ def create_expense(
     record_uuid = str(uuid.uuid4())
     is_private_paid, private_classification = classify_expense_private_paid(
         account=account,
-        category_name=category_name,
+        category_name=resolved_category_name,
         private_accounts=private_accounts or [],
         manual_override=private_paid,
     )
@@ -180,9 +225,9 @@ def create_expense(
     cursor = conn.execute(
         """INSERT INTO expenses
            (uuid, receipt_name, payment_date, invoice_date, vendor, category_id, amount_eur, account,
-            foreign_amount, notes, is_rc, vat_input, vat_output,
+            ledger_account, foreign_amount, notes, is_rc, vat_input, vat_output,
             is_private_paid, private_classification, hash)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             record_uuid,
             receipt_name,
@@ -192,6 +237,7 @@ def create_expense(
             category_id,
             amount_eur,
             account,
+            resolved_ledger_account_key,
             foreign_amount,
             notes,
             1 if is_rc else 0,
@@ -214,6 +260,7 @@ def create_expense(
         "category_id": category_id,
         "amount_eur": amount_eur,
         "account": account,
+        "ledger_account": resolved_ledger_account_key,
         "foreign_amount": foreign_amount,
         "notes": notes,
         "is_rc": 1 if is_rc else 0,
@@ -243,7 +290,9 @@ def create_expense(
         vendor=vendor,
         amount_eur=amount_eur,
         category_id=category_id,
+        category_name=resolved_category_name,
         account=account,
+        ledger_account=resolved_ledger_account_key,
         receipt_name=receipt_name,
         foreign_amount=foreign_amount,
         notes=notes,
@@ -266,7 +315,8 @@ def list_expenses(
     query = """
         SELECT e.id, e.uuid, e.payment_date, e.invoice_date, e.vendor, e.category_id,
                c.name as category_name,
-               c.eur_line as category_eur_line, e.amount_eur, e.account, e.receipt_name,
+               c.eur_line as category_eur_line, e.amount_eur, e.account, e.ledger_account,
+               e.receipt_name,
                e.foreign_amount, e.notes, e.is_rc, e.vat_input, e.vat_output,
                e.is_private_paid, e.private_classification, e.hash
         FROM expenses e
@@ -295,7 +345,8 @@ def get_expense_detail(conn: sqlite3.Connection, record_id: int) -> Expense:
     row = conn.execute(
         """SELECT e.id, e.uuid, e.payment_date, e.invoice_date, e.vendor, e.category_id,
                   c.name as category_name,
-                  c.eur_line as category_eur_line, e.amount_eur, e.account, e.receipt_name,
+                  c.eur_line as category_eur_line, e.amount_eur, e.account, e.ledger_account,
+                  e.receipt_name,
                   e.foreign_amount, e.notes, e.is_rc, e.vat_input, e.vat_output,
                   e.is_private_paid, e.private_classification, e.hash
            FROM expenses e
@@ -321,6 +372,8 @@ def update_expense(
     date: str | None = None,
     vendor: str | None = None,
     category_name: str | None = None,
+    ledger_account_key: str | None = None,
+    ledger_accounts: list[LedgerAccount] | None = None,
     amount_eur: float | None = None,
     account: str | None = None,
     foreign_amount: str | None = None,
@@ -403,26 +456,54 @@ def update_expense(
                 details={"tax_mode": tax_mode},
             )
 
-    resolved_category_name: str | None = None
-    if category_name:
-        category = get_category_by_name(conn, category_name, "expense")
-        if not category:
-            raise ValidationError(
-                f"Kategorie '{category_name}' nicht gefunden.",
-                code="category_not_found",
-                details={"category": category_name, "type": "expense"},
-            )
-        category_id = category.id
-        resolved_category_name = category.name
+    existing_category_name: str | None = None
+    if row["category_id"]:
+        cat_row = conn.execute(
+            "SELECT name FROM categories WHERE id = ?",
+            (row["category_id"],),
+        ).fetchone()
+        if cat_row:
+            existing_category_name = cat_row["name"]
+
+    resolved_category_name = existing_category_name
+    resolved_ledger_account_key = get_optional(row, "ledger_account")
+    if ledger_account_key is not None:
+        category_id, resolved_category_name, resolved_ledger_account_key = _resolve_expense_category(
+            conn,
+            category_name=category_name,
+            ledger_account_key=ledger_account_key,
+            ledger_accounts=ledger_accounts,
+        )
     else:
         category_id = row["category_id"]
-        if category_id:
-            cat_row = conn.execute(
-                "SELECT name FROM categories WHERE id = ?",
-                (category_id,),
-            ).fetchone()
-            if cat_row:
-                resolved_category_name = cat_row["name"]
+        if category_name:
+            if resolved_ledger_account_key and ledger_accounts:
+                resolved_ledger_account = resolve_ledger_account(
+                    conn,
+                    resolved_ledger_account_key,
+                    ledger_accounts,
+                    "expense",
+                )
+                if category_name.lower() != resolved_ledger_account.category.lower():
+                    raise ValidationError(
+                        f"Buchungskonto '{resolved_ledger_account.key}' gehört zur Kategorie "
+                        f"'{resolved_ledger_account.category}', nicht zu '{category_name}'.",
+                        code="ledger_account_category_mismatch",
+                        details={
+                            "ledger_account": resolved_ledger_account.key,
+                            "ledger_category": resolved_ledger_account.category,
+                            "category": category_name,
+                        },
+                    )
+            category = get_category_by_name(conn, category_name, "expense")
+            if not category:
+                raise ValidationError(
+                    f"Kategorie '{category_name}' nicht gefunden.",
+                    code="category_not_found",
+                    details={"category": category_name, "type": "expense"},
+                )
+            category_id = category.id
+            resolved_category_name = category.name
 
     if private_paid is True:
         new_is_private_paid, new_private_classification = classify_expense_private_paid(
@@ -454,7 +535,7 @@ def update_expense(
     conn.execute(
         """UPDATE expenses SET
            receipt_name = ?, payment_date = ?, invoice_date = ?, vendor = ?, category_id = ?, amount_eur = ?,
-           account = ?, foreign_amount = ?, notes = ?, is_rc = ?, vat_input = ?, vat_output = ?,
+           account = ?, ledger_account = ?, foreign_amount = ?, notes = ?, is_rc = ?, vat_input = ?, vat_output = ?,
            is_private_paid = ?, private_classification = ?, hash = ?
            WHERE id = ?""",
         (
@@ -465,6 +546,7 @@ def update_expense(
             category_id,
             new_amount,
             new_account,
+            resolved_ledger_account_key,
             new_foreign,
             new_notes,
             1 if new_rc else 0,
@@ -488,6 +570,7 @@ def update_expense(
         "category_id": category_id,
         "amount_eur": new_amount,
         "account": new_account,
+        "ledger_account": resolved_ledger_account_key,
         "foreign_amount": new_foreign,
         "notes": new_notes,
         "is_rc": 1 if new_rc else 0,
@@ -518,7 +601,9 @@ def update_expense(
         vendor=new_vendor,
         amount_eur=new_amount,
         category_id=category_id,
+        category_name=resolved_category_name,
         account=new_account,
+        ledger_account=resolved_ledger_account_key,
         receipt_name=new_receipt,
         foreign_amount=new_foreign,
         notes=new_notes,

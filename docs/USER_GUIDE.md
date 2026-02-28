@@ -99,6 +99,8 @@ euer add expense --payment-date 2026-02-02 --vendor "Test" --category "Laufende 
 - **Einnahmen** haben immer **positive** Beträge (`--amount 10.00`).
 - **Privateinlagen/Privatentnahmen** (`add private-*`) verwenden immer **positive** Beträge; die Richtung ergibt sich aus dem Command.
 - **Kategorien** sind vorgegeben und müssen existieren: `euer list categories`.
+- **Buchungskonten** (`--ledger-account`) sind optional und werden in der Config als
+  `[[ledger_accounts]]` gepflegt. Sie setzen die Kategorie automatisch.
 - **Datumsfelder**: `payment_date` (Wertstellung, EÜR-relevant) und `invoice_date` (Rechnungsdatum).
   Mindestens eines der beiden muss gesetzt sein.
 - **Belege** können geprüft und geöffnet werden, wenn Pfade konfiguriert sind.
@@ -115,9 +117,17 @@ euer add expense --payment-date 2026-02-02 --vendor "Test" --category "Laufende 
 euer add expense --payment-date 2026-01-15 --invoice-date 2026-01-14 --vendor "1und1" \
     --category "Telekommunikation" --amount -39.99 --account "Sparkasse Giro"
 
+# Ausgabe mit Kontenrahmen
+euer add expense --payment-date 2026-01-15 --vendor "Hetzner" \
+    --ledger-account hosting --amount -29.00 --account "g-n26"
+
 # Einnahme
 euer add income --payment-date 2026-01-20 --invoice-date 2026-01-18 --source "Kunde ABC" \
     --category "Umsatzsteuerpflichtige Betriebseinnahmen" --amount 1500.00
+
+# Einnahme mit Kontenrahmen
+euer add income --payment-date 2026-01-20 --source "Kunde ABC" \
+    --ledger-account erloese-19 --amount 1500.00
 ```
 
 ### Anzeigen & Filtern
@@ -130,6 +140,8 @@ euer list expenses --year 2026 --full
 euer list income --year 2026
 euer list income --year 2026 --full
 euer list categories
+euer list ledger-accounts
+euer list ledger-accounts --category "Laufende EDV-Kosten"
 ```
 
 Hinweis: `list ... --format csv` gibt die Liste als CSV auf stdout aus (für Pipes/Redirects).
@@ -167,6 +179,7 @@ euer add expense --payment-date 2026-01-10 --vendor "Adobe" \
 euer update expense 42 --amount -25.00 --notes "Korrigiert"
 euer update expense 42 --payment-date 2026-01-17
 euer update expense 42 --invoice-date 2026-01-15
+euer update expense 42 --ledger-account hosting
 euer update expense 42 --private-paid
 euer update expense 42 --no-private-paid
 
@@ -205,6 +218,9 @@ Hinweis: `export` schreibt Dateien ins Export-Verzeichnis:
 - `PrivateTransfers` (direkte Privatvorgänge)
 - `Sacheinlagen` (aus `expenses.is_private_paid` abgeleitet)
 
+Hinweis: Exporte für Ausgaben und Einnahmen enthalten zusätzlich die Spalten
+`Buchungskonto` und `Kontonummer`, wenn ein Kontenrahmen konfiguriert ist.
+
 Hinweis: Für die Kategorie **Bewirtungsaufwendungen** rechnet `euer summary`
 den Aufwand automatisch als **70% abziehbar / 30% nicht abziehbar**. In
 `list expenses` und Exporten bleibt der Betrag **100%**.
@@ -230,7 +246,7 @@ euer incomplete list --format csv
 
 Hinweise zum Import:
 - Pflichtfelder: `type`, `party`, `amount_eur` und mindestens eines aus `payment_date`/`invoice_date` (`date` ist Alias für `payment_date`)
-- Optionale Felder: `category`, `account`, `foreign_amount`, `receipt_name`, `notes`, `rc`, `private_paid`, `vat_input`, `vat_output`
+- Optionale Felder: `category`, `account`, `ledger_account`, `foreign_amount`, `receipt_name`, `notes`, `rc`, `private_paid`, `vat_input`, `vat_output`
 - Fehlende Pflichtfelder führen zu einem Import-Abbruch.
 - `type` kann fehlen, wenn `amount_eur` ein Vorzeichen hat (negativ = Ausgabe, positiv = Einnahme).
 - CSV‑Exports für **Ausgaben/Einnahmen** können direkt re‑importiert werden (Spaltennamen sind gemappt).
@@ -238,6 +254,31 @@ Hinweise zum Import:
 - Kategorien mit `"(NN)"` werden beim Import automatisch bereinigt.
 - Alias‑Keys werden akzeptiert (z.B. `EUR`, `Belegname`, `Lieferant`, `Quelle`, `RC`).
 - `private_paid=true|1|yes|X` markiert eine importierte Ausgabe manuell als Sacheinlage.
+
+## Kontenrahmen
+
+Der optionale Kontenrahmen lebt in `~/.config/euer/config.toml` und ordnet
+frei benannte Buchungskonten einer bestehenden EÜR-Kategorie zu:
+
+```toml
+[[ledger_accounts]]
+key = "hosting"
+name = "Hosting & Cloud-Dienste"
+category = "Laufende EDV-Kosten"
+account_number = "4940"
+
+[[ledger_accounts]]
+key = "erloese-19"
+name = "Erlöse 19% USt"
+category = "Umsatzsteuerpflichtige Betriebseinnahmen"
+account_number = "8400"
+```
+
+Wichtig:
+- `--account` bleibt das Zahlungskonto (Bank-/Kreditkartenkonto).
+- `--ledger-account` ist das Buchungskonto aus dem Kontenrahmen.
+- `euer setup` kann Buchungskonten interaktiv anlegen.
+- `euer list ledger-accounts` zeigt den aktuell konfigurierten Kontenrahmen.
 - Steuerfelder:
   - `small_business` + `rc=true`: `vat_output` wird automatisch aus `amount_eur * 0.19` berechnet,
     `vat_input` wird auf `0.0` gesetzt (Felder können weggelassen werden).

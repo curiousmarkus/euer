@@ -117,6 +117,8 @@ damit Erweiterungen konsistent und risikoarm umgesetzt werden koennen.
 - **Incomplete**: unvollstaendige Buchungen werden live aus `expenses`/`income` berechnet.
 - **Summary**: Jahreszusammenfassung inkl. RC/Steuerlogik.
 - **Export**: CSV (immer), XLSX optional via `openpyxl`.
+- **Kontenrahmen**: Optionaler `[[ledger_accounts]]`-Kontenrahmen in der Config mit
+  automatischer Kategorieauflösung bei `add`/`update`/`import`.
 - **Receipts**: Belegpfade in Config, Check + Open.
 - **Steuermodi**: `small_business` und `standard` (RC Handling inkl. USt/VoSt).
 
@@ -285,4 +287,4 @@ Offene Change Requests werden innerhalb der jeweiligen Spec dokumentiert.
 | 007 | Windows-Kompatibilität | Implementiert |
 | 008 | Privateinlagen & Privatentnahmen | Implementiert |
 | 009 | Service-Layer-Architektur (Import) | Implementiert |
-| 010 | Kontenrahmen (Buchungskonten je Kategorie) | Offen |
+| 010 | Kontenrahmen (Buchungskonten je Kategorie) | Implementiert |

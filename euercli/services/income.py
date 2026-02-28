@@ -5,10 +5,10 @@ import uuid
 
 from ..db import log_audit, row_to_dict
 from ..utils import compute_hash
-from .categories import get_category_by_name
+from .categories import get_category_by_name, resolve_ledger_account
 from .duplicates import DuplicateAction
 from .errors import RecordNotFoundError, ValidationError
-from .models import Income
+from .models import Income, LedgerAccount
 from .utils import get_optional, hash_date, resolve_dates
 
 
@@ -23,12 +23,59 @@ def _row_to_income(row: sqlite3.Row) -> Income:
         category_id=get_optional(row, "category_id"),
         category_name=get_optional(row, "category_name"),
         category_eur_line=get_optional(row, "category_eur_line"),
+        ledger_account=get_optional(row, "ledger_account"),
         receipt_name=get_optional(row, "receipt_name"),
         foreign_amount=get_optional(row, "foreign_amount"),
         notes=get_optional(row, "notes"),
         vat_output=get_optional(row, "vat_output"),
         hash=get_optional(row, "hash"),
     )
+
+
+def _resolve_income_category(
+    conn: sqlite3.Connection,
+    *,
+    category_name: str | None,
+    ledger_account_key: str | None,
+    ledger_accounts: list[LedgerAccount] | None,
+) -> tuple[int | None, str | None, str | None]:
+    resolved_category_name = category_name
+    resolved_ledger_account_key: str | None = None
+
+    if ledger_account_key is not None:
+        resolved_ledger_account = resolve_ledger_account(
+            conn,
+            ledger_account_key,
+            ledger_accounts or [],
+            "income",
+        )
+        if category_name and category_name.lower() != resolved_ledger_account.category.lower():
+            raise ValidationError(
+                f"Buchungskonto '{resolved_ledger_account.key}' gehört zur Kategorie "
+                f"'{resolved_ledger_account.category}', nicht zu '{category_name}'.",
+                code="ledger_account_category_mismatch",
+                details={
+                    "ledger_account": resolved_ledger_account.key,
+                    "ledger_category": resolved_ledger_account.category,
+                    "category": category_name,
+                },
+            )
+        resolved_category_name = resolved_ledger_account.category
+        resolved_ledger_account_key = resolved_ledger_account.key
+
+    category_id: int | None = None
+    if resolved_category_name:
+        category = get_category_by_name(conn, resolved_category_name, "income")
+        if not category:
+            raise ValidationError(
+                f"Kategorie '{resolved_category_name}' nicht gefunden.",
+                code="category_not_found",
+                details={"category": resolved_category_name, "type": "income"},
+            )
+        category_id = category.id
+        resolved_category_name = category.name
+
+    return category_id, resolved_category_name, resolved_ledger_account_key
 
 
 def create_income(
@@ -40,6 +87,8 @@ def create_income(
     invoice_date: str | None = None,
     date: str | None = None,
     category_name: str | None = None,
+    ledger_account_key: str | None = None,
+    ledger_accounts: list[LedgerAccount] | None = None,
     foreign_amount: str | None = None,
     receipt_name: str | None = None,
     notes: str | None = None,
@@ -57,16 +106,12 @@ def create_income(
         legacy_date=date,
     )
 
-    category_id: int | None = None
-    if category_name:
-        category = get_category_by_name(conn, category_name, "income")
-        if not category:
-            raise ValidationError(
-                f"Kategorie '{category_name}' nicht gefunden.",
-                code="category_not_found",
-                details={"category": category_name, "type": "income"},
-            )
-        category_id = category.id
+    category_id, resolved_category_name, resolved_ledger_account_key = _resolve_income_category(
+        conn,
+        category_name=category_name,
+        ledger_account_key=ledger_account_key,
+        ledger_accounts=ledger_accounts,
+    )
 
     if tax_mode not in {"small_business", "standard"}:
         raise ValidationError(
@@ -109,8 +154,8 @@ def create_income(
     cursor = conn.execute(
         """INSERT INTO income
            (uuid, receipt_name, payment_date, invoice_date, source, category_id, amount_eur,
-            foreign_amount, notes, vat_output, hash)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            ledger_account, foreign_amount, notes, vat_output, hash)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             record_uuid,
             receipt_name,
@@ -119,6 +164,7 @@ def create_income(
             source,
             category_id,
             amount_eur,
+            resolved_ledger_account_key,
             foreign_amount,
             notes,
             resolved_vat_output,
@@ -136,6 +182,7 @@ def create_income(
         "source": source,
         "category_id": category_id,
         "amount_eur": amount_eur,
+        "ledger_account": resolved_ledger_account_key,
         "foreign_amount": foreign_amount,
         "notes": notes,
         "vat_output": resolved_vat_output,
@@ -161,6 +208,8 @@ def create_income(
         source=source,
         amount_eur=amount_eur,
         category_id=category_id,
+        category_name=resolved_category_name,
+        ledger_account=resolved_ledger_account_key,
         receipt_name=receipt_name,
         foreign_amount=foreign_amount,
         notes=notes,
@@ -179,7 +228,7 @@ def list_income(
     query = """
         SELECT i.id, i.uuid, i.payment_date, i.invoice_date, i.source, i.category_id,
                c.name as category_name,
-               c.eur_line as category_eur_line, i.amount_eur, i.receipt_name,
+               c.eur_line as category_eur_line, i.amount_eur, i.ledger_account, i.receipt_name,
                i.foreign_amount, i.notes, i.vat_output, i.hash
         FROM income i
         LEFT JOIN categories c ON i.category_id = c.id
@@ -207,7 +256,7 @@ def get_income_detail(conn: sqlite3.Connection, record_id: int) -> Income:
     row = conn.execute(
         """SELECT i.id, i.uuid, i.payment_date, i.invoice_date, i.source, i.category_id,
                   c.name as category_name,
-                  c.eur_line as category_eur_line, i.amount_eur, i.receipt_name,
+                  c.eur_line as category_eur_line, i.amount_eur, i.ledger_account, i.receipt_name,
                   i.foreign_amount, i.notes, i.vat_output, i.hash
            FROM income i
            LEFT JOIN categories c ON i.category_id = c.id
@@ -232,6 +281,8 @@ def update_income(
     date: str | None = None,
     source: str | None = None,
     category_name: str | None = None,
+    ledger_account_key: str | None = None,
+    ledger_accounts: list[LedgerAccount] | None = None,
     amount_eur: float | None = None,
     foreign_amount: str | None = None,
     receipt_name: str | None = None,
@@ -275,17 +326,54 @@ def update_income(
     elif tax_mode == "standard" and row["vat_output"] is None:
         new_vat_output = None
 
-    if category_name:
-        category = get_category_by_name(conn, category_name, "income")
-        if not category:
-            raise ValidationError(
-                f"Kategorie '{category_name}' nicht gefunden.",
-                code="category_not_found",
-                details={"category": category_name, "type": "income"},
-            )
-        category_id = category.id
+    existing_category_name: str | None = None
+    if row["category_id"]:
+        cat_row = conn.execute(
+            "SELECT name FROM categories WHERE id = ?",
+            (row["category_id"],),
+        ).fetchone()
+        if cat_row:
+            existing_category_name = cat_row["name"]
+
+    resolved_category_name = existing_category_name
+    resolved_ledger_account_key = get_optional(row, "ledger_account")
+    if ledger_account_key is not None:
+        category_id, resolved_category_name, resolved_ledger_account_key = _resolve_income_category(
+            conn,
+            category_name=category_name,
+            ledger_account_key=ledger_account_key,
+            ledger_accounts=ledger_accounts,
+        )
     else:
         category_id = row["category_id"]
+        if category_name:
+            if resolved_ledger_account_key and ledger_accounts:
+                resolved_ledger_account = resolve_ledger_account(
+                    conn,
+                    resolved_ledger_account_key,
+                    ledger_accounts,
+                    "income",
+                )
+                if category_name.lower() != resolved_ledger_account.category.lower():
+                    raise ValidationError(
+                        f"Buchungskonto '{resolved_ledger_account.key}' gehört zur Kategorie "
+                        f"'{resolved_ledger_account.category}', nicht zu '{category_name}'.",
+                        code="ledger_account_category_mismatch",
+                        details={
+                            "ledger_account": resolved_ledger_account.key,
+                            "ledger_category": resolved_ledger_account.category,
+                            "category": category_name,
+                        },
+                    )
+            category = get_category_by_name(conn, category_name, "income")
+            if not category:
+                raise ValidationError(
+                    f"Kategorie '{category_name}' nicht gefunden.",
+                    code="category_not_found",
+                    details={"category": category_name, "type": "income"},
+                )
+            category_id = category.id
+            resolved_category_name = category.name
 
     new_hash = compute_hash(
         hash_date(new_payment_date, new_invoice_date),
@@ -297,7 +385,7 @@ def update_income(
     conn.execute(
         """UPDATE income SET
            receipt_name = ?, payment_date = ?, invoice_date = ?, source = ?, category_id = ?, amount_eur = ?,
-           foreign_amount = ?, notes = ?, vat_output = ?, hash = ?
+           ledger_account = ?, foreign_amount = ?, notes = ?, vat_output = ?, hash = ?
            WHERE id = ?""",
         (
             new_receipt,
@@ -306,6 +394,7 @@ def update_income(
             new_source,
             category_id,
             new_amount,
+            resolved_ledger_account_key,
             new_foreign,
             new_notes,
             new_vat_output,
@@ -324,6 +413,7 @@ def update_income(
         "source": new_source,
         "category_id": category_id,
         "amount_eur": new_amount,
+        "ledger_account": resolved_ledger_account_key,
         "foreign_amount": new_foreign,
         "notes": new_notes,
         "vat_output": new_vat_output,
@@ -350,6 +440,8 @@ def update_income(
         source=new_source,
         amount_eur=new_amount,
         category_id=category_id,
+        category_name=resolved_category_name,
+        ledger_account=resolved_ledger_account_key,
         receipt_name=new_receipt,
         foreign_amount=new_foreign,
         notes=new_notes,

@@ -24,7 +24,7 @@ python -m euercli <command>
 ### Datenbank & Config
 
 - Standard‑DB: `euer.db` im Projekt (oder via `--db PFAD`).
-- Config: `~/.config/euer/config.toml` (Beleg‑Pfade, Export‑Verzeichnis, Steuer‑Modus, private Konten).
+- Config: `~/.config/euer/config.toml` (Beleg‑Pfade, Export‑Verzeichnis, Steuer‑Modus, private Konten, optionaler Kontenrahmen via `[[ledger_accounts]]`).
 - Non-interaktiv setzen: `euer setup --set <section.key> <value>` (z.B. `tax.mode`, `accounts.private`).
 - Direkter sqlite3‑Zugriff ist **verboten**, da sonst Inkonsistenzen auftreten können und das Audit-Log umgangen wird.
 - Für fortgeschrittene Abfragen **nur** `euer query` verwenden (nur SELECT, keine Writes).
@@ -54,6 +54,10 @@ wird die Ausgabe automatisch als Sacheinlage (Privateinlage) klassifiziert.
 Das Matching ist **case-insensitiv**. Nach Änderung der Liste: `euer reconcile private`
 ausführen, um bestehende Buchungen gegen die neue Config abzugleichen.
 
+**`[[ledger_accounts]]`** — optionaler Kontenrahmen für Buchungskonten.
+Wenn vorhanden, kann der Agent statt `--category` auch `--ledger-account <key>`
+verwenden. Die Kategorie wird dann automatisch aus der Config aufgelöst.
+
 ### SQL‑Abfragen (nur lesend)
 
 Nutze `euer query` für komplexe Filter. Ausgabe ist CSV auf stdout.
@@ -76,7 +80,8 @@ euer add expense \
     --payment-date YYYY-MM-DD \
     [--invoice-date YYYY-MM-DD] \
     --vendor "Lieferant" \
-    --category "Kategorie" \
+    [--category "Kategorie"] \
+    [--ledger-account "hosting"] \
     --amount -XX.XX  # Brutto-Betrag (negativ, was vom Konto abgeht) \
     [--account "Bankkonto"] \
     [--receipt "Belegname.pdf"] \
@@ -107,7 +112,8 @@ euer add income \
     --payment-date YYYY-MM-DD \
     [--invoice-date YYYY-MM-DD] \
     --source "Kunde/Quelle" \
-    --category "Kategorie" \
+    [--category "Kategorie"] \
+    [--ledger-account "erloese-19"] \
     --amount XX.XX  # Brutto-Betrag (positiv, was auf dem Konto eingeht) \
     [--receipt "Belegname.pdf"] \
     [--foreign "Betrag Währung"] \
@@ -168,6 +174,9 @@ euer query "SELECT ... FROM ... WHERE ..."
 # Kategorien anzeigen
 euer list categories [--type expense|income]
 
+# Kontenrahmen anzeigen
+euer list ledger-accounts [--category "..."]
+
 # Audit-Log für Transaktion
 euer audit <ID> [--table expenses|income|private_transfers]
 ```
@@ -200,7 +209,7 @@ Hinweis: Für die Kategorie **Gezahlte USt (57)** ist kein Beleg erforderlich.
 
 Import-Schema (Kurzfassung):
 - Pflichtfelder: `type`, `party`, `amount_eur` und mindestens eines aus `payment_date`/`invoice_date` (`date` gilt als Alias für `payment_date`)
-- Optional: `category`, `account`, `foreign_amount`, `receipt_name`, `notes`, `rc`,
+- Optional: `category`, `account`, `ledger_account`, `foreign_amount`, `receipt_name`, `notes`, `rc`,
   `private_paid`, `vat_input`, `vat_output`
 - Fehlende Pflichtfelder führen zu einem Import-Abbruch.
 - Alias-Keys (Auszug): `EUR`, `Belegname`, `Lieferant`, `Quelle`, `RC`,

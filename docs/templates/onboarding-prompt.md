@@ -202,6 +202,11 @@ Erkläre kurz den Unterschied und frage dann:
 
    Frage: "Nenne deine typischen Lieferanten und ich schlage die Kategorie vor. Du kannst auch direkt zuordnen, z.B. 'Vodafone → Telekommunikation'."
 
+   Frage danach zusätzlich:
+   - "Möchtest du für wiederkehrende Fälle eigene Buchungskonten im Kontenrahmen anlegen?"
+   - "Wenn ja: Welche Konten-Schlüssel sollen verwendet werden (z.B. `hosting`, `saas`, `beratung`, `erloese-19`)?"
+   - "Gibt es optionale SKR-03/04-Kontonummern, die wir direkt mit notieren sollen?"
+
 13. **Besonderheiten** (optional): "Gibt es weitere steuerliche Besonderheiten, die wir noch nicht abgedeckt haben?"
    - Home-Office-Pauschale
    - Sonstige Pauschalen
@@ -297,6 +302,10 @@ Folgende Ausgaben werden nur anteilig als Betriebsausgabe gebucht:
 
 {{KATEGORIE_MAPPING}}
 
+## Empfohlener Kontenrahmen
+
+{{LEDGER_ACCOUNT_MAPPING}}
+
 ---
 
 ## Besonderheiten
@@ -354,6 +363,8 @@ euer setup --set receipts.income "{{PFAD_EINNAHMEN}}"
 euer setup --set exports.directory "{{PFAD_EXPORTS}}"
 euer setup --set user.name "{{NAME}}"
 euer setup --set accounts.private "{{PRIVATE_ACCOUNTS_KOMMASEPARIERT}}"
+# Optional: danach `euer setup` starten und Buchungskonten interaktiv anlegen
+# Anschließend prüfen mit: euer list ledger-accounts
 \`\`\`
 ```
 

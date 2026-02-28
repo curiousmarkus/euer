@@ -79,6 +79,8 @@ class EuerCLITestCase(unittest.TestCase):
         ]
         if data.get("category") is not None:
             args += ["--category", data["category"]]
+        if "ledger_account" in data:
+            args += ["--ledger-account", data["ledger_account"]]
         if "account" in data:
             args += ["--account", data["account"]]
         if "foreign" in data:
@@ -115,6 +117,8 @@ class EuerCLITestCase(unittest.TestCase):
         ]
         if data.get("category") is not None:
             args += ["--category", data["category"]]
+        if "ledger_account" in data:
+            args += ["--ledger-account", data["ledger_account"]]
         if "foreign" in data:
             args += ["--foreign", data["foreign"]]
         if "receipt" in data:
@@ -255,6 +259,74 @@ class EuerCLITestCase(unittest.TestCase):
         self.assertEqual(foreign, "")
         self.assertEqual(notes, "")
         self.assertEqual(vat_output, "")
+
+    def test_add_expense_with_ledger_account_sets_category(self):
+        self.write_config(
+            """
+[[ledger_accounts]]
+key = "hosting"
+name = "Hosting & Cloud-Dienste"
+category = "Laufende EDV-Kosten"
+account_number = "4940"
+""".strip()
+            + "\n"
+        )
+
+        result = self.add_expense(
+            vendor="Hetzner",
+            category=None,
+            ledger_account="hosting",
+            amount="-29.00",
+        )
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+
+        rows = self.list_expenses_csv()
+        self.assertEqual(rows[1][3], "Hetzner")
+        self.assertEqual(rows[1][4], "(50) Laufende EDV-Kosten")
+
+        query = self.run_cli(
+            [
+                "query",
+                "SELECT",
+                "ledger_account",
+                "FROM",
+                "expenses",
+                "WHERE",
+                "id",
+                "=",
+                "1",
+            ],
+            check=True,
+        )
+        query_rows = self.parse_csv(query.stdout)
+        self.assertEqual(query_rows[1][0], "hosting")
+
+    def test_add_requires_category_or_ledger_account_when_kontenrahmen_exists(self):
+        self.write_config(
+            """
+[[ledger_accounts]]
+key = "hosting"
+name = "Hosting & Cloud-Dienste"
+category = "Laufende EDV-Kosten"
+""".strip()
+            + "\n"
+        )
+
+        result = self.run_cli(
+            [
+                "add",
+                "expense",
+                "--date",
+                "2026-01-16",
+                "--vendor",
+                "OhneKategorie",
+                "--amount",
+                "-10.00",
+            ]
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Kategorie erforderlich", result.stderr)
+        self.assertIn("--ledger-account", result.stderr)
 
     def test_add_expense_with_invoice_date_only(self):
         result = self.run_cli(
@@ -463,6 +535,48 @@ class EuerCLITestCase(unittest.TestCase):
         self.assertEqual(rows[1][5], "1750.00")
         self.assertEqual(rows[1][9], "Korrigiert")
 
+    def test_update_income_with_ledger_account_updates_category(self):
+        self.write_config(
+            """
+[[ledger_accounts]]
+key = "erloese-19"
+name = "Erlöse 19% USt"
+category = "Umsatzsteuerpflichtige Betriebseinnahmen"
+account_number = "8400"
+""".strip()
+            + "\n"
+        )
+        self.add_income(
+            category="Betriebseinnahmen als Kleinunternehmer",
+            amount="500.00",
+        )
+
+        result = self.run_cli(
+            ["update", "income", "1", "--ledger-account", "erloese-19"],
+            check=True,
+        )
+        self.assertIn("Einnahme #1 aktualisiert", result.stdout)
+
+        rows = self.list_income_csv()
+        self.assertEqual(rows[1][4], "(15) Umsatzsteuerpflichtige Betriebseinnahmen")
+
+        query = self.run_cli(
+            [
+                "query",
+                "SELECT",
+                "ledger_account",
+                "FROM",
+                "income",
+                "WHERE",
+                "id",
+                "=",
+                "1",
+            ],
+            check=True,
+        )
+        query_rows = self.parse_csv(query.stdout)
+        self.assertEqual(query_rows[1][0], "erloese-19")
+
     def test_update_expense_can_clear_private_paid(self):
         self.add_expense(private_paid=True)
         before = self.run_cli(["list", "private-deposits", "--year", "2026"], check=True)
@@ -555,8 +669,24 @@ class EuerCLITestCase(unittest.TestCase):
         self.assertIn("Abo verlängert", list_result.stdout)
 
     def test_export_csv(self):
-        self.add_expense()
-        self.add_income()
+        self.write_config(
+            """
+[[ledger_accounts]]
+key = "hosting"
+name = "Hosting & Cloud-Dienste"
+category = "Laufende EDV-Kosten"
+account_number = "4940"
+
+[[ledger_accounts]]
+key = "erloese-19"
+name = "Erlöse 19% USt"
+category = "Umsatzsteuerpflichtige Betriebseinnahmen"
+account_number = "8400"
+""".strip()
+            + "\n"
+        )
+        self.add_expense(category=None, ledger_account="hosting")
+        self.add_income(category=None, ledger_account="erloese-19")
         self.add_private_deposit()
         export_dir = self.root / "exports"
         export_dir.mkdir()
@@ -595,9 +725,20 @@ class EuerCLITestCase(unittest.TestCase):
         private_header = private_file.read_text(encoding="utf-8-sig").splitlines()[0]
         sache_header = sache_file.read_text(encoding="utf-8-sig").splitlines()[0]
         self.assertIn("Belegname", exp_header)
+        self.assertIn("Buchungskonto", exp_header)
+        self.assertIn("Kontonummer", exp_header)
         self.assertIn("Belegname", inc_header)
+        self.assertIn("Buchungskonto", inc_header)
+        self.assertIn("Kontonummer", inc_header)
         self.assertIn("Typ", private_header)
         self.assertIn("expense_id", sache_header)
+
+        exp_rows = list(csv.reader(exp_file.read_text(encoding="utf-8-sig").splitlines()))
+        inc_rows = list(csv.reader(inc_file.read_text(encoding="utf-8-sig").splitlines()))
+        self.assertEqual(exp_rows[1][7], "hosting")
+        self.assertEqual(exp_rows[1][8], "4940")
+        self.assertEqual(inc_rows[1][6], "erloese-19")
+        self.assertEqual(inc_rows[1][7], "8400")
 
     def test_export_csv_all_years_default(self):
         self.add_expense(date="2025-12-31", vendor="Alt")
@@ -921,6 +1062,56 @@ class EuerCLITestCase(unittest.TestCase):
         self.assertEqual(config.get("tax", {}).get("mode"), "small_business")
         self.assertEqual(config.get("accounts", {}).get("private"), ["privat"])
 
+    def test_setup_writes_ledger_accounts(self):
+        expenses_dir = self.root / "receipts" / "expenses"
+        income_dir = self.root / "receipts" / "income"
+        export_dir = self.root / "exports"
+        input_data = (
+            f"{expenses_dir}\n"
+            f"{income_dir}\n"
+            f"{export_dir}\n"
+            "\n"
+            "\n"
+            "\n"
+            "j\n"
+            "hosting\n"
+            "Hosting & Cloud-Dienste\n"
+            "9\n"
+            "4940\n"
+            "n\n"
+        )
+
+        result = self.run_cli(["setup"], input=input_data, check=True)
+        self.assertIn("Konfiguration gespeichert", result.stdout)
+
+        config = tomllib.loads(self.expected_config_path().read_text(encoding="utf-8"))
+        self.assertEqual(len(config.get("ledger_accounts", [])), 1)
+        self.assertEqual(config["ledger_accounts"][0]["key"], "hosting")
+        self.assertEqual(config["ledger_accounts"][0]["account_number"], "4940")
+
+    def test_list_ledger_accounts(self):
+        self.write_config(
+            """
+[[ledger_accounts]]
+key = "hosting"
+name = "Hosting & Cloud-Dienste"
+category = "Laufende EDV-Kosten"
+account_number = "4940"
+
+[[ledger_accounts]]
+key = "saas"
+name = "Software / SaaS-Abos"
+category = "Laufende EDV-Kosten"
+""".strip()
+            + "\n"
+        )
+
+        result = self.run_cli(["list", "ledger-accounts"], check=True)
+        self.assertIn("Kontenrahmen", result.stdout)
+        self.assertIn("Laufende EDV-Kosten", result.stdout)
+        self.assertIn("hosting", result.stdout)
+        self.assertIn("4940", result.stdout)
+
     def test_setup_set_accounts_private(self):
         result = self.run_cli(
             ["setup", "--set", "accounts.private", "privat, Sparkasse Kreditkarte"],
@@ -989,12 +1180,22 @@ class EuerCLITestCase(unittest.TestCase):
         self.assertEqual(result.returncode, 0, msg=result.stderr)
 
     def test_import_accepts_export_headers(self):
+        self.write_config(
+            """
+[[ledger_accounts]]
+key = "hosting"
+name = "Hosting & Cloud-Dienste"
+category = "Arbeitsmittel"
+account_number = "4940"
+""".strip()
+            + "\n"
+        )
         import_file = self.root / "import_export_headers.csv"
         import_file.write_text(
             "\n".join(
                 [
-                    "Belegname,Datum,Lieferant,Kategorie,EUR,Konto,Fremdwährung,Bemerkung,RC,Vorsteuer,Umsatzsteuer",
-                    "2026-01-10_1und1,2026-01-10,1und1,Arbeitsmittel (51),-39.99,Bank,,Note,X,0.00,0.00",
+                    "Belegname,Datum,Lieferant,Kategorie,EUR,Konto,Buchungskonto,Kontonummer,Fremdwährung,Bemerkung,RC,Vorsteuer,Umsatzsteuer",
+                    "2026-01-10_1und1,2026-01-10,1und1,Arbeitsmittel (51),-39.99,Bank,hosting,4940,,Note,X,0.00,0.00",
                 ]
             )
             + "\n",

@@ -119,6 +119,13 @@ def normalize_import_row(row: dict) -> dict:
         "category": normalize_category_name(category_value),
         "amount_eur": amount,
         "account": get_row_value(row, "account", "Konto"),
+        "ledger_account": get_row_value(
+            row,
+            "ledger_account",
+            "ledger",
+            "Buchungskonto",
+            "konto",
+        ),
         "foreign_amount": get_row_value(
             row, "foreign_amount", "foreign", "Fremdwährung", "Fremdwaehrung"
         ),

@@ -3,6 +3,8 @@ import tomllib
 from pathlib import Path
 
 from .constants import CONFIG_PATH, DEFAULT_USER
+from .services.errors import ValidationError
+from .services.models import LedgerAccount
 
 VALID_TAX_MODES = {"small_business", "standard"}
 
@@ -45,6 +47,12 @@ def dump_toml(config: dict) -> str:
             for key, val in value.items():
                 lines.append(f"{key} = {toml_format_value(val)}")
             lines.append("")
+        elif isinstance(value, list) and all(isinstance(item, dict) for item in value):
+            for item in value:
+                lines.append(f"[[{section}]]")
+                for key, val in item.items():
+                    lines.append(f"{key} = {toml_format_value(val)}")
+                lines.append("")
         else:
             lines.append(f"{section} = {toml_format_value(value)}")
     return "\n".join(lines).rstrip() + "\n"
@@ -168,6 +176,74 @@ def get_private_accounts(config: dict) -> list[str]:
         if text:
             result.append(text)
     return result or ["privat"]
+
+
+def get_ledger_accounts(config: dict) -> list[LedgerAccount]:
+    """Lädt den Kontenrahmen aus der Config."""
+    raw_accounts = config.get("ledger_accounts")
+    if not raw_accounts:
+        return []
+    if not isinstance(raw_accounts, list):
+        raise ValidationError(
+            "Ungültige Config: 'ledger_accounts' muss eine Liste von Tabellen sein.",
+            code="invalid_ledger_accounts",
+        )
+
+    result: list[LedgerAccount] = []
+    seen_keys: dict[str, int] = {}
+
+    for index, entry in enumerate(raw_accounts, start=1):
+        if not isinstance(entry, dict):
+            raise ValidationError(
+                f"Ungültiger Kontenrahmen-Eintrag #{index}: erwartete Tabelle.",
+                code="invalid_ledger_account_entry",
+                details={"index": index},
+            )
+
+        key = str(entry.get("key", "")).strip()
+        name = str(entry.get("name", "")).strip()
+        category = str(entry.get("category", "")).strip()
+        account_number_value = entry.get("account_number")
+        account_number = None
+        if account_number_value is not None:
+            account_number_text = str(account_number_value).strip()
+            if account_number_text:
+                account_number = account_number_text
+
+        missing_fields = []
+        if not key:
+            missing_fields.append("key")
+        if not name:
+            missing_fields.append("name")
+        if not category:
+            missing_fields.append("category")
+        if missing_fields:
+            raise ValidationError(
+                f"Ungültiger Kontenrahmen-Eintrag #{index}: fehlende Felder "
+                f"{', '.join(missing_fields)}.",
+                code="ledger_account_missing_fields",
+                details={"index": index, "fields": missing_fields},
+            )
+
+        normalized_key = key.lower()
+        if normalized_key in seen_keys:
+            raise ValidationError(
+                f"Doppelter Buchungskonto-Schlüssel '{key}' in der Config.",
+                code="duplicate_ledger_account_key",
+                details={"key": key, "first_index": seen_keys[normalized_key], "index": index},
+            )
+        seen_keys[normalized_key] = index
+
+        result.append(
+            LedgerAccount(
+                key=key,
+                name=name,
+                category=category,
+                account_number=account_number,
+            )
+        )
+
+    return result
 
 
 def resolve_receipt_path(

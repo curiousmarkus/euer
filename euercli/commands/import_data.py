@@ -2,7 +2,7 @@ import json
 import sys
 from pathlib import Path
 
-from ..config import get_audit_user, get_private_accounts, load_config
+from ..config import get_audit_user, get_ledger_accounts, get_private_accounts, load_config
 from ..db import get_category_id, get_db_connection
 from ..importers import get_tax_config, iter_import_rows, normalize_import_row
 from ..services.duplicates import DuplicateAction
@@ -23,8 +23,8 @@ def print_import_schema() -> None:
     print()
     print("Optionale Felder:")
     print(
-        "  category, account, foreign_amount, receipt_name, notes, rc, private_paid, "
-        "vat_input, vat_output"
+        "  category, account, ledger_account, foreign_amount, receipt_name, notes, rc, "
+        "private_paid, vat_input, vat_output"
     )
     print()
     print("Minimaler JSONL-Datensatz (Ausgabe):")
@@ -49,6 +49,7 @@ def print_import_schema() -> None:
     print("  vat_output: vat_output, Umsatzsteuer")
     print("  notes: notes, Bemerkung, Notiz")
     print("  account: account, Konto")
+    print("  ledger_account: ledger_account, Buchungskonto, konto")
     print("  foreign_amount: foreign_amount, foreign, Fremdwährung")
     print("  payment_date: payment_date, date, Datum, Wertstellung")
     print("  invoice_date: invoice_date, Rechnungsdatum")
@@ -81,6 +82,12 @@ def cmd_import(args):
     audit_user = get_audit_user(config)
     private_accounts = get_private_accounts(config)
     tax_mode = get_tax_config(config)
+    try:
+        ledger_accounts = get_ledger_accounts(config)
+    except ValidationError as exc:
+        conn.close()
+        print(f"Fehler: {exc.message}", file=sys.stderr)
+        sys.exit(1)
 
     try:
         rows = iter_import_rows(args.file, args.format)
@@ -141,6 +148,7 @@ def cmd_import(args):
             category_name = normalized["_resolved_category_name"]
             amount = normalized["amount_eur"]
             account = normalized["account"]
+            ledger_account = normalized["ledger_account"]
             foreign_amount = normalized["foreign_amount"]
             receipt_name = normalized["receipt_name"]
             notes = normalized["notes"]
@@ -158,6 +166,10 @@ def cmd_import(args):
                     category_name=str(category_name) if category_name is not None else None,
                     amount_eur=float(amount),
                     account=str(account) if account is not None else None,
+                    ledger_account_key=(
+                        str(ledger_account) if ledger_account is not None else None
+                    ),
+                    ledger_accounts=ledger_accounts,
                     foreign_amount=str(foreign_amount) if foreign_amount is not None else None,
                     receipt_name=str(receipt_name) if receipt_name is not None else None,
                     notes=str(notes) if notes is not None else None,
@@ -183,6 +195,10 @@ def cmd_import(args):
                     source=str(party),
                     category_name=str(category_name) if category_name is not None else None,
                     amount_eur=float(amount),
+                    ledger_account_key=(
+                        str(ledger_account) if ledger_account is not None else None
+                    ),
+                    ledger_accounts=ledger_accounts,
                     foreign_amount=str(foreign_amount) if foreign_amount is not None else None,
                     receipt_name=str(receipt_name) if receipt_name is not None else None,
                     notes=str(notes) if notes is not None else None,
