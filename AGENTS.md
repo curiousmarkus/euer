@@ -10,42 +10,11 @@ Guidelines for AI coding agents working in this repository.
 
 ## Project Overview
 
-EÜR (Einnahmenüberschussrechnung) - SQLite-based bookkeeping CLI for German freelancers.
+euer is a SQLite-based bookkeeping CLI for German Freelancers helping them create a EÜR (Einnahmenüberschussrechnung).
+
+
 Modular Python CLI (package `euercli`), no external dependencies except optional `openpyxl`.
 
-## Build & Run Commands
-
-```bash
-# Install (dev, for console script)
-python -m pip install -e .
-
-# Initialize database (creates euer.db + exports/)
-euer init
-
-# Run CLI
-euer <command>
-
-# Test CLI works
-euer --help
-euer list categories
-
-# Test with custom database
-euer --db test.db init
-euer --db test.db list expenses
-```
-
-### Installation via pipx (Produktion)
-
-```bash
-# Erstinstallation aus lokalem Repo
-pipx install /pfad/zu/euer
-
-# Nach Code-Änderungen: Version bumpen (siehe unten), dann:
-pipx upgrade euercli
-
-# Alternativ ohne Version-Bump (erzwingt Neuinstallation):
-pipx reinstall euercli
-```
 
 ### Tests
 
@@ -77,24 +46,6 @@ Order imports as follows:
 2. Third-party (after blank line)
 3. Local modules (after blank line)
 
-```python
-import argparse
-import csv
-import hashlib
-import json
-import sqlite3
-import sys
-from datetime import datetime
-from pathlib import Path
-from typing import Optional
-
-# Optional third-party
-try:
-    import openpyxl
-    HAS_OPENPYXL = True
-except ImportError:
-    HAS_OPENPYXL = False
-```
 
 ### Formatting
 
@@ -210,31 +161,6 @@ print(f"{row['id']:<5} {row['date']:<12} {row['vendor'][:20]:<20} {row['amount_e
 ```
 
 ---
-
-## File Structure
-
-```
-euer/
-├── euercli/             # Core package
-│   ├── cli.py           # CLI parser/dispatch
-│   ├── commands/        # View-Controllers (keine Business-Logik, keine SQL-Writes)
-│   ├── services/        # Service Layer (Business-Logik, Validierung, Audit)
-│   ├── db.py            # DB helpers
-│   ├── schema.py        # DB schema + seeds
-│   ├── config.py        # Config load/save
-│   └── importers.py     # Import normalization
-├── tests/               # CLI integration tests + service unit tests
-├── exports/             # CSV/XLSX exports
-├── docs/                # User-facing documentation
-│   ├── skills/          # AI agent skills
-│   ├── templates/       # Agent configuration templates
-│   └── USER_GUIDE.md    # User documentation
-├── specs/               # Feature specs + backlog items
-├── README.md            # Project overview
-├── DEVELOPMENT.md       # Developer documentation (❗ Pflichtlektüre)
-├── TESTING.md           # Test strategy
-└── AGENTS.md            # This file
-```
 
 ## Key References
 

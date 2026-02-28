@@ -266,4 +266,4 @@ Offene Change Requests werden innerhalb der jeweiligen Spec dokumentiert.
 | 007 | Windows-Kompatibilität | Implementiert |
 | 008 | Privateinlagen & Privatentnahmen | Implementiert |
 | 009 | Service-Layer-Architektur (Import) | Implementiert |
-| 010 | Optimierungen & Date Logic DRY | Implementiert |
+| 010 | Kontenrahmen (Buchungskonten je Kategorie) | Offen |
