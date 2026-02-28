@@ -36,15 +36,15 @@ Ein solcher Kontenrahmen bietet:
 - Die Funktion ist **vollständig optional**; bestehende Workflows (Buchung
   nur mit Kategorie) bleiben unverändert.
 
-### Begriffe & Abgrenzung `account` vs. `konto`
+### Begriffe & Abgrenzung `account` vs. `ledger-account`
 
 | Konzept | DB-Feld | CLI-Flag | Bedeutung |
 |---------|---------|----------|-----------|
 | **Zahlungskonto** (Bankkonto) | `account` (besteht) | `--account` | Über welches Bankkonto wurde bezahlt? (z.B. `g-n26`, `p-sparkasse`) |
-| **Buchungskonto** (Kontenrahmen) | `ledger_account` (neu) | `--konto` | Was wurde gekauft/eingenommen? (z.B. `hosting`, `saas`) |
+| **Buchungskonto** (Kontenrahmen) | `ledger_account` (neu) | `--ledger-account` | Was wurde gekauft/eingenommen? (z.B. `hosting`, `saas`) |
 
 Die beiden Konzepte sind **vollständig unabhängig**. `--account` (Zahlungskonto)
-wird weiterhin für die Private-Classification-Logik verwendet. `--konto`
+wird weiterhin für die Private-Classification-Logik verwendet. `--ledger-account`
 (Buchungskonto) steuert die automatische Kategoriezuordnung.
 
 ---
@@ -59,11 +59,13 @@ wird weiterhin für die Private-Classification-Logik verwendet. `--konto`
    ist optional — nur relevant für Steuerberater-Export.
 3. **Neues DB-Feld `ledger_account`.** Wird in `expenses` und `income`
    ergänzt (Schema-Migration). Speichert den `key` des Buchungskontos.
-4. **Backend English, Output Deutsch.** Code, DB-Felder und Dataclasses
-   sind Englisch. CLI-Ausgaben, TOML-Config-Schlüssel und Hilfe-Texte
-   sind Deutsch (konsistent mit dem bestehenden Projekt).
-5. **Config-Schlüssel `[[ledger_accounts]]`.** Englisch, konsistent mit den
-   bestehenden Sections `[receipts]`, `[exports]`, `[tax]`, `[accounts]`.
+4. **Backend English, Output Deutsch.** Code, DB-Felder, Dataclasses und
+   Config-Schlüssel (TOML) sind Englisch — konsistent mit den bestehenden
+   Sections `[receipts]`, `[exports]`, `[tax]`, `[accounts]` und den
+   TOML-Feldern `key`, `name`, `category`, `account_number`.
+   CLI-Ausgaben und Hilfe-Texte sind Deutsch.
+5. **Section-Name `[[ledger_accounts]]`.** Englisch, konsistent mit den
+   übrigen Config-Sections (vgl. DE4).
 
 ---
 
@@ -130,7 +132,7 @@ account_number = "8400"
 
 | Feld | Typ | Pflicht | Beschreibung |
 |------|-----|---------|--------------|
-| `key` | String | Ja | Kurzbezeichner (frei wählbar, z.B. `hosting`, `saas`). Lookup-Key für `--konto`. |
+| `key` | String | Ja | Kurzbezeichner (frei wählbar, z.B. `hosting`, `saas`). Lookup-Key für `--ledger-account`. |
 | `name` | String | Ja | Anzeigename / Beschreibung des Kontos |
 | `category` | String | Ja | Name der ELSTER-Kategorie (exakter Match auf `categories.name`) |
 | `account_number` | String | Nein | SKR-03/04-Kontonummer (für Export/Steuerberater) |
@@ -230,14 +232,14 @@ def resolve_ledger_account(
 
 ### A5: Implizite Kategorie bei Buchung über Konto
 
-Wenn bei `euer add expense` oder `euer add income` ein `--konto`-Wert
+Wenn bei `euer add expense` oder `euer add income` ein `--ledger-account`-Wert
 angegeben wird, der einem konfigurierten Buchungskonto entspricht, soll:
 
 1. Die zugehörige Kategorie **automatisch** gesetzt werden.
 2. Eine explizit angegebene `--category` wird **nicht** überschrieben, sondern
    gegen die Konto-Kategorie validiert. Bei Widerspruch → Fehler.
-3. Wenn kein Kontenrahmen konfiguriert ist oder `--konto` nicht verwendet
-   wird, bleibt das Verhalten wie bisher.
+3. Wenn kein Kontenrahmen konfiguriert ist oder `--ledger-account` nicht
+   verwendet wird, bleibt das Verhalten wie bisher.
 
 **Speicherung:** Der `key` wird im neuen DB-Feld `ledger_account` gespeichert
 (z.B. `"hosting"`). Der key ist stabil — bei Config-Änderung des Namens
@@ -246,22 +248,22 @@ oder der SKR-Nummer bleiben bestehende Buchungen konsistent.
 **Konkretes Verhalten in `create_expense()` / `create_income()`:**
 
 ```
-Eingabe: --konto hosting --category (leer)
+Eingabe: --ledger-account hosting --category (leer)
 → Key "hosting" erkannt → Kategorie "Laufende EDV-Kosten" automatisch gesetzt.
 → DB: ledger_account = "hosting"
 
-Eingabe: --konto hosting --category "Laufende EDV-Kosten"
+Eingabe: --ledger-account hosting --category "Laufende EDV-Kosten"
 → OK, Kategorie stimmt mit Konto überein.
 
-Eingabe: --konto hosting --category "Arbeitsmittel"
+Eingabe: --ledger-account hosting --category "Arbeitsmittel"
 → Fehler: Buchungskonto "hosting" gehört zur Kategorie "Laufende EDV-Kosten",
   nicht zu "Arbeitsmittel".
 
-Eingabe: --category "Laufende EDV-Kosten" (ohne --konto)
+Eingabe: --category "Laufende EDV-Kosten" (ohne --ledger-account)
 → Bisheriges Verhalten, Kategorie wird normal verwendet, ledger_account = NULL.
 ```
 
-**Update-Verhalten:** `euer update expense --konto hosting` löst die
+**Update-Verhalten:** `euer update expense --ledger-account hosting` löst die
 Kategorie ebenfalls automatisch auf und aktualisiert `category_id` +
 `ledger_account` gemeinsam.
 
@@ -279,12 +281,12 @@ Die Migration wird in `ensure_ledger_account_column(conn)` in
 `ensure_expenses_private_columns`). Bestehende Buchungen erhalten
 `ledger_account = NULL` — kein automatisches Mapping alter `account`-Werte.
 
-### A7: CLI-Befehl `euer list konten`
+### A7: CLI-Befehl `euer list ledger-accounts`
 
 Neuer Befehl zum Anzeigen der konfigurierten Konten:
 
 ```
-$ euer list konten
+$ euer list ledger-accounts
 
 Kontenrahmen (7 Konten konfiguriert):
 
@@ -312,7 +314,7 @@ Die SKR-Nummer wird nur angezeigt, wenn `account_number` konfiguriert ist
 Optional mit Filter:
 
 ```
-$ euer list konten --category "Laufende EDV-Kosten"
+$ euer list ledger-accounts --category "Laufende EDV-Kosten"
 
 Laufende EDV-Kosten (Zeile 50, Ausgabe):
   saas         Software / SaaS-Abos                [4930]
@@ -343,16 +345,17 @@ Typ-Information aus der `categories`-Tabelle).
 ### A9: Kontenrahmen im Import
 
 Der bestehende Import-Befehl (`euer import`) soll Konto-Schlüssel im
-neuen Feld `ledger_account` (bzw. Alias `konto`) erkennen und die Kategorie
+neuen Feld `ledger_account` (Alias: `konto`) erkennen und die Kategorie
 automatisch auflösen, analog zur manuellen Buchung (A5). Der Import-Flow
 nutzt bereits den Service Layer (Spec 009), so dass die Konten-Auflösung
 zentral in `create_expense()` / `create_income()` greift.
 
-Import-CSV/JSONL-Spalte: `konto` (oder `ledger_account`).
+Import-CSV/JSONL-Spalte: `ledger_account` (Alias: `konto` — konsistent mit
+den bestehenden deutschen Import-Aliasen wie `Lieferant`, `Quelle`).
 
 ### A10: Kontenrahmen-Hilfe bei Fehlern
 
-Wenn eine Buchung ohne Kategorie und ohne `--konto` ausgeführt wird und
+Wenn eine Buchung ohne Kategorie und ohne `--ledger-account` ausgeführt wird und
 ein Kontenrahmen konfiguriert ist, soll die Fehlermeldung einen Hinweis geben:
 
 ```
@@ -361,7 +364,7 @@ Verfügbare Kategorien:
   - Laufende EDV-Kosten (Konten: saas, hosting, it-support)
   - Arbeitsmittel (Konten: bueromaterial)
   - ...
-Tipp: Verwende --konto <Schlüssel>, um die Kategorie automatisch zu setzen.
+Tipp: Verwende --ledger-account <Schlüssel>, um die Kategorie automatisch zu setzen.
 ```
 
 Wenn kein Kontenrahmen konfiguriert ist, wird der Tipp weggelassen und
@@ -455,14 +458,14 @@ Service weiter.
    - Kategorie-Konflikt prüfen
    - `ledger_account` in DB schreiben
 9. **`update_expense()` / `update_income()` erweitern** — analog,
-   Kategorie wird bei `--konto`-Änderung automatisch aktualisiert.
+   Kategorie wird bei `--ledger-account`-Änderung automatisch aktualisiert.
 10. **Unit-Tests** für alle Service-Funktionen.
 
 ### Phase 3: CLI
 
-11. **`--konto`-Flag** in `cli.py` für `add expense`, `add income`,
+11. **`--ledger-account`-Flag** in `cli.py` für `add expense`, `add income`,
     `update expense`, `update income` registrieren.
-12. **`euer list konten`** implementieren (Command + Parser).
+12. **`euer list ledger-accounts`** implementieren (Command + Parser).
 13. **`cmd_add_expense` / `cmd_add_income`** — Config laden, Konten-Liste
     an Service-Funktionen durchreichen.
 14. **Fehlermeldungen verbessern** (A10) — Kontenliste in Kategorie-Fehlern
@@ -495,10 +498,10 @@ Service weiter.
   pro Buchung (Feld `ledger_account`).
 - **Automatische SKR-03/04-Vorlagen:** Es wird kein Standard-Kontenrahmen
   ausgeliefert. Falls gewünscht, kann dies als späteres Feature (z.B.
-  `euer setup kontenrahmen --template skr03`) ergänzt werden.
+  `euer setup ledger-accounts --template skr03`) ergänzt werden.
 - **Kontensalden / Kontoblätter:** Keine Saldenberechnung je Konto.
   Auswertungen pro Konto können als separates Feature (z.B. `euer summary
-  --by-konto`) in einer späteren Spec ergänzt werden.
+  --by-ledger-account`) in einer späteren Spec ergänzt werden.
 - **Migration bestehender Buchungen:** Bestehende Buchungen erhalten
   `ledger_account = NULL`. Kein automatisches Mapping.
 
@@ -511,7 +514,7 @@ Service weiter.
 #    → siehe Beispiel oben unter A1
 
 # 2. Konten anzeigen
-$ euer list konten
+$ euer list ledger-accounts
 Kontenrahmen (7 Konten konfiguriert):
 
 Laufende EDV-Kosten (Zeile 50, Ausgabe):
@@ -522,19 +525,19 @@ Laufende EDV-Kosten (Zeile 50, Ausgabe):
 
 # 3. Buchung mit Konto (Kategorie wird automatisch aufgelöst)
 $ euer add expense --payment-date 2026-02-15 --vendor "Hetzner" \
-    --amount 49.90 --konto hosting
+    --amount 49.90 --ledger-account hosting
 Ausgabe #42 hinzugefügt: Hetzner 49,90 EUR
   → Buchungskonto: hosting (Hosting & Cloud-Dienste)
   → Kategorie: Laufende EDV-Kosten (Zeile 50)
 
 # 4. Buchung mit Konto + expliziter Kategorie (konsistent → OK)
 $ euer add expense --payment-date 2026-02-15 --vendor "GitHub" \
-    --amount 3.67 --konto saas --category "Laufende EDV-Kosten"
+    --amount 3.67 --ledger-account saas --category "Laufende EDV-Kosten"
 Ausgabe #43 hinzugefügt: GitHub 3,67 EUR
 
 # 5. Buchung mit widersprüchlicher Kategorie → Fehler
 $ euer add expense --payment-date 2026-02-15 --vendor "GitHub" \
-    --amount 3.67 --konto hosting --category "Arbeitsmittel"
+    --amount 3.67 --ledger-account hosting --category "Arbeitsmittel"
 Fehler: Buchungskonto "hosting" gehört zur Kategorie "Laufende EDV-Kosten",
   nicht zu "Arbeitsmittel".
 
@@ -545,20 +548,20 @@ Ausgabe #44 hinzugefügt: Büro GmbH 120,00 EUR
 
 # 7. Buchung mit Konto + Zahlungskonto (beides unabhängig)
 $ euer add expense --payment-date 2026-02-15 --vendor "Hetzner" \
-    --amount 49.90 --konto hosting --account p-sparkasse
+    --amount 49.90 --ledger-account hosting --account p-sparkasse
 Ausgabe #45 hinzugefügt: Hetzner 49,90 EUR
   → Buchungskonto: hosting (Hosting & Cloud-Dienste)
   → Kategorie: Laufende EDV-Kosten (Zeile 50)
   → Privateinlage erkannt (Konto: p-sparkasse)
 
 # 8. Update mit Konto-Änderung → Kategorie wird automatisch aktualisiert
-$ euer update expense 42 --konto saas
+$ euer update expense 42 --ledger-account saas
 Ausgabe #42 aktualisiert.
   → Buchungskonto: saas (Software / SaaS-Abos)
   → Kategorie: Laufende EDV-Kosten (Zeile 50)
 
 # 9. Konten einer Kategorie abfragen
-$ euer list konten --category "Laufende EDV-Kosten"
+$ euer list ledger-accounts --category "Laufende EDV-Kosten"
 Laufende EDV-Kosten (Zeile 50, Ausgabe):
   saas         Software / SaaS-Abos                [4930]
   hosting      Hosting & Cloud-Dienste              [4940]
