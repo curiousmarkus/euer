@@ -42,6 +42,14 @@ Für 2026 sind insbesondere relevant:
 - BMF Vordruckmuster UStVA 2026, veröffentlicht am **29. Dezember 2025**
 - ELSTER Hilfe „UStVA 2026“
 
+Referenzen:
+
+- https://www.bundesfinanzministerium.de/Content/DE/Downloads/BMF_Schreiben/Steuerarten/Umsatzsteuer/2025-12-29-vordruckmuster-USt-voranmeldung-2026.html
+- https://www.elster.de/eportal/helpGlobal?themaGlobal=help_ustva_2026
+
+Die Kennzahlen in dieser Spec beziehen sich auf das Formularjahr 2026. Bei
+späteren Formularjahren muss das Mapping bewusst geprüft und angepasst werden.
+
 ### Zielgruppe / Praxisfokus
 
 Im Fokus stehen typische Fälle von:
@@ -79,12 +87,21 @@ Zusätzlich:
 - Warnungen für fehlende oder unvollständige Daten
 - Export als CSV und optional XLSX
 
+Nicht-Ziel:
+
+- keine elektronische ELSTER-Übermittlung
+- keine steuerliche Beratung
+- keine automatische Entscheidung, ob ein Vorgang steuerlich korrekt klassifiziert
+  wurde
+
 ## Abhängigkeiten
 
 - Spec 004: Steuerlogik (KU/Standard)
 - Spec 011: RC-Jurisdiktion
 
 Ohne Spec 011 kann die Aufteilung KZ 46/47 vs. KZ 84/85 nicht korrekt erfolgen.
+
+Spec 011 muss vor dieser Spec implementiert sein.
 
 ## Zentrale Designentscheidungen
 
@@ -123,10 +140,19 @@ Buchungen ohne `payment_date` werden:
 
 Das gilt für Ausgaben und Einnahmen gleichermaßen.
 
-### D4: ELSTER-nahe Darstellung in vollen Euro
+Begründung:
 
-Der Terminal-Report soll Bemessungsgrundlagen und Kennzahlen **in vollen Euro**
-ausgeben, analog zur UStVA-Logik.
+`euer` ist EÜR- und CLI-first. Die erste Version von `vat-report` folgt deshalb
+einer zahlungsorientierten Periodik. Abweichende Besteuerungsarten oder
+leistungszeitraumbezogene Speziallogik werden nicht stillschweigend simuliert.
+
+### D4: ELSTER-nahe Darstellung
+
+Der Terminal-Report soll Bemessungsgrundlagen und Steuerbeträge formularnah
+ausgeben:
+
+- Bemessungsgrundlagen in vollen Euro
+- Steuerbeträge mit Cent-Betrag, soweit das Formular eine Steuer-Spalte vorsieht
 
 Zusätzlich kann eine Diagnose-/Detailsektion centgenaue Ursprungswerte zeigen,
 damit Rundungen nachvollziehbar bleiben.
@@ -143,6 +169,23 @@ Stattdessen:
 
 Nur fachlich sicher als leer/0 ableitbare Kennzahlen dürfen als `0` erscheinen.
 
+### D6: Keine neue Parallelsteuerlogik im Command
+
+Der Command ist ein View-Controller. Aggregation und Klassifikation gehören in
+einen Service, z.B. `euercli/services/vat_report.py`.
+
+Der Command darf:
+
+- Argumente parsen
+- Service-Fehler in deutsche CLI-Ausgaben übersetzen
+- Terminal/CSV/XLSX rendern
+
+Der Command darf nicht:
+
+- direkt in `expenses` oder `income` schreiben
+- steuerliche Klassifikation ad hoc aus SQL-Zeilen zusammenbauen
+- Business-Regeln duplizieren, die bereits im Service liegen
+
 ## Erforderliche Datenmodell-Erweiterungen
 
 Der heutige Datenbestand reicht für einen möglichst vollständigen UStVA-Report
@@ -150,17 +193,25 @@ nicht aus. Insbesondere fehlt eine explizite fachliche Umsatzsteuer-Klassifikati
 
 ### A1: Neue Felder für steuerliche Klassifikation
 
-Es werden neue Felder für `expenses` und `income` benötigt.
-
-Mindestens erforderlich:
+Es werden neue Felder für `expenses` und `income` benötigt:
 
 - `vat_rate REAL | NULL`
 - `vat_code TEXT | NULL`
 
 Ziel der Felder:
 
-- Steuersatz explizit speichern (`19`, `7`, optional weitere Werte)
+- Steuersatz explizit speichern (`19`, `7`, `0`; optional später weitere Werte)
 - steuerliche Behandlung explizit speichern
+- spätere Reports von der aktuellen Config entkoppeln
+
+Neue Datenbanken sollen `vat_rate` per `CHECK` auf unterstützte Werte begrenzen:
+
+```sql
+CHECK(vat_rate IS NULL OR vat_rate IN (0, 7, 19))
+```
+
+Für bestehende Datenbanken reicht die Service-Layer-Validierung. `euer init`
+ergänzt die Spalten, erzwingt aber keine vollständige Tabellenmigration.
 
 ### A2: Persistierte Steuerlogik statt bloßer Herleitung aus Config
 
@@ -173,25 +224,38 @@ Begründung:
 - Reports bleiben auditierbar
 - spätere Config-Änderungen verfälschen keine alten Voranmeldungen
 
-### A3: Empfohlene `vat_code`-Werte
+### A3: Persistierte `vat_code`-Werte
 
-Mindestens für die Zielgruppe sinnvoll:
+Die erste Version unterstützt folgende persistierte Codes:
 
 - `output_standard_19`
 - `output_reduced_7`
-- `output_tax_free`
-- `output_small_business`
-- `input_standard`
+- `output_zero_0`
+- `output_tax_free_no_vorsteuer`
+- `input_invoice`
 - `reverse_charge_eu`
 - `reverse_charge_third_country`
 
-Die finale technische Benennung kann leicht abweichen, aber es braucht
-fachlich äquivalente Codes.
+Zuordnung:
+
+| Tabelle | Code | Bedeutung |
+|---|---|---|
+| `income` | `output_standard_19` | steuerpflichtiger Ausgangsumsatz 19 % |
+| `income` | `output_reduced_7` | steuerpflichtiger Ausgangsumsatz 7 % |
+| `income` | `output_zero_0` | steuerpflichtiger Ausgangsumsatz 0 % |
+| `income` | `output_tax_free_no_vorsteuer` | steuerfreier Umsatz ohne Vorsteuerabzug, inkl. § 19 UStG |
+| `expenses` | `input_invoice` | abziehbare Vorsteuer aus Rechnungen anderer Unternehmer |
+| `expenses` | `reverse_charge_eu` | RC-Leistung EU nach Spec 011 |
+| `expenses` | `reverse_charge_third_country` | RC-Leistung Drittland nach Spec 011 |
+
+Die CLI soll diese technischen Codes nicht als primäre Nutzerschnittstelle
+erzwingen. Sie dürfen für Import/Export und Tests sichtbar sein, aber normale
+Erfassung soll über verständliche Flags erfolgen.
 
 ### A4: Default-Steuersatz
 
-Wenn für steuerpflichtige Standardumsätze kein expliziter Steuersatz angegeben
-ist, gilt als Default:
+Wenn bei `add income` im Modus `standard` kein expliziter Steuersatz angegeben
+ist und keine steuerfreie Behandlung gesetzt wurde, gilt als Default:
 
 - `19 %`
 
@@ -199,6 +263,45 @@ Diese Default-Regel gilt nur dort, wo der Vorgang fachlich bereits als
 steuerpflichtiger Standardumsatz feststeht.
 
 Sie darf **nicht** verwendet werden, um unklare Fälle blind zu raten.
+
+### A5: Nutzerfreundliche CLI-Flags
+
+Die CLI bleibt konsistent mit bestehenden Commands:
+
+- `--vat` bleibt der manuelle Steuerbetrag in EUR.
+- `--rc` und `--rc-jurisdiction` aus Spec 011 bleiben die Nutzerschnittstelle
+  für Reverse-Charge-Ausgaben.
+- Neue interne Codes werden nicht als Pflichtwissen für Nutzer vorausgesetzt.
+
+Für Einnahmen werden ergänzt:
+
+```bash
+euer add income ... --vat-rate 19
+euer add income ... --vat-rate 7
+euer add income ... --vat-rate 0
+euer add income ... --tax-free
+euer update income 42 --vat-rate 7
+euer update income 42 --tax-free
+```
+
+Regeln:
+
+- `--vat-rate` erlaubt `19`, `7`, `0`.
+- `--tax-free` ist gegenseitig exklusiv mit `--vat-rate` und `--vat`.
+- Im Modus `small_business` setzt der Service neue Einnahmen standardmäßig auf
+  `output_tax_free_no_vorsteuer`; `--vat` ist dort wie bisher nicht sinnvoll.
+- Im Modus `standard` setzt `--vat-rate 19` den Code `output_standard_19`.
+- Im Modus `standard` setzt `--vat-rate 7` den Code `output_reduced_7`.
+- Im Modus `standard` setzt `--vat-rate 0` den Code `output_zero_0`.
+- `--tax-free` setzt `output_tax_free_no_vorsteuer`.
+
+Für Ausgaben werden keine zusätzlichen Alltagsflags eingeführt:
+
+- Normale Vorsteuer wird wie bisher über `--vat` erfasst und als
+  `input_invoice` klassifiziert.
+- RC wird über `--rc --rc-jurisdiction ...` erfasst und daraus als
+  `reverse_charge_eu` oder `reverse_charge_third_country` klassifiziert.
+- `--vat-rate` ist für Ausgaben im MVP nicht erforderlich.
 
 ## Kennzahlen-Mapping (MVP mit professionellem Scope)
 
@@ -209,7 +312,9 @@ Kennzahlen belastbar liefern oder als unvollständig markieren.
 
 Für Kleinunternehmer relevant:
 
-- eigene Umsätze als Hinweis-/Kontextblock
+- eigene Umsätze ohne Ausgangs-USt:
+  - KZ 48 Bemessungsgrundlage, wenn eine UStVA-Ausgabe benötigt wird
+  - zusätzlich als klar beschrifteter Kontextblock
 - RC EU:
   - KZ 46 Bemessungsgrundlage
   - KZ 47 Steuer
@@ -219,22 +324,36 @@ Für Kleinunternehmer relevant:
 
 Hinweis:
 
-Eigene Umsätze von Kleinunternehmern sind keine normale Ausgangs-USt-Position,
-können aber im Report als Kontextblock angezeigt werden.
+Kleinunternehmer führen für eigene Umsätze keine Ausgangs-USt ab und ziehen keine
+Vorsteuer. RC-Steuerbeträge bleiben als Zahllast relevant; ein Vorsteuerabzug aus
+RC (`KZ 67`) wird im Modus `small_business` nicht angesetzt.
 
 ### B2: Regelbesteuerung
 
 Für Regelbesteuerte im Kernbereich:
 
-- steuerpflichtige Umsätze 19 %
-- steuerpflichtige Umsätze 7 %
+- steuerpflichtige Umsätze 19 %:
+  - KZ 81 Bemessungsgrundlage
+  - Steuerbetrag daraus im Report berechnet bzw. mit `vat_output` abgeglichen
+- steuerpflichtige Umsätze 7 %:
+  - KZ 86 Bemessungsgrundlage
+  - Steuerbetrag daraus im Report berechnet bzw. mit `vat_output` abgeglichen
+- steuerpflichtige Umsätze 0 %:
+  - KZ 87 Bemessungsgrundlage
+- steuerfreie Umsätze ohne Vorsteuerabzug:
+  - KZ 48 Bemessungsgrundlage
 - RC EU:
-  - KZ 46
-  - KZ 47
+  - KZ 46 Bemessungsgrundlage
+  - KZ 47 Steuer
 - RC Drittland:
-  - KZ 84
-  - KZ 85
-- abziehbare Vorsteuer
+  - KZ 84 Bemessungsgrundlage
+  - KZ 85 Steuer
+- abziehbare Vorsteuer aus Rechnungen:
+  - KZ 66
+- abziehbare Vorsteuer aus Reverse-Charge-Leistungen:
+  - KZ 67
+- verbleibende Umsatzsteuer-Vorauszahlung / Überschuss:
+  - KZ 83 als berechneter Ergebniswert
 
 ### B3: Kennzahlen, die nur mit zusätzlicher Modellierung unterstützt werden
 
@@ -245,6 +364,24 @@ Beispiele:
 
 - 7 %-Umsätze erfordern expliziten `vat_rate`
 - bestimmte Sonderfälle erfordern expliziten `vat_code`
+
+### B4: Nicht unterstützte Kennzahlen im MVP
+
+Folgende Kennzahlen werden in der ersten Version nicht berechnet und müssen im
+Report als `nicht unterstützt` oder `nicht erfasst` erscheinen, wenn sie für den
+Nutzer relevant sein könnten:
+
+- innergemeinschaftliche Erwerbe, z.B. KZ 89/93/90
+- Einfuhrumsatzsteuer, KZ 62
+- Sondervorauszahlung / Dauerfristverlängerung, KZ 39
+- Vorsteuerberichtigung, KZ 64
+- andere Steuersätze, KZ 35/36
+- Sonderfälle nach § 13b außerhalb EU/Drittland-Dienstleistungen für die
+  Zielgruppe
+
+Diese Liste ist nicht abschließend. Unbekannte oder nicht modellierte Fälle
+dürfen nicht als `0` ausgegeben werden, wenn dadurch fachliche Vollständigkeit
+vorgetäuscht würde.
 
 ## Report-Ausgabe
 
@@ -263,30 +400,33 @@ Steuermodus:
   standard
 
 Ausgangsumsätze:
-  KZ xx  Steuerpflichtige Umsätze 19%:         5.000 EUR
-         Steuer:                                 950 EUR
-  KZ yy  Steuerpflichtige Umsätze 7%:              0 EUR
-         Steuer:                                   0 EUR
+  KZ 81  Steuerpflichtige Umsätze 19%:         5.000 EUR
+         Steuer:                              950,00 EUR
+  KZ 86  Steuerpflichtige Umsätze 7%:              0 EUR
+         Steuer:                                0,00 EUR
+  KZ 87  Steuerpflichtige Umsätze 0%:              0 EUR
+  KZ 48  Steuerfreie Umsätze ohne Vorsteuer:       0 EUR
 
 Reverse Charge:
   KZ 46  EU-Bemessungsgrundlage:                  96 EUR
-  KZ 47  EU-Steuer:                               18 EUR
+  KZ 47  EU-Steuer:                            18,24 EUR
   KZ 84  Drittland-Bemessungsgrundlage:          111 EUR
-  KZ 85  Drittland-Steuer:                        21 EUR
+  KZ 85  Drittland-Steuer:                     21,09 EUR
 
 Vorsteuer:
-  KZ zz  Abziehbare Vorsteuer:                   120 EUR
+  KZ 66  Vorsteuer aus Rechnungen:            120,00 EUR
+  KZ 67  Vorsteuer aus RC-Leistungen:          39,33 EUR
 
 --------------------------------------------------
-ZAHLLAST / ERSTATTUNG:                           851 EUR
+KZ 83  ZAHLLAST / ERSTATTUNG:                 811,76 EUR
 
 Warnungen:
   - 2 RC-Buchungen ohne Jurisdiktion nicht eingerechnet: IDs 14, 27
   - 1 Einnahme ohne payment_date nicht eingerechnet: ID 31
 ```
 
-Die konkreten Kennzahlenamen werden aus den jeweils aktuellen offiziellen
-Vorgaben abgeleitet.
+Die Beschriftungen dürfen nutzerfreundlich sein, müssen aber eindeutig auf die
+offiziellen Kennzahlen gemappt werden.
 
 ### C2: Warnsektion mit IDs
 
@@ -317,6 +457,23 @@ KZ xx  Nicht unterstützt (fehlende steuerliche Klassifikation in 3 Buchungen)
 `--format csv` und `--format xlsx` sollen **keine bloße Kopie der Terminalansicht**
 sein, sondern einen strukturierten Kennzahlen-Export liefern.
 
+CLI:
+
+```bash
+euer vat-report --year 2026 --format table
+euer vat-report --year 2026 --quarter 1 --format csv --output exports/
+euer vat-report --year 2026 --month 3 --format xlsx --output exports/
+```
+
+Regeln:
+
+- `--format` erlaubt `table`, `csv`, `xlsx`; Default ist `table`.
+- `table` schreibt auf stdout.
+- `csv` und `xlsx` schreiben Dateien in `--output` oder das konfigurierte
+  Export-Verzeichnis.
+- Wenn `openpyxl` fehlt, schlägt `xlsx` mit einer klaren deutschen Fehlermeldung
+  fehl.
+
 Beispielhafte Spalten:
 
 - `period_label`
@@ -343,6 +500,17 @@ werden, z.B.:
 - `booking_type = expense|income`
 - `booking_id`
 - `reason`
+- `reason_code`
+- `amount_eur`
+- `vat_input`
+- `vat_output`
+- `vat_rate`
+- `vat_code`
+
+Für `xlsx` soll ein zweites Sheet `Diagnose` erzeugt werden. Für `csv` soll
+entweder eine zweite Datei mit Suffix `_diagnose.csv` entstehen oder der
+Diagnoseexport über ein explizites Flag aktivierbar sein. Die konkrete Variante
+muss in der Implementierung konsistent dokumentiert werden.
 
 ## Erforderliche Implementierungsänderungen außerhalb des Reports
 
@@ -359,8 +527,12 @@ Betroffen:
 - `update income`
 - `import`
 
-Diese Commands müssen `vat_rate` / `vat_code` oder äquivalente fachliche Daten
+Diese Commands müssen die in A5 beschriebenen nutzerfreundlichen Flags
 entgegennehmen, validieren und über den Service Layer persistieren.
+
+Interne `vat_code`-Werte dürfen im normalen CLI nicht als Pflichtparameter
+auftauchen. Für Import/Export sind sie erlaubt, damit Daten round-trip-fähig
+bleiben.
 
 ### E2: Service Layer
 
@@ -370,6 +542,10 @@ Die Services für `expenses` und `income` müssen:
 - sinnvolle Defaults setzen
 - widersprüchliche Kombinationen ablehnen
 - typisierte Rückgaben liefern
+- `vat_code` aus den nutzerfreundlichen CLI-/Import-Werten ableiten
+- RC-Codes konsistent aus `is_rc` und `rc_jurisdiction` aus Spec 011 ableiten
+- alte Buchungen ohne `vat_code` lesbar lassen und im Report als
+  `unvollständig` markieren, wenn keine sichere Ableitung möglich ist
 
 ### E3: Import-Normalisierung
 
@@ -377,8 +553,20 @@ Der Import braucht zusätzliche Felder/Aliase für:
 
 - `vat_rate`
 - `vat_code`
+- `tax-free`
+- `Steuersatz`
+- `Steuerklasse`
 
 sowie konsistente Normalisierung.
+
+Akzeptierte nutzerfreundliche Importwerte:
+
+- `vat_rate`: `19`, `7`, `0`, `19%`, `7%`, `0%`
+- `vat_code`: persistierte interne Codes aus A3
+- `tax-free`: boolescher Wert analog zu bestehenden Bool-Feldern
+
+Wenn `vat_code` und nutzerfreundliche Felder gleichzeitig angegeben sind und
+widersprechen, ist der Import fehlerhaft.
 
 ## Periodenlogik
 
@@ -405,10 +593,17 @@ Intern wird centgenau gerechnet.
 
 ### G2: Formularnahe Ausgabe
 
-Für die ELSTER-nahe Ausgabe werden Bemessungsgrundlagen und Steuerbeträge nach
-den gültigen UStVA-Regeln in volle Euro ausgegeben.
+Für die ELSTER-nahe Ausgabe werden Beträge nach den gültigen UStVA-Regeln
+ausgegeben:
+
+- Bemessungsgrundlagen in vollen Euro
+- Steuerbeträge mit Cent-Betrag, wenn die Kennzahl eine Steuer-Spalte hat
+- Ergebnis/Zahllast mit Cent-Betrag
 
 Die Rundungslogik muss zentral implementiert und testbar sein.
+
+Die genaue Rundungsregel wird in einem zentralen Helper abgebildet und in Tests
+gegen typische positive und negative Beträge abgesichert.
 
 ## Beziehung zu `summary`
 
@@ -439,6 +634,7 @@ Mindestens zu erwarten:
 |---|---|
 | `euercli/cli.py` | Neuer Parser `vat-report` |
 | `euercli/commands/vat_report.py` | Neue Report-Ausgabe |
+| `euercli/services/vat_report.py` | Aggregation, Kennzahlen-Mapping, Warnungen |
 | `euercli/schema.py` | Neue Steuerfelder |
 | `euercli/commands/init.py` | Migration |
 | `euercli/services/models.py` | Neue Modellfelder |
@@ -467,11 +663,18 @@ Mindestens abzudecken:
 7. RC ohne Jurisdiktion wird gewarnt und nicht eingerechnet
 8. Standardumsätze 19 % werden korrekt aggregiert
 9. 7 %-Umsätze werden korrekt aggregiert
-10. Vorsteuer wird korrekt aggregiert
-11. CSV-Export enthält strukturierte Kennzahlenzeilen
-12. XLSX-Export schlägt sauber fehl, wenn `openpyxl` fehlt
-13. Nicht unterstützte Fälle werden als Warnung/Status ausgewiesen
-14. Rundung auf volle Euro ist reproduzierbar und getestet
+10. 0 %-Umsätze und steuerfreie Umsätze werden getrennt gemappt
+11. Normale Vorsteuer landet in KZ 66
+12. RC-Vorsteuer bei Regelbesteuerung landet in KZ 67
+13. Kleinunternehmer-RC erzeugt keine KZ 67
+14. CSV-Export enthält strukturierte Kennzahlenzeilen
+15. XLSX-Export schlägt sauber fehl, wenn `openpyxl` fehlt
+16. Nicht unterstützte Fälle werden als Warnung/Status ausgewiesen
+17. `add income --vat-rate 7` persistiert `vat_rate` und `vat_code`
+18. `add income --tax-free` ist exklusiv zu `--vat-rate` und `--vat`
+19. `euer init` ergänzt `vat_rate` und `vat_code` bei bestehenden Datenbanken
+20. Rundung von Bemessungsgrundlagen und Cent-Ausgabe von Steuerbeträgen ist
+    reproduzierbar und getestet
 
 ## Verwandte Specs
 
