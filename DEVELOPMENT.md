@@ -288,3 +288,5 @@ Offene Change Requests werden innerhalb der jeweiligen Spec dokumentiert.
 | 008 | Privateinlagen & Privatentnahmen | Implementiert |
 | 009 | Service-Layer-Architektur (Import) | Implementiert |
 | 010 | Kontenrahmen (Buchungskonten je Kategorie) | Implementiert |
+| 011 | Reverse-Charge-Jurisdiktion (EU vs. Drittland) | Offen |
+| 012 | `vat-report` | Offen |
