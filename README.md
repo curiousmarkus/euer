@@ -52,6 +52,8 @@ Danach ist `euer` sofort und dauerhaft in jedem Terminal verfügbar.
 pipx upgrade euercli
 ```
 
+(Details siehe [User Guide](docs/USER_GUIDE.md#installation))
+
 ### 2. Personalisierung
 
 Kopiere den [Onboarding Prompt](docs/templates/onboarding-prompt.md) in einen LLM-Chat und beantworte die Fragen. 

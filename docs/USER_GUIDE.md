@@ -28,6 +28,39 @@ Danach ist `euer` sofort und dauerhaft in jedem Terminal verfügbar.
 pipx upgrade euercli
 ```
 
+### Bestehende Installation aktualisieren
+
+Wenn du bereits eine lokale `euer.db` nutzt, aktualisiere nicht nur das CLI,
+sondern auch die Datenbankstruktur. `euer init` ist dafür bewusst idempotent:
+Es kann gefahrlos erneut im Buchhaltungsordner ausgeführt werden und ergänzt
+fehlende Tabellen oder Spalten.
+
+Empfohlener Ablauf nach jedem Update:
+
+```bash
+cd /pfad/zu/deinem/buchhaltungsordner
+
+# Backup vor Schema-Migration
+cp euer.db euer.backup.db
+
+# CLI aktualisieren
+pipx upgrade euercli
+
+# lokale Datenbank migrieren
+euer init
+
+# offene Nacharbeiten prüfen
+euer incomplete list
+euer summary --year 2026
+```
+
+Wenn du mehrere Buchhaltungsordner oder Datenbanken hast, führe `euer init` für
+jede Datenbank aus. Alternativ kannst du die Datenbank explizit angeben:
+
+```bash
+euer --db /pfad/zu/euer.db init
+```
+
 ## KI-Agenten Konfiguration
 
 Das CLI-Tool ist so konzipiert, dass KI-Agenten die Buchhaltung automatisieren können.
