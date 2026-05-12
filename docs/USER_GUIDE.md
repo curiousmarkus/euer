@@ -148,6 +148,7 @@ Hinweis: `list ... --format csv` gibt die Liste als CSV auf stdout aus (für Pip
 Hinweis: `euer list expenses --full` erweitert die Tabellenansicht um fachliche Details wie
 `Konto`, `Beleg`, `Fremdw.` und `Notiz`.
 Hinweis: `euer list income` zeigt in der Tabellenansicht die Spalte `USt` (vat_output) immer an.
+Hinweis: RC-Ausgaben zeigen in der Spalte `RC` den Typ `eu` oder `third-country`.
 Hinweis: `euer list income --full` ergänzt die Tabellenansicht um die Spalte `Notiz`.
 Hinweis: Kategorien werden in Listen als `(<EÜR-Zeile>) <Name>` dargestellt, z.B.
 `(51) Arbeitsmittel`.
@@ -182,6 +183,9 @@ euer update expense 42 --invoice-date 2026-01-15
 euer update expense 42 --ledger-account hosting
 euer update expense 42 --private-paid
 euer update expense 42 --no-private-paid
+euer update expense 42 --rc eu
+euer update expense 42 --rc third-country
+euer update expense 42 --no-rc
 
 # Privatvorgang korrigieren
 euer update private-transfer 7 --amount 600 --description "Korrektur"
@@ -254,6 +258,7 @@ Hinweise zum Import:
 - Kategorien mit `"(NN)"` werden beim Import automatisch bereinigt.
 - Alias‑Keys werden akzeptiert (z.B. `EUR`, `Belegname`, `Lieferant`, `Quelle`, `RC`).
 - `private_paid=true|1|yes|X` markiert eine importierte Ausgabe manuell als Sacheinlage.
+- `rc` akzeptiert `eu` oder `third-country`; Legacy-Werte `rc=true|X` brauchen zusätzlich eine Jurisdiktionsspalte.
 
 ## Kontenrahmen
 
@@ -280,7 +285,7 @@ Wichtig:
 - `euer setup` kann Buchungskonten interaktiv anlegen.
 - `euer list ledger-accounts` zeigt den aktuell konfigurierten Kontenrahmen.
 - Steuerfelder:
-  - `small_business` + `rc=true`: `vat_output` wird automatisch aus `amount_eur * 0.19` berechnet,
+  - `small_business` + `rc=eu|third-country`: `vat_output` wird automatisch aus `amount_eur * 0.19` berechnet,
     `vat_input` wird auf `0.0` gesetzt (Felder können weggelassen werden).
   - `standard`: `vat_input` wird **nicht** automatisch berechnet (außer bei RC). Ohne `vat_input`
     bleibt es `0.0`. `amount_eur` wird immer 1:1 gespeichert (keine Netto/Brutto‑Umrechnung).
@@ -369,14 +374,22 @@ euer setup
 
 ## Reverse‑Charge (RC)
 
-Verwende `--rc` für ausländische Anbieter ohne deutsche USt:
+Verwende `--rc eu` oder `--rc third-country` für ausländische Anbieter ohne deutsche USt.
+Der RC-Typ ist Pflicht, damit spätere UStVA-Auswertungen EU-Leistungen und
+Drittland-Leistungen trennen können:
 
 ```bash
 euer add expense --date 2026-01-04 --vendor "RENDER.COM" \
-    --category "Laufende EDV-Kosten" --amount -22.71 --rc
+    --category "Laufende EDV-Kosten" --amount -22.71 --rc third-country
 ```
 
 Hinweis: Bei `small_business` setzt RC automatisch `vat_output`, `vat_input` bleibt `0.0`.
+Bestehende RC-Buchungen ohne EU-/Drittland-Typ können nachgepflegt werden:
+
+```bash
+euer update expense 42 --rc eu
+euer update expense 42 --rc third-country
+```
 
 ## Backfill / Reklassifikation für bestehende DB
 

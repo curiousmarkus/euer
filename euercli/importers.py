@@ -67,6 +67,27 @@ def get_tax_config(config: dict) -> str:
     return config.get("tax", {}).get("mode", "small_business")
 
 
+def normalize_import_rc_type(value: object | None) -> str | None:
+    """Normalisiert Importwerte für RC-Typen auf DB-Werte."""
+    if value is None:
+        return "none"
+    text = str(value).strip().lower().replace(" ", "_")
+    if not text:
+        return "none"
+    mapping = {
+        "0": "none",
+        "false": "none",
+        "no": "none",
+        "nein": "none",
+        "n": "none",
+        "eu": "eu",
+        "third-country": "third_country",
+        "third_country": "third_country",
+        "unclassified": "unclassified",
+    }
+    return mapping.get(text)
+
+
 def normalize_import_row(row: dict) -> dict:
     """Normalisiert Importzeile auf kanonische Keys."""
     raw_type = get_row_value(row, "type", "kind", "direction", "Typ")
@@ -100,6 +121,18 @@ def normalize_import_row(row: dict) -> dict:
         "Rechnung",
         "invoice",
     )
+    rc_jurisdiction_value = get_row_value(
+        row,
+        "rc_jurisdiction",
+        "rc-jurisdiction",
+        "RC-Jurisdiktion",
+    )
+    rc_value = get_row_value(row, "rc_type", "rc", "is_rc", "RC")
+    rc_type = normalize_import_rc_type(rc_value)
+    if parse_bool(rc_value):
+        rc_type = normalize_import_rc_type(rc_jurisdiction_value)
+    elif rc_value is None and rc_jurisdiction_value is not None:
+        rc_type = normalize_import_rc_type(rc_jurisdiction_value)
 
     return {
         "type": row_type,
@@ -133,7 +166,9 @@ def normalize_import_row(row: dict) -> dict:
             row, "receipt_name", "receipt", "Belegname", "Beleg"
         ),
         "notes": get_row_value(row, "notes", "Bemerkung", "Notiz"),
-        "rc": parse_bool(get_row_value(row, "rc", "is_rc", "RC")),
+        "rc_type": rc_type,
+        "rc_raw": rc_value,
+        "rc_jurisdiction_raw": rc_jurisdiction_value,
         "private_paid": parse_bool(
             get_row_value(row, "private_paid", "Privat bezahlt")
         ),

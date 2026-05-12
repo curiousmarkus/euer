@@ -45,7 +45,6 @@ class ExpenseServiceTestCase(unittest.TestCase):
             account="Bank",
             receipt_name="receipt.pdf",
             notes="Note",
-            is_rc=False,
             vat=None,
             tax_mode="small_business",
             audit_user="tester",
@@ -144,7 +143,7 @@ class ExpenseServiceTestCase(unittest.TestCase):
             vendor="RcVat",
             amount_eur=-100.0,
             category_name="Arbeitsmittel",
-            is_rc=True,
+            rc_type="eu",
             vat_input=5.0,
             tax_mode="standard",
             audit_user="tester",
@@ -293,6 +292,105 @@ class ExpenseServiceTestCase(unittest.TestCase):
             )
 
         self.assertEqual(ctx.exception.code, "ledger_account_category_mismatch")
+
+    def test_create_expense_rejects_invalid_rc_type(self) -> None:
+        with self.assertRaises(ValidationError) as ctx:
+            create_expense(
+                self.conn,
+                date="2026-01-15",
+                vendor="OpenAI",
+                amount_eur=-100.0,
+                category_name="Laufende EDV-Kosten",
+                rc_type="third-country",
+                tax_mode="small_business",
+                audit_user="tester",
+            )
+
+        self.assertEqual(ctx.exception.code, "invalid_rc_type")
+
+    def test_create_expense_rejects_unclassified_rc_type(self) -> None:
+        with self.assertRaises(ValidationError) as ctx:
+            create_expense(
+                self.conn,
+                date="2026-01-15",
+                vendor="OpenAI",
+                amount_eur=-100.0,
+                category_name="Laufende EDV-Kosten",
+                rc_type="unclassified",
+                tax_mode="small_business",
+                audit_user="tester",
+            )
+
+        self.assertEqual(ctx.exception.code, "unclassified_rc_type_not_allowed")
+
+    def test_update_expense_rc_type_flows(self) -> None:
+        expense = create_expense(
+            self.conn,
+            date="2026-01-15",
+            vendor="OpenAI",
+            amount_eur=-100.0,
+            category_name="Laufende EDV-Kosten",
+            rc_type="third_country",
+            tax_mode="small_business",
+            audit_user="tester",
+        )
+
+        cleared = update_expense(
+            self.conn,
+            record_id=expense.id,
+            rc_type="none",
+            tax_mode="small_business",
+            audit_user="tester",
+        )
+        self.assertFalse(cleared.is_rc)
+        self.assertEqual(cleared.rc_type, "none")
+
+        reactivated = update_expense(
+            self.conn,
+            record_id=expense.id,
+            rc_type="eu",
+            tax_mode="small_business",
+            audit_user="tester",
+        )
+        self.assertTrue(reactivated.is_rc)
+        self.assertEqual(reactivated.rc_type, "eu")
+
+    def test_update_expense_keeps_unclassified_rc_editable(self) -> None:
+        self.conn.execute(
+            """INSERT INTO expenses
+               (uuid, payment_date, vendor, amount_eur, category_id, rc_type,
+                vat_input, vat_output, hash)
+               VALUES (?, ?, ?, ?, NULL, 'unclassified', 0.0, 19.0, ?)""",
+            (
+                "legacy-rc",
+                "2026-01-15",
+                "Legacy SaaS",
+                -100.0,
+                "legacy-rc-hash",
+            ),
+        )
+        self.conn.commit()
+
+        updated = update_expense(
+            self.conn,
+            record_id=1,
+            notes="Nachtrag",
+            tax_mode="small_business",
+            audit_user="tester",
+        )
+
+        self.assertTrue(updated.is_rc)
+        self.assertEqual(updated.rc_type, "unclassified")
+        self.assertEqual(updated.notes, "Nachtrag")
+
+        classified = update_expense(
+            self.conn,
+            record_id=1,
+            rc_type="third_country",
+            tax_mode="small_business",
+            audit_user="tester",
+        )
+        self.assertEqual(classified.rc_type, "third_country")
 
 
 if __name__ == "__main__":

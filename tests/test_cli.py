@@ -2,6 +2,7 @@ import csv
 import io
 import os
 import platform
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -91,6 +92,7 @@ class EuerCLITestCase(unittest.TestCase):
             args += ["--notes", data["notes"]]
         if data.get("rc"):
             args.append("--rc")
+            args.append("eu" if data["rc"] is True else str(data["rc"]))
         if data.get("private_paid"):
             args.append("--private-paid")
         if "vat" in data:
@@ -197,7 +199,8 @@ class EuerCLITestCase(unittest.TestCase):
 
         rows = self.list_expenses_csv()
         self.assertEqual(len(rows), 2)
-        # ID, Wertstellung, Rechnung, Lieferant, Kategorie, EUR, Konto, Beleg, Status, Fremdwährung, Bemerkung, RC, Vorsteuer, Umsatzsteuer
+        # ID, Wertstellung, Rechnung, Lieferant, Kategorie, EUR, Konto, Beleg, Status,
+        # Fremdwährung, Bemerkung, RC, Vorsteuer, Umsatzsteuer
         (
             rec_id,
             payment_date,
@@ -616,6 +619,109 @@ account_number = "8400"
         self.assertIn("OpenAI", list_result.stdout)
         self.assertIn("(50)", list_result.stdout)
 
+    def test_add_expense_rc_requires_jurisdiction(self):
+        result = self.run_cli(
+            [
+                "add",
+                "expense",
+                "--date",
+                "2026-01-15",
+                "--vendor",
+                "OpenAI",
+                "--category",
+                "Laufende EDV-Kosten",
+                "--amount",
+                "-100.00",
+                "--rc",
+            ]
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("--rc", result.stderr)
+
+    def test_add_expense_rc_types_persist(self):
+        eu = self.add_expense(
+            vendor="EU SaaS",
+            category="Laufende EDV-Kosten",
+            amount="-100.00",
+            rc="eu",
+        )
+        self.assertEqual(eu.returncode, 0, msg=eu.stderr)
+        third_country = self.add_expense(
+            date="2026-01-16",
+            vendor="US SaaS",
+            category="Laufende EDV-Kosten",
+            amount="-120.00",
+            rc="third-country",
+        )
+        self.assertEqual(third_country.returncode, 0, msg=third_country.stderr)
+
+        query = self.run_cli(
+            [
+                "query",
+                "SELECT",
+                "vendor,rc_type",
+                "FROM",
+                "expenses",
+                "ORDER",
+                "BY",
+                "id",
+            ],
+            check=True,
+        )
+        rows = self.parse_csv(query.stdout)
+        self.assertEqual(rows[1], ["EU SaaS", "eu"])
+        self.assertEqual(rows[2], ["US SaaS", "third_country"])
+
+        list_rows = self.list_expenses_csv()
+        self.assertIn("RC", list_rows[0])
+        self.assertEqual(list_rows[1][11], "third-country")
+        self.assertEqual(list_rows[2][11], "eu")
+
+    def test_update_expense_rc_and_no_rc(self):
+        self.add_expense(vendor="Normal")
+
+        set_rc = self.run_cli(
+            ["update", "expense", "1", "--rc", "third-country"],
+            check=True,
+        )
+        self.assertIn("Ausgabe #1 aktualisiert", set_rc.stdout)
+
+        query = self.run_cli(
+            [
+                "query",
+                "SELECT",
+                "rc_type",
+                "FROM",
+                "expenses",
+                "WHERE",
+                "id",
+                "=",
+                "1",
+            ],
+            check=True,
+        )
+        rows = self.parse_csv(query.stdout)
+        self.assertEqual(rows[1], ["third_country"])
+
+        clear_rc = self.run_cli(["update", "expense", "1", "--no-rc"], check=True)
+        self.assertIn("Ausgabe #1 aktualisiert", clear_rc.stdout)
+        query = self.run_cli(
+            [
+                "query",
+                "SELECT",
+                "rc_type",
+                "FROM",
+                "expenses",
+                "WHERE",
+                "id",
+                "=",
+                "1",
+            ],
+            check=True,
+        )
+        rows = self.parse_csv(query.stdout)
+        self.assertEqual(rows[1], ["none"])
+
     def test_list_expenses_table_full_shows_receipt_notes_and_foreign(self):
         self.add_expense(
             vendor="Cloudflare",
@@ -740,6 +846,39 @@ account_number = "8400"
         self.assertEqual(inc_rows[1][6], "erloese-19")
         self.assertEqual(inc_rows[1][7], "8400")
 
+    def test_export_csv_includes_rc_type(self):
+        self.add_expense(
+            vendor="OpenAI",
+            category="Laufende EDV-Kosten",
+            amount="-100.00",
+            rc="third-country",
+        )
+        export_dir = self.root / "exports"
+        export_dir.mkdir()
+
+        result = self.run_cli(
+            [
+                "export",
+                "--year",
+                "2026",
+                "--format",
+                "csv",
+                "--output",
+                str(export_dir),
+            ],
+            check=True,
+        )
+        exp_file = Path(
+            next(
+                line.split("Exportiert: ", 1)[1]
+                for line in result.stdout.splitlines()
+                if line.startswith("Exportiert: ") and "Ausgaben" in line
+            )
+        )
+        rows = list(csv.reader(exp_file.read_text(encoding="utf-8-sig").splitlines()))
+        self.assertIn("RC", rows[0])
+        self.assertEqual(rows[1][11], "third-country")
+
     def test_export_csv_all_years_default(self):
         self.add_expense(date="2025-12-31", vendor="Alt")
         self.add_expense(date="2026-01-15", vendor="Neu")
@@ -813,6 +952,26 @@ account_number = "8400"
         self.assertIn("GESAMT Ausgaben", result.stdout)
         self.assertIn("GESAMT Einnahmen", result.stdout)
         self.assertIn("Umsatzsteuer (Kleinunternehmer)", result.stdout)
+
+    def test_summary_warns_for_legacy_rc_without_jurisdiction(self):
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute(
+                """INSERT INTO expenses
+                   (uuid, payment_date, vendor, amount_eur, rc_type, vat_input,
+                    vat_output, hash)
+                   VALUES (?, ?, ?, ?, 'unclassified', 0.0, 19.0, ?)""",
+                (
+                    "legacy-rc",
+                    "2026-01-15",
+                    "Legacy SaaS",
+                    -100.0,
+                    "legacy-rc-hash",
+                ),
+            )
+
+        result = self.run_cli(["summary", "--year", "2026"], check=True)
+        self.assertIn("Reverse-Charge-Buchung(en) ohne EU-/Drittland-Typ", result.stdout)
+        self.assertIn("--rc eu|third-country", result.stdout)
 
     def test_summary_include_private(self):
         self.add_private_deposit(amount="250.00", description="Einlage")
@@ -1194,8 +1353,10 @@ account_number = "4940"
         import_file.write_text(
             "\n".join(
                 [
-                    "Belegname,Datum,Lieferant,Kategorie,EUR,Konto,Buchungskonto,Kontonummer,Fremdwährung,Bemerkung,RC,Vorsteuer,Umsatzsteuer",
-                    "2026-01-10_1und1,2026-01-10,1und1,Arbeitsmittel (51),-39.99,Bank,hosting,4940,,Note,X,0.00,0.00",
+                    "Belegname,Datum,Lieferant,Kategorie,EUR,Konto,Buchungskonto,"
+                    "Kontonummer,Fremdwährung,Bemerkung,RC,Vorsteuer,Umsatzsteuer",
+                    "2026-01-10_1und1,2026-01-10,1und1,Arbeitsmittel (51),"
+                    "-39.99,Bank,hosting,4940,,Note,eu,0.00,0.00",
                 ]
             )
             + "\n",
@@ -1211,6 +1372,116 @@ account_number = "4940"
         self.assertEqual(len(rows), 2)
         self.assertEqual(rows[1][4], "(51) Arbeitsmittel")
         self.assertEqual(rows[1][3], "1und1")
+
+    def test_import_legacy_rc_boolean_requires_jurisdiction(self):
+        import_file = self.root / "import_missing_rc_type.csv"
+        import_file.write_text(
+            "\n".join(
+                [
+                    "type,date,party,category,amount_eur,rc",
+                    "expense,2026-01-10,Vendor A,Arbeitsmittel,-20.00,true",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        result = self.run_cli(["import", "--file", str(import_file), "--format", "csv"])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("rc_type", result.stderr)
+
+    def test_init_migrates_legacy_rc_columns_to_rc_type(self):
+        self.db_path.unlink()
+        with sqlite3.connect(self.db_path) as conn:
+            conn.executescript(
+                """
+                CREATE TABLE categories (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    uuid TEXT UNIQUE NOT NULL,
+                    name TEXT NOT NULL,
+                    eur_line INTEGER,
+                    type TEXT NOT NULL CHECK(type IN ('expense', 'income'))
+                );
+                CREATE TABLE expenses (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    uuid TEXT UNIQUE NOT NULL,
+                    receipt_name TEXT,
+                    payment_date DATE,
+                    invoice_date DATE,
+                    vendor TEXT NOT NULL,
+                    category_id INTEGER REFERENCES categories(id),
+                    amount_eur REAL NOT NULL,
+                    account TEXT,
+                    ledger_account TEXT,
+                    foreign_amount TEXT,
+                    notes TEXT,
+                    is_rc INTEGER NOT NULL DEFAULT 0,
+                    vat_input REAL,
+                    vat_output REAL,
+                    is_private_paid INTEGER NOT NULL DEFAULT 0,
+                    private_classification TEXT NOT NULL DEFAULT 'none',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    hash TEXT UNIQUE NOT NULL,
+                    CHECK(invoice_date IS NOT NULL OR payment_date IS NOT NULL)
+                );
+                CREATE TABLE income (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    uuid TEXT UNIQUE NOT NULL,
+                    receipt_name TEXT,
+                    payment_date DATE,
+                    invoice_date DATE,
+                    source TEXT NOT NULL,
+                    category_id INTEGER REFERENCES categories(id),
+                    amount_eur REAL NOT NULL,
+                    ledger_account TEXT,
+                    foreign_amount TEXT,
+                    notes TEXT,
+                    vat_output REAL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    hash TEXT UNIQUE NOT NULL,
+                    CHECK(invoice_date IS NOT NULL OR payment_date IS NOT NULL)
+                );
+                CREATE TABLE audit_log (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    table_name TEXT NOT NULL,
+                    record_id INTEGER NOT NULL,
+                    record_uuid TEXT,
+                    action TEXT NOT NULL,
+                    old_data TEXT,
+                    new_data TEXT,
+                    user TEXT NOT NULL DEFAULT 'default'
+                );
+                """
+            )
+            conn.execute(
+                """INSERT INTO expenses
+                   (uuid, payment_date, vendor, amount_eur, is_rc, vat_input,
+                    vat_output, hash)
+                   VALUES (?, ?, ?, ?, 1, 0.0, 19.0, ?)""",
+                (
+                    "legacy-rc",
+                    "2026-01-15",
+                    "Legacy SaaS",
+                    -100.0,
+                    "legacy-rc-hash",
+                ),
+            )
+
+        self.run_cli(["init"], check=True)
+        with sqlite3.connect(self.db_path) as conn:
+            columns = {
+                row[1]
+                for row in conn.execute("PRAGMA table_info(expenses)").fetchall()
+            }
+            rc_type = conn.execute(
+                "SELECT rc_type FROM expenses WHERE uuid = ?",
+                ("legacy-rc",),
+            ).fetchone()[0]
+        self.assertIn("rc_type", columns)
+        self.assertNotIn("is_rc", columns)
+        self.assertNotIn("rc_jurisdiction", columns)
+        self.assertEqual(rc_type, "unclassified")
 
     def test_import_missing_required_fails(self):
         import_file = self.root / "import_missing.csv"

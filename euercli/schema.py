@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS expenses (
     ledger_account TEXT,
     foreign_amount TEXT,
     notes TEXT,
-    is_rc INTEGER NOT NULL DEFAULT 0,
+    rc_type TEXT NOT NULL DEFAULT 'none'
+        CHECK(rc_type IN ('none', 'eu', 'third_country', 'unclassified')),
     vat_input REAL,
     vat_output REAL,
     is_private_paid INTEGER NOT NULL DEFAULT 0 CHECK(is_private_paid IN (0, 1)),

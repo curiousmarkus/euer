@@ -12,8 +12,21 @@ from .models import Expense, LedgerAccount
 from .private_classification import classify_expense_private_paid
 from .utils import get_optional, hash_date, resolve_dates
 
+VALID_RC_TYPES = {"none", "eu", "third_country", "unclassified"}
+CREATABLE_RC_TYPES = {"none", "eu", "third_country"}
+
 
 def row_to_expense(row: sqlite3.Row) -> Expense:
+    rc_type = get_optional(row, "rc_type")
+    if rc_type is None:
+        rc_jurisdiction = get_optional(row, "rc_jurisdiction")
+        if rc_jurisdiction:
+            rc_type = rc_jurisdiction
+        elif bool(get_optional(row, "is_rc") or 0):
+            rc_type = "unclassified"
+        else:
+            rc_type = "none"
+
     return Expense(
         id=row["id"],
         uuid=row["uuid"],
@@ -29,7 +42,7 @@ def row_to_expense(row: sqlite3.Row) -> Expense:
         receipt_name=get_optional(row, "receipt_name"),
         foreign_amount=get_optional(row, "foreign_amount"),
         notes=get_optional(row, "notes"),
-        is_rc=bool(get_optional(row, "is_rc") or 0),
+        rc_type=rc_type,
         vat_input=get_optional(row, "vat_input"),
         vat_output=get_optional(row, "vat_output"),
         is_private_paid=bool(get_optional(row, "is_private_paid") or 0),
@@ -145,6 +158,42 @@ def _resolve_expense_category(
     return category_id, resolved_category_name, resolved_ledger_account_key
 
 
+def _validate_rc_type(value: str) -> None:
+    if value not in VALID_RC_TYPES:
+        raise ValidationError(
+            "Ungültiger Reverse-Charge-Typ. Erlaubt sind: none, eu, third_country.",
+            code="invalid_rc_type",
+            details={"rc_type": value},
+        )
+
+
+def _resolve_create_rc_type(rc_type: str) -> str:
+    _validate_rc_type(rc_type)
+    if rc_type == "unclassified":
+        raise ValidationError(
+            "Reverse-Charge-Typ 'unclassified' ist nur für migrierte Altbuchungen zulässig.",
+            code="unclassified_rc_type_not_allowed",
+        )
+    return rc_type
+
+
+def _resolve_update_rc_type(
+    *,
+    current_rc_type: str,
+    rc_type: str | None,
+) -> str:
+    if rc_type is None:
+        _validate_rc_type(current_rc_type)
+        return current_rc_type
+    _validate_rc_type(rc_type)
+    if rc_type == "unclassified":
+        raise ValidationError(
+            "Reverse-Charge-Typ 'unclassified' ist nur für migrierte Altbuchungen zulässig.",
+            code="unclassified_rc_type_not_allowed",
+        )
+    return rc_type
+
+
 def create_expense(
     conn: sqlite3.Connection,
     *,
@@ -160,7 +209,7 @@ def create_expense(
     foreign_amount: str | None = None,
     receipt_name: str | None = None,
     notes: str | None = None,
-    is_rc: bool = False,
+    rc_type: str = "none",
     vat: float | None = None,
     vat_input: float | None = None,
     vat_output: float | None = None,
@@ -184,10 +233,11 @@ def create_expense(
         ledger_account_key=ledger_account_key,
         ledger_accounts=ledger_accounts,
     )
+    resolved_rc_type = _resolve_create_rc_type(rc_type)
 
     resolved_vat_input, resolved_vat_output = _resolve_create_vat(
         tax_mode=tax_mode,
-        is_rc=is_rc,
+        is_rc=resolved_rc_type != "none",
         amount_eur=amount_eur,
         legacy_vat=vat,
         vat_input=vat_input,
@@ -224,8 +274,9 @@ def create_expense(
 
     cursor = conn.execute(
         """INSERT INTO expenses
-           (uuid, receipt_name, payment_date, invoice_date, vendor, category_id, amount_eur, account,
-            ledger_account, foreign_amount, notes, is_rc, vat_input, vat_output,
+           (uuid, receipt_name, payment_date, invoice_date, vendor, category_id,
+            amount_eur, account, ledger_account, foreign_amount, notes, rc_type,
+            vat_input, vat_output,
             is_private_paid, private_classification, hash)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
@@ -240,7 +291,7 @@ def create_expense(
             resolved_ledger_account_key,
             foreign_amount,
             notes,
-            1 if is_rc else 0,
+            resolved_rc_type,
             resolved_vat_input,
             resolved_vat_output,
             1 if is_private_paid else 0,
@@ -263,7 +314,7 @@ def create_expense(
         "ledger_account": resolved_ledger_account_key,
         "foreign_amount": foreign_amount,
         "notes": notes,
-        "is_rc": 1 if is_rc else 0,
+        "rc_type": resolved_rc_type,
         "vat_input": resolved_vat_input,
         "vat_output": resolved_vat_output,
         "is_private_paid": 1 if is_private_paid else 0,
@@ -296,7 +347,7 @@ def create_expense(
         receipt_name=receipt_name,
         foreign_amount=foreign_amount,
         notes=notes,
-        is_rc=is_rc,
+        rc_type=resolved_rc_type,
         vat_input=resolved_vat_input,
         vat_output=resolved_vat_output,
         is_private_paid=is_private_paid,
@@ -317,7 +368,7 @@ def list_expenses(
                c.name as category_name,
                c.eur_line as category_eur_line, e.amount_eur, e.account, e.ledger_account,
                e.receipt_name,
-               e.foreign_amount, e.notes, e.is_rc, e.vat_input, e.vat_output,
+               e.foreign_amount, e.notes, e.rc_type, e.vat_input, e.vat_output,
                e.is_private_paid, e.private_classification, e.hash
         FROM expenses e
         LEFT JOIN categories c ON e.category_id = c.id
@@ -347,7 +398,7 @@ def get_expense_detail(conn: sqlite3.Connection, record_id: int) -> Expense:
                   c.name as category_name,
                   c.eur_line as category_eur_line, e.amount_eur, e.account, e.ledger_account,
                   e.receipt_name,
-                  e.foreign_amount, e.notes, e.is_rc, e.vat_input, e.vat_output,
+                  e.foreign_amount, e.notes, e.rc_type, e.vat_input, e.vat_output,
                   e.is_private_paid, e.private_classification, e.hash
            FROM expenses e
            LEFT JOIN categories c ON e.category_id = c.id
@@ -380,7 +431,7 @@ def update_expense(
     receipt_name: str | None = None,
     notes: str | None = None,
     vat: float | None = None,
-    is_rc: bool = False,
+    rc_type: str | None = None,
     private_paid: bool | None = None,
     private_accounts: list[str] | None = None,
     tax_mode: str,
@@ -421,10 +472,14 @@ def update_expense(
     new_vat_output = row["vat_output"]
 
     manual_vat = vat
-    current_rc = row["is_rc"] == 1
-    new_rc = True if is_rc else current_rc
+    current_rc_type = get_optional(row, "rc_type") or "none"
+    new_rc_type = _resolve_update_rc_type(
+        current_rc_type=current_rc_type,
+        rc_type=rc_type,
+    )
+    new_rc = new_rc_type != "none"
 
-    recalc_tax = (vat is not None) or is_rc or (amount_eur is not None)
+    recalc_tax = (vat is not None) or (rc_type is not None) or (amount_eur is not None)
 
     if recalc_tax:
         calc_amount = new_amount
@@ -468,7 +523,11 @@ def update_expense(
     resolved_category_name = existing_category_name
     resolved_ledger_account_key = get_optional(row, "ledger_account")
     if ledger_account_key is not None:
-        category_id, resolved_category_name, resolved_ledger_account_key = _resolve_expense_category(
+        (
+            category_id,
+            resolved_category_name,
+            resolved_ledger_account_key,
+        ) = _resolve_expense_category(
             conn,
             category_name=category_name,
             ledger_account_key=ledger_account_key,
@@ -534,8 +593,10 @@ def update_expense(
 
     conn.execute(
         """UPDATE expenses SET
-           receipt_name = ?, payment_date = ?, invoice_date = ?, vendor = ?, category_id = ?, amount_eur = ?,
-           account = ?, ledger_account = ?, foreign_amount = ?, notes = ?, is_rc = ?, vat_input = ?, vat_output = ?,
+           receipt_name = ?, payment_date = ?, invoice_date = ?, vendor = ?,
+           category_id = ?, amount_eur = ?,
+           account = ?, ledger_account = ?, foreign_amount = ?, notes = ?, rc_type = ?,
+           vat_input = ?, vat_output = ?,
            is_private_paid = ?, private_classification = ?, hash = ?
            WHERE id = ?""",
         (
@@ -549,7 +610,7 @@ def update_expense(
             resolved_ledger_account_key,
             new_foreign,
             new_notes,
-            1 if new_rc else 0,
+            new_rc_type,
             new_vat_input,
             new_vat_output,
             1 if new_is_private_paid else 0,
@@ -573,7 +634,7 @@ def update_expense(
         "ledger_account": resolved_ledger_account_key,
         "foreign_amount": new_foreign,
         "notes": new_notes,
-        "is_rc": 1 if new_rc else 0,
+        "rc_type": new_rc_type,
         "vat_input": new_vat_input,
         "vat_output": new_vat_output,
         "is_private_paid": 1 if new_is_private_paid else 0,
@@ -607,7 +668,7 @@ def update_expense(
         receipt_name=new_receipt,
         foreign_amount=new_foreign,
         notes=new_notes,
-        is_rc=new_rc,
+        rc_type=new_rc_type,
         vat_input=new_vat_input,
         vat_output=new_vat_output,
         is_private_paid=new_is_private_paid,

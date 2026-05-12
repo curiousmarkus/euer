@@ -14,6 +14,7 @@ from ..services.errors import RecordNotFoundError, ValidationError
 from ..services.expenses import update_expense
 from ..services.income import update_income
 from ..services.private_transfers import UNSET, update_private_transfer
+from ..utils import normalize_cli_rc_type
 from .helpers import warn_unusual_date_order
 
 
@@ -32,6 +33,13 @@ def cmd_update_expense(args):
         conn.close()
         sys.exit(1)
 
+    if args.no_rc:
+        rc_type: str | None = "none"
+    elif args.rc is not None:
+        rc_type = normalize_cli_rc_type(args.rc)
+    else:
+        rc_type = None
+
     try:
         expense = update_expense(
             conn,
@@ -48,7 +56,7 @@ def cmd_update_expense(args):
             receipt_name=args.receipt,
             notes=args.notes,
             vat=args.vat,
-            is_rc=bool(args.rc),
+            rc_type=rc_type,
             private_paid=args.private_paid,
             private_accounts=private_accounts,
             tax_mode=tax_mode,

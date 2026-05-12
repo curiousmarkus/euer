@@ -150,8 +150,9 @@ def main() -> None:
     )
     add_expense_parser.add_argument(
         "--rc",
-        action="store_true",
-        help="Reverse-Charge: berechnet 19%% USt automatisch",
+        choices=["eu", "third-country"],
+        metavar="{eu,third-country}",
+        help="Reverse-Charge mit Jurisdiktion: eu oder third-country",
     )
     add_expense_parser.set_defaults(func=cmd_add_expense)
 
@@ -345,10 +346,17 @@ def main() -> None:
         help="Entfernt Markierung als privat bezahlt",
     )
     upd_exp_parser.set_defaults(private_paid=None)
-    upd_exp_parser.add_argument(
+    upd_rc_group = upd_exp_parser.add_mutually_exclusive_group()
+    upd_rc_group.add_argument(
         "--rc",
+        choices=["eu", "third-country"],
+        metavar="{eu,third-country}",
+        help="Setzt Reverse-Charge mit Jurisdiktion: eu oder third-country",
+    )
+    upd_rc_group.add_argument(
+        "--no-rc",
         action="store_true",
-        help="Reverse-Charge: setzt Flag und berechnet ggf. 19%% USt",
+        help="Entfernt Reverse-Charge und Jurisdiktion",
     )
     upd_exp_parser.set_defaults(func=cmd_update_expense)
 

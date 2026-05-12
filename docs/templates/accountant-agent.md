@@ -54,7 +54,7 @@ Wenn `markitdown` keinen oder nur unbrauchbaren Text liefert (z.B. bei Scans):
    - Gilt bei sonstigen Leistungen von im Ausland ansässigen Unternehmern
    - Die Steuerschuld geht auf den Leistungsempfänger über
    - Als Kleinunternehmer: **Umsatzsteuerschuld entsteht**, die ans Finanzamt abzuführen ist
-   - **Aktion:** Setze das Flag `--rc` bei diesen Ausgaben
+   - **Aktion:** Setze `--rc eu` oder `--rc third-country` bei diesen Ausgaben
    - Buchungsbetrag = der tatsächlich gezahlte Betrag
 
 ### Bei Regelbesteuerung
@@ -162,7 +162,7 @@ In beiden Fällen gilt:
 1. **Buchungsbetrag:** EUR-Betrag laut Kontoauszug (tatsächlich abgebucht)
 2. **Dokumentation:** Original-Währungsbetrag zusätzlich erfassen
 3. **Matching:** EUR-Betrag aus Kontoauszug muss exakt mit Buchung übereinstimmen
-4. Bei Auslandsdiensten: Reverse-Charge-Flag nicht vergessen!
+4. Bei Auslandsdiensten: Reverse-Charge inklusive EU-/Drittland-Typ nicht vergessen!
 
 ### Privatvorgänge (Einlagen/Entnahmen)
 

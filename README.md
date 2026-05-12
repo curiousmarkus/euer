@@ -25,7 +25,8 @@ Die meisten Tools zwingen dich zu einer Entscheidung: Entweder du nutzt unflexib
 - **EÜR-konforme Kategorien:** Direkt einsatzbereit mit den offiziellen Zeilennummern für die Anlage EÜR.
 - **Optionaler Kontenrahmen:** Frei konfigurierbare Buchungskonten (`[[ledger_accounts]]`) mit automatischer Kategoriezuordnung.
 - **Umsatzsteuer-Logik:** Voller Support für Regelbesteuerung (USt/Vorsteuer) sowie Kleinunternehmerregelung (§19 UStG).
-- **Reverse-Charge Support:** Umsatzsteuerliche Behandlung von Dienstleistern aus dem EU/Drittland-Ausland (§13b UStG).
+- **Reverse-Charge Support:** Umsatzsteuerliche Behandlung von Dienstleistern aus
+  dem EU-/Drittland-Ausland (§13b UStG) inklusive persistiertem RC-Typ.
 - **Beleg-Management:** Verknüpfe digitale Belege (PDF/Bilder) direkt mit deinen Buchungen.
 
 ---

@@ -6,6 +6,7 @@ from ..config import get_export_dir, get_ledger_accounts, load_config
 from ..constants import DEFAULT_EXPORT_DIR
 from ..db import get_db_connection
 from ..services.errors import ValidationError
+from ..utils import format_rc_type
 
 # Optional: openpyxl für XLSX-Export
 try:
@@ -87,7 +88,7 @@ def cmd_export(args):
         f"""SELECT e.receipt_name, e.payment_date, e.invoice_date, e.vendor,
                   c.name as category, c.eur_line,
                   e.amount_eur, e.account, e.ledger_account, e.foreign_amount, e.notes,
-                  e.is_rc, e.vat_input, e.vat_output
+                  e.rc_type, e.vat_input, e.vat_output
            FROM expenses e
            LEFT JOIN categories c ON e.category_id = c.id
            {year_filter}
@@ -181,7 +182,7 @@ def cmd_export(args):
                         ledger_account_numbers.get((r["ledger_account"] or "").lower(), ""),
                         r["foreign_amount"] or "",
                         r["notes"] or "",
-                        "X" if r["is_rc"] else "",
+                        format_rc_type(r["rc_type"]),
                         f"{r['vat_input']:.2f}" if r["vat_input"] else "",
                         f"{r['vat_output']:.2f}" if r["vat_output"] else "",
                     ]
@@ -344,7 +345,7 @@ def cmd_export(args):
                     ledger_account_numbers.get((r["ledger_account"] or "").lower(), ""),
                     r["foreign_amount"] or "",
                     r["notes"] or "",
-                    "X" if r["is_rc"] else "",
+                    format_rc_type(r["rc_type"]),
                     r["vat_output"] if r["vat_output"] else None,
                 ]
             )

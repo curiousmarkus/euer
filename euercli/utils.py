@@ -1,6 +1,13 @@
 import hashlib
 import json
 
+PUBLIC_RC_TYPES = {
+    "none": "",
+    "eu": "eu",
+    "third_country": "third-country",
+    "unclassified": "unclassified",
+}
+
 
 def compute_hash(
     date: str, vendor_or_source: str, amount_eur: float, receipt_name: str = ""
@@ -13,6 +20,20 @@ def compute_hash(
 def format_amount(amount: float) -> str:
     """Formatiert einen Betrag mit deutschem Zahlenformat."""
     return f"{amount:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def format_rc_type(value: str | None) -> str:
+    """Formatiert persistierte RC-Typen für CLI/CSV."""
+    if value is None:
+        return ""
+    return PUBLIC_RC_TYPES.get(value, value)
+
+
+def normalize_cli_rc_type(value: str | None) -> str:
+    """Normalisiert CLI-Werte für RC-Typen auf DB-Werte."""
+    if value is None:
+        return "none"
+    return value.replace("-", "_")
 
 
 def parse_bool(value: object) -> bool:

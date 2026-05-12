@@ -49,6 +49,23 @@ def cmd_summary(args):
         )
         print()
 
+    legacy_rc_count = conn.execute(
+        """SELECT COUNT(*) as cnt FROM expenses
+           WHERE rc_type = 'unclassified'
+             AND payment_date IS NOT NULL
+             AND strftime('%Y', payment_date) = ?""",
+        (str(year),),
+    ).fetchone()["cnt"]
+    if legacy_rc_count > 0:
+        print(
+            f"Hinweis: {legacy_rc_count} Reverse-Charge-Buchung(en) ohne EU-/Drittland-Typ."
+        )
+        print(
+            "  → Für die spätere USt-Voranmeldung bitte per "
+            "`euer update expense <ID> --rc eu|third-country` nachpflegen."
+        )
+        print()
+
     # Ausgaben nach Kategorie
     expenses = conn.execute(
         """SELECT c.name, c.eur_line, SUM(e.amount_eur) as total

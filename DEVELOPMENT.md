@@ -107,20 +107,23 @@ def cmd_import(args):
 ## Implementierte Funktionalitaeten (Kurzueberblick)
 
 Dieser Abschnitt hilft Contributor:innen, bestehende Features zu verstehen,
-damit Erweiterungen konsistent und risikoarm umgesetzt werden koennen.
+damit Erweiterungen konsistent und risikoarm umgesetzt werden können.
 
 - **Core CLI**: `init`, `setup`, `config show`, `list categories`.
-- **Buchungen**: `add`, `list`, `update`, `delete` fuer `expenses` und `income`.
-- **Audit-Log**: Jede Aenderung (INSERT/UPDATE/DELETE) wird protokolliert.
+- **Buchungen**: `add`, `list`, `update`, `delete` für `expenses` und `income`.
+- **Audit-Log**: Jede Änderung (INSERT/UPDATE/DELETE) wird protokolliert.
 - **Service Layer**: Logik ist typisiert (Dataclasses) und nutzt Exceptions statt `sys.exit()`.
 - **Import**: CSV/JSONL mit Normalisierung, Duplikat-Schutz (Hash).
-- **Incomplete**: unvollstaendige Buchungen werden live aus `expenses`/`income` berechnet.
-- **Summary**: Jahreszusammenfassung inkl. RC/Steuerlogik.
+- **Incomplete**: unvollständige Buchungen werden live aus `expenses`/`income` berechnet.
+- **Summary**: Jahreszusammenfassung inkl. RC/Steuerlogik und Hinweis auf
+  unklassifizierte RC-Altbuchungen.
 - **Export**: CSV (immer), XLSX optional via `openpyxl`.
 - **Kontenrahmen**: Optionaler `[[ledger_accounts]]`-Kontenrahmen in der Config mit
   automatischer Kategorieauflösung bei `add`/`update`/`import`.
 - **Receipts**: Belegpfade in Config, Check + Open.
 - **Steuermodi**: `small_business` und `standard` (RC Handling inkl. USt/VoSt).
+- **RC-Typ**: Reverse-Charge-Ausgaben speichern `none`, `eu`,
+  `third_country` oder den Migrationszustand `unclassified`.
 
 ## Versionierung
 
@@ -158,8 +161,8 @@ Nach Abschluss einer Spec-Implementierung oder eines größeren Feature-Bundles:
 
 Wenn du ein Feature erweiterst, beachte:
 - **Konventionen**: deutschsprachige Ausgaben, parametrisierte SQL, Audit-Log.
-- **Kompatibilitaet**: CLI-Argumente sollten abwaertskompatibel bleiben.
-- **Tests**: Passe `tests/test_cli.py` an oder erweitere es bei Feature-Aenderungen.
+- **Kompatibilität**: CLI-Argumente sollten abwärtskompatibel bleiben.
+- **Tests**: Passe `tests/test_cli.py` an oder erweitere es bei Feature-Änderungen.
 - **Service Layer**: Alle Schreiboperationen gehören in `euercli/services/` (siehe Pflichtregeln oben).
 
 ## Datenmodell (Überblick)
@@ -167,7 +170,8 @@ Wenn du ein Feature erweiterst, beachte:
 Die vollständigen DDLs stehen in `euercli/schema.py`.
 
 - **categories**: UUID, Name, EÜR‑Zeile, Typ (expense/income).
-- **expenses**: UUID, Ausgaben inkl. Beleg, Konto, Fremdwährung, RC‑Flags, Steuern, Private Klassifikation.
+- **expenses**: UUID, Ausgaben inkl. Beleg, Konto, Fremdwährung, RC‑Typ,
+  Steuern, Private Klassifikation.
 - **income**: UUID, Einnahmen inkl. Beleg, Fremdwährung, Umsatzsteuer.
 - **private_transfers**: UUID, Privateinlagen/-entnahmen, Betrag, optionale Referenz auf Expense.
 - **audit_log**: Protokolliert INSERT/UPDATE/DELETE inkl. Vorher/Nachher + `record_uuid`.
@@ -185,6 +189,8 @@ Der Modus wird aus der Config gelesen (`[tax].mode`).
 
 - `small_business` (Default): keine Vorsteuer; RC erzeugt Umsatzsteuer‑Zahllast.
 - `standard`: Vorsteuer wird erfasst; RC bucht USt und VorSt gleichzeitig.
+- RC-Ausgaben werden per `--rc eu` oder `--rc third-country` erfasst; intern
+  wird `third-country` als `third_country` gespeichert.
 
 ## Import & Incomplete
 
@@ -288,5 +294,5 @@ Offene Change Requests werden innerhalb der jeweiligen Spec dokumentiert.
 | 008 | Privateinlagen & Privatentnahmen | Implementiert |
 | 009 | Service-Layer-Architektur (Import) | Implementiert |
 | 010 | Kontenrahmen (Buchungskonten je Kategorie) | Implementiert |
-| 011 | Reverse-Charge-Jurisdiktion (EU vs. Drittland) | Offen |
+| 011 | Reverse-Charge-Typ (EU vs. Drittland) | Implementiert |
 | 012 | `vat-report` | Offen |

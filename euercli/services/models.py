@@ -36,7 +36,7 @@ class Expense:
     receipt_name: str | None = None
     foreign_amount: str | None = None
     notes: str | None = None
-    is_rc: bool = False
+    rc_type: str = "none"
     vat_input: float | None = None
     vat_output: float | None = None
     is_private_paid: bool = False
@@ -47,6 +47,11 @@ class Expense:
     def date(self) -> str:
         """Kompatibilitätsalias: priorisiert Wertstellungsdatum."""
         return self.payment_date or self.invoice_date or ""
+
+    @property
+    def is_rc(self) -> bool:
+        """Gibt an, ob die Ausgabe Reverse Charge ist."""
+        return self.rc_type != "none"
 
 
 @dataclass

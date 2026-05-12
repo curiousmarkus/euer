@@ -88,17 +88,17 @@ euer add expense \
     [--foreign "Betrag Währung"] \
     [--notes "Bemerkung"] \
     [--vat 3.50]  # Manueller Steuerbetrag in EUR (nicht %) \
-    [--rc]  # Reverse-Charge für ausländische Anbieter \
+    [--rc eu|third-country]  # Reverse-Charge-Typ \
     [--private-paid]  # Als privat bezahlt markieren (Sacheinlage)
 
 # Ausgaben anzeigen
 euer list expenses [--year YYYY] [--month MM] [--category "..."] [--full]
-# Zeigt RC-Flag, USt (Output) und VorSt (Input) an, falls vorhanden.
+# Zeigt RC-Typ, USt (Output) und VorSt (Input) an, falls vorhanden.
 # Mit --full zeigt die Tabelle zusätzlich Konto, Beleg, Fremdwährung und Notiz.
 # Kategorieanzeige in Listen: `(<EÜR-Zeile>) <Name>` (z.B. `(51) Arbeitsmittel`).
 
 # Ausgabe aktualisieren
-euer update expense <ID> [--payment-date ...] [--invoice-date ...] [--vendor ...] [--amount ...] [--rc] [--private-paid|--no-private-paid] ...
+euer update expense <ID> [--payment-date ...] [--invoice-date ...] [--vendor ...] [--amount ...] [--rc eu|third-country|--no-rc] [--private-paid|--no-private-paid] ...
 
 # Ausgabe löschen
 euer delete expense <ID> [--force]
@@ -214,10 +214,12 @@ Import-Schema (Kurzfassung):
 - Fehlende Pflichtfelder führen zu einem Import-Abbruch.
 - Alias-Keys (Auszug): `EUR`, `Belegname`, `Lieferant`, `Quelle`, `RC`,
   `Vorsteuer`, `Umsatzsteuer`, `Privat bezahlt`
+- `rc` akzeptiert `eu` oder `third-country`; Legacy-Werte `rc=true|X` brauchen
+  zusätzlich eine Jurisdiktionsspalte.
 - `private_paid=true|1|yes|X` markiert die Ausgabe manuell als Sacheinlage.
 - Kategorien wie `Arbeitsmittel (51)` werden automatisch auf `Arbeitsmittel` bereinigt.
 - Steuerfelder:
-  - `small_business` + `rc=true`: `vat_output` wird automatisch aus `amount_eur * 0.19` berechnet,
+  - `small_business` + `rc=eu|third-country`: `vat_output` wird automatisch aus `amount_eur * 0.19` berechnet,
     `vat_input` wird auf `0.0` gesetzt (Felder können weggelassen werden).
   - `standard`: `vat_input` wird **nicht** automatisch berechnet (außer bei RC). Ohne `vat_input`
     bleibt es `0.0`. `amount_eur` wird immer 1:1 gespeichert (keine Netto/Brutto‑Umrechnung).
@@ -268,9 +270,9 @@ mode = "small_business"  # oder "standard"
     *   Einnahmen: Umsatzsteuer (`vat_output`) wird erfasst.
     *   Reverse-Charge: Nullsummenspiel (Umsatzsteuer = Vorsteuer).
 
-### Reverse-Charge (--rc)
+### Reverse-Charge (--rc eu|third-country)
 
-Verwende `--rc` bei ausländischen Anbietern ohne deutsche USt:
+Verwende `--rc eu` oder `--rc third-country` bei ausländischen Anbietern ohne deutsche USt:
 - OpenAI, Anthropic
 - Render, Vercel, Netlify
 - AWS, Google Cloud, Azure
@@ -280,6 +282,9 @@ Berechnet automatisch 19% USt.
 - **Kleinunternehmer**: Erhöht die Zahllast.
 - **Regelbesteuerung**: Bucht USt und VorSt gleichzeitig (Zahllast-neutral).
 Hinweis: Bei `small_business` setzt RC automatisch `vat_output`, `vat_input` bleibt `0.0`.
+Die Anwendung leitet `eu`/`third-country` nicht automatisch aus Anbieter oder Land ab.
+Bestehende RC-Buchungen ohne EU-/Drittland-Typ per `euer update expense <ID> --rc ...`
+nachpflegen.
 
 ### Kategorien
 
@@ -333,7 +338,7 @@ der nicht abziehbare 30%-Anteil wird nur im Summary ausgewiesen.
 | `vendor` | Lieferant | Name des Anbieters |
 | `category` | Kategorie | Name der Ausgabenkategorie |
 | `amount_eur`| Bruttobetrag | **Immer negativ** (z.B. -10.00) |
-| `rc` | Reverse-Charge | `X` markiert Steuerpflicht aus dem Ausland |
+| `rc` | Reverse-Charge-Typ | leer, `eu`, `third-country` oder `unclassified` |
 | `vat_input` | Vorsteuer | Forderung an FA (positiv), nur bei Regelbest. |
 | `vat_output`| RC Umsatzsteuer | Schuld an FA (positiv), bei RC |
 | `account` | Konto | Verwendetes Bankkonto/Zahlart |
@@ -412,7 +417,7 @@ euer add expense \
     --amount -22.71 \
     --foreign "26.60 USD" \
     --receipt "2026-01-04_Render.pdf" \
-    --rc
+    --rc third-country
 ```
 
 ### Kundenrechnung buchen

@@ -9,6 +9,7 @@ from ..services.duplicates import DuplicateAction
 from ..services.errors import ValidationError
 from ..services.expenses import create_expense
 from ..services.income import create_income
+from ..utils import parse_bool
 
 
 def print_import_schema() -> None:
@@ -43,7 +44,8 @@ def print_import_schema() -> None:
     print("  category: category, category_name, Kategorie")
     print("  amount_eur: amount_eur, amount, EUR, Betrag, Betrag in EUR")
     print("  receipt_name: receipt_name, receipt, Belegname, Beleg")
-    print("  rc: rc, is_rc, RC")
+    print("  rc: rc, rc_type, is_rc, RC")
+    print("  rc_jurisdiction (Legacy): rc_jurisdiction, rc-jurisdiction, RC-Jurisdiktion")
     print("  private_paid: private_paid, Privat bezahlt")
     print("  vat_input: vat_input, Vorsteuer, USt-VA")
     print("  vat_output: vat_output, Umsatzsteuer")
@@ -58,6 +60,8 @@ def print_import_schema() -> None:
     print("  - CSV-Exporte von 'euer export' können direkt re-importiert werden.")
     print("  - Kategorien mit '(NN)' werden automatisch bereinigt.")
     print("  - private_paid=true|1|yes|X markiert manuell als Sacheinlage.")
+    print("  - rc akzeptiert leer, eu oder third-country.")
+    print("  - Legacy rc=true|X erfordert rc_jurisdiction=eu|third-country.")
     print("  - Unbekannte Kategorien werden als fehlend behandelt.")
     print("  - Unvollständige Felder (category/receipt/vat/account) werden später per")
     print("    `euer incomplete list` angezeigt.")
@@ -116,6 +120,21 @@ def cmd_import(args):
             missing_fields.append("amount_eur")
         if not normalized["party"]:
             missing_fields.append("party")
+        rc_type = normalized["rc_type"]
+        rc_raw = normalized["rc_raw"]
+        rc_jurisdiction_raw = normalized["rc_jurisdiction_raw"]
+        if normalized["type"] == "expense":
+            if rc_type is None:
+                missing_fields.append("invalid_rc_type")
+            if parse_bool(rc_raw) and rc_type == "none":
+                if rc_jurisdiction_raw is None:
+                    missing_fields.append("rc_type")
+                else:
+                    missing_fields.append("invalid_rc_type")
+            if rc_type == "unclassified":
+                missing_fields.append("unclassified_rc_type_not_allowed")
+        elif rc_raw is not None or rc_jurisdiction_raw is not None:
+            missing_fields.append("rc_type_without_expense")
         if missing_fields:
             errors.append((idx, missing_fields))
         else:
@@ -132,7 +151,10 @@ def cmd_import(args):
         normalized_rows.append(normalized)
 
     if errors:
-        print("Fehler: Import abgebrochen. Pflichtfelder fehlen:", file=sys.stderr)
+        print(
+            "Fehler: Import abgebrochen. Pflichtfelder fehlen oder Werte sind ungültig:",
+            file=sys.stderr,
+        )
         for row_idx, fields in errors:
             fields_str = ", ".join(fields)
             print(f"  Zeile {row_idx}: {fields_str}", file=sys.stderr)
@@ -152,7 +174,7 @@ def cmd_import(args):
             foreign_amount = normalized["foreign_amount"]
             receipt_name = normalized["receipt_name"]
             notes = normalized["notes"]
-            rc = normalized["rc"]
+            rc_type = normalized["rc_type"]
             private_paid = normalized["private_paid"]
             vat_input = normalized["vat_input"]
             vat_output = normalized["vat_output"]
@@ -173,7 +195,7 @@ def cmd_import(args):
                     foreign_amount=str(foreign_amount) if foreign_amount is not None else None,
                     receipt_name=str(receipt_name) if receipt_name is not None else None,
                     notes=str(notes) if notes is not None else None,
-                    is_rc=bool(rc),
+                    rc_type=str(rc_type),
                     vat_input=vat_input,
                     vat_output=vat_output,
                     private_paid=bool(private_paid),

@@ -18,6 +18,21 @@ def _migrate_expenses_dates(conn) -> None:
     invoice_expr = "invoice_date" if "invoice_date" in columns else "NULL"
     is_private_paid_expr = "is_private_paid" if "is_private_paid" in columns else "0"
     ledger_account_expr = "ledger_account" if "ledger_account" in columns else "NULL"
+    if "rc_type" in columns:
+        rc_type_expr = "rc_type"
+    elif "is_rc" in columns:
+        rc_jurisdiction_expr = (
+            "rc_jurisdiction" if "rc_jurisdiction" in columns else "NULL"
+        )
+        rc_type_expr = (
+            "CASE "
+            "WHEN COALESCE(is_rc, 0) = 0 THEN 'none' "
+            f"WHEN {rc_jurisdiction_expr} IN ('eu', 'third_country') "
+            f"THEN {rc_jurisdiction_expr} "
+            "ELSE 'unclassified' END"
+        )
+    else:
+        rc_type_expr = "'none'"
     private_classification_expr = (
         "private_classification" if "private_classification" in columns else "'none'"
     )
@@ -38,12 +53,15 @@ def _migrate_expenses_dates(conn) -> None:
             ledger_account TEXT,
             foreign_amount TEXT,
             notes TEXT,
-            is_rc INTEGER NOT NULL DEFAULT 0,
+            rc_type TEXT NOT NULL DEFAULT 'none'
+                CHECK(rc_type IN ('none', 'eu', 'third_country', 'unclassified')),
             vat_input REAL,
             vat_output REAL,
             is_private_paid INTEGER NOT NULL DEFAULT 0 CHECK(is_private_paid IN (0, 1)),
             private_classification TEXT NOT NULL DEFAULT 'none'
-                CHECK(private_classification IN ('none', 'account_rule', 'category_rule', 'manual')),
+                CHECK(private_classification IN (
+                    'none', 'account_rule', 'category_rule', 'manual'
+                )),
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             hash TEXT UNIQUE NOT NULL,
             CHECK(invoice_date IS NOT NULL OR payment_date IS NOT NULL)
@@ -54,14 +72,14 @@ def _migrate_expenses_dates(conn) -> None:
         f"""
         INSERT INTO expenses (
             id, uuid, receipt_name, payment_date, invoice_date, vendor, category_id,
-            amount_eur, account, ledger_account, foreign_amount, notes, is_rc, vat_input,
-            vat_output,
+            amount_eur, account, ledger_account, foreign_amount, notes, rc_type,
+            vat_input, vat_output,
             is_private_paid, private_classification, created_at, hash
         )
         SELECT
             id, uuid, receipt_name, {payment_expr}, {invoice_expr}, vendor, category_id,
-            amount_eur, account, {ledger_account_expr}, foreign_amount, notes, is_rc,
-            vat_input, vat_output,
+            amount_eur, account, {ledger_account_expr}, foreign_amount, notes,
+            {rc_type_expr}, vat_input, vat_output,
             {is_private_paid_expr}, {private_classification_expr}, created_at, hash
         FROM expenses_old
         """
@@ -135,6 +153,9 @@ def ensure_payment_invoice_columns(conn) -> None:
         "date" in expense_columns
         or "invoice_date" not in expense_columns
         or expense_columns.get("payment_date", {}).get("notnull") == 1
+        or "rc_type" not in expense_columns
+        or "is_rc" in expense_columns
+        or "rc_jurisdiction" in expense_columns
     )
     migrate_income = (
         "date" in income_columns

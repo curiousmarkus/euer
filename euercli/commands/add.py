@@ -15,7 +15,7 @@ from ..services.errors import ValidationError
 from ..services.expenses import create_expense
 from ..services.income import create_income
 from ..services.private_transfers import create_private_transfer
-from ..utils import format_amount
+from ..utils import format_amount, normalize_cli_rc_type
 from .helpers import warn_unusual_date_order
 
 
@@ -49,7 +49,10 @@ def cmd_add_expense(args):
         conn.close()
         sys.exit(1)
 
-    if tax_mode == "small_business" and not args.rc and args.vat is not None:
+    rc_type = normalize_cli_rc_type(args.rc)
+    is_rc = rc_type != "none"
+
+    if tax_mode == "small_business" and not is_rc and args.vat is not None:
         print(
             "Warnung: --vat wird im Kleinunternehmermodus bei normalen Ausgaben ignoriert.",
             file=sys.stderr,
@@ -74,7 +77,7 @@ def cmd_add_expense(args):
             foreign_amount=args.foreign,
             receipt_name=args.receipt,
             notes=args.notes,
-            is_rc=bool(args.rc),
+            rc_type=rc_type,
             vat=args.vat,
             private_paid=bool(args.private_paid),
             private_accounts=private_accounts,

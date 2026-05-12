@@ -10,6 +10,7 @@ from ..services.errors import ValidationError
 from ..services.expenses import list_expenses
 from ..services.income import list_income
 from ..services.private_transfers import get_private_transfer_list, get_private_paid_expenses
+from ..utils import format_rc_type
 
 
 def infer_booking_status(
@@ -94,7 +95,7 @@ def cmd_list_expenses(args):
                     infer_booking_status(r.payment_date, r.invoice_date, r.receipt_name),
                     r.foreign_amount or "",
                     r.notes or "",
-                    "X" if r.is_rc else "",
+                    format_rc_type(r.rc_type),
                     f"{r.vat_input:.2f}" if r.vat_input else "",
                     f"{r.vat_output:.2f}" if r.vat_output else "",
                 ]
@@ -116,7 +117,7 @@ def cmd_list_expenses(args):
             row_fmt = (
                 "{id:<5} {payment:<12} {invoice:<12} {vendor:<18} {category:<20} {amount:>10} "
                 "{account:<12} {receipt:<20} {foreign:<14} {notes:<24} {status:<35} "
-                "{rc:<3} {vout:>8} {vin:>8}"
+                "{rc:<13} {vout:>8} {vin:>8}"
             )
             header = row_fmt.format(
                 id="ID",
@@ -157,15 +158,42 @@ def cmd_list_expenses(args):
             print(header)
             print("-" * len(header))
         elif has_vat:
-            print(
-                f"{'ID':<5} {'Wertstellung':<12} {'Rechnung':<12} {'Lieferant':<18} {'Kategorie':<20} {'EUR':>10} {'Status':<35} {'RC':<3} {'USt':>8} {'VorSt':>8}"
+            row_fmt = (
+                "{id:<5} {payment:<12} {invoice:<12} {vendor:<18} "
+                "{category:<20} {amount:>10} {status:<35} {rc:<13} "
+                "{vout:>8} {vin:>8}"
             )
-            print("-" * 150)
+            header = row_fmt.format(
+                id="ID",
+                payment="Wertstellung",
+                invoice="Rechnung",
+                vendor="Lieferant",
+                category="Kategorie",
+                amount="EUR",
+                status="Status",
+                rc="RC",
+                vout="USt",
+                vin="VorSt",
+            )
+            print(header)
+            print("-" * len(header))
         else:
-            print(
-                f"{'ID':<5} {'Wertstellung':<12} {'Rechnung':<12} {'Lieferant':<20} {'Kategorie':<24} {'EUR':>10} {'Status':<35} {'Konto':<12}"
+            row_fmt = (
+                "{id:<5} {payment:<12} {invoice:<12} {vendor:<20} "
+                "{category:<24} {amount:>10} {status:<35} {account:<12}"
             )
-            print("-" * 140)
+            header = row_fmt.format(
+                id="ID",
+                payment="Wertstellung",
+                invoice="Rechnung",
+                vendor="Lieferant",
+                category="Kategorie",
+                amount="EUR",
+                status="Status",
+                account="Konto",
+            )
+            print(header)
+            print("-" * len(header))
 
         total = 0.0
         vat_out_total = 0.0
@@ -176,7 +204,7 @@ def cmd_list_expenses(args):
             if full_view and has_vat:
                 vout_str = f"{r.vat_output:.2f}" if r.vat_output else ""
                 vin_str = f"{r.vat_input:.2f}" if r.vat_input else ""
-                rc_str = "X" if r.is_rc else ""
+                rc_str = format_rc_type(r.rc_type)
                 print(
                     row_fmt.format(
                         id=r.id,
@@ -190,7 +218,7 @@ def cmd_list_expenses(args):
                         foreign=(r.foreign_amount or "")[:14],
                         notes=(r.notes or "")[:24],
                         status=status[:35],
-                        rc=rc_str,
+                        rc=rc_str[:13],
                         vout=vout_str,
                         vin=vin_str,
                     )
@@ -218,9 +246,20 @@ def cmd_list_expenses(args):
             elif has_vat:
                 vout_str = f"{r.vat_output:.2f}" if r.vat_output else ""
                 vin_str = f"{r.vat_input:.2f}" if r.vat_input else ""
-                rc_str = "X" if r.is_rc else ""
+                rc_str = format_rc_type(r.rc_type)
                 print(
-                    f"{r.id:<5} {(r.payment_date or ''):<12} {(r.invoice_date or ''):<12} {r.vendor[:18]:<18} {cat_str[:20]:<20} {r.amount_eur:>10.2f} {status[:35]:<35} {rc_str:<3} {vout_str:>8} {vin_str:>8}"
+                    row_fmt.format(
+                        id=r.id,
+                        payment=r.payment_date or "",
+                        invoice=r.invoice_date or "",
+                        vendor=r.vendor[:18],
+                        category=cat_str[:20],
+                        amount=f"{r.amount_eur:.2f}",
+                        status=status[:35],
+                        rc=rc_str[:13],
+                        vout=vout_str,
+                        vin=vin_str,
+                    )
                 )
                 if r.vat_output:
                     vat_out_total += r.vat_output
@@ -228,13 +267,19 @@ def cmd_list_expenses(args):
                     vat_in_total += r.vat_input
             else:
                 print(
-                    f"{r.id:<5} {(r.payment_date or ''):<12} {(r.invoice_date or ''):<12} {r.vendor[:20]:<20} {cat_str[:24]:<24} {r.amount_eur:>10.2f} {status[:35]:<35} {(r.account or ''):<12}"
+                    row_fmt.format(
+                        id=r.id,
+                        payment=r.payment_date or "",
+                        invoice=r.invoice_date or "",
+                        vendor=r.vendor[:20],
+                        category=cat_str[:24],
+                        amount=f"{r.amount_eur:.2f}",
+                        status=status[:35],
+                        account=r.account or "",
+                    )
                 )
             total += r.amount_eur
-        if full_view:
-            print("-" * len(header))
-        else:
-            print("-" * (150 if has_vat else 140))
+        print("-" * len(header))
         if full_view and has_vat:
             print(
                 row_fmt.format(
@@ -272,10 +317,32 @@ def cmd_list_expenses(args):
             )
         elif has_vat:
             print(
-                f"{'GESAMT':<90} {total:>10.2f} {'':<39} {vat_out_total:>8.2f} {vat_in_total:>8.2f}"
+                row_fmt.format(
+                    id="GESAMT",
+                    payment="",
+                    invoice="",
+                    vendor="",
+                    category="",
+                    amount=f"{total:.2f}",
+                    status="",
+                    rc="",
+                    vout=f"{vat_out_total:.2f}",
+                    vin=f"{vat_in_total:.2f}",
+                )
             )
         else:
-            print(f"{'GESAMT':<76} {total:>10.2f}")
+            print(
+                row_fmt.format(
+                    id="GESAMT",
+                    payment="",
+                    invoice="",
+                    vendor="",
+                    category="",
+                    amount=f"{total:.2f}",
+                    status="",
+                    account="",
+                )
+            )
 
 
 def cmd_list_income(args):

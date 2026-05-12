@@ -55,7 +55,8 @@ Erkläre kurz den Unterschied und frage dann:
    
    > Erkläre: "Nutzt du Online-Dienste von Unternehmen, die NICHT in Deutschland ansässig sind? Bei solchen Diensten gilt das sogenannte Reverse-Charge-Verfahren (§13b UStG): Die Steuerschuld geht auf dich über. Als Kleinunternehmer musst du diese USt ans Finanzamt abführen (ohne Vorsteuerabzug). Bei Regelbesteuerung gleicht sich das aus."
 
-   Frage: "Welche ausländischen Dienste nutzt du regelmäßig?"
+   Frage: "Welche ausländischen Dienste nutzt du regelmäßig, und sitzen sie steuerlich
+   in der EU oder in einem Drittland?"
    
    Beispiele: Adobe, AWS, Google Cloud, GitHub, Notion, Figma, Zoom, Slack, OpenAI, Anthropic, Vercel, Render, DigitalOcean, Stripe (Gebühren)
 
@@ -241,7 +242,7 @@ Geschäftsform: {{GESCHAEFTSFORM}}
 {{STEUER_REGELUNG}}
 
 **Reverse-Charge-Anbieter (§13b UStG):**  
-Flag `--rc` erforderlich bei: {{RC_ANBIETER_LISTE}}
+`--rc eu` oder `--rc third-country` erforderlich bei: {{RC_ANBIETER_LISTE}}
 
 ---
 

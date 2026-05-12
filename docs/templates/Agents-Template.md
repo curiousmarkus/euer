@@ -9,7 +9,7 @@ Geschäftsform: {{GESCHAEFTSFORM}}
 {{STEUER_REGELUNG}}
 
 **Reverse-Charge-Anbieter (§13b UStG):**  
-Flag `--rc` erforderlich bei: {{RC_ANBIETER_LISTE}}
+`--rc eu` oder `--rc third-country` erforderlich bei: {{RC_ANBIETER_LISTE}}
 
 ---
 

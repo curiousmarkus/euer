@@ -33,12 +33,15 @@ def collect_expense_missing(row: dict, tax_mode: str) -> list[str]:
         missing.append("account")
 
     if tax_mode == "standard":
-        if row["is_rc"]:
+        if row["rc_type"] != "none":
             if row["vat_input"] is None or row["vat_output"] is None:
                 missing.append("vat")
         else:
             if row["vat_input"] is None:
                 missing.append("vat")
+
+    if row["rc_type"] == "unclassified":
+        missing.append("rc_type")
 
     return missing
 
@@ -77,7 +80,7 @@ def cmd_incomplete_list(args):
             SELECT e.id, e.payment_date, e.invoice_date, e.vendor AS party,
                    e.category_id, c.name AS category_name,
                    c.eur_line, e.amount_eur, e.account, e.receipt_name, e.notes,
-                   e.is_rc, e.vat_input, e.vat_output
+                   e.rc_type, e.vat_input, e.vat_output
             FROM expenses e
             LEFT JOIN categories c ON e.category_id = c.id
             WHERE 1=1
