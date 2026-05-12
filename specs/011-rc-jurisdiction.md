@@ -103,18 +103,19 @@ mit aus.
 
 ### A3: `add expense`
 
-Das CLI wird um ein neues Flag erweitert:
+Das bestehende `--rc` wird von einem booleschen Flag zu einem Flag mit
+Pflichtwert:
 
 ```bash
-euer add expense --rc --rc-jurisdiction eu
-euer add expense --rc --rc-jurisdiction third-country
+euer add expense --rc eu
+euer add expense --rc third-country
 ```
 
 CLI-Regeln:
 
-- `--rc` bleibt ein boolesches Flag.
-- `--rc-jurisdiction` ist ein eigenes Flag.
-- Erlaubte CLI-Werte:
+- `--rc` bedeutet weiterhin: diese Ausgabe ist Reverse Charge.
+- `--rc` verlangt immer einen Wert.
+- Erlaubte Werte:
   - `eu`
   - `third-country`
 - Intern wird `third-country` als `third_country` gespeichert.
@@ -123,23 +124,25 @@ CLI-Regeln:
 
 Validierung:
 
-- `--rc` **ohne** `--rc-jurisdiction` ist ein Fehler.
-- `--rc-jurisdiction` **ohne** `--rc` ist ein Fehler.
+- `--rc` ohne Wert ist ein CLI-Fehler.
+- `--rc` mit anderem Wert als `eu` oder `third-country` ist ein CLI-Fehler.
 - Bei erfolgreicher RC-Anlage muss `rc_jurisdiction` persistiert werden.
 - Bei Nicht-RC-Buchungen darf kein Jurisdiktionswert gespeichert werden.
 
 Begründung:
 
-Die explizite Form `--rc --rc-jurisdiction ...` ist klarer und belastbarer als
-ein überladenes `--rc eu`.
+Die Form `--rc eu` / `--rc third-country` ist kurz, verständlich und verhindert
+neue RC-Buchungen ohne Jurisdiktion frühzeitig. Eine separate
+`--rc-jurisdiction`-Option wäre technisch präzise, aber für die tägliche
+Erfassung unnötig umständlich.
 
 ### A4: `update expense`
 
 Das Update-CLI wird symmetrisch erweitert:
 
 ```bash
-euer update expense 42 --rc --rc-jurisdiction eu
-euer update expense 42 --rc-jurisdiction third-country
+euer update expense 42 --rc eu
+euer update expense 42 --rc third-country
 euer update expense 42 --no-rc
 ```
 
@@ -147,26 +150,22 @@ Neue Flags:
 
 - `--rc`
 - `--no-rc`
-- `--rc-jurisdiction`
 
 Regeln:
 
 - `--rc` und `--no-rc` sind gegenseitig exklusiv.
+- `--rc` verlangt immer einen Wert (`eu` oder `third-country`).
+- `--rc eu` / `--rc third-country` setzt oder aktualisiert RC inklusive
+  Jurisdiktion.
 - Wird eine Buchung auf Nicht-RC gesetzt (`--no-rc`), muss
   `rc_jurisdiction` auf `NULL` zurückgesetzt werden.
-- Wird eine Buchung von Nicht-RC auf RC umgestellt, muss in demselben Aufruf
-  eine Jurisdiktion angegeben werden.
 - Bestehende Legacy-RC-Buchungen mit `NULL` dürfen weiterhin in anderen Feldern
   bearbeitet werden; sie werden nicht blockiert.
-- Legacy-RC-Buchungen müssen per `update expense --rc-jurisdiction ...`
+- Legacy-RC-Buchungen müssen per `update expense --rc ...`
   nachklassifiziert werden können.
-- `--rc-jurisdiction` ohne `--rc` ist erlaubt, wenn die bestehende Buchung
-  bereits RC ist. Dadurch bleibt die Nachpflege kurz und verständlich.
-- `--rc-jurisdiction` ohne `--rc` ist ein Fehler, wenn die bestehende Buchung
-  keine RC-Buchung ist.
-- Es gibt kein separates `--clear-rc-jurisdiction`. Der Wert wird ausschließlich
-  durch `--no-rc` entfernt. Das vermeidet ein redundantes Flag, weil eine aktive
-  RC-Buchung fachlich nicht bewusst "ohne Jurisdiktion" gesetzt werden soll.
+- Es gibt weder `--rc-jurisdiction` noch `--clear-rc-jurisdiction`. Der
+  Jurisdiktionswert wird ausschließlich über `--rc <jurisdiktion>` gesetzt und
+  ausschließlich über `--no-rc` entfernt.
 
 Implementierungshinweis:
 
@@ -174,6 +173,8 @@ Implementierungshinweis:
   - `is_rc=True`: RC explizit setzen
   - `is_rc=False`: RC explizit entfernen
   - `is_rc=None`: RC unverändert lassen
+- Die CLI normalisiert `--rc third-country` zu `rc_jurisdiction="third_country"`
+  und setzt im Service-Aufruf `is_rc=True`.
 
 ### A5: Service-Layer-Validierung
 
@@ -193,14 +194,23 @@ Mindestregeln:
   aktiviert.
 - Wird bei einem Update `is_rc=False` gesetzt, wird `rc_jurisdiction` immer auf
   `NULL` normalisiert.
-- Wird bei einem Update nur `rc_jurisdiction` gesetzt, gilt das als
-  Nachklassifizierung einer bereits aktiven RC-Buchung.
+- Wird bei einem Update `is_rc=True` mit `rc_jurisdiction` gesetzt, gilt das je
+  nach vorherigem Zustand als Aktivierung oder Nachklassifizierung einer bereits
+  aktiven RC-Buchung.
 
 Empfohlene Fehlerfälle:
 
 - `rc_jurisdiction_required`
 - `rc_jurisdiction_without_rc`
 - `invalid_rc_jurisdiction`
+
+Hinweis zur CLI-Abwärtskompatibilität:
+
+- Das bisherige `--rc` ohne Wert wird in dieser Spec bewusst nicht
+  weitergeführt.
+- Es gibt keine Übergangsform `--rc --rc-jurisdiction ...`.
+- Der Bruch ist akzeptiert, weil die neue Form Fehler früh verhindert und das
+  Projekt noch vor der Implementierung der UStVA-Auswertung steht.
 
 ### A6: Import
 
@@ -259,7 +269,7 @@ Beispiel:
 
 ```text
 Hinweis: 3 Reverse-Charge-Buchung(en) ohne Jurisdiktion.
-  → Für die spätere USt-Voranmeldung bitte per `euer update expense <ID> --rc-jurisdiction ...` nachpflegen.
+  → Für die spätere USt-Voranmeldung bitte per `euer update expense <ID> --rc eu|third-country` nachpflegen.
 ```
 
 Die eigentliche Zuordnung zu KZ 46/47 bzw. KZ 84/85 erfolgt erst in Spec 012.
@@ -306,7 +316,7 @@ Betroffene Dateien:
 | `euercli/commands/init.py` | Migration bestehender DBs |
 | `euercli/services/models.py` | Feld in `Expense` |
 | `euercli/services/expenses.py` | Persistenz, Validierung, Row-Mapping |
-| `euercli/cli.py` | Neue Flags für Add/Update |
+| `euercli/cli.py` | `--rc` mit Wert für Add/Update, `--no-rc` für Update |
 | `euercli/commands/add.py` | CLI-Weitergabe, User-Fehlertexte |
 | `euercli/commands/update.py` | CLI-Weitergabe, `--rc`/`--no-rc`-Logik |
 | `euercli/importers.py` | Alias-Parsing und Normalisierung |
@@ -319,13 +329,13 @@ Betroffene Dateien:
 
 Mindestens abzudecken:
 
-1. `add expense --rc` ohne Jurisdiktion schlägt fehl
-2. `add expense --rc --rc-jurisdiction eu` speichert korrekt
-3. `add expense --rc-jurisdiction eu` ohne `--rc` schlägt fehl
+1. `add expense --rc` ohne Wert schlägt mit CLI-Fehler fehl
+2. `add expense --rc eu` speichert `is_rc=1` und `rc_jurisdiction='eu'`
+3. `add expense --rc third-country` speichert `rc_jurisdiction='third_country'`
 4. `update expense --no-rc` entfernt `rc_jurisdiction`
-5. `update expense --rc-jurisdiction eu` auf Nicht-RC-Buchung schlägt fehl
+5. `update expense --rc eu` auf Nicht-RC-Buchung aktiviert RC und speichert Jurisdiktion
 6. Legacy-RC-Buchung mit `NULL` bleibt bearbeitbar
-7. `update expense --rc-jurisdiction third-country` klassifiziert Legacy-RC nach
+7. `update expense --rc third-country` klassifiziert Legacy-RC nach
 8. Import mit `rc=true` und fehlender Jurisdiktion schlägt fehl
 9. Export enthält `RC-Jurisdiktion` mit `third-country` und bleibt re-importierbar
 10. `summary` warnt bei RC-Buchungen ohne Jurisdiktion

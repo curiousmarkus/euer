@@ -269,8 +269,8 @@ Sie darf **nicht** verwendet werden, um unklare Fälle blind zu raten.
 Die CLI bleibt konsistent mit bestehenden Commands:
 
 - `--vat` bleibt der manuelle Steuerbetrag in EUR.
-- `--rc` und `--rc-jurisdiction` aus Spec 011 bleiben die Nutzerschnittstelle
-  für Reverse-Charge-Ausgaben.
+- `--rc eu|third-country` aus Spec 011 bleibt die Nutzerschnittstelle für
+  Reverse-Charge-Ausgaben.
 - Neue interne Codes werden nicht als Pflichtwissen für Nutzer vorausgesetzt.
 
 Für Einnahmen werden ergänzt:
@@ -299,7 +299,7 @@ Für Ausgaben werden keine zusätzlichen Alltagsflags eingeführt:
 
 - Normale Vorsteuer wird wie bisher über `--vat` erfasst und als
   `input_invoice` klassifiziert.
-- RC wird über `--rc --rc-jurisdiction ...` erfasst und daraus als
+- RC wird über `--rc eu|third-country` erfasst und daraus als
   `reverse_charge_eu` oder `reverse_charge_third_country` klassifiziert.
 - `--vat-rate` ist für Ausgaben im MVP nicht erforderlich.
 
