@@ -61,6 +61,26 @@ jede Datenbank aus. Alternativ kannst du die Datenbank explizit angeben:
 euer --db /pfad/zu/euer.db init
 ```
 
+Prüfe danach die [Release Notes](RELEASE_NOTES.md). `pipx upgrade` aktualisiert
+nicht automatisch Dateien, die du bereits in deine KI-Anwendung kopiert hast.
+Bei Releases mit geänderter Agenten-Logik musst du diese lokalen Kopien
+zusätzlich aus dem aktuellen Release/Repo aktualisieren:
+
+- `docs/skills/euer-buchhaltung/SKILL.md` in den Skill-Ordner deiner lokalen KI-Anwendung kopieren.
+- `docs/templates/accountant-agent.md` in deiner lokalen Agenten-Konfiguration ersetzen.
+- `docs/templates/onboarding-prompt.md` erneut nutzen, wenn die Release Notes eine
+  Änderung an deiner persönlichen `AGENTS.md` verlangen.
+
+Die persönliche `AGENTS.md` enthält deine individuellen Pfade, Konten und Regeln.
+Überschreibe sie deshalb nicht blind. Wenn eine Release Note eine Anpassung verlangt,
+kannst du deinen KI-Agenten gezielt damit beauftragen:
+
+```text
+Lies docs/RELEASE_NOTES.md und prüfe nur die Hinweise für meine installierte Version.
+Aktualisiere meine lokale AGENTS.md entsprechend, erhalte aber alle persönlichen
+Pfade, Konten, Lieferanten-Mappings und Steuerdaten.
+```
+
 ## KI-Agenten Konfiguration
 
 Das CLI-Tool ist so konzipiert, dass KI-Agenten die Buchhaltung automatisieren können.
@@ -71,20 +91,20 @@ Im Ordner `docs/templates/` findest du Vorlagen für die Agent-Konfiguration.
 | Datei | Beschreibung |
 |-------|--------------|
 | `accountant-agent.md` | Agent-Definition für KI-Buchhalter (Regeln, Workflows, Steuerlogik) |
-| `Agents.md` | Template für persönliche Buchhaltungsdaten (kann geführt mit dem Onboarding-Prompt erstellt werden) |
-| `onboarding-prompt.md` | Interview-Prompt zur Erstellung einer personalisierten `Agents.md` |
+| `Agents-Template.md` | Template für persönliche Buchhaltungsdaten (kann geführt mit dem Onboarding-Prompt erstellt werden) |
+| `onboarding-prompt.md` | Interview-Prompt zur Erstellung einer personalisierten `AGENTS.md` |
 
 ### Schnellstart für KI-Agenten
 
 1. **Onboarding durchführen:**
    - Kopiere den Inhalt von `docs/templates/onboarding-prompt.md` in einen neuen LLM-Chat
-   - Der Assistent führt ein Interview und erstellt deine persönliche `Agents.md`
+   - Der Assistent führt ein Interview und erstellt deine persönliche `AGENTS.md`
 
 2. **Agent konfigurieren:**
-   - Speichere die generierte `Agents.md` in deinem Buchhaltungsordner
+   - Speichere die generierte `AGENTS.md` in deinem Buchhaltungsordner
    - Füge die `accountant-agent.md` als Agent-Definition zu deinem Agent-Framework hinzu
    - kopiere den Skill in den korrekten Pfad, so dass dein Agent darauf Zugriff hat: `docs/skills/euer-buchhaltung/SKILL.md`
-   - Starte deinen KI-Agenten im Buchhaltungsordner (so hat er Zugriff auf `Agents.md` als Kontext)
+   - Starte deinen KI-Agenten im Buchhaltungsordner (so hat er Zugriff auf `AGENTS.md` als Kontext)
 
 3. **CLI einrichten:**
    - Führe `euer init` und `euer setup` aus, um die Datenbank und die Konfiguration anzulegen (achte darauf, dass du im Buchhaltungsordner bist!)

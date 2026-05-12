@@ -63,6 +63,7 @@ Details und Beispiele: `DEVELOPMENT.md` → „Neue Commands hinzufügen"
 | `specs/` | Offene Change Requests und Backlog |
 | `euercli/schema.py` | DB-Schema |
 | `docs/USER_GUIDE.md` | Nutzer-Dokumentation |
+| `docs/RELEASE_NOTES.md` | Upgrade-Hinweise für bestehende lokale Instanzen |
 | `docs/skills/euer-buchhaltung/SKILL.md` | Buchungsregeln für AI-Agenten |
 | `docs/templates/` | Agent-Konfigurationsvorlagen |
 
@@ -75,4 +76,10 @@ Bei Änderungen auch die Tabelle in `DEVELOPMENT.md` aktualisieren.
 
 **Doku-Update:** Betroffene Dokumente prüfen und aktualisieren:
 `docs/USER_GUIDE.md`, `docs/skills/euer-buchhaltung/SKILL.md`,
-`docs/templates/onboarding-prompt.md`, `README.md`, `DEVELOPMENT.md`
+`docs/templates/onboarding-prompt.md`, `docs/RELEASE_NOTES.md`, `README.md`,
+`DEVELOPMENT.md`
+
+**Release Notes:** Nach jeder implementierten Spec prüfen, ob bestehende lokale
+Instanzen handeln müssen. Wenn sich Schema, CLI-Verhalten, Import-/Exportformate,
+Steuerlogik, Agenten-Skill, Agenten-Template oder Onboarding/`AGENTS.md` ändern,
+`docs/RELEASE_NOTES.md` mit konkreten Upgrade- und Migrationsschritten aktualisieren.

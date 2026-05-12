@@ -32,8 +32,11 @@ euer/
 │   └── config.py            # Config Laden/Speichern
 ├── tests/                   # CLI Integrationstests (unittest)
 ├── specs/                   # Historische Anforderungen + Backlog Items
-├── skills/                  # AI Agent Skills
-├── USER_GUIDE.md            # Nutzer:innen-Doku
+├── docs/
+│   ├── USER_GUIDE.md         # Nutzer:innen-Doku
+│   ├── RELEASE_NOTES.md      # Upgrade-Hinweise für bestehende lokale Instanzen
+│   ├── skills/               # AI Agent Skills
+│   └── templates/            # Agent-Konfigurationsvorlagen
 ├── DEVELOPMENT.md           # Diese Datei
 └── TESTING.md               # Teststrategie
 ```
@@ -155,7 +158,9 @@ Nach Abschluss einer Spec-Implementierung oder eines größeren Feature-Bundles:
 
 1. Version in `pyproject.toml` und `euercli/__init__.py` erhöhen (bevorzugt via Script/Make)
 2. Sicherstellen, dass beide Dateien den **identischen** Versionsstring haben
-3. Alle Tests müssen grün sein (`python -m unittest discover -s tests`)
+3. `docs/RELEASE_NOTES.md` prüfen und bei Nutzer-, Schema-, CLI-, Import-/Export-,
+   Steuerlogik- oder Agenten-Änderungen konkrete Upgrade-/Migrationsschritte ergänzen
+4. Alle Tests müssen grün sein (`python -m unittest discover -s tests`)
 
 ## Entwicklungs-Richtlinien
 
@@ -260,7 +265,8 @@ Weitere Details: `TESTING.md`.
 ## Beiträge
 
 - Kleine, fokussierte PRs bevorzugt.
-- Bitte relevante Doku aktualisieren (`README.md`, `docs/USER_GUIDE.md`, `DEVELOPMENT.md`).
+- Bitte relevante Doku aktualisieren (`README.md`, `docs/USER_GUIDE.md`,
+  `docs/RELEASE_NOTES.md`, `DEVELOPMENT.md`).
 - User‑Facing Texte auf Deutsch halten.
 
 ## Checkliste vor dem Entwickeln
@@ -273,6 +279,7 @@ Bevor du Code schreibst oder änderst:
 - [ ] Bestehende Tests laufen: `python -m unittest discover -s tests`
 - [ ] Bei Schema-Änderungen: `euercli/schema.py` + Migration in `commands/init.py`
 - [ ] Bei neuen Features: Spec in `specs/` angelegt oder bestehendes Spec erweitert
+- [ ] Bei implementierten Specs: `docs/RELEASE_NOTES.md` auf nötige Upgrade-Hinweise prüfen
 
 ## Backlog & Spezifikationen
 
