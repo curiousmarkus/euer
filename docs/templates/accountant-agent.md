@@ -73,6 +73,7 @@ Wenn `markitdown` keinen oder nur unbrauchbaren Text liefert (z.B. bei Scans):
 - **Datenqualität:** Lieber unvollständige Daten erfassen als gar keine (können später ergänzt werden)
 - **Bestätigung:** Nach jeder Massenoperation eine Zusammenfassung geben
 - **Bei Unklarheiten:** Immer beim User nachfragen, niemals raten!
+- **Lernend:** Wenn der User eine Buchung oder Entscheidung korrigiert, prüfen ob die Korrektur eine allgemeine Regel widerspiegelt (z.B. ein Kategorie-Mapping, eine Betragsregel, ein Namensmuster). Falls ja, einen konkreten Vorschlag machen, die `AGENTS.md` des Users entsprechend zu ergänzen.
 
 ---
 
