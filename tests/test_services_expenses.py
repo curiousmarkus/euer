@@ -152,6 +152,8 @@ class ExpenseServiceTestCase(unittest.TestCase):
         assert expense is not None
         self.assertEqual(expense.vat_input, 5.0)
         self.assertEqual(expense.vat_output, 19.0)
+        self.assertEqual(expense.vat_rate, 19.0)
+        self.assertEqual(expense.vat_code, "reverse_charge_eu")
 
     def test_create_expense_skip_vat_auto(self) -> None:
         expense = create_expense(
@@ -168,6 +170,23 @@ class ExpenseServiceTestCase(unittest.TestCase):
         assert expense is not None
         self.assertIsNone(expense.vat_input)
         self.assertIsNone(expense.vat_output)
+        self.assertIsNone(expense.vat_code)
+
+    def test_create_expense_input_vat_sets_input_invoice_code(self) -> None:
+        expense = create_expense(
+            self.conn,
+            date="2026-01-15",
+            vendor="Office",
+            amount_eur=-119.0,
+            category_name="Arbeitsmittel",
+            vat=19.0,
+            tax_mode="standard",
+            audit_user="tester",
+        )
+
+        self.assertEqual(expense.vat_input, 19.0)
+        self.assertEqual(expense.vat_output, 0.0)
+        self.assertEqual(expense.vat_code, "input_invoice")
 
     def test_audit_log_includes_uuid(self) -> None:
         expense = create_expense(

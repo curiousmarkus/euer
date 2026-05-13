@@ -50,6 +50,8 @@ Erkläre kurz den Unterschied und frage dann:
    - Du weist Umsatzsteuer auf Rechnungen aus
    - Du kannst Vorsteuer aus Einkäufen abziehen
    - Regelmäßige USt-Voranmeldung erforderlich
+   - Einnahmen müssen für den UStVA-Report mit `--vat-rate 19|7|0` oder
+     `--tax-free` klassifiziert werden
 
 4. **Reverse Charge prüfen**: 
    
@@ -243,6 +245,11 @@ Geschäftsform: {{GESCHAEFTSFORM}}
 
 **Reverse-Charge-Anbieter (§13b UStG):**  
 `--rc eu` oder `--rc third-country` erforderlich bei: {{RC_ANBIETER_LISTE}}
+
+**UStVA-Regeln:**
+- Bei Regelbesteuerung Einnahmen mit `--vat-rate 19|7|0` oder `--tax-free` klassifizieren.
+- `--amount` ist immer der tatsächliche Brutto-Zahlfluss auf dem Konto.
+- UStVA-Arbeitsbericht: `euer vat-report --year YYYY`.
 
 ---
 

@@ -117,6 +117,8 @@ def cmd_update_income(args):
             receipt_name=args.receipt,
             notes=args.notes,
             vat=args.vat,
+            vat_rate=args.vat_rate,
+            tax_free=bool(args.tax_free),
             tax_mode=tax_mode,
             audit_user=audit_user,
         )

@@ -88,7 +88,7 @@ def cmd_export(args):
         f"""SELECT e.receipt_name, e.payment_date, e.invoice_date, e.vendor,
                   c.name as category, c.eur_line,
                   e.amount_eur, e.account, e.ledger_account, e.foreign_amount, e.notes,
-                  e.rc_type, e.vat_input, e.vat_output
+                  e.rc_type, e.vat_input, e.vat_output, e.vat_rate, e.vat_code
            FROM expenses e
            LEFT JOIN categories c ON e.category_id = c.id
            {year_filter}
@@ -100,7 +100,8 @@ def cmd_export(args):
     income = conn.execute(
         f"""SELECT i.receipt_name, i.payment_date, i.invoice_date, i.source,
                   c.name as category, c.eur_line,
-                  i.amount_eur, i.ledger_account, i.foreign_amount, i.notes, i.vat_output
+                  i.amount_eur, i.ledger_account, i.foreign_amount, i.notes,
+                  i.vat_output, i.vat_rate, i.vat_code
            FROM income i
            LEFT JOIN categories c ON i.category_id = c.id
            {income_filter}
@@ -158,6 +159,8 @@ def cmd_export(args):
                     "RC",
                     "Vorsteuer",
                     "Umsatzsteuer",
+                    "Steuersatz",
+                    "Steuerklasse",
                 ]
             )
             for r in expenses:
@@ -185,6 +188,8 @@ def cmd_export(args):
                         format_rc_type(r["rc_type"]),
                         f"{r['vat_input']:.2f}" if r["vat_input"] else "",
                         f"{r['vat_output']:.2f}" if r["vat_output"] else "",
+                        f"{r['vat_rate']:g}" if r["vat_rate"] is not None else "",
+                        r["vat_code"] or "",
                     ]
                 )
         print(f"Exportiert: {exp_path}")
@@ -205,6 +210,8 @@ def cmd_export(args):
                     "Fremdwährung",
                     "Bemerkung",
                     "Umsatzsteuer",
+                    "Steuersatz",
+                    "Steuerklasse",
                 ]
             )
             for r in income:
@@ -229,6 +236,8 @@ def cmd_export(args):
                         r["foreign_amount"] or "",
                         r["notes"] or "",
                         f"{r['vat_output']:.2f}" if r["vat_output"] else "",
+                        f"{r['vat_rate']:g}" if r["vat_rate"] is not None else "",
+                        r["vat_code"] or "",
                     ]
                 )
         print(f"Exportiert: {inc_path}")
@@ -321,6 +330,8 @@ def cmd_export(args):
                 "Bemerkung",
                 "RC",
                 "USt-VA",
+                "Steuersatz",
+                "Steuerklasse",
             ]
         )
         for r in expenses:
@@ -347,6 +358,8 @@ def cmd_export(args):
                     r["notes"] or "",
                     format_rc_type(r["rc_type"]),
                     r["vat_output"] if r["vat_output"] else None,
+                    r["vat_rate"] if r["vat_rate"] is not None else None,
+                    r["vat_code"] or "",
                 ]
             )
         wb.save(exp_path)
@@ -369,6 +382,9 @@ def cmd_export(args):
                 "Kontonummer",
                 "Fremdwährung",
                 "Bemerkung",
+                "Umsatzsteuer",
+                "Steuersatz",
+                "Steuerklasse",
             ]
         )
         for r in income:
@@ -392,6 +408,9 @@ def cmd_export(args):
                     ledger_account_numbers.get((r["ledger_account"] or "").lower(), ""),
                     r["foreign_amount"] or "",
                     r["notes"] or "",
+                    r["vat_output"] if r["vat_output"] else None,
+                    r["vat_rate"] if r["vat_rate"] is not None else None,
+                    r["vat_code"] or "",
                 ]
             )
         wb.save(inc_path)

@@ -50,7 +50,9 @@ class IncomeServiceTestCase(unittest.TestCase):
         )
         self.assertEqual(income.id, 1)
         self.assertTrue(income.uuid)
-        self.assertIsNone(income.vat_output)
+        self.assertEqual(income.vat_rate, 19.0)
+        self.assertEqual(income.vat_code, "output_standard_19")
+        self.assertEqual(income.vat_output, 239.5)
 
         rows = list_income(self.conn, year=2026)
         self.assertEqual(len(rows), 1)
@@ -68,6 +70,8 @@ class IncomeServiceTestCase(unittest.TestCase):
         self.assertEqual(updated.amount_eur, 1750.0)
         self.assertEqual(updated.notes, "Korrigiert")
         self.assertEqual(updated.vat_output, 100.0)
+        self.assertEqual(updated.vat_rate, 19.0)
+        self.assertEqual(updated.vat_code, "output_standard_19")
 
         delete_income(self.conn, record_id=income.id, audit_user="tester")
         remaining = list_income(self.conn)
@@ -138,7 +142,7 @@ class IncomeServiceTestCase(unittest.TestCase):
         assert after_rollback is not None
         self.assertEqual(after_rollback["cnt"], 0)
 
-    def test_create_income_allows_explicit_vat_output_in_small_business(self) -> None:
+    def test_create_income_manual_vat_in_small_business_remains_unclassified(self) -> None:
         income = create_income(
             self.conn,
             date="2026-01-20",
@@ -152,6 +156,72 @@ class IncomeServiceTestCase(unittest.TestCase):
         self.assertIsNotNone(income)
         assert income is not None
         self.assertEqual(income.vat_output, 20.0)
+        self.assertIsNone(income.vat_rate)
+        self.assertIsNone(income.vat_code)
+
+    def test_create_income_vat_rate_7_sets_code_and_included_vat(self) -> None:
+        income = create_income(
+            self.conn,
+            date="2026-01-20",
+            source="Reduced",
+            amount_eur=107.0,
+            category_name="Umsatzsteuerpflichtige Betriebseinnahmen",
+            vat_rate=7.0,
+            tax_mode="standard",
+            audit_user="tester",
+        )
+
+        self.assertEqual(income.vat_rate, 7.0)
+        self.assertEqual(income.vat_code, "output_reduced_7")
+        self.assertEqual(income.vat_output, 7.0)
+
+    def test_create_income_tax_free_sets_tax_free_code(self) -> None:
+        income = create_income(
+            self.conn,
+            date="2026-01-20",
+            source="Tax Free",
+            amount_eur=500.0,
+            category_name="Umsatzsteuerfreie, nicht umsatzsteuerbare Betriebseinnahmen",
+            tax_free=True,
+            tax_mode="standard",
+            audit_user="tester",
+        )
+
+        self.assertEqual(income.vat_rate, 0.0)
+        self.assertEqual(income.vat_code, "output_tax_free_no_vorsteuer")
+        self.assertEqual(income.vat_output, 0.0)
+
+    def test_create_income_tax_free_rejects_vat(self) -> None:
+        with self.assertRaises(ValidationError) as ctx:
+            create_income(
+                self.conn,
+                date="2026-01-20",
+                source="Conflict",
+                amount_eur=500.0,
+                category_name="Umsatzsteuerpflichtige Betriebseinnahmen",
+                vat=10.0,
+                tax_free=True,
+                tax_mode="standard",
+                audit_user="tester",
+            )
+
+        self.assertEqual(ctx.exception.code, "tax_free_conflict")
+
+    def test_create_income_tax_free_rejects_conflicting_vat_code(self) -> None:
+        with self.assertRaises(ValidationError) as ctx:
+            create_income(
+                self.conn,
+                date="2026-01-20",
+                source="Conflict",
+                amount_eur=500.0,
+                category_name="Umsatzsteuerpflichtige Betriebseinnahmen",
+                vat_code="output_standard_19",
+                tax_free=True,
+                tax_mode="standard",
+                audit_user="tester",
+            )
+
+        self.assertEqual(ctx.exception.code, "tax_free_vat_code_conflict")
 
     def test_audit_log_includes_uuid(self) -> None:
         income = create_income(

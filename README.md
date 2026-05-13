@@ -27,6 +27,8 @@ Die meisten Tools zwingen dich zu einer Entscheidung: Entweder du nutzt unflexib
 - **Umsatzsteuer-Logik:** Voller Support für Regelbesteuerung (USt/Vorsteuer) sowie Kleinunternehmerregelung (§19 UStG).
 - **Reverse-Charge Support:** Umsatzsteuerliche Behandlung von Dienstleistern aus
   dem EU-/Drittland-Ausland (§13b UStG) inklusive persistiertem RC-Typ.
+- **UStVA-Report:** `euer vat-report` erzeugt einen ELSTER-nahen
+  USt-Voranmeldungs-Arbeitsbericht mit KZ-Mapping, Warnungen und CSV/XLSX-Export.
 - **Beleg-Management:** Verknüpfe digitale Belege (PDF/Bilder) direkt mit deinen Buchungen.
 
 ---
@@ -87,6 +89,7 @@ Gib es an deinen KI-Agenten:
 3. Fügt die Belege in die EÜR mit `euer add expense --payment-date ... --vendor ...`
 4. kontrolliert die Vollständigkeit mit `euer incomplete list`
 5. gibt dir eine Übersicht über deine EÜR mit `euer summary --year 2026`
+6. erstellt bei Bedarf einen UStVA-Arbeitsbericht mit `euer vat-report --year 2026`
 
 **Ergebnis:** Du kannst dich zurücklehnen — dein Agent übernimmt für dich die Buchhaltung!
 

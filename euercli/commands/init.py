@@ -18,6 +18,8 @@ def _migrate_expenses_dates(conn) -> None:
     invoice_expr = "invoice_date" if "invoice_date" in columns else "NULL"
     is_private_paid_expr = "is_private_paid" if "is_private_paid" in columns else "0"
     ledger_account_expr = "ledger_account" if "ledger_account" in columns else "NULL"
+    vat_rate_expr = "vat_rate" if "vat_rate" in columns else "NULL"
+    vat_code_expr = "vat_code" if "vat_code" in columns else "NULL"
     if "rc_type" in columns:
         rc_type_expr = "rc_type"
     elif "is_rc" in columns:
@@ -57,6 +59,12 @@ def _migrate_expenses_dates(conn) -> None:
                 CHECK(rc_type IN ('none', 'eu', 'third_country', 'unclassified')),
             vat_input REAL,
             vat_output REAL,
+            vat_rate REAL CHECK(vat_rate IS NULL OR vat_rate IN (0, 7, 19)),
+            vat_code TEXT CHECK(vat_code IS NULL OR vat_code IN (
+                'input_invoice',
+                'reverse_charge_eu',
+                'reverse_charge_third_country'
+            )),
             is_private_paid INTEGER NOT NULL DEFAULT 0 CHECK(is_private_paid IN (0, 1)),
             private_classification TEXT NOT NULL DEFAULT 'none'
                 CHECK(private_classification IN (
@@ -73,13 +81,13 @@ def _migrate_expenses_dates(conn) -> None:
         INSERT INTO expenses (
             id, uuid, receipt_name, payment_date, invoice_date, vendor, category_id,
             amount_eur, account, ledger_account, foreign_amount, notes, rc_type,
-            vat_input, vat_output,
+            vat_input, vat_output, vat_rate, vat_code,
             is_private_paid, private_classification, created_at, hash
         )
         SELECT
             id, uuid, receipt_name, {payment_expr}, {invoice_expr}, vendor, category_id,
             amount_eur, account, {ledger_account_expr}, foreign_amount, notes,
-            {rc_type_expr}, vat_input, vat_output,
+            {rc_type_expr}, vat_input, vat_output, {vat_rate_expr}, {vat_code_expr},
             {is_private_paid_expr}, {private_classification_expr}, created_at, hash
         FROM expenses_old
         """
@@ -99,6 +107,8 @@ def _migrate_income_dates(conn) -> None:
     payment_expr = "payment_date" if "payment_date" in columns else "date"
     invoice_expr = "invoice_date" if "invoice_date" in columns else "NULL"
     ledger_account_expr = "ledger_account" if "ledger_account" in columns else "NULL"
+    vat_rate_expr = "vat_rate" if "vat_rate" in columns else "NULL"
+    vat_code_expr = "vat_code" if "vat_code" in columns else "NULL"
 
     conn.execute("ALTER TABLE income RENAME TO income_old")
     conn.execute(
@@ -116,6 +126,13 @@ def _migrate_income_dates(conn) -> None:
             foreign_amount TEXT,
             notes TEXT,
             vat_output REAL,
+            vat_rate REAL CHECK(vat_rate IS NULL OR vat_rate IN (0, 7, 19)),
+            vat_code TEXT CHECK(vat_code IS NULL OR vat_code IN (
+                'output_standard_19',
+                'output_reduced_7',
+                'output_zero_0',
+                'output_tax_free_no_vorsteuer'
+            )),
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             hash TEXT UNIQUE NOT NULL,
             CHECK(invoice_date IS NOT NULL OR payment_date IS NOT NULL)
@@ -126,12 +143,13 @@ def _migrate_income_dates(conn) -> None:
         f"""
         INSERT INTO income (
             id, uuid, receipt_name, payment_date, invoice_date, source, category_id,
-            amount_eur, ledger_account, foreign_amount, notes, vat_output, created_at, hash
+            amount_eur, ledger_account, foreign_amount, notes, vat_output, vat_rate,
+            vat_code, created_at, hash
         )
         SELECT
             id, uuid, receipt_name, {payment_expr}, {invoice_expr}, source, category_id,
-            amount_eur, {ledger_account_expr}, foreign_amount, notes, vat_output, created_at,
-            hash
+            amount_eur, {ledger_account_expr}, foreign_amount, notes, vat_output,
+            {vat_rate_expr}, {vat_code_expr}, created_at, hash
         FROM income_old
         """
     )
@@ -216,6 +234,40 @@ def ensure_ledger_account_columns(conn) -> None:
         conn.execute("ALTER TABLE income ADD COLUMN ledger_account TEXT")
 
 
+def ensure_vat_classification_columns(conn) -> None:
+    """Ergänzt fehlende USt-Klassifikationsspalten in bestehenden Datenbanken."""
+    expense_columns = {
+        row["name"]
+        for row in conn.execute("PRAGMA table_info(expenses)").fetchall()
+    }
+    income_columns = {
+        row["name"]
+        for row in conn.execute("PRAGMA table_info(income)").fetchall()
+    }
+    if "vat_rate" not in expense_columns:
+        conn.execute(
+            "ALTER TABLE expenses ADD COLUMN "
+            "vat_rate REAL CHECK(vat_rate IS NULL OR vat_rate IN (0, 7, 19))"
+        )
+    if "vat_code" not in expense_columns:
+        conn.execute(
+            "ALTER TABLE expenses ADD COLUMN vat_code TEXT CHECK(vat_code IS NULL OR "
+            "vat_code IN ('input_invoice', 'reverse_charge_eu', "
+            "'reverse_charge_third_country'))"
+        )
+    if "vat_rate" not in income_columns:
+        conn.execute(
+            "ALTER TABLE income ADD COLUMN "
+            "vat_rate REAL CHECK(vat_rate IS NULL OR vat_rate IN (0, 7, 19))"
+        )
+    if "vat_code" not in income_columns:
+        conn.execute(
+            "ALTER TABLE income ADD COLUMN vat_code TEXT CHECK(vat_code IS NULL OR "
+            "vat_code IN ('output_standard_19', 'output_reduced_7', 'output_zero_0', "
+            "'output_tax_free_no_vorsteuer'))"
+        )
+
+
 def ensure_seed_categories(conn) -> None:
     """Ergänzt fehlende Seed-Kategorien und korrigiert EÜR-Zeilen in bestehenden DBs."""
     # Fix: "Umsatzsteuerpflichtige Betriebseinnahmen" war fälschlich auf Zeile 14 (→ 15)
@@ -253,6 +305,8 @@ def cmd_init(args):
     ensure_payment_invoice_columns(conn)
     ensure_expenses_private_columns(conn)
     ensure_ledger_account_columns(conn)
+    ensure_vat_classification_columns(conn)
+    conn.commit()
 
     # Kategorien seeden (nur wenn leer) oder fehlende ergänzen
     existing = conn.execute("SELECT COUNT(*) as cnt FROM categories").fetchone()["cnt"]

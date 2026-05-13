@@ -88,6 +88,18 @@ def normalize_import_rc_type(value: object | None) -> str | None:
     return mapping.get(text)
 
 
+def parse_vat_rate(value: object | None) -> float | None:
+    """Parst USt-Sätze aus Importwerten wie 19, 19% oder 19,0 %."""
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    if text.endswith("%"):
+        text = text[:-1].strip()
+    return parse_amount(text)
+
+
 def normalize_import_row(row: dict) -> dict:
     """Normalisiert Importzeile auf kanonische Keys."""
     raw_type = get_row_value(row, "type", "kind", "direction", "Typ")
@@ -134,6 +146,9 @@ def normalize_import_row(row: dict) -> dict:
     elif rc_value is None and rc_jurisdiction_value is not None:
         rc_type = normalize_import_rc_type(rc_jurisdiction_value)
 
+    vat_rate_raw = get_row_value(row, "vat_rate", "vat-rate", "Steuersatz")
+    vat_code = get_row_value(row, "vat_code", "vat-code", "Steuerklasse")
+
     return {
         "type": row_type,
         "date": payment_date,
@@ -176,6 +191,12 @@ def normalize_import_row(row: dict) -> dict:
             get_row_value(row, "vat_input", "Vorsteuer", "USt-VA")
         ),
         "vat_output": parse_amount(get_row_value(row, "vat_output", "Umsatzsteuer")),
+        "vat_rate": parse_vat_rate(vat_rate_raw),
+        "vat_rate_raw": vat_rate_raw,
+        "vat_code": str(vat_code).strip() if vat_code is not None else None,
+        "tax_free": parse_bool(
+            get_row_value(row, "tax_free", "tax-free", "Steuerfrei")
+        ),
         "raw_data": row,
     }
 

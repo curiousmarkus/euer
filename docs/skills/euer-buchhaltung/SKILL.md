@@ -118,7 +118,9 @@ euer add income \
     [--receipt "Belegname.pdf"] \
     [--foreign "Betrag Währung"] \
     [--notes "Bemerkung"] \
-    [--vat 285.00]  # Ausgewiesener Umsatzsteuer-Betrag bei Regelbesteuerung (nicht %)
+    [--vat 285.00]  # Manueller Umsatzsteuer-Betrag bei Regelbesteuerung (nicht %) \
+    [--vat-rate 19|7|0] \
+    [--tax-free]
 
 # Einnahmen anzeigen
 euer list income [--year YYYY] [--month MM] [--full]
@@ -126,7 +128,7 @@ euer list income [--year YYYY] [--month MM] [--full]
 # Mit --full kommt zusätzlich die Spalte Notiz hinzu.
 
 # Einnahme aktualisieren
-euer update income <ID> [--payment-date ...] [--invoice-date ...] [--source ...] [--amount ...] ...
+euer update income <ID> [--payment-date ...] [--invoice-date ...] [--source ...] [--amount ...] [--vat-rate 19|7|0] [--tax-free] ...
 
 # Einnahme löschen
 euer delete income <ID> [--force]
@@ -210,19 +212,29 @@ Hinweis: Für die Kategorie **Gezahlte USt (57)** ist kein Beleg erforderlich.
 Import-Schema (Kurzfassung):
 - Pflichtfelder: `type`, `party`, `amount_eur` und mindestens eines aus `payment_date`/`invoice_date` (`date` gilt als Alias für `payment_date`)
 - Optional: `category`, `account`, `ledger_account`, `foreign_amount`, `receipt_name`, `notes`, `rc`,
-  `private_paid`, `vat_input`, `vat_output`
+  `private_paid`, `vat_input`, `vat_output`, `vat_rate`, `vat_code`, `tax_free`
 - Fehlende Pflichtfelder führen zu einem Import-Abbruch.
 - Alias-Keys (Auszug): `EUR`, `Belegname`, `Lieferant`, `Quelle`, `RC`,
   `Vorsteuer`, `Umsatzsteuer`, `Privat bezahlt`
 - `rc` akzeptiert `eu` oder `third-country`; Legacy-Werte `rc=true|X` brauchen
   zusätzlich eine Jurisdiktionsspalte.
+- `vat_rate` akzeptiert `19`, `7`, `0`, `19%`, `7%`, `0%`.
+- `vat_code` ist für Round-Trips erlaubt:
+  `output_standard_19`, `output_reduced_7`, `output_zero_0`,
+  `output_tax_free_no_vorsteuer`, `input_invoice`, `reverse_charge_eu`,
+  `reverse_charge_third_country`.
 - `private_paid=true|1|yes|X` markiert die Ausgabe manuell als Sacheinlage.
 - Kategorien wie `Arbeitsmittel (51)` werden automatisch auf `Arbeitsmittel` bereinigt.
 - Steuerfelder:
   - `small_business` + `rc=eu|third-country`: `vat_output` wird automatisch aus `amount_eur * 0.19` berechnet,
     `vat_input` wird auf `0.0` gesetzt (Felder können weggelassen werden).
-  - `standard`: `vat_input` wird **nicht** automatisch berechnet (außer bei RC). Ohne `vat_input`
-    bleibt es `0.0`. `amount_eur` wird immer 1:1 gespeichert (keine Netto/Brutto‑Umrechnung).
+  - `small_business` + Einnahmen: neue Einnahmen werden als
+    `output_tax_free_no_vorsteuer` klassifiziert.
+  - `standard` + Ausgaben: `vat_input` wird per `--vat`/Import erfasst
+    (außer bei RC, dort automatisch).
+  - `standard` + Einnahmen: ohne Angabe gilt `vat_rate=19`. Nutze
+    `--vat-rate 7`, `--vat-rate 0` oder `--tax-free` für abweichende Fälle.
+    `amount_eur` wird immer 1:1 als Brutto-Zahlfluss gespeichert.
 - `private_transfers`/`Sacheinlagen` aus dem Export sind kein Standard-Bulk-Importformat.
 
 ### Beleg-Verwaltung
@@ -267,8 +279,25 @@ mode = "small_business"  # oder "standard"
 
 2.  **Regelbesteuerung (`mode = "standard"`)**:
     *   Ausgaben: Vorsteuer (`vat_input`) wird erfasst (automatisch bei RC oder manuell via `--vat`).
-    *   Einnahmen: Umsatzsteuer (`vat_output`) wird erfasst.
+    *   Einnahmen: Umsatzsteuer (`vat_output`) wird erfasst; `vat_rate`/`vat_code`
+        müssen für den UStVA-Report stimmen.
+    *   Standard-Einnahmen ohne Sonderfall mit `--vat-rate 19` buchen; für 7 %
+        `--vat-rate 7`, für 0 % `--vat-rate 0`, für steuerfrei `--tax-free`.
     *   Reverse-Charge: Nullsummenspiel (Umsatzsteuer = Vorsteuer).
+
+### USt-Voranmeldung (`vat-report`)
+
+```bash
+euer vat-report --year YYYY
+euer vat-report --year YYYY --quarter 1
+euer vat-report --year YYYY --month 3
+euer vat-report --year YYYY --quarter 1 --format csv --output exports/
+```
+
+Der Report ist kein Ersatz für Steuerberatung oder ELSTER-Übermittlung. Er ist
+ein Arbeitsbericht mit Kennzahlen, Warnungen und Diagnose. Er nutzt nur
+`payment_date`; Buchungen ohne Wertstellungsdatum werden gewarnt und nicht
+eingerechnet.
 
 ### Reverse-Charge (--rc eu|third-country)
 
@@ -341,6 +370,8 @@ der nicht abziehbare 30%-Anteil wird nur im Summary ausgewiesen.
 | `rc` | Reverse-Charge-Typ | leer, `eu`, `third-country` oder `unclassified` |
 | `vat_input` | Vorsteuer | Forderung an FA (positiv), nur bei Regelbest. |
 | `vat_output`| RC Umsatzsteuer | Schuld an FA (positiv), bei RC |
+| `vat_rate` | USt-Satz | `19`, `7`, `0` oder leer |
+| `vat_code` | UStVA-Klasse | z.B. `input_invoice`, `reverse_charge_eu` |
 | `account` | Konto | Verwendetes Bankkonto/Zahlart |
 | `receipt_name`| Belegdatei | Name der PDF/JPG Datei |
 | `notes` | Notizen | Optionale Bemerkungen |
@@ -355,6 +386,8 @@ der nicht abziehbare 30%-Anteil wird nur im Summary ausgewiesen.
 | `category` | Kategorie | Name der Einnahmenkategorie |
 | `amount_eur`| Bruttobetrag | **Immer positiv** (z.B. 1500.00) |
 | `vat_output`| Umsatzsteuer | Schuld an FA (positiv), nur bei Regelbest. |
+| `vat_rate` | USt-Satz | `19`, `7`, `0` |
+| `vat_code` | UStVA-Klasse | `output_standard_19`, `output_reduced_7`, `output_zero_0`, `output_tax_free_no_vorsteuer` |
 | `receipt_name`| Belegdatei | Name der Rechnungsdatei |
 | `notes` | Notizen | Optionale Bemerkungen |
 
@@ -396,8 +429,9 @@ Hinweis: Fehlt die Dateiendung, prüft `euer receipt check` automatisch
 ### Jahresabschluss
 
 1. Zusammenfassung anzeigen: `euer summary --year 2026`
-2. Export erstellen: `euer export --year 2026 --format xlsx`
-3. Beleg-Vollständigkeit prüfen: `euer receipt check --year 2026`
+2. UStVA-Arbeitsbericht prüfen: `euer vat-report --year 2026`
+3. Export erstellen: `euer export --year 2026 --format xlsx`
+4. Beleg-Vollständigkeit prüfen: `euer receipt check --year 2026`
 
 ### Korrektur
 
@@ -428,6 +462,7 @@ euer add income \
     --source "Kunde ABC GmbH" \
     --category "Umsatzsteuerpflichtige Betriebseinnahmen" \
     --amount 2500.00 \
+    --vat-rate 19 \
     --receipt "2026-01-20_Rechnung_001.pdf"
 ```
 

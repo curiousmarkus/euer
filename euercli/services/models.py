@@ -39,6 +39,8 @@ class Expense:
     rc_type: str = "none"
     vat_input: float | None = None
     vat_output: float | None = None
+    vat_rate: float | None = None
+    vat_code: str | None = None
     is_private_paid: bool = False
     private_classification: str = "none"
     hash: str | None = None
@@ -70,6 +72,8 @@ class Income:
     foreign_amount: str | None = None
     notes: str | None = None
     vat_output: float | None = None
+    vat_rate: float | None = None
+    vat_code: str | None = None
     hash: str | None = None
 
     @property

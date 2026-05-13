@@ -129,6 +129,10 @@ class EuerCLITestCase(unittest.TestCase):
             args += ["--notes", data["notes"]]
         if "vat" in data:
             args += ["--vat", str(data["vat"])]
+        if "vat_rate" in data:
+            args += ["--vat-rate", str(data["vat_rate"])]
+        if data.get("tax_free"):
+            args.append("--tax-free")
         return self.run_cli(args)
 
     def add_private_deposit(self, **overrides):
@@ -774,6 +778,72 @@ account_number = "8400"
         self.assertIn("Notiz", list_result.stdout)
         self.assertIn("Abo verlängert", list_result.stdout)
 
+    def test_add_income_vat_rate_persists_classification(self):
+        self.run_cli(["setup"], input="\n\n\nstandard\n", check=True)
+        result = self.add_income(amount="107.00", vat_rate="7")
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+
+        query = self.run_cli(
+            ["query", "SELECT vat_rate, vat_code, vat_output FROM income WHERE id = 1"],
+            check=True,
+        )
+        rows = self.parse_csv(query.stdout)
+        self.assertEqual(rows[1][0], "7.0")
+        self.assertEqual(rows[1][1], "output_reduced_7")
+        self.assertEqual(rows[1][2], "7.0")
+
+    def test_add_income_tax_free_conflicts_with_vat(self):
+        result = self.add_income(vat="10.00", tax_free=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("--tax-free", result.stderr)
+
+    def test_vat_report_requires_year_and_exclusive_period(self):
+        missing_year = self.run_cli(["vat-report"])
+        self.assertNotEqual(missing_year.returncode, 0)
+        conflict = self.run_cli(
+            ["vat-report", "--year", "2026", "--quarter", "1", "--month", "1"]
+        )
+        self.assertNotEqual(conflict.returncode, 0)
+
+    def test_vat_report_table_and_csv_export(self):
+        self.run_cli(["setup"], input="\n\n\nstandard\n", check=True)
+        self.add_income(amount="1190.00", vat_rate="19")
+        self.add_expense(vendor="EU SaaS", amount="-100.00", rc="eu")
+        self.add_expense(vendor="Office", amount="-119.00", vat="20.00")
+
+        table = self.run_cli(["vat-report", "--year", "2026", "--quarter", "1"], check=True)
+        self.assertIn("USt-Voranmeldung Q1/2026", table.stdout)
+        self.assertIn("KZ 81", table.stdout)
+        self.assertIn("1.000 EUR", table.stdout)
+        self.assertIn("KZ 83", table.stdout)
+
+        export_dir = self.root / "vat-exports"
+        result = self.run_cli(
+            [
+                "vat-report",
+                "--year",
+                "2026",
+                "--quarter",
+                "1",
+                "--format",
+                "csv",
+                "--output",
+                str(export_dir),
+            ],
+            check=True,
+        )
+        exported = [
+            Path(line.split("Exportiert: ", 1)[1])
+            for line in result.stdout.splitlines()
+            if line.startswith("Exportiert: ")
+        ]
+        self.assertEqual(len(exported), 2)
+        rows = list(csv.reader(exported[0].read_text(encoding="utf-8-sig").splitlines()))
+        self.assertIn("kennzahl", rows[0])
+        kennzahlen = {row[6] for row in rows[1:]}
+        self.assertIn("81", kennzahlen)
+        self.assertIn("83", kennzahlen)
+
     def test_export_csv(self):
         self.write_config(
             """
@@ -1373,6 +1443,30 @@ account_number = "4940"
         self.assertEqual(rows[1][4], "(51) Arbeitsmittel")
         self.assertEqual(rows[1][3], "1und1")
 
+    def test_import_accepts_vat_classification_fields(self):
+        self.run_cli(["setup"], input="\n\n\nstandard\n", check=True)
+        import_file = self.root / "import_vat_fields.csv"
+        import_file.write_text(
+            "\n".join(
+                [
+                    "type,date,party,category,amount_eur,vat_rate",
+                    "income,2026-01-10,Kunde,Umsatzsteuerpflichtige Betriebseinnahmen,107.00,7%",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        self.run_cli(["import", "--file", str(import_file), "--format", "csv"], check=True)
+        query = self.run_cli(
+            ["query", "SELECT vat_rate, vat_code, vat_output FROM income WHERE id = 1"],
+            check=True,
+        )
+        rows = self.parse_csv(query.stdout)
+        self.assertEqual(rows[1][0], "7.0")
+        self.assertEqual(rows[1][1], "output_reduced_7")
+        self.assertEqual(rows[1][2], "7.0")
+
     def test_import_legacy_rc_boolean_requires_jurisdiction(self):
         import_file = self.root / "import_missing_rc_type.csv"
         import_file.write_text(
@@ -1474,11 +1568,19 @@ account_number = "4940"
                 row[1]
                 for row in conn.execute("PRAGMA table_info(expenses)").fetchall()
             }
+            income_columns = {
+                row[1]
+                for row in conn.execute("PRAGMA table_info(income)").fetchall()
+            }
             rc_type = conn.execute(
                 "SELECT rc_type FROM expenses WHERE uuid = ?",
                 ("legacy-rc",),
             ).fetchone()[0]
         self.assertIn("rc_type", columns)
+        self.assertIn("vat_rate", columns)
+        self.assertIn("vat_code", columns)
+        self.assertIn("vat_rate", income_columns)
+        self.assertIn("vat_code", income_columns)
         self.assertNotIn("is_rc", columns)
         self.assertNotIn("rc_jurisdiction", columns)
         self.assertEqual(rc_type, "unclassified")

@@ -36,6 +36,7 @@ from .commands import (
     cmd_update_expense,
     cmd_update_income,
     cmd_update_private_transfer,
+    cmd_vat_report,
 )
 from .constants import DEFAULT_DB_PATH, DEFAULT_EXPORT_DIR
 
@@ -182,6 +183,17 @@ def main() -> None:
     add_income_parser.add_argument("--notes", help="Bemerkung")
     add_income_parser.add_argument(
         "--vat", type=float, help="Umsatzsteuer-Betrag (für Regelb.)"
+    )
+    add_income_parser.add_argument(
+        "--vat-rate",
+        type=float,
+        choices=[0.0, 7.0, 19.0],
+        help="USt-Satz für Ausgangsumsätze (0, 7, 19)",
+    )
+    add_income_parser.add_argument(
+        "--tax-free",
+        action="store_true",
+        help="Steuerfreie Einnahme ohne Vorsteuerabzug (§19/steuerfrei)",
     )
     add_income_parser.set_defaults(func=cmd_add_income)
 
@@ -383,6 +395,17 @@ def main() -> None:
     upd_inc_parser.add_argument("--receipt", help="Neuer Belegname")
     upd_inc_parser.add_argument("--notes", help="Neue Bemerkung")
     upd_inc_parser.add_argument("--vat", type=float, help="Neue Umsatzsteuer")
+    upd_inc_parser.add_argument(
+        "--vat-rate",
+        type=float,
+        choices=[0.0, 7.0, 19.0],
+        help="Neuer USt-Satz für Ausgangsumsätze (0, 7, 19)",
+    )
+    upd_inc_parser.add_argument(
+        "--tax-free",
+        action="store_true",
+        help="Setzt die Einnahme auf steuerfrei ohne Vorsteuerabzug",
+    )
     upd_inc_parser.set_defaults(func=cmd_update_income)
 
     # update private-transfer
@@ -461,6 +484,31 @@ def main() -> None:
         help="Zeigt zusätzlich Privateinlagen und Privatentnahmen",
     )
     summary_parser.set_defaults(func=cmd_summary)
+
+    # --- vat-report ---
+    vat_report_parser = subparsers.add_parser(
+        "vat-report",
+        help="Erzeugt einen ELSTER-nahen USt-Voranmeldungs-Report",
+    )
+    vat_report_parser.add_argument("--year", type=int, required=True, help="Jahr")
+    vat_period_group = vat_report_parser.add_mutually_exclusive_group()
+    vat_period_group.add_argument("--quarter", type=int, choices=[1, 2, 3, 4], help="Quartal")
+    vat_period_group.add_argument("--month", type=int, choices=range(1, 13), help="Monat")
+    vat_report_parser.add_argument(
+        "--format",
+        choices=["table", "csv", "xlsx"],
+        default="table",
+        help="Ausgabeformat",
+    )
+    vat_report_parser.add_argument(
+        "--output",
+        default=None,
+        help=(
+            "Ausgabeverzeichnis für csv/xlsx (default: exports.directory aus Config oder "
+            f"{DEFAULT_EXPORT_DIR})"
+        ),
+    )
+    vat_report_parser.set_defaults(func=cmd_vat_report)
 
     # --- private-summary ---
     private_summary_parser = subparsers.add_parser(

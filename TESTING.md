@@ -22,6 +22,7 @@ Die Test-Suite deckt folgende Funktionsbereiche ab:
 - `add`, `list`, `update`, `delete` für Ausgaben und Einnahmen
 - Duplikat-Erkennung (Hash)
 - `summary` inkl. Reverse-Charge-Logik
+- `vat-report` inkl. Periodenlogik, KZ-Mapping, Warnungen, CSV-Export und Rundung
 - `audit` (INSERT/UPDATE/DELETE)
 - `export` (CSV)
 - `config show` und `setup` (Onboarding-Wizard)
@@ -30,7 +31,7 @@ Die Test-Suite deckt folgende Funktionsbereiche ab:
 
 ## Nicht automatisiert (manuell)
 
-- `export --format xlsx` (benötigt `openpyxl`)
+- `export --format xlsx` und `vat-report --format xlsx` (benötigt `openpyxl`)
 - `receipt open` erfolgreicher Pfad (öffnet GUI/Datei-System)
 
 ## Ausführen
@@ -43,4 +44,5 @@ Optional (mit `openpyxl` installiert):
 
 ```bash
 euer export --year 2026 --format xlsx
+euer vat-report --year 2026 --format xlsx
 ```

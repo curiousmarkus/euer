@@ -120,11 +120,15 @@ damit Erweiterungen konsistent und risikoarm umgesetzt werden können.
 - **Incomplete**: unvollständige Buchungen werden live aus `expenses`/`income` berechnet.
 - **Summary**: Jahreszusammenfassung inkl. RC/Steuerlogik und Hinweis auf
   unklassifizierte RC-Altbuchungen.
+- **VAT Report**: ELSTER-naher UStVA-Arbeitsbericht (`vat-report`) mit
+  Kennzahlen, periodengenauer Selektion, Warnungen sowie CSV/XLSX-Export.
 - **Export**: CSV (immer), XLSX optional via `openpyxl`.
 - **Kontenrahmen**: Optionaler `[[ledger_accounts]]`-Kontenrahmen in der Config mit
   automatischer Kategorieauflösung bei `add`/`update`/`import`.
 - **Receipts**: Belegpfade in Config, Check + Open.
 - **Steuermodi**: `small_business` und `standard` (RC Handling inkl. USt/VoSt).
+- **Persistierte USt-Klassifikation**: `vat_rate` und `vat_code` an
+  Ausgaben/Einnahmen für auditierbare UStVA-Reports.
 - **RC-Typ**: Reverse-Charge-Ausgaben speichern `none`, `eu`,
   `third_country` oder den Migrationszustand `unclassified`.
 
@@ -176,8 +180,9 @@ Die vollständigen DDLs stehen in `euercli/schema.py`.
 
 - **categories**: UUID, Name, EÜR‑Zeile, Typ (expense/income).
 - **expenses**: UUID, Ausgaben inkl. Beleg, Konto, Fremdwährung, RC‑Typ,
-  Steuern, Private Klassifikation.
-- **income**: UUID, Einnahmen inkl. Beleg, Fremdwährung, Umsatzsteuer.
+  Steuern, USt-Klassifikation, Private Klassifikation.
+- **income**: UUID, Einnahmen inkl. Beleg, Fremdwährung, Umsatzsteuer,
+  USt-Klassifikation.
 - **private_transfers**: UUID, Privateinlagen/-entnahmen, Betrag, optionale Referenz auf Expense.
 - **audit_log**: Protokolliert INSERT/UPDATE/DELETE inkl. Vorher/Nachher + `record_uuid`.
 
@@ -194,6 +199,9 @@ Der Modus wird aus der Config gelesen (`[tax].mode`).
 
 - `small_business` (Default): keine Vorsteuer; RC erzeugt Umsatzsteuer‑Zahllast.
 - `standard`: Vorsteuer wird erfasst; RC bucht USt und VorSt gleichzeitig.
+- Einnahmen speichern für UStVA-Zwecke `vat_rate` und `vat_code`; im
+  Standardmodus ist der Default für neue Einnahmen `19 %`, sofern keine
+  steuerfreie Behandlung gesetzt wird.
 - RC-Ausgaben werden per `--rc eu` oder `--rc third-country` erfasst; intern
   wird `third-country` als `third_country` gespeichert.
 
@@ -206,6 +214,9 @@ Fehlende Pflichtfelder brechen den Import ab. Unvollständige Buchungen werden
 über `euer incomplete list` live berechnet (fehlende `category`, `receipt`,
 `vat`, `account`). Details siehe
 `technical-documentation/INCOMPLETE_ENTRIES_APPROACH.md`.
+
+Der Import akzeptiert zusätzlich UStVA-Klassifikationsfelder (`vat_rate`,
+`vat_code`, `tax_free`) für round-trip-fähige Exporte und Reports.
 
 ## Neue Commands hinzufügen
 
@@ -302,4 +313,4 @@ Offene Change Requests werden innerhalb der jeweiligen Spec dokumentiert.
 | 009 | Service-Layer-Architektur (Import) | Implementiert |
 | 010 | Kontenrahmen (Buchungskonten je Kategorie) | Implementiert |
 | 011 | Reverse-Charge-Typ (EU vs. Drittland) | Implementiert |
-| 012 | `vat-report` | Offen |
+| 012 | `vat-report` | Implementiert |

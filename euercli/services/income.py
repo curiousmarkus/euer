@@ -10,6 +10,15 @@ from .duplicates import DuplicateAction
 from .errors import RecordNotFoundError, ValidationError
 from .models import Income, LedgerAccount
 from .utils import get_optional, hash_date, resolve_dates
+from .vat import (
+    INCOME_CODE_BY_RATE,
+    INCOME_RATE_BY_CODE,
+    INCOME_VAT_CODES,
+    OUTPUT_TAX_FREE_NO_VORSTEUER,
+    included_vat_from_gross,
+    validate_vat_code,
+    validate_vat_rate,
+)
 
 
 def _row_to_income(row: sqlite3.Row) -> Income:
@@ -28,8 +37,96 @@ def _row_to_income(row: sqlite3.Row) -> Income:
         foreign_amount=get_optional(row, "foreign_amount"),
         notes=get_optional(row, "notes"),
         vat_output=get_optional(row, "vat_output"),
+        vat_rate=get_optional(row, "vat_rate"),
+        vat_code=get_optional(row, "vat_code"),
         hash=get_optional(row, "hash"),
     )
+
+
+def _validate_tax_mode(tax_mode: str) -> None:
+    if tax_mode not in {"small_business", "standard"}:
+        raise ValidationError(
+            f"Unbekannter Steuermodus: {tax_mode}",
+            code="invalid_tax_mode",
+            details={"tax_mode": tax_mode},
+        )
+
+
+def _resolve_income_vat_classification(
+    *,
+    amount_eur: float,
+    tax_mode: str,
+    legacy_vat: float | None,
+    vat_output: float | None,
+    vat_rate: float | None,
+    vat_code: str | None,
+    tax_free: bool,
+    skip_vat_auto: bool,
+) -> tuple[float | None, float | None, str | None]:
+    _validate_tax_mode(tax_mode)
+
+    manual_vat_output = vat_output if vat_output is not None else legacy_vat
+    if tax_free and (vat_rate is not None or legacy_vat is not None):
+        raise ValidationError(
+            "--tax-free darf nicht mit --vat-rate oder --vat kombiniert werden.",
+            code="tax_free_conflict",
+        )
+    if tax_free and vat_code not in {None, OUTPUT_TAX_FREE_NO_VORSTEUER}:
+        raise ValidationError(
+            "--tax-free widerspricht der angegebenen Steuerklasse.",
+            code="tax_free_vat_code_conflict",
+            details={"vat_code": vat_code},
+        )
+    if tax_free and manual_vat_output not in {None, 0, 0.0}:
+        raise ValidationError(
+            "Steuerfreie Einnahmen dürfen keine Umsatzsteuer enthalten.",
+            code="tax_free_vat_output_conflict",
+        )
+
+    resolved_rate = validate_vat_rate(vat_rate)
+    resolved_code = validate_vat_code(vat_code, INCOME_VAT_CODES)
+
+    if tax_free:
+        return 0.0, 0.0, OUTPUT_TAX_FREE_NO_VORSTEUER
+
+    if resolved_code is not None:
+        code_rate = INCOME_RATE_BY_CODE[resolved_code]
+        if resolved_rate is not None and resolved_rate != code_rate:
+            raise ValidationError(
+                "Steuersatz passt nicht zur Steuerklasse.",
+                code="vat_rate_code_mismatch",
+                details={"vat_rate": resolved_rate, "vat_code": resolved_code},
+            )
+        resolved_rate = code_rate
+    elif resolved_rate is not None:
+        resolved_code = INCOME_CODE_BY_RATE[resolved_rate]
+    elif tax_mode == "small_business":
+        if manual_vat_output not in {None, 0, 0.0}:
+            return None, float(manual_vat_output), None
+        resolved_rate = 0.0
+        resolved_code = OUTPUT_TAX_FREE_NO_VORSTEUER
+    else:
+        resolved_rate = 19.0
+        resolved_code = INCOME_CODE_BY_RATE[resolved_rate]
+
+    if resolved_code == OUTPUT_TAX_FREE_NO_VORSTEUER:
+        if manual_vat_output not in {None, 0, 0.0}:
+            raise ValidationError(
+                "Steuerfreie Einnahmen dürfen keine Umsatzsteuer enthalten.",
+                code="tax_free_vat_output_conflict",
+            )
+        return resolved_rate, 0.0, resolved_code
+
+    if resolved_rate == 0.0:
+        resolved_vat_output = float(manual_vat_output or 0.0)
+    elif manual_vat_output is not None:
+        resolved_vat_output = float(manual_vat_output)
+    elif skip_vat_auto:
+        resolved_vat_output = None
+    else:
+        resolved_vat_output = included_vat_from_gross(amount_eur, resolved_rate)
+
+    return resolved_rate, resolved_vat_output, resolved_code
 
 
 def _resolve_income_category(
@@ -94,6 +191,9 @@ def create_income(
     notes: str | None = None,
     vat: float | None = None,
     vat_output: float | None = None,
+    vat_rate: float | None = None,
+    vat_code: str | None = None,
+    tax_free: bool = False,
     tax_mode: str = "small_business",
     audit_user: str = "default",
     skip_vat_auto: bool = False,
@@ -113,22 +213,18 @@ def create_income(
         ledger_accounts=ledger_accounts,
     )
 
-    if tax_mode not in {"small_business", "standard"}:
-        raise ValidationError(
-            f"Unbekannter Steuermodus: {tax_mode}",
-            code="invalid_tax_mode",
-            details={"tax_mode": tax_mode},
+    resolved_vat_rate, resolved_vat_output, resolved_vat_code = (
+        _resolve_income_vat_classification(
+            amount_eur=amount_eur,
+            tax_mode=tax_mode,
+            legacy_vat=vat,
+            vat_output=vat_output,
+            vat_rate=vat_rate,
+            vat_code=vat_code,
+            tax_free=tax_free,
+            skip_vat_auto=skip_vat_auto,
         )
-
-    resolved_vat_output = vat_output
-    if resolved_vat_output is None and tax_mode == "standard" and vat is not None:
-        resolved_vat_output = vat
-
-    if not skip_vat_auto:
-        if tax_mode == "small_business" and resolved_vat_output is None:
-            resolved_vat_output = 0.0
-        if tax_mode == "standard" and resolved_vat_output is None:
-            resolved_vat_output = None
+    )
 
     tx_hash = compute_hash(
         hash_date(resolved_payment_date, resolved_invoice_date),
@@ -154,8 +250,8 @@ def create_income(
     cursor = conn.execute(
         """INSERT INTO income
            (uuid, receipt_name, payment_date, invoice_date, source, category_id, amount_eur,
-            ledger_account, foreign_amount, notes, vat_output, hash)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            ledger_account, foreign_amount, notes, vat_output, vat_rate, vat_code, hash)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             record_uuid,
             receipt_name,
@@ -168,6 +264,8 @@ def create_income(
             foreign_amount,
             notes,
             resolved_vat_output,
+            resolved_vat_rate,
+            resolved_vat_code,
             tx_hash,
         ),
     )
@@ -186,6 +284,8 @@ def create_income(
         "foreign_amount": foreign_amount,
         "notes": notes,
         "vat_output": resolved_vat_output,
+        "vat_rate": resolved_vat_rate,
+        "vat_code": resolved_vat_code,
     }
     log_audit(
         conn,
@@ -214,6 +314,8 @@ def create_income(
         foreign_amount=foreign_amount,
         notes=notes,
         vat_output=resolved_vat_output,
+        vat_rate=resolved_vat_rate,
+        vat_code=resolved_vat_code,
         hash=tx_hash,
     )
 
@@ -229,7 +331,7 @@ def list_income(
         SELECT i.id, i.uuid, i.payment_date, i.invoice_date, i.source, i.category_id,
                c.name as category_name,
                c.eur_line as category_eur_line, i.amount_eur, i.ledger_account, i.receipt_name,
-               i.foreign_amount, i.notes, i.vat_output, i.hash
+               i.foreign_amount, i.notes, i.vat_output, i.vat_rate, i.vat_code, i.hash
         FROM income i
         LEFT JOIN categories c ON i.category_id = c.id
         WHERE 1=1
@@ -257,7 +359,7 @@ def get_income_detail(conn: sqlite3.Connection, record_id: int) -> Income:
         """SELECT i.id, i.uuid, i.payment_date, i.invoice_date, i.source, i.category_id,
                   c.name as category_name,
                   c.eur_line as category_eur_line, i.amount_eur, i.ledger_account, i.receipt_name,
-                  i.foreign_amount, i.notes, i.vat_output, i.hash
+                  i.foreign_amount, i.notes, i.vat_output, i.vat_rate, i.vat_code, i.hash
            FROM income i
            LEFT JOIN categories c ON i.category_id = c.id
            WHERE i.id = ?""",
@@ -288,6 +390,9 @@ def update_income(
     receipt_name: str | None = None,
     notes: str | None = None,
     vat: float | None = None,
+    vat_rate: float | None = None,
+    vat_code: str | None = None,
+    tax_free: bool = False,
     tax_mode: str,
     audit_user: str,
     auto_commit: bool = True,
@@ -321,10 +426,39 @@ def update_income(
     new_foreign = foreign_amount if foreign_amount is not None else row["foreign_amount"]
     new_notes = notes if notes is not None else row["notes"]
     new_vat_output = row["vat_output"]
-    if vat is not None:
-        new_vat_output = vat
-    elif tax_mode == "standard" and row["vat_output"] is None:
-        new_vat_output = None
+    new_vat_rate = get_optional(row, "vat_rate")
+    new_vat_code = get_optional(row, "vat_code")
+
+    explicit_tax_change = (
+        vat is not None or vat_rate is not None or vat_code is not None or tax_free
+    )
+    recalc_existing_tax = (
+        amount_eur is not None
+        and not explicit_tax_change
+        and new_vat_code in INCOME_RATE_BY_CODE
+        and new_vat_code != OUTPUT_TAX_FREE_NO_VORSTEUER
+    )
+    if explicit_tax_change or recalc_existing_tax:
+        if explicit_tax_change:
+            base_vat_rate = vat_rate
+            base_vat_code = vat_code
+            if vat is not None and vat_rate is None and vat_code is None and not tax_free:
+                base_vat_rate = new_vat_rate
+                base_vat_code = new_vat_code
+        else:
+            base_vat_rate = new_vat_rate
+            base_vat_code = new_vat_code
+
+        new_vat_rate, new_vat_output, new_vat_code = _resolve_income_vat_classification(
+            amount_eur=new_amount,
+            tax_mode=tax_mode,
+            legacy_vat=vat,
+            vat_output=None,
+            vat_rate=base_vat_rate,
+            vat_code=base_vat_code,
+            tax_free=tax_free,
+            skip_vat_auto=False,
+        )
 
     existing_category_name: str | None = None
     if row["category_id"]:
@@ -384,8 +518,10 @@ def update_income(
 
     conn.execute(
         """UPDATE income SET
-           receipt_name = ?, payment_date = ?, invoice_date = ?, source = ?, category_id = ?, amount_eur = ?,
-           ledger_account = ?, foreign_amount = ?, notes = ?, vat_output = ?, hash = ?
+           receipt_name = ?, payment_date = ?, invoice_date = ?, source = ?,
+           category_id = ?, amount_eur = ?,
+           ledger_account = ?, foreign_amount = ?, notes = ?,
+           vat_output = ?, vat_rate = ?, vat_code = ?, hash = ?
            WHERE id = ?""",
         (
             new_receipt,
@@ -398,6 +534,8 @@ def update_income(
             new_foreign,
             new_notes,
             new_vat_output,
+            new_vat_rate,
+            new_vat_code,
             new_hash,
             record_id,
         ),
@@ -417,6 +555,8 @@ def update_income(
         "foreign_amount": new_foreign,
         "notes": new_notes,
         "vat_output": new_vat_output,
+        "vat_rate": new_vat_rate,
+        "vat_code": new_vat_code,
     }
     log_audit(
         conn,
@@ -446,6 +586,8 @@ def update_income(
         foreign_amount=new_foreign,
         notes=new_notes,
         vat_output=new_vat_output,
+        vat_rate=new_vat_rate,
+        vat_code=new_vat_code,
         hash=new_hash,
     )
 

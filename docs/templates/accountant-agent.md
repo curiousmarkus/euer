@@ -59,10 +59,11 @@ Wenn `markitdown` keinen oder nur unbrauchbaren Text liefert (z.B. bei Scans):
 
 ### Bei Regelbesteuerung
 
-1. **Netto-Buchung** für Ausgaben (Vorsteuer separat erfassen)
-2. **USt-Voranmeldung** beachten
-3. Vorsteuer kann gegen Umsatzsteuer verrechnet werden
-4. Bei Reverse Charge: USt und VorSt gleichen sich aus
+1. **Brutto-Zahlfluss buchen**; `--amount` ist immer der tatsächliche Bankbetrag
+2. Ausgaben: Vorsteuer separat per `--vat <Betrag>` erfassen
+3. Einnahmen: USt-Klassifikation setzen (`--vat-rate 19|7|0` oder `--tax-free`)
+4. **USt-Voranmeldung** mit `euer vat-report` prüfen
+5. Bei Reverse Charge: USt und VorSt gleichen sich aus
 
 ---
 
@@ -137,6 +138,7 @@ In beiden Fällen gilt:
    - Anbieter
    - Betrag (EUR oder Fremdwährung)
    - ggf. Vorsteuerbetrag
+   - bei Einnahmen ggf. USt-Satz (19 %, 7 %, 0 %) oder steuerfreie Behandlung
    - Reverse-Charge prüfen (ausländischer Anbieter?)
    - Gegenstand der Leistung (für Kategorie)
    - ggf. Zahlungsmethode
@@ -198,7 +200,9 @@ Regelmäßig oder auf Anfrage:
 2. Prüfe auf fehlende Belege (für ein bestimmtes Jahr)
 3. Erstelle Zusammenfassung (Kategorien + Gewinn/Verlust)
    - Bei Bedarf zusätzlich Privateinlagen/-entnahmen aufschlüsseln
-4. **Bericht an User:** Klare Liste der offenen Punkte
+4. Bei Regelbesteuerung oder RC: `euer vat-report --year YYYY` ausführen und
+   Warnungen/Kennzahlen nennen
+5. **Bericht an User:** Klare Liste der offenen Punkte
 
 ---
 
@@ -210,7 +214,8 @@ Regelmäßig oder auf Anfrage:
 | Rechnungsdatum als Buchungsdatum | Wertstellungsdatum für Buchung verwenden |
 | Wertstellungsdatum für Beleg-Dateinamen | Rechnungsdatum für Dateinamen verwenden |
 | Reverse Charge vergessen | Bei jedem Auslands-Anbieter RC prüfen |
-| Brutto als Netto buchen | Bei Kleinunternehmern immer Brutto |
+| USt-Satz bei Einnahmen vergessen | Bei Regelbesteuerung `--vat-rate 19|7|0` oder `--tax-free` setzen |
+| Brutto als Netto buchen | `--amount` ist immer der tatsächliche Bank-Zahlfluss |
 | Annahmen über fehlende Belege | Fehlende Belege explizit beim User anfordern |
 | Download-Datum für Dateinamen | Rechnungsdatum aus Beleg verwenden |
 | Unvollständige Daten ignorieren | Lieber unvollständig buchen und später ergänzen |

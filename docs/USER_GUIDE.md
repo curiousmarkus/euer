@@ -178,6 +178,10 @@ euer add expense --payment-date 2026-01-15 --vendor "Hetzner" \
 euer add income --payment-date 2026-01-20 --invoice-date 2026-01-18 --source "Kunde ABC" \
     --category "Umsatzsteuerpflichtige Betriebseinnahmen" --amount 1500.00
 
+# Einnahme bei Regelbesteuerung mit explizitem USt-Satz
+euer add income --payment-date 2026-01-20 --source "Kunde ABC" \
+    --category "Umsatzsteuerpflichtige Betriebseinnahmen" --amount 1190.00 --vat-rate 19
+
 # Einnahme mit Kontenrahmen
 euer add income --payment-date 2026-01-20 --source "Kunde ABC" \
     --ledger-account erloese-19 --amount 1500.00
@@ -239,6 +243,8 @@ euer update expense 42 --no-private-paid
 euer update expense 42 --rc eu
 euer update expense 42 --rc third-country
 euer update expense 42 --no-rc
+euer update income 17 --vat-rate 7
+euer update income 17 --tax-free
 
 # Privatvorgang korrigieren
 euer update private-transfer 7 --amount 600 --description "Korrektur"
@@ -261,6 +267,9 @@ euer summary --year 2026 --include-private
 euer private-summary --year 2026
 euer reconcile private --year 2026 --dry-run
 euer reconcile private --year 2026
+euer vat-report --year 2026
+euer vat-report --year 2026 --quarter 1
+euer vat-report --year 2026 --month 3 --format csv --output exports/
 
 # Default: CSV, ohne --year = alle Jahre
 euer export
@@ -276,7 +285,7 @@ Hinweis: `export` schreibt Dateien ins Export-Verzeichnis:
 - `Sacheinlagen` (aus `expenses.is_private_paid` abgeleitet)
 
 Hinweis: Exporte für Ausgaben und Einnahmen enthalten zusätzlich die Spalten
-`Buchungskonto` und `Kontonummer`, wenn ein Kontenrahmen konfiguriert ist.
+`Buchungskonto`, `Kontonummer`, `Steuersatz` und `Steuerklasse`.
 
 Hinweis: Für die Kategorie **Bewirtungsaufwendungen** rechnet `euer summary`
 den Aufwand automatisch als **70% abziehbar / 30% nicht abziehbar**. In
@@ -303,7 +312,7 @@ euer incomplete list --format csv
 
 Hinweise zum Import:
 - Pflichtfelder: `type`, `party`, `amount_eur` und mindestens eines aus `payment_date`/`invoice_date` (`date` ist Alias für `payment_date`)
-- Optionale Felder: `category`, `account`, `ledger_account`, `foreign_amount`, `receipt_name`, `notes`, `rc`, `private_paid`, `vat_input`, `vat_output`
+- Optionale Felder: `category`, `account`, `ledger_account`, `foreign_amount`, `receipt_name`, `notes`, `rc`, `private_paid`, `vat_input`, `vat_output`, `vat_rate`, `vat_code`, `tax_free`
 - Fehlende Pflichtfelder führen zu einem Import-Abbruch.
 - `type` kann fehlen, wenn `amount_eur` ein Vorzeichen hat (negativ = Ausgabe, positiv = Einnahme).
 - CSV‑Exports für **Ausgaben/Einnahmen** können direkt re‑importiert werden (Spaltennamen sind gemappt).
@@ -312,6 +321,10 @@ Hinweise zum Import:
 - Alias‑Keys werden akzeptiert (z.B. `EUR`, `Belegname`, `Lieferant`, `Quelle`, `RC`).
 - `private_paid=true|1|yes|X` markiert eine importierte Ausgabe manuell als Sacheinlage.
 - `rc` akzeptiert `eu` oder `third-country`; Legacy-Werte `rc=true|X` brauchen zusätzlich eine Jurisdiktionsspalte.
+- `vat_rate` akzeptiert `19`, `7`, `0` sowie Werte mit `%`.
+- `vat_code` akzeptiert persistierte Steuerklassen wie `output_standard_19`,
+  `output_reduced_7`, `output_zero_0`, `output_tax_free_no_vorsteuer`,
+  `input_invoice`, `reverse_charge_eu`, `reverse_charge_third_country`.
 
 ## Kontenrahmen
 
@@ -340,15 +353,20 @@ Wichtig:
 - Steuerfelder:
   - `small_business` + `rc=eu|third-country`: `vat_output` wird automatisch aus `amount_eur * 0.19` berechnet,
     `vat_input` wird auf `0.0` gesetzt (Felder können weggelassen werden).
-  - `standard`: `vat_input` wird **nicht** automatisch berechnet (außer bei RC). Ohne `vat_input`
-    bleibt es `0.0`. `amount_eur` wird immer 1:1 gespeichert (keine Netto/Brutto‑Umrechnung).
+  - `small_business` + Einnahmen: neue Einnahmen werden als
+    `output_tax_free_no_vorsteuer` klassifiziert.
+  - `standard` + Ausgaben: `--vat` bzw. `vat_input` ist der Vorsteuerbetrag;
+    RC bucht `vat_input` und `vat_output` automatisch.
+  - `standard` + Einnahmen: ohne explizite Angabe gilt `vat_rate=19`. Nutze
+    `--vat-rate 7`, `--vat-rate 0` oder `--tax-free` für abweichende Fälle.
+    `amount_eur` wird immer 1:1 als Brutto-Zahlfluss gespeichert.
 
 Workflow für unvollständige Einträge:
 1. Import/Add ausführen → Buchungen werden angelegt (Pflichtfelder müssen vorhanden sein).
 2. `euer incomplete list` zeigt fehlende **Qualitätsfelder**:
    `payment_date`, `invoice_date`, `category`, `receipt`, `vat`, `account` (abhängig von Typ/Steuermodus).
 3. Fehlende Infos per `euer update expense|income <ID>` nachpflegen.
-Hinweis: Für die Kategorie **Gezahlte USt (58)** ist kein Beleg erforderlich.
+Hinweis: Für die Kategorie **Gezahlte USt (57)** ist kein Beleg erforderlich.
 
 ## Beleg‑Verwaltung
 
@@ -402,6 +420,22 @@ mode = "small_business"  # oder "standard"
 - **`small_business`** = Kleinunternehmerregelung (§19 UStG): keine Vorsteuer; Reverse‑Charge erzeugt USt‑Zahllast.
 - **`standard`** = Regelbesteuerung: Vorsteuer wird erfasst; Reverse‑Charge bucht USt und VorSt gleichzeitig.
 
+### Einnahmen klassifizieren
+
+Für den UStVA-Report speichert `euer` an Einnahmen `vat_rate` und `vat_code`.
+
+```bash
+euer add income ... --vat-rate 19
+euer add income ... --vat-rate 7
+euer add income ... --vat-rate 0
+euer add income ... --tax-free
+```
+
+`--tax-free` ist exklusiv zu `--vat-rate` und `--vat`. Im Modus `standard`
+setzt `euer` ohne Angabe automatisch `19 %`. Der Betrag bleibt der tatsächliche
+Zahlfluss; `vat_output` wird aus dem Bruttobetrag herausgerechnet, sofern kein
+manueller Steuerbetrag per `--vat` gesetzt ist.
+
 ### Steuermodus setzen, einsehen, aendern
 
 - **Setzen (interaktiv):** `euer setup` fragt nach `small_business|standard`.
@@ -443,6 +477,25 @@ Bestehende RC-Buchungen ohne EU-/Drittland-Typ können nachgepflegt werden:
 euer update expense 42 --rc eu
 euer update expense 42 --rc third-country
 ```
+
+## USt-Voranmeldung (`vat-report`)
+
+`vat-report` ist ein separater, formularnaher Arbeitsbericht für die manuelle
+Übertragung in ELSTER. Er nutzt ausschließlich `payment_date`; Buchungen ohne
+Wertstellungsdatum werden nicht eingerechnet und erscheinen als Warnung.
+
+```bash
+euer vat-report --year 2026
+euer vat-report --year 2026 --quarter 1
+euer vat-report --year 2026 --month 3
+euer vat-report --year 2026 --quarter 1 --format csv --output exports/
+euer vat-report --year 2026 --month 3 --format xlsx --output exports/
+```
+
+Der Report enthält u.a. KZ 81/86/87/48 für Ausgangsumsätze, KZ 46/47 und
+84/85 für Reverse Charge, KZ 66/67 für Vorsteuer sowie KZ 83 als Zahllast oder
+Erstattung. CSV erzeugt zusätzlich eine Diagnose-Datei mit ausgeschlossenen und
+gewarnten Buchungen; XLSX enthält ein zweites Sheet `Diagnose`.
 
 ## Backfill / Reklassifikation für bestehende DB
 

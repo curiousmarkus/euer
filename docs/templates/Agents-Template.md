@@ -11,6 +11,11 @@ Geschäftsform: {{GESCHAEFTSFORM}}
 **Reverse-Charge-Anbieter (§13b UStG):**  
 `--rc eu` oder `--rc third-country` erforderlich bei: {{RC_ANBIETER_LISTE}}
 
+**UStVA-Regeln:**
+- Bei Regelbesteuerung Einnahmen mit `--vat-rate 19|7|0` oder `--tax-free` klassifizieren.
+- `--amount` ist immer der tatsächliche Brutto-Zahlfluss auf dem Konto.
+- UStVA-Arbeitsbericht: `euer vat-report --year YYYY`.
+
 ---
 
 ## Dateiablage

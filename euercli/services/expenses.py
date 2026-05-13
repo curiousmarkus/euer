@@ -11,6 +11,13 @@ from .errors import RecordNotFoundError, ValidationError
 from .models import Expense, LedgerAccount
 from .private_classification import classify_expense_private_paid
 from .utils import get_optional, hash_date, resolve_dates
+from .vat import (
+    EXPENSE_VAT_CODES,
+    INPUT_INVOICE,
+    RC_VAT_CODE_BY_TYPE,
+    validate_vat_code,
+    validate_vat_rate,
+)
 
 VALID_RC_TYPES = {"none", "eu", "third_country", "unclassified"}
 CREATABLE_RC_TYPES = {"none", "eu", "third_country"}
@@ -45,6 +52,8 @@ def row_to_expense(row: sqlite3.Row) -> Expense:
         rc_type=rc_type,
         vat_input=get_optional(row, "vat_input"),
         vat_output=get_optional(row, "vat_output"),
+        vat_rate=get_optional(row, "vat_rate"),
+        vat_code=get_optional(row, "vat_code"),
         is_private_paid=bool(get_optional(row, "is_private_paid") or 0),
         private_classification=get_optional(row, "private_classification") or "none",
         hash=get_optional(row, "hash"),
@@ -110,6 +119,47 @@ def _resolve_create_vat(
             resolved_vat_output = 0.0
 
     return resolved_vat_input, resolved_vat_output
+
+
+def _resolve_expense_vat_classification(
+    *,
+    rc_type: str,
+    vat_input: float | None,
+    vat_rate: float | None,
+    vat_code: str | None,
+) -> tuple[float | None, str | None]:
+    resolved_rate = validate_vat_rate(vat_rate)
+    resolved_code = validate_vat_code(vat_code, EXPENSE_VAT_CODES)
+
+    if rc_type in RC_VAT_CODE_BY_TYPE:
+        expected_code = RC_VAT_CODE_BY_TYPE[rc_type]
+        if resolved_code is not None and resolved_code != expected_code:
+            raise ValidationError(
+                "Steuerklasse passt nicht zum Reverse-Charge-Typ.",
+                code="vat_code_rc_type_mismatch",
+                details={"rc_type": rc_type, "vat_code": resolved_code},
+            )
+        if resolved_rate is not None and resolved_rate != 19.0:
+            raise ValidationError(
+                "Reverse-Charge wird im MVP nur mit 19 % unterstützt.",
+                code="unsupported_vat_rate",
+                details={"vat_rate": resolved_rate},
+            )
+        return 19.0, expected_code
+
+    if resolved_code in RC_VAT_CODE_BY_TYPE.values():
+        raise ValidationError(
+            "Reverse-Charge-Steuerklassen erfordern --rc eu oder --rc third-country.",
+            code="vat_code_requires_rc",
+            details={"vat_code": resolved_code},
+        )
+
+    if resolved_code is None and (
+        resolved_rate is not None or (vat_input is not None and vat_input > 0)
+    ):
+        resolved_code = INPUT_INVOICE
+
+    return resolved_rate, resolved_code
 
 
 def _resolve_expense_category(
@@ -213,6 +263,8 @@ def create_expense(
     vat: float | None = None,
     vat_input: float | None = None,
     vat_output: float | None = None,
+    vat_rate: float | None = None,
+    vat_code: str | None = None,
     private_paid: bool = False,
     private_accounts: list[str] | None = None,
     tax_mode: str = "small_business",
@@ -243,6 +295,12 @@ def create_expense(
         vat_input=vat_input,
         vat_output=vat_output,
         skip_vat_auto=skip_vat_auto,
+    )
+    resolved_vat_rate, resolved_vat_code = _resolve_expense_vat_classification(
+        rc_type=resolved_rc_type,
+        vat_input=resolved_vat_input,
+        vat_rate=vat_rate,
+        vat_code=vat_code,
     )
 
     tx_hash = compute_hash(
@@ -276,9 +334,9 @@ def create_expense(
         """INSERT INTO expenses
            (uuid, receipt_name, payment_date, invoice_date, vendor, category_id,
             amount_eur, account, ledger_account, foreign_amount, notes, rc_type,
-            vat_input, vat_output,
+            vat_input, vat_output, vat_rate, vat_code,
             is_private_paid, private_classification, hash)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             record_uuid,
             receipt_name,
@@ -294,6 +352,8 @@ def create_expense(
             resolved_rc_type,
             resolved_vat_input,
             resolved_vat_output,
+            resolved_vat_rate,
+            resolved_vat_code,
             1 if is_private_paid else 0,
             private_classification,
             tx_hash,
@@ -317,6 +377,8 @@ def create_expense(
         "rc_type": resolved_rc_type,
         "vat_input": resolved_vat_input,
         "vat_output": resolved_vat_output,
+        "vat_rate": resolved_vat_rate,
+        "vat_code": resolved_vat_code,
         "is_private_paid": 1 if is_private_paid else 0,
         "private_classification": private_classification,
     }
@@ -350,6 +412,8 @@ def create_expense(
         rc_type=resolved_rc_type,
         vat_input=resolved_vat_input,
         vat_output=resolved_vat_output,
+        vat_rate=resolved_vat_rate,
+        vat_code=resolved_vat_code,
         is_private_paid=is_private_paid,
         private_classification=private_classification,
         hash=tx_hash,
@@ -369,6 +433,7 @@ def list_expenses(
                c.eur_line as category_eur_line, e.amount_eur, e.account, e.ledger_account,
                e.receipt_name,
                e.foreign_amount, e.notes, e.rc_type, e.vat_input, e.vat_output,
+               e.vat_rate, e.vat_code,
                e.is_private_paid, e.private_classification, e.hash
         FROM expenses e
         LEFT JOIN categories c ON e.category_id = c.id
@@ -399,6 +464,7 @@ def get_expense_detail(conn: sqlite3.Connection, record_id: int) -> Expense:
                   c.eur_line as category_eur_line, e.amount_eur, e.account, e.ledger_account,
                   e.receipt_name,
                   e.foreign_amount, e.notes, e.rc_type, e.vat_input, e.vat_output,
+                  e.vat_rate, e.vat_code,
                   e.is_private_paid, e.private_classification, e.hash
            FROM expenses e
            LEFT JOIN categories c ON e.category_id = c.id
@@ -431,6 +497,8 @@ def update_expense(
     receipt_name: str | None = None,
     notes: str | None = None,
     vat: float | None = None,
+    vat_rate: float | None = None,
+    vat_code: str | None = None,
     rc_type: str | None = None,
     private_paid: bool | None = None,
     private_accounts: list[str] | None = None,
@@ -470,6 +538,8 @@ def update_expense(
 
     new_vat_input = row["vat_input"]
     new_vat_output = row["vat_output"]
+    new_vat_rate = get_optional(row, "vat_rate")
+    new_vat_code = get_optional(row, "vat_code")
 
     manual_vat = vat
     current_rc_type = get_optional(row, "rc_type") or "none"
@@ -479,7 +549,13 @@ def update_expense(
     )
     new_rc = new_rc_type != "none"
 
-    recalc_tax = (vat is not None) or (rc_type is not None) or (amount_eur is not None)
+    recalc_tax = (
+        (vat is not None)
+        or (vat_rate is not None)
+        or (vat_code is not None)
+        or (rc_type is not None)
+        or (amount_eur is not None)
+    )
 
     if recalc_tax:
         calc_amount = new_amount
@@ -510,6 +586,12 @@ def update_expense(
                 code="invalid_tax_mode",
                 details={"tax_mode": tax_mode},
             )
+        new_vat_rate, new_vat_code = _resolve_expense_vat_classification(
+            rc_type=new_rc_type,
+            vat_input=new_vat_input,
+            vat_rate=vat_rate,
+            vat_code=vat_code,
+        )
 
     existing_category_name: str | None = None
     if row["category_id"]:
@@ -596,7 +678,7 @@ def update_expense(
            receipt_name = ?, payment_date = ?, invoice_date = ?, vendor = ?,
            category_id = ?, amount_eur = ?,
            account = ?, ledger_account = ?, foreign_amount = ?, notes = ?, rc_type = ?,
-           vat_input = ?, vat_output = ?,
+           vat_input = ?, vat_output = ?, vat_rate = ?, vat_code = ?,
            is_private_paid = ?, private_classification = ?, hash = ?
            WHERE id = ?""",
         (
@@ -613,6 +695,8 @@ def update_expense(
             new_rc_type,
             new_vat_input,
             new_vat_output,
+            new_vat_rate,
+            new_vat_code,
             1 if new_is_private_paid else 0,
             new_private_classification,
             new_hash,
@@ -637,6 +721,8 @@ def update_expense(
         "rc_type": new_rc_type,
         "vat_input": new_vat_input,
         "vat_output": new_vat_output,
+        "vat_rate": new_vat_rate,
+        "vat_code": new_vat_code,
         "is_private_paid": 1 if new_is_private_paid else 0,
         "private_classification": new_private_classification,
     }
@@ -671,6 +757,8 @@ def update_expense(
         rc_type=new_rc_type,
         vat_input=new_vat_input,
         vat_output=new_vat_output,
+        vat_rate=new_vat_rate,
+        vat_code=new_vat_code,
         is_private_paid=new_is_private_paid,
         private_classification=new_private_classification,
         hash=new_hash,

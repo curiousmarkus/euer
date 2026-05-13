@@ -20,6 +20,63 @@ zusätzlich aktualisiert werden. Das betrifft insbesondere:
 Die persönliche `AGENTS.md` sollte nie blind ersetzt werden, weil sie individuelle
 Pfade, Konten, Lieferanten-Mappings und steuerliche Stammdaten enthält.
 
+## 0.6.0
+
+### Warum relevant?
+
+`euer` enthält jetzt einen ELSTER-nahen USt-Voranmeldungs-Report:
+
+```bash
+euer vat-report --year 2026
+euer vat-report --year 2026 --quarter 1
+euer vat-report --year 2026 --month 3 --format csv --output exports/
+```
+
+Dafür speichern `expenses` und `income` neue UStVA-Klassifikationsfelder:
+
+- `vat_rate`
+- `vat_code`
+
+Neue Einnahmen bekommen im Modus `standard` standardmäßig `19 %`, sofern nicht
+`--vat-rate 7`, `--vat-rate 0` oder `--tax-free` gesetzt wird. `amount_eur`
+bleibt weiterhin der tatsächliche Brutto-Zahlfluss; die USt wird für Einnahmen
+aus dem Bruttobetrag herausgerechnet oder über `--vat` manuell gesetzt.
+
+### Nach dem Upgrade
+
+1. Backup der lokalen Datenbank erstellen.
+2. `pipx upgrade euercli` ausführen.
+3. Im Buchhaltungsordner `euer init` ausführen. Dadurch werden `vat_rate` und
+   `vat_code` in bestehenden Datenbanken ergänzt.
+4. Mit `euer vat-report --year <JAHR>` Warnungen prüfen.
+5. Alte Einnahmen ohne `vat_code` bei Bedarf nachklassifizieren:
+
+```bash
+euer update income <ID> --vat-rate 19
+euer update income <ID> --vat-rate 7
+euer update income <ID> --vat-rate 0
+euer update income <ID> --tax-free
+```
+
+6. Reverse-Charge-Altbuchungen mit `unclassified` weiter per
+   `euer update expense <ID> --rc eu|third-country` nachpflegen.
+7. Lokale Kopien von `SKILL.md`, `accountant-agent.md` und ggf. der
+   persönlichen `AGENTS.md` um die neuen UStVA-Regeln ergänzen.
+
+### Agenten-Regeln
+
+Für regelbesteuerte Mandate sollen Agenten Einnahmen künftig mit passender
+USt-Klassifikation buchen:
+
+```bash
+euer add income ... --vat-rate 19
+euer add income ... --vat-rate 7
+euer add income ... --tax-free
+```
+
+Für Ausgaben bleibt `--vat` der manuelle Vorsteuerbetrag; Reverse Charge bleibt
+`--rc eu|third-country`.
+
 ## 0.5.0
 
 ### Warum relevant?

@@ -25,7 +25,7 @@ def print_import_schema() -> None:
     print("Optionale Felder:")
     print(
         "  category, account, ledger_account, foreign_amount, receipt_name, notes, rc, "
-        "private_paid, vat_input, vat_output"
+        "private_paid, vat_input, vat_output, vat_rate, vat_code, tax_free"
     )
     print()
     print("Minimaler JSONL-Datensatz (Ausgabe):")
@@ -49,6 +49,9 @@ def print_import_schema() -> None:
     print("  private_paid: private_paid, Privat bezahlt")
     print("  vat_input: vat_input, Vorsteuer, USt-VA")
     print("  vat_output: vat_output, Umsatzsteuer")
+    print("  vat_rate: vat_rate, vat-rate, Steuersatz")
+    print("  vat_code: vat_code, vat-code, Steuerklasse")
+    print("  tax_free: tax_free, tax-free, Steuerfrei")
     print("  notes: notes, Bemerkung, Notiz")
     print("  account: account, Konto")
     print("  ledger_account: ledger_account, Buchungskonto, konto")
@@ -62,6 +65,7 @@ def print_import_schema() -> None:
     print("  - private_paid=true|1|yes|X markiert manuell als Sacheinlage.")
     print("  - rc akzeptiert leer, eu oder third-country.")
     print("  - Legacy rc=true|X erfordert rc_jurisdiction=eu|third-country.")
+    print("  - vat_rate akzeptiert 19, 7, 0 sowie Werte mit %-Zeichen.")
     print("  - Unbekannte Kategorien werden als fehlend behandelt.")
     print("  - Unvollständige Felder (category/receipt/vat/account) werden später per")
     print("    `euer incomplete list` angezeigt.")
@@ -120,6 +124,8 @@ def cmd_import(args):
             missing_fields.append("amount_eur")
         if not normalized["party"]:
             missing_fields.append("party")
+        if normalized["vat_rate_raw"] is not None and normalized["vat_rate"] is None:
+            missing_fields.append("invalid_vat_rate")
         rc_type = normalized["rc_type"]
         rc_raw = normalized["rc_raw"]
         rc_jurisdiction_raw = normalized["rc_jurisdiction_raw"]
@@ -178,6 +184,9 @@ def cmd_import(args):
             private_paid = normalized["private_paid"]
             vat_input = normalized["vat_input"]
             vat_output = normalized["vat_output"]
+            vat_rate = normalized["vat_rate"]
+            vat_code = normalized["vat_code"]
+            tax_free = normalized["tax_free"]
 
             if row_type == "expense":
                 created = create_expense(
@@ -198,6 +207,8 @@ def cmd_import(args):
                     rc_type=str(rc_type),
                     vat_input=vat_input,
                     vat_output=vat_output,
+                    vat_rate=vat_rate,
+                    vat_code=vat_code,
                     private_paid=bool(private_paid),
                     private_accounts=private_accounts,
                     audit_user=audit_user,
@@ -225,6 +236,9 @@ def cmd_import(args):
                     receipt_name=str(receipt_name) if receipt_name is not None else None,
                     notes=str(notes) if notes is not None else None,
                     vat_output=vat_output,
+                    vat_rate=vat_rate,
+                    vat_code=vat_code,
+                    tax_free=bool(tax_free),
                     audit_user=audit_user,
                     tax_mode=tax_mode,
                     on_duplicate=DuplicateAction.SKIP,

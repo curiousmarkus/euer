@@ -27,6 +27,7 @@ from .receipt import cmd_receipt_check, cmd_receipt_open
 from .setup import cmd_setup
 from .summary import cmd_summary
 from .update import cmd_update_expense, cmd_update_income, cmd_update_private_transfer
+from .vat_report import cmd_vat_report
 
 __all__ = [
     "cmd_add_expense",
@@ -59,4 +60,5 @@ __all__ = [
     "cmd_update_expense",
     "cmd_update_income",
     "cmd_update_private_transfer",
+    "cmd_vat_report",
 ]
