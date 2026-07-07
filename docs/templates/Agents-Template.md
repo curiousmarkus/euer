@@ -20,12 +20,14 @@ Geschäftsform: {{GESCHAEFTSFORM}}
 
 ## Dateiablage
 
-**Ausgaben-Belege:** {{PFAD_AUSGABEN}}  
-**Einnahmen-Belege:** {{PFAD_EINNAHMEN}}  
+**Beleg-Root:** {{BELEG_ROOT}}  
+**Jahresordner-Format:** {{JAHRESORDNER_FORMAT}}  
+**Ausgaben-Unterordner:** {{AUSGABEN_UNTERORDNER}}  
+**Einnahmen-Unterordner:** {{EINNAHMEN_UNTERORDNER}}  
 **Kontoauszüge:** {{PFAD_KONTOAUSZUEGE}}
 
 **Dateinamen:** {{DATEIFORMAT}} (Datum = Rechnungsdatum)  
-**Ordner-Struktur:** {{ORDNERSTRUKTUR}}  
+**Ordner-Struktur:** Jahr/Typ (`<root>/<Jahr>/<Typ>/<Belegname>`)  
 **PDF-Tool:** {{PDF_TOOL}}
 
 ---
@@ -71,7 +73,7 @@ Bei Buchungen mit einer dieser Kennungen wird die Ausgabe automatisch als Sachei
 
 ### Beleg-Ablage
 - Dateiname: **Rechnungsdatum** aus dem Beleg verwenden (nicht Wertstellung, nicht Download-Datum)
-- Ordner: Gemäß Ordner-Struktur oben ablegen
+- Ordner: Jahr aus dem Wertstellungsdatum, dann Typ-Unterordner (`Ausgaben`/`Einnahmen`)
 - Verknüpfung: Belegnamen in Buchung eintragen
 
 ### Privatvorgänge

@@ -1,5 +1,6 @@
 import sys
 import tomllib
+from dataclasses import dataclass
 from pathlib import Path
 
 from .constants import CONFIG_PATH, DEFAULT_USER
@@ -7,6 +8,15 @@ from .services.errors import ValidationError
 from .services.models import LedgerAccount
 
 VALID_TAX_MODES = {"small_business", "standard"}
+RECEIPT_EXTENSIONS = [".pdf", ".jpg", ".jpeg", ".png"]
+
+
+@dataclass(frozen=True)
+class ReceiptConfig:
+    root: str
+    year_dir: str
+    expenses_dir: str
+    income_dir: str
 
 
 def load_config() -> dict:
@@ -128,6 +138,17 @@ def normalize_receipt_path(value: str) -> str:
     return str(Path(cleaned).expanduser())
 
 
+def normalize_config_text(value: str) -> str:
+    """Normalisiert einfache Config-Textwerte."""
+    cleaned = value.strip()
+    if (
+        (cleaned.startswith('"') and cleaned.endswith('"'))
+        or (cleaned.startswith("'") and cleaned.endswith("'"))
+    ):
+        cleaned = cleaned[1:-1]
+    return cleaned.strip()
+
+
 def normalize_export_path(value: str) -> str:
     """Normalisiert Export-Pfad-Eingaben."""
     return normalize_receipt_path(value)
@@ -246,11 +267,68 @@ def get_ledger_accounts(config: dict) -> list[LedgerAccount]:
     return result
 
 
+def validate_receipt_year_dir(value: str) -> str:
+    """Validiert das Format des Jahresordners."""
+    cleaned = normalize_config_text(value)
+    if not cleaned:
+        raise ValidationError(
+            "Ungültige Config: 'receipts.year_dir' darf nicht leer sein.",
+            code="invalid_receipt_year_dir",
+            details={"year_dir": value},
+        )
+    if "{year}" not in cleaned:
+        raise ValidationError(
+            "Ungültige Config: 'receipts.year_dir' muss den Platzhalter {year} enthalten.",
+            code="invalid_receipt_year_dir",
+            details={"year_dir": value},
+        )
+    try:
+        cleaned.format(year="2026")
+    except (IndexError, KeyError, ValueError) as exc:
+        raise ValidationError(
+            "Ungültige Config: 'receipts.year_dir' ist kein gültiges Format.",
+            code="invalid_receipt_year_dir",
+            details={"year_dir": value},
+        ) from exc
+    return cleaned
+
+
+def get_receipt_config(config: dict) -> ReceiptConfig:
+    """Liest und validiert die Beleg-Konfiguration."""
+    receipts = config.get("receipts", {})
+    root = str(receipts.get("root", "")).strip()
+    year_dir_value = receipts["year_dir"] if "year_dir" in receipts else "{year}"
+    year_dir = validate_receipt_year_dir(str(year_dir_value))
+    expenses_dir = normalize_config_text(str(receipts.get("expenses_dir", "Ausgaben")))
+    income_dir = normalize_config_text(str(receipts.get("income_dir", "Einnahmen")))
+    return ReceiptConfig(
+        root=root,
+        year_dir=year_dir,
+        expenses_dir=expenses_dir or "Ausgaben",
+        income_dir=income_dir or "Einnahmen",
+    )
+
+
+def get_receipt_root(config: dict) -> str:
+    """Liest den gemeinsamen Beleg-Root aus der Config."""
+    return get_receipt_config(config).root
+
+
+def _derive_receipt_year(date: str | None, fallback_year: int | str | None) -> str | None:
+    if date:
+        return str(date)[:4]
+    if fallback_year is None:
+        return None
+    year = str(fallback_year).strip()
+    return year or None
+
+
 def resolve_receipt_path(
     receipt_name: str,
     date: str | None,  # YYYY-MM-DD
     receipt_type: str,  # 'expenses' oder 'income'
     config: dict,
+    fallback_year: int | str | None = None,
 ) -> tuple[Path | None, list[Path]]:
     """
     Sucht Beleg-Datei.
@@ -259,29 +337,33 @@ def resolve_receipt_path(
         (found_path, checked_paths)
         found_path ist None wenn nicht gefunden
     """
-    base = config.get("receipts", {}).get(receipt_type, "")
-    if not base:
+    receipt_config = get_receipt_config(config)
+    if not receipt_config.root:
         return (None, [])
+    if receipt_type not in {"expenses", "income"}:
+        raise ValidationError(
+            "Ungültiger Beleg-Typ. Erlaubt: expenses oder income.",
+            code="invalid_receipt_type",
+            details={"receipt_type": receipt_type},
+        )
 
-    base_path = Path(base)
-    year = date[:4] if date else None
+    year = _derive_receipt_year(date, fallback_year)
+    if not year:
+        return (None, [])
 
     names = [receipt_name]
     if not Path(receipt_name).suffix:
-        names.extend(
-            [
-                f"{receipt_name}.pdf",
-                f"{receipt_name}.jpg",
-                f"{receipt_name}.jpeg",
-                f"{receipt_name}.png",
-            ]
-        )
+        names.extend(f"{receipt_name}{extension}" for extension in RECEIPT_EXTENSIONS)
 
     candidates: list[Path] = []
+    type_dir = (
+        receipt_config.expenses_dir
+        if receipt_type == "expenses"
+        else receipt_config.income_dir
+    )
+    receipt_dir = Path(receipt_config.root) / receipt_config.year_dir.format(year=year) / type_dir
     for name in names:
-        if year:
-            candidates.append(base_path / year / name)
-        candidates.append(base_path / name)
+        candidates.append(receipt_dir / name)
 
     for path in candidates:
         if path.exists():
@@ -300,9 +382,13 @@ def warn_missing_receipt(
     if not receipt_name:
         return
 
-    found_path, checked_paths = resolve_receipt_path(
-        receipt_name, date, receipt_type, config
-    )
+    try:
+        found_path, checked_paths = resolve_receipt_path(
+            receipt_name, date, receipt_type, config
+        )
+    except ValidationError as exc:
+        print(f"! Belegprüfung übersprungen: {exc.message}", file=sys.stderr)
+        return
 
     if found_path is None and checked_paths:
         print(f"! Beleg '{receipt_name}' nicht gefunden:", file=sys.stderr)

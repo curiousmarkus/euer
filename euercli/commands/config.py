@@ -1,5 +1,6 @@
-from ..config import get_audit_user, get_export_dir, load_config
+from ..config import get_audit_user, get_export_dir, get_receipt_config, load_config
 from ..constants import CONFIG_PATH
+from ..services.errors import ValidationError
 
 
 def cmd_config_show(args):
@@ -23,8 +24,10 @@ def cmd_config_show(args):
         print("  mkdir -p ~/.config/euer")
         print("  cat > ~/.config/euer/config.toml << 'EOF'")
         print("  [receipts]")
-        print('  expenses = "/pfad/zu/ausgaben-belege"')
-        print('  income = "/pfad/zu/einnahmen-belege"')
+        print('  root = "/pfad/zu/Buchhaltung"')
+        print('  year_dir = "{year}"')
+        print('  expenses_dir = "Ausgaben"')
+        print('  income_dir = "Einnahmen"')
         print("  [exports]")
         print('  directory = "/pfad/zu/exports"')
         print("  [user]")
@@ -41,10 +44,15 @@ def cmd_config_show(args):
     receipts = config.get("receipts", {})
 
     print("[receipts]")
-    expenses_path = receipts.get("expenses", "")
-    income_path = receipts.get("income", "")
-    print(f"  expenses = {expenses_path or '(nicht gesetzt)'}")
-    print(f"  income   = {income_path or '(nicht gesetzt)'}")
+    try:
+        receipt_config = get_receipt_config(config)
+        print(f"  root         = {receipt_config.root or '(nicht gesetzt)'}")
+        print(f"  year_dir     = {receipt_config.year_dir}")
+        print(f"  expenses_dir = {receipt_config.expenses_dir}")
+        print(f"  income_dir   = {receipt_config.income_dir}")
+    except ValidationError as exc:
+        print(f"  Fehler: {exc.message}")
+        print(f"  root         = {receipts.get('root', '') or '(nicht gesetzt)'}")
 
     export_dir = get_export_dir(config)
     print("[exports]")

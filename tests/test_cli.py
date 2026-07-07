@@ -762,7 +762,7 @@ account_number = "8400"
         self.assertIn("GESAMT", list_result.stdout)
 
     def test_list_income_table_shows_vat_value(self):
-        self.run_cli(["setup"], input="\n\n\nstandard\n", check=True)
+        self.run_cli(["setup"], input="\n\n\n\n\nstandard\n", check=True)
         self.add_income(source="VAT Kunde", vat="285.00")
         list_result = self.run_cli(["list", "income", "--year", "2026"], check=True)
         self.assertIn("USt", list_result.stdout)
@@ -779,7 +779,7 @@ account_number = "8400"
         self.assertIn("Abo verlängert", list_result.stdout)
 
     def test_add_income_vat_rate_persists_classification(self):
-        self.run_cli(["setup"], input="\n\n\nstandard\n", check=True)
+        self.run_cli(["setup"], input="\n\n\n\n\nstandard\n", check=True)
         result = self.add_income(amount="107.00", vat_rate="7")
         self.assertEqual(result.returncode, 0, msg=result.stderr)
 
@@ -806,7 +806,7 @@ account_number = "8400"
         self.assertNotEqual(conflict.returncode, 0)
 
     def test_vat_report_table_and_csv_export(self):
-        self.run_cli(["setup"], input="\n\n\nstandard\n", check=True)
+        self.run_cli(["setup"], input="\n\n\n\n\nstandard\n", check=True)
         self.add_income(amount="1190.00", vat_rate="19")
         self.add_expense(vendor="EU SaaS", amount="-100.00", rc="eu")
         self.add_expense(vendor="Office", amount="-119.00", vat="20.00")
@@ -1274,10 +1274,9 @@ account_number = "8400"
         self.assertIn("euer setup", result.stdout)
 
     def test_setup_writes_config(self):
-        expenses_dir = self.root / "receipts" / "expenses"
-        income_dir = self.root / "receipts" / "income"
+        receipts_root = self.root / "receipts"
         export_dir = self.root / "exports"
-        input_data = f"{expenses_dir}\n{income_dir}\n{export_dir}\n"
+        input_data = f"{receipts_root}\n\n\n\n{export_dir}\n"
 
         result = self.run_cli(["setup"], input=input_data, check=True)
         self.assertIn("Konfiguration gespeichert", result.stdout)
@@ -1285,19 +1284,22 @@ account_number = "8400"
         config_path = self.expected_config_path()
         content = config_path.read_text(encoding="utf-8")
         config = tomllib.loads(content)
-        self.assertEqual(config.get("receipts", {}).get("expenses"), str(expenses_dir))
-        self.assertEqual(config.get("receipts", {}).get("income"), str(income_dir))
+        self.assertEqual(config.get("receipts", {}).get("root"), str(receipts_root))
+        self.assertEqual(config.get("receipts", {}).get("year_dir"), "{year}")
+        self.assertEqual(config.get("receipts", {}).get("expenses_dir"), "Ausgaben")
+        self.assertEqual(config.get("receipts", {}).get("income_dir"), "Einnahmen")
         self.assertEqual(config.get("exports", {}).get("directory"), str(export_dir))
         self.assertEqual(config.get("tax", {}).get("mode"), "small_business")
         self.assertEqual(config.get("accounts", {}).get("private"), ["privat"])
 
     def test_setup_writes_ledger_accounts(self):
-        expenses_dir = self.root / "receipts" / "expenses"
-        income_dir = self.root / "receipts" / "income"
+        receipts_root = self.root / "receipts"
         export_dir = self.root / "exports"
         input_data = (
-            f"{expenses_dir}\n"
-            f"{income_dir}\n"
+            f"{receipts_root}\n"
+            "\n"
+            "\n"
+            "\n"
             f"{export_dir}\n"
             "\n"
             "\n"
@@ -1355,11 +1357,41 @@ category = "Laufende EDV-Kosten"
             ["privat", "Sparkasse Kreditkarte"],
         )
 
+    def test_setup_set_receipt_root_normalizes_quotes_and_home(self):
+        result = self.run_cli(
+            ["setup", "--set", "receipts.root", "'~/Buchhaltung'"],
+            check=True,
+        )
+        self.assertIn("Konfiguration gespeichert", result.stdout)
+
+        config = tomllib.loads(self.expected_config_path().read_text(encoding="utf-8"))
+        self.assertEqual(
+            config.get("receipts", {}).get("root"),
+            str(self.home / "Buchhaltung"),
+        )
+
+    def test_setup_set_receipt_year_dir_validates_pattern(self):
+        result = self.run_cli(
+            ["setup", "--set", "receipts.year_dir", "Buchhaltung {year}"],
+            check=True,
+        )
+        self.assertIn("Konfiguration gespeichert", result.stdout)
+
+        config = tomllib.loads(self.expected_config_path().read_text(encoding="utf-8"))
+        self.assertEqual(config.get("receipts", {}).get("year_dir"), "Buchhaltung {year}")
+
+        invalid = self.run_cli(["setup", "--set", "receipts.year_dir", "Buchhaltung"])
+        self.assertNotEqual(invalid.returncode, 0)
+        self.assertIn("{year}", invalid.stderr)
+
+        empty = self.run_cli(["setup", "--set", "receipts.year_dir", ""])
+        self.assertNotEqual(empty.returncode, 0)
+        self.assertIn("darf nicht leer sein", empty.stderr)
+
     def test_setup_writes_tax_mode_standard(self):
-        expenses_dir = self.root / "receipts" / "expenses"
-        income_dir = self.root / "receipts" / "income"
+        receipts_root = self.root / "receipts"
         export_dir = self.root / "exports"
-        input_data = f"{expenses_dir}\n{income_dir}\n{export_dir}\nstandard\n"
+        input_data = f"{receipts_root}\n\n\n\n{export_dir}\nstandard\n"
 
         self.run_cli(["setup"], input=input_data, check=True)
 
@@ -1371,42 +1403,134 @@ category = "Laufende EDV-Kosten"
     def test_receipt_check_requires_config(self):
         result = self.run_cli(["receipt", "check"])
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("Keine Beleg-Pfade konfiguriert", result.stderr)
+        self.assertIn("Kein Beleg-Root konfiguriert", result.stderr)
 
     def test_receipt_check_missing_file(self):
-        expenses_dir = self.root / "receipts" / "expenses"
-        expenses_dir.mkdir(parents=True)
-        self.run_cli(["setup"], input=f"{expenses_dir}\n\n", check=True)
+        receipts_root = self.root / "receipts"
+        receipts_root.mkdir(parents=True)
+        self.write_config(f'[receipts]\nroot = "{receipts_root}"\n')
         self.add_expense(receipt="missing.pdf")
 
         result = self.run_cli(["receipt", "check", "--year", "2026", "--type", "expense"])
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Fehlende Belege (Ausgaben)", result.stdout)
+        self.assertIn(str(receipts_root / "2026" / "Ausgaben" / "missing.pdf"), result.stdout)
 
     def test_receipt_open_missing_file(self):
-        expenses_dir = self.root / "receipts" / "expenses"
-        expenses_dir.mkdir(parents=True)
-        self.run_cli(["setup"], input=f"{expenses_dir}\n\n", check=True)
+        receipts_root = self.root / "receipts"
+        receipts_root.mkdir(parents=True)
+        self.write_config(f'[receipts]\nroot = "{receipts_root}"\n')
         self.add_expense(receipt="missing.pdf")
 
         result = self.run_cli(["receipt", "open", "1"])
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("nicht gefunden", result.stderr)
+        self.assertIn(str(receipts_root / "2026" / "Ausgaben" / "missing.pdf"), result.stderr)
+
+    def test_receipt_open_without_payment_date_explains_missing_year_context(self):
+        receipts_root = self.root / "receipts"
+        receipts_root.mkdir(parents=True)
+        self.write_config(f'[receipts]\nroot = "{receipts_root}"\n')
+        self.run_cli(
+            [
+                "add",
+                "expense",
+                "--invoice-date",
+                "2026-01-16",
+                "--vendor",
+                "InvoiceOnly",
+                "--amount",
+                "-22.99",
+                "--receipt",
+                "invoice-only.pdf",
+            ],
+            check=True,
+        )
+
+        result = self.run_cli(["receipt", "open", "1"])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Ohne Wertstellungsdatum", result.stderr)
+        self.assertIn("update expense 1 --payment-date", result.stderr)
+        self.assertNotIn("2026/Ausgaben", result.stderr)
 
     def test_receipt_check_finds_extension(self):
-        expenses_dir = self.root / "receipts" / "expenses"
-        year_dir = expenses_dir / "2026"
-        year_dir.mkdir(parents=True)
-        self.run_cli(["setup"], input=f"{expenses_dir}\n\n", check=True)
+        receipts_root = self.root / "receipts"
+        receipt_dir = receipts_root / "2026" / "Ausgaben"
+        receipt_dir.mkdir(parents=True)
+        self.write_config(f'[receipts]\nroot = "{receipts_root}"\n')
 
         receipt_name = "2026-01-15_TestVendor"
-        (year_dir / f"{receipt_name}.pdf").write_text("dummy", encoding="utf-8")
+        (receipt_dir / f"{receipt_name}.pdf").write_text("dummy", encoding="utf-8")
         self.add_expense(receipt=receipt_name)
 
         result = self.run_cli(
             ["receipt", "check", "--year", "2026", "--type", "expense"]
         )
         self.assertEqual(result.returncode, 0, msg=result.stderr)
+
+    def test_receipt_check_finds_income_receipt(self):
+        receipts_root = self.root / "receipts"
+        receipt_dir = receipts_root / "2026" / "Einnahmen"
+        receipt_dir.mkdir(parents=True)
+        self.write_config(f'[receipts]\nroot = "{receipts_root}"\n')
+
+        receipt_name = "2026-01-20_Rechnung_001.pdf"
+        (receipt_dir / receipt_name).write_text("dummy", encoding="utf-8")
+        self.add_income(receipt=receipt_name)
+
+        result = self.run_cli(
+            ["receipt", "check", "--year", "2026", "--type", "income"]
+        )
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+
+    def test_receipt_check_uses_custom_year_dir(self):
+        receipts_root = self.root / "receipts"
+        receipt_dir = receipts_root / "Buchhaltung 2026" / "Ausgaben"
+        receipt_dir.mkdir(parents=True)
+        self.write_config(
+            f'[receipts]\nroot = "{receipts_root}"\nyear_dir = "Buchhaltung {{year}}"\n'
+        )
+
+        receipt_name = "2026-01-15_TestVendor.pdf"
+        (receipt_dir / receipt_name).write_text("dummy", encoding="utf-8")
+        self.add_expense(receipt=receipt_name)
+
+        result = self.run_cli(
+            ["receipt", "check", "--year", "2026", "--type", "expense"]
+        )
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+
+    def test_add_receipt_warning_uses_new_candidate_paths(self):
+        receipts_root = self.root / "receipts"
+        receipts_root.mkdir(parents=True)
+        self.write_config(f'[receipts]\nroot = "{receipts_root}"\n')
+
+        result = self.add_expense(receipt="missing")
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        self.assertIn(str(receipts_root / "2026" / "Ausgaben" / "missing.pdf"), result.stderr)
+
+    def test_add_receipt_warning_does_not_use_invoice_date_as_year(self):
+        receipts_root = self.root / "receipts"
+        receipts_root.mkdir(parents=True)
+        self.write_config(f'[receipts]\nroot = "{receipts_root}"\n')
+
+        result = self.run_cli(
+            [
+                "add",
+                "expense",
+                "--invoice-date",
+                "2026-01-16",
+                "--vendor",
+                "InvoiceOnly",
+                "--amount",
+                "-22.99",
+                "--receipt",
+                "invoice-only.pdf",
+            ],
+            check=True,
+        )
+        self.assertNotIn("Beleg 'invoice-only.pdf' nicht gefunden", result.stderr)
+        self.assertNotIn("2026/Ausgaben", result.stderr)
 
     def test_import_accepts_export_headers(self):
         self.write_config(
@@ -1444,7 +1568,7 @@ account_number = "4940"
         self.assertEqual(rows[1][3], "1und1")
 
     def test_import_accepts_vat_classification_fields(self):
-        self.run_cli(["setup"], input="\n\n\nstandard\n", check=True)
+        self.run_cli(["setup"], input="\n\n\n\n\nstandard\n", check=True)
         import_file = self.root / "import_vat_fields.csv"
         import_file.write_text(
             "\n".join(

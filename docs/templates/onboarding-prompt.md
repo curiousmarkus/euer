@@ -73,11 +73,13 @@ Erkläre kurz den Unterschied und frage dann:
    - **Eine Einnahmen-Rechnung** (die du gestellt hast)
    - **Ein Kontoauszug** (optional)
 
-   > Beispiel: `/Users/max/Dropbox/Buchhaltung/Ausgaben/2026/2026-01-15_Amazon.pdf`
+   > Beispiel: `/Users/max/Dropbox/Buchhaltung/2026/Ausgaben/2026-01-15_Amazon.pdf`
    > 
    > Aus diesem Pfad leite ich automatisch ab:
-   > - Basis-Ordner: `/Users/max/Dropbox/Buchhaltung/Ausgaben`
-   > - Ordner-Hierarchie: `Typ/Jahr` (weil `Ausgaben/2026`)
+   > - Beleg-Root: `/Users/max/Dropbox/Buchhaltung`
+   > - Jahresordner-Format: `{year}` (weil `2026`)
+   > - Ausgaben-Unterordner: `Ausgaben`
+   > - Ordner-Hierarchie: `Jahr/Typ` (weil `2026/Ausgaben`)
    > - Dateinamen-Format: `YYYY-MM-DD_Anbieter.pdf`
 
    Wir empfehlen, dass Dateinamen das mindestens Rechnungsdatum und den Anbieternamen in festem Format enthalten, damit sie leicht automatisch verarbeitet werden können.
@@ -255,12 +257,14 @@ Geschäftsform: {{GESCHAEFTSFORM}}
 
 ## Dateiablage
 
-**Ausgaben-Belege:** {{PFAD_AUSGABEN}}  
-**Einnahmen-Belege:** {{PFAD_EINNAHMEN}}  
+**Beleg-Root:** {{BELEG_ROOT}}  
+**Jahresordner-Format:** {{JAHRESORDNER_FORMAT}}  
+**Ausgaben-Unterordner:** {{AUSGABEN_UNTERORDNER}}  
+**Einnahmen-Unterordner:** {{EINNAHMEN_UNTERORDNER}}  
 **Kontoauszüge:** {{PFAD_KONTOAUSZUEGE}}
 
 **Dateinamen:** {{DATEIFORMAT}} (Datum = Rechnungsdatum)  
-**Ordner-Struktur:** {{ORDNERSTRUKTUR}}  
+**Ordner-Struktur:** Jahr/Typ (`<root>/<Jahr>/<Typ>/<Belegname>`)  
 **PDF-Tool:** {{PDF_TOOL}}
 
 ---
@@ -366,8 +370,10 @@ Wechsle zuerst in deinen Buchhaltungs-Ordner, dann führe diese Befehle aus:
 \`\`\`bash
 euer init
 euer setup --set tax.mode "{{STEUERMODUS}}"
-euer setup --set receipts.expenses "{{PFAD_AUSGABEN}}"
-euer setup --set receipts.income "{{PFAD_EINNAHMEN}}"
+euer setup --set receipts.root "{{BELEG_ROOT}}"
+euer setup --set receipts.year_dir "{{JAHRESORDNER_FORMAT}}"
+euer setup --set receipts.expenses_dir "{{AUSGABEN_UNTERORDNER}}"
+euer setup --set receipts.income_dir "{{EINNAHMEN_UNTERORDNER}}"
 euer setup --set exports.directory "{{PFAD_EXPORTS}}"
 euer setup --set user.name "{{NAME}}"
 euer setup --set accounts.private "{{PRIVATE_ACCOUNTS_KOMMASEPARIERT}}"

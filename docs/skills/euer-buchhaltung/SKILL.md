@@ -39,8 +39,10 @@ euer config show
 
 # Einzelne Werte setzen
 euer setup --set tax.mode "small_business"           # oder "standard"
-euer setup --set receipts.expenses "/pfad/zu/belegen"
-euer setup --set receipts.income "/pfad/zu/rechnungen"
+euer setup --set receipts.root "/pfad/zu/Buchhaltung"
+euer setup --set receipts.year_dir "{year}"
+euer setup --set receipts.expenses_dir "Ausgaben"
+euer setup --set receipts.income_dir "Einnahmen"
 euer setup --set exports.directory "/pfad/zu/exports"
 euer setup --set user.name "Max"
 
@@ -409,10 +411,18 @@ Beispiele:
 - `2026-01-15_Render.pdf`
 - `20260115_OpenAI.pdf`
 
-Belege werden in Jahres-Unterordnern erwartet:
+Belege werden unter einem gemeinsamen Root jahrzentriert erwartet:
 ```
-<belege-pfad>/<Jahr>/<Belegname>
+<root>/<Jahr>/<Typ>/<Belegname>
 ```
+
+Standard:
+- Ausgaben: `<root>/<Jahr>/Ausgaben/<Belegname>`
+- Einnahmen: `<root>/<Jahr>/Einnahmen/<Belegname>`
+
+Das Jahr des Belegordners folgt dem `payment_date` der Buchung
+(Zufluss-/Abflussprinzip). Ohne `payment_date` kann `euer` beim Buchen keinen
+Jahresordner sicher ableiten.
 
 Hinweis: Fehlt die Dateiendung, prüft `euer receipt check` automatisch
 `.pdf`, `.jpg`, `.jpeg` und `.png`.

@@ -125,7 +125,7 @@ damit Erweiterungen konsistent und risikoarm umgesetzt werden können.
 - **Export**: CSV (immer), XLSX optional via `openpyxl`.
 - **Kontenrahmen**: Optionaler `[[ledger_accounts]]`-Kontenrahmen in der Config mit
   automatischer Kategorieauflösung bei `add`/`update`/`import`.
-- **Receipts**: Belegpfade in Config, Check + Open.
+- **Receipts**: Jahrzentrierte Belegpfade (`root/{year}/Typ`), Check + Open.
 - **Steuermodi**: `small_business` und `standard` (RC Handling inkl. USt/VoSt).
 - **Persistierte USt-Klassifikation**: `vat_rate` und `vat_code` an
   Ausgaben/Einnahmen für auditierbare UStVA-Reports.
@@ -314,5 +314,5 @@ Offene Change Requests werden innerhalb der jeweiligen Spec dokumentiert.
 | 010 | Kontenrahmen (Buchungskonten je Kategorie) | Implementiert |
 | 011 | Reverse-Charge-Typ (EU vs. Drittland) | Implementiert |
 | 012 | `vat-report` | Implementiert |
-| 013 | Belegordner Jahr zuerst | Offen |
+| 013 | Belegordner Jahr zuerst | Implementiert |
 | 014 | HTML-Pruefbericht fuer Buchungen | Offen |

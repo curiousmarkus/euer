@@ -82,7 +82,7 @@ def cmd_update_expense(args):
 
     warn_missing_receipt(
         expense.receipt_name,
-        expense.invoice_date or expense.payment_date,
+        expense.payment_date,
         "expenses",
         config,
     )
@@ -142,7 +142,7 @@ def cmd_update_income(args):
 
     warn_missing_receipt(
         income.receipt_name,
-        income.invoice_date or income.payment_date,
+        income.payment_date,
         "income",
         config,
     )

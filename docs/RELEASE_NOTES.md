@@ -20,6 +20,59 @@ zusätzlich aktualisiert werden. Das betrifft insbesondere:
 Die persönliche `AGENTS.md` sollte nie blind ersetzt werden, weil sie individuelle
 Pfade, Konten, Lieferanten-Mappings und steuerliche Stammdaten enthält.
 
+## 0.7.0
+
+### Warum relevant?
+
+Die Belegablage nutzt jetzt standardmäßig eine jahrzentrierte Struktur:
+
+```text
+<Beleg-Root>/<Jahr>/<Typ>/<Belegname>
+```
+
+Beispiele:
+
+```text
+/Users/max/Dropbox/Buchhaltung/2026/Ausgaben/2026-01-15_Amazon.pdf
+/Users/max/Dropbox/Buchhaltung/2026/Einnahmen/2026-01-20_Rechnung_001.pdf
+```
+
+Die alten Config-Keys `receipts.expenses` und `receipts.income` werden für die
+Belegprüfung nicht mehr verwendet. Belegdateien werden beim Upgrade nicht
+automatisch verschoben.
+
+### Nach dem Upgrade
+
+1. Backup der bestehenden `~/.config/euer/config.toml` erstellen.
+2. Neue Beleg-Config setzen:
+
+```toml
+[receipts]
+root = "/Users/max/Dropbox/Buchhaltung"
+year_dir = "{year}"
+expenses_dir = "Ausgaben"
+income_dir = "Einnahmen"
+```
+
+3. Alternativ per CLI setzen:
+
+```bash
+euer setup --set receipts.root "/Users/max/Dropbox/Buchhaltung"
+euer setup --set receipts.year_dir "{year}"
+euer setup --set receipts.expenses_dir "Ausgaben"
+euer setup --set receipts.income_dir "Einnahmen"
+```
+
+4. Bestehende Belege bei Bedarf manuell nach `Jahr/Typ` verschieben.
+5. Migration prüfen:
+
+```bash
+euer receipt check --year 2026
+```
+
+6. Lokale Kopien von `SKILL.md`, `accountant-agent.md` und der persönlichen
+   `AGENTS.md` auf die neue `Jahr/Typ`-Struktur aktualisieren.
+
 ## 0.6.0
 
 ### Warum relevant?

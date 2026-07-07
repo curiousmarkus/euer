@@ -373,13 +373,16 @@ Hinweis: Für die Kategorie **Gezahlte USt (57)** ist kein Beleg erforderlich.
 ### Konfiguration
 
 `euer setup` legt Pfade und den Audit‑User in `~/.config/euer/config.toml` an.
-Belege werden in Jahres‑Unterordnern erwartet: `<base>/<Jahr>/<Belegname>`.
+Belege werden unter einem gemeinsamen Root jahrzentriert erwartet:
+`<root>/<Jahr>/<Typ>/<Belegname>`.
 Mit `euer setup --set section.key value` kannst du einzelne Werte ohne Prompt setzen.
 
 ```toml
 [receipts]
-expenses = "/pfad/zu/ausgaben-belege"
-income = "/pfad/zu/einnahmen-belege"
+root = "/pfad/zu/Buchhaltung"
+year_dir = "{year}"
+expenses_dir = "Ausgaben"
+income_dir = "Einnahmen"
 
 [exports]
 directory = "/pfad/zu/exports"
@@ -389,6 +392,23 @@ name = "Dein Name"
 
 [accounts]
 private = ["privat", "private Kreditkarte"]
+```
+
+Beispiele:
+
+```text
+/pfad/zu/Buchhaltung/2026/Ausgaben/2026-01-15_Amazon.pdf
+/pfad/zu/Buchhaltung/2026/Einnahmen/2026-01-20_Rechnung_001.pdf
+```
+
+`year_dir` muss `{year}` enthalten. Damit sind auch Ordner wie
+`Buchhaltung 2026` möglich:
+
+```bash
+euer setup --set receipts.root "/pfad/zu/Buchhaltung"
+euer setup --set receipts.year_dir "Buchhaltung {year}"
+euer setup --set receipts.expenses_dir "Ausgaben"
+euer setup --set receipts.income_dir "Einnahmen"
 ```
 
 ### Prüfen & Öffnen

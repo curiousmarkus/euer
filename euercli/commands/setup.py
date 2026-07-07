@@ -7,6 +7,7 @@ from ..config import (
     get_ledger_accounts,
     get_private_accounts,
     load_config,
+    normalize_config_text,
     normalize_export_path,
     normalize_receipt_path,
     normalize_tax_mode,
@@ -14,6 +15,7 @@ from ..config import (
     prompt_path,
     prompt_text,
     save_config,
+    validate_receipt_year_dir,
 )
 from ..constants import CONFIG_PATH, DEFAULT_EXPORT_DIR
 from ..db import get_db_connection
@@ -98,8 +100,12 @@ def _prompt_ledger_accounts(db_path: str) -> list[dict]:
 def _normalize_setup_set_value(key: str, value: str):
     if key == "tax.mode":
         return normalize_tax_mode(value)
-    if key in {"receipts.expenses", "receipts.income"}:
+    if key == "receipts.root":
         return normalize_receipt_path(value)
+    if key == "receipts.year_dir":
+        return validate_receipt_year_dir(value)
+    if key in {"receipts.expenses_dir", "receipts.income_dir"}:
+        return normalize_config_text(value)
     if key == "exports.directory":
         return normalize_export_path(value)
     if key == "accounts.private":
@@ -129,7 +135,7 @@ def cmd_setup_set(key: str, value: str) -> None:
     print(f"Konfiguration gespeichert: {CONFIG_PATH}")
     print(f"  {key} = {section_config[config_key]}")
 
-    if key in {"receipts.expenses", "receipts.income", "exports.directory"}:
+    if key in {"receipts.root", "exports.directory"}:
         path_value = section_config[config_key]
         if path_value and not Path(path_value).exists():
             print(f"! Hinweis: Pfad existiert nicht: {path_value}", file=sys.stderr)
@@ -141,8 +147,9 @@ def cmd_setup(args):
         key, value = args.set
         try:
             cmd_setup_set(key, value)
-        except ValueError as exc:
-            print(f"Fehler: {exc}", file=sys.stderr)
+        except (ValueError, ValidationError) as exc:
+            message = exc.message if isinstance(exc, ValidationError) else str(exc)
+            print(f"Fehler: {message}", file=sys.stderr)
             sys.exit(1)
         return
 
@@ -161,11 +168,24 @@ def cmd_setup(args):
     user_config = dict(config.get("user", {}))
     accounts_config = dict(config.get("accounts", {}))
 
-    expenses_input = prompt_path(
-        "Beleg-Pfad für Ausgaben", receipts_config.get("expenses")
+    root_input = prompt_path("Beleg-Root", receipts_config.get("root"))
+    while True:
+        year_dir_input = prompt_text(
+            "Jahresordner-Format",
+            receipts_config.get("year_dir", "{year}"),
+        )
+        try:
+            year_dir = validate_receipt_year_dir(year_dir_input)
+            break
+        except ValidationError as exc:
+            print(f"Fehler: {exc.message}", file=sys.stderr)
+    expenses_dir_input = prompt_text(
+        "Ausgaben-Unterordner",
+        receipts_config.get("expenses_dir", "Ausgaben"),
     )
-    income_input = prompt_path(
-        "Beleg-Pfad für Einnahmen", receipts_config.get("income")
+    income_dir_input = prompt_text(
+        "Einnahmen-Unterordner",
+        receipts_config.get("income_dir", "Einnahmen"),
     )
     export_input = prompt_path(
         "Export-Verzeichnis",
@@ -215,12 +235,17 @@ def cmd_setup(args):
     if wants_ledger_accounts:
         ledger_accounts_config = _prompt_ledger_accounts(args.db)
 
-    expenses_path = normalize_receipt_path(expenses_input)
-    income_path = normalize_receipt_path(income_input)
+    receipt_root = normalize_receipt_path(root_input)
+    expenses_dir = normalize_config_text(expenses_dir_input) or "Ausgaben"
+    income_dir = normalize_config_text(income_dir_input) or "Einnahmen"
     export_path = normalize_export_path(export_input)
 
-    receipts_config["expenses"] = expenses_path
-    receipts_config["income"] = income_path
+    receipts_config.pop("expenses", None)
+    receipts_config.pop("income", None)
+    receipts_config["root"] = receipt_root
+    receipts_config["year_dir"] = year_dir
+    receipts_config["expenses_dir"] = expenses_dir
+    receipts_config["income_dir"] = income_dir
     exports_config["directory"] = export_path
     tax_config["mode"] = tax_mode
     user_config["name"] = audit_user_input
@@ -241,8 +266,10 @@ def cmd_setup(args):
     print(f"Konfiguration gespeichert: {CONFIG_PATH}")
     print()
     print("[receipts]")
-    print(f"  expenses = {expenses_path or '(nicht gesetzt)'}")
-    print(f"  income   = {income_path or '(nicht gesetzt)'}")
+    print(f"  root         = {receipt_root or '(nicht gesetzt)'}")
+    print(f"  year_dir     = {year_dir}")
+    print(f"  expenses_dir = {expenses_dir}")
+    print(f"  income_dir   = {income_dir}")
     print("[exports]")
     print(f"  directory = {export_path or '(nicht gesetzt)'}")
     print("[tax]")
@@ -258,6 +285,6 @@ def cmd_setup(args):
     print("Hinweis: Ausgaben mit diesen Kontonamen (--account) werden")
     print("automatisch als Sacheinlage (Privateinlage) erkannt.")
 
-    for path in (expenses_path, income_path, export_path):
+    for path in (receipt_root, export_path):
         if path and not Path(path).exists():
             print(f"! Hinweis: Pfad existiert nicht: {path}", file=sys.stderr)
