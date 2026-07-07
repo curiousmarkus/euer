@@ -144,7 +144,8 @@ euer add expense --payment-date 2026-02-02 --vendor "Test" --category "Laufende 
 - **Datenbank:** `euer.db` im aktuellen Verzeichnis (wo du `euer init` ausgeführt hast)
 - **Konfiguration:** `~/.config/euer/config.toml` (systemweit)
 - **Belege:** Pfade in der Konfiguration festgelegt
-- **Exports:** `exports/` im aktuellen Verzeichnis oder in der Config festgelegt
+- **Exports:** `exports/` im aktuellen Verzeichnis oder als konkreter Pfad in der Config
+  festgelegt. `exports.directory` unterstützt keinen `{year}`-Platzhalter.
 
 ## Grundbegriffe
 
@@ -283,6 +284,14 @@ Hinweis: `export` schreibt Dateien ins Export-Verzeichnis:
 - Einnahmen
 - `PrivateTransfers` (direkte Privatvorgänge)
 - `Sacheinlagen` (aus `expenses.is_private_paid` abgeleitet)
+
+`exports.directory` ist ein konkreter Ordner und unterstützt keinen
+`{year}`-Platzhalter. Für jahresweise Ablage nutze entweder `--output` mit einem
+konkreten Jahresordner oder setze die Config entsprechend um:
+
+```bash
+euer export --year 2026 --output "/pfad/zu/Buchhaltung/2026/Exporte"
+```
 
 Hinweis: Exporte für Ausgaben und Einnahmen enthalten zusätzlich die Spalten
 `Buchungskonto`, `Kontonummer`, `Steuersatz` und `Steuerklasse`.

@@ -171,6 +171,9 @@ euer reconcile private [--year YYYY] [--dry-run]
 
 # Export als CSV oder XLSX
 euer export [--year YYYY] [--format csv|xlsx]
+# Für jahresweise Exportordner konkreten Pfad setzen; exports.directory
+# unterstützt keinen {year}-Platzhalter.
+euer export --year YYYY --output "/pfad/zu/Buchhaltung/YYYY/Exporte"
 
 # SQL-Query (nur SELECT, Ausgabe als CSV)
 euer query "SELECT ... FROM ... WHERE ..."

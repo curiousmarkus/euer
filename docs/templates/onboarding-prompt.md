@@ -377,6 +377,8 @@ euer setup --set receipts.income_dir "{{EINNAHMEN_UNTERORDNER}}"
 euer setup --set exports.directory "{{PFAD_EXPORTS}}"
 euer setup --set user.name "{{NAME}}"
 euer setup --set accounts.private "{{PRIVATE_ACCOUNTS_KOMMASEPARIERT}}"
+# Wichtig: exports.directory ist ein konkreter Ordner und unterstützt keinen
+# {year}-Platzhalter. Für Jahresordner beim Export --output konkret setzen.
 # Optional: danach `euer setup` starten und Buchungskonten interaktiv anlegen
 # Anschließend prüfen mit: euer list ledger-accounts
 \`\`\`

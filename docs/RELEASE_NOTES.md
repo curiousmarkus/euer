@@ -63,14 +63,18 @@ euer setup --set receipts.expenses_dir "Ausgaben"
 euer setup --set receipts.income_dir "Einnahmen"
 ```
 
-4. Bestehende Belege bei Bedarf manuell nach `Jahr/Typ` verschieben.
-5. Migration prüfen:
+4. `exports.directory` bei Bedarf separat prüfen: Es ist ein konkreter Ordner
+   und unterstützt keinen `{year}`-Platzhalter. Für jahresweise Exportordner
+   `--output` mit einem konkreten Pfad verwenden, z.B.
+   `euer export --year 2026 --output "/Users/max/Dropbox/Buchhaltung/2026/Exporte"`.
+5. Bestehende Belege bei Bedarf manuell nach `Jahr/Typ` verschieben.
+6. Migration prüfen:
 
 ```bash
 euer receipt check --year 2026
 ```
 
-6. Lokale Kopien von `SKILL.md`, `accountant-agent.md` und der persönlichen
+7. Lokale Kopien von `SKILL.md`, `accountant-agent.md` und der persönlichen
    `AGENTS.md` auf die neue `Jahr/Typ`-Struktur aktualisieren.
 
 ## 0.6.0
