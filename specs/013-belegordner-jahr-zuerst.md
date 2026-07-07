@@ -20,8 +20,7 @@ Beispiel:
 ```
 
 Die bisherige Annahme `Ausgaben/<Jahr>/...` bzw. `Einnahmen/<Jahr>/...` wird
-abgeloest. Alte Configs muessen nicht kompatibel bleiben; die Migration soll
-aber klar dokumentiert und fuer bestehende lokale Instanzen einfach sein.
+abgelöst. Die Config muss zukünftig der neuen Struktur entsprechen.
 
 ## Motivation
 
@@ -40,11 +39,11 @@ income = "/.../Einnahmen"
 <expenses>/<Belegname>
 ```
 
-Das passt zu `Typ/Jahr`, aber nicht zu einer natuerlichen Jahresablage. Fuer
-persoenliche Buchhaltung ist `Jahr/Typ` praktischer:
+Das passt zu `Typ/Jahr`, aber nicht zu einer natürlichen Jahresablage. Für
+persönliche Buchhaltung ist `Jahr/Typ` praktischer:
 
 - alle Unterlagen eines Steuerjahres liegen beieinander
-- Ausgaben, Einnahmen, Kontoauszuege und Exporte koennen pro Jahr gebuendelt
+- Ausgaben, Einnahmen, Kontoauszüge und Exporte können pro Jahr gebündelt
   werden
 - Archivierung und Weitergabe an Steuerberatung/Finanzamt sind einfacher
 - das Onboarding fragt bereits nach der Ordnerstruktur, aber die Runtime nutzt
@@ -55,8 +54,8 @@ persoenliche Buchhaltung ist `Jahr/Typ` praktischer:
 Die neue Standardstruktur ist:
 
 ```text
-<receipts.root>/<year>/<receipts.expenses_dir>/<receipt_name>
-<receipts.root>/<year>/<receipts.income_dir>/<receipt_name>
+<receipts.root>/<receipts.year_dir>/<receipts.expenses_dir>/<receipt_name>
+<receipts.root>/<receipts.year_dir>/<receipts.income_dir>/<receipt_name>
 ```
 
 Standardwerte:
@@ -64,28 +63,22 @@ Standardwerte:
 ```toml
 [receipts]
 root = "/pfad/zu/Buchhaltung"
-layout = "year_type"
+year_dir = "{year}"
 expenses_dir = "Ausgaben"
 income_dir = "Einnahmen"
 ```
 
-`layout` wird in der ersten Version nur mit dem Wert `"year_type"` unterstuetzt.
-Das Feld bleibt bewusst in der Config, damit spaeter weitere Layouts oder
-Templates ergaenzt werden koennen, ohne die Config-Struktur erneut umzubauen.
-
-Die alten Keys `receipts.expenses` und `receipts.income` werden nicht mehr als
-primaere Runtime-Konfiguration verwendet. Wenn sie vorhanden sind, soll `euer`
-eine klare Fehlermeldung bzw. Migrationshilfe ausgeben, statt stillschweigend
-alte Pfade zu pruefen.
+`year_dir` ist ein Format-String für den Jahresordner. Er muss den Platzhalter
+`{year}` enthalten. Damit sind neben einfachen Jahresordnern auch Strukturen wie
+`"Buchhaltung {year}"`, `"Steuer {year}"` oder `"{year} Unterlagen"` möglich.
 
 ## Nicht-Ziele
 
-- keine automatische Dateiindexierung ueber den gesamten Beleg-Root
+- keine automatische Dateiindexierung über den gesamten Beleg-Root
 - keine heuristische Suche in beliebigen Unterordnern
 - keine automatische Migration durch Verschieben von Nutzerdateien
-- keine Speicherung vollstaendiger Belegpfade in `expenses.receipt_name` oder
+- keine Speicherung vollständiger Belegpfade in `expenses.receipt_name` oder
   `income.receipt_name`
-- keine Rueckwaertskompatibilitaet fuer alte Configs als harte Anforderung
 
 ## Config-Design
 
@@ -94,7 +87,7 @@ alte Pfade zu pruefen.
 ```toml
 [receipts]
 root = "/Users/max/Dropbox/Buchhaltung"
-layout = "year_type"
+year_dir = "{year}"
 expenses_dir = "Ausgaben"
 income_dir = "Einnahmen"
 ```
@@ -103,62 +96,47 @@ Semantik:
 
 | Key | Pflicht | Default | Bedeutung |
 |-----|---------|---------|-----------|
-| `receipts.root` | ja | leer | Gemeinsamer Root fuer Belegablage |
-| `receipts.layout` | nein | `year_type` | Ordnerlayout; zunaechst nur `year_type` |
-| `receipts.expenses_dir` | nein | `Ausgaben` | Typ-Unterordner fuer Ausgaben |
-| `receipts.income_dir` | nein | `Einnahmen` | Typ-Unterordner fuer Einnahmen |
+| `receipts.root` | ja | leer | Gemeinsamer Root für Belegablage |
+| `receipts.year_dir` | nein | `{year}` | Format des Jahresordners |
+| `receipts.expenses_dir` | nein | `Ausgaben` | Typ-Unterordner für Ausgaben |
+| `receipts.income_dir` | nein | `Einnahmen` | Typ-Unterordner für Einnahmen |
 
-Leerer `receipts.root` bedeutet: Belegpruefung ist nicht konfiguriert.
+Leerer `receipts.root` bedeutet: Belegprüfung ist nicht konfiguriert.
+`receipts.year_dir` muss den Platzhalter `{year}` enthalten. Ungültige
+Jahresordner-Patterns sollen als Config-Fehler behandelt werden, weil sonst
+Belege still in falschen Jahren gesucht werden können.
 
-### Migration alter Config
+Beispiele:
 
-Alte Config:
+| `year_dir` | Ergebnis für 2026 |
+|------------|--------------------|
+| `{year}` | `2026` |
+| `Buchhaltung {year}` | `Buchhaltung 2026` |
+| `Steuer {year}` | `Steuer 2026` |
+| `{year} Unterlagen` | `2026 Unterlagen` |
 
-```toml
-[receipts]
-expenses = "/Users/max/Dropbox/Buchhaltung/Ausgaben"
-income = "/Users/max/Dropbox/Buchhaltung/Einnahmen"
-```
-
-Neue Config:
-
-```toml
-[receipts]
-root = "/Users/max/Dropbox/Buchhaltung"
-layout = "year_type"
-expenses_dir = "Ausgaben"
-income_dir = "Einnahmen"
-```
-
-Wenn alte Keys erkannt werden und `root` fehlt, sollen betroffene Commands
-ausgeben:
-
-```text
-Fehler: Alte Beleg-Konfiguration erkannt.
-Bitte migriere [receipts] auf root/layout/expenses_dir/income_dir.
-Beispiel:
-  receipts.root = "/pfad/zu/Buchhaltung"
-  receipts.layout = "year_type"
-  receipts.expenses_dir = "Ausgaben"
-  receipts.income_dir = "Einnahmen"
-```
-
-## Pfad-Aufloesung
+## Pfad-Auflösung
 
 `resolve_receipt_path(receipt_name, date, receipt_type, config)` bleibt die
-zentrale API fuer Commands und spaetere Berichte.
+zentrale API für Commands und spätere Berichte.
 
 Regeln:
 
 1. `receipt_type` ist weiterhin `"expenses"` oder `"income"`.
-2. Das Jahr wird aus `invoice_date` bevorzugt, sonst aus `payment_date`
-   abgeleitet. Die aufrufenden Commands uebergeben bereits dieses Datum.
-3. Fuer `receipt_type = "expenses"` wird `expenses_dir` genutzt, fuer
+2. Das Jahr für den Ordner wird aus `payment_date` abgeleitet. Das entspricht
+   dem Zufluss-/Abflussprinzip der Einnahmenüberschussrechnung: Für die
+   Jahreszuordnung ist der Zahlungsfluss maßgeblich, nicht das Rechnungsdatum.
+3. Wenn `payment_date` fehlt, kann `resolve_receipt_path()` keinen
+   jahresbezogenen Pfad sicher ableiten. Commands mit explizitem Jahreskontext
+   dürfen dieses Jahr als Fallback übergeben; andernfalls sollen keine
+   Kandidatenpfade geraten werden.
+4. `year_dir` wird mit dem abgeleiteten Jahr formatiert.
+5. Für `receipt_type = "expenses"` wird `expenses_dir` genutzt, für
    `"income"` `income_dir`.
-4. Wenn `receipt_name` keine Dateiendung hat, werden wie bisher `.pdf`, `.jpg`,
+6. Wenn `receipt_name` keine Dateiendung hat, werden wie bisher `.pdf`, `.jpg`,
    `.jpeg` und `.png` versucht.
-5. Gepruefte Kandidaten werden in stabiler Reihenfolge zurueckgegeben.
-6. Es wird nicht mehr automatisch `<base>/<Belegname>` geprueft.
+7. Geprüfte Kandidaten werden in stabiler Reihenfolge zurückgegeben.
+8. Es wird nicht mehr automatisch `<base>/<Belegname>` geprüft.
 
 Beispiel-Kandidaten:
 
@@ -181,77 +159,73 @@ Anpassen:
 
 - `resolve_receipt_path()`
 - `warn_missing_receipt()`
-- neue Helper fuer die Beleg-Konfiguration, z.B.
+- neue Helper für die Beleg-Konfiguration, z.B.
   `get_receipt_config(config)` oder `get_receipt_root(config)`
-- Validierung von `receipts.layout`
-- Erkennung alter Keys `receipts.expenses` / `receipts.income`
+- Validierung von `receipts.year_dir`
 
 Die Helper sollen keine `print()`-Ausgaben erzeugen. Deutsche Fehlermeldungen
-gehoeren in die Commands oder in Exceptions, die dort uebersetzt werden.
+gehören in die Commands oder in Exceptions, die dort übersetzt werden.
 
 ### `euercli/commands/setup.py`
 
 Interaktives Setup:
 
-- nicht mehr getrennt nach "Beleg-Pfad fuer Ausgaben" und
-  "Beleg-Pfad fuer Einnahmen" fragen
+- nicht mehr getrennt nach "Beleg-Pfad für Ausgaben" und
+  "Beleg-Pfad für Einnahmen" fragen
 - stattdessen fragen:
   - `Beleg-Root`
+  - `Jahresordner-Format` mit Default `{year}`
   - `Ausgaben-Unterordner` mit Default `Ausgaben`
   - `Einnahmen-Unterordner` mit Default `Einnahmen`
-- `receipts.layout = "year_type"` setzen
 
 `setup --set`:
 
 - neue Keys akzeptieren:
   - `receipts.root`
-  - `receipts.layout`
+  - `receipts.year_dir`
   - `receipts.expenses_dir`
   - `receipts.income_dir`
-- alte Keys `receipts.expenses` und `receipts.income` mit klarer Fehlermeldung
-  ablehnen oder als deprecated markieren und nicht fuer Runtime-Suche nutzen
 
 ### `euercli/commands/receipt.py`
 
 Anpassen:
 
 - `receipt check` muss `receipts.root` als Konfigurationsvoraussetzung nutzen
-- Fehler bei fehlender oder alter Config auf neue Struktur beziehen
-- die ausgegebenen fehlenden Pfade muessen `Jahr/Typ` zeigen
+- Fehler bei fehlender Config auf neue Struktur beziehen
+- die ausgegebenen fehlenden Pfade müssen `Jahr/Typ` zeigen
 
 ### `euercli/commands/add.py` und `euercli/commands/update.py`
 
-Keine Business-Logik-Aenderung, aber Warnungen nach `--receipt` muessen ueber
-die neue Pfad-Aufloesung laufen.
+Keine Business-Logik-Änderung, aber Warnungen nach `--receipt` müssen über
+die neue Pfad-Auflösung laufen.
 
 ### `euercli/commands/config.py`
 
-Falls `config show` Strukturhinweise ausgibt, muessen sie die neuen Keys zeigen
-und alte Keys als migrationsbeduerftig markieren.
-
-### `euercli/commands/report.py` aus Spec 014
-
-Der HTML-Pruefbericht soll fuer Beleglinks dieselbe `resolve_receipt_path()`-API
-verwenden. Die Umsetzung von Spec 014 darf keine eigene Pfadlogik einfuehren.
+Falls `config show` Strukturhinweise ausgibt, müssen sie die neuen Keys zeigen.
 
 ## Tests
 
-Neue bzw. geaenderte Tests in `tests/test_cli.py` oder fokussierten
+Neue bzw. geänderte Tests in `tests/test_cli.py` oder fokussierten
 Service-/Config-Tests:
 
-1. `setup` schreibt neue Keys `root`, `layout`, `expenses_dir`, `income_dir`.
+1. `setup` schreibt neue Keys `root`, `year_dir`, `expenses_dir`, `income_dir`.
 2. `setup --set receipts.root ...` normalisiert `~` und Quotes wie bisher.
-3. `receipt check` findet einen Ausgabenbeleg unter
+3. `setup --set receipts.year_dir "Buchhaltung {year}"` validiert und speichert
+   das Pattern.
+4. `receipt check` findet einen Ausgabenbeleg unter
    `<root>/2026/Ausgaben/<name>.pdf`.
-4. `receipt check` findet einen Einnahmenbeleg unter
+5. `receipt check` findet einen Einnahmenbeleg unter
    `<root>/2026/Einnahmen/<name>.pdf`.
-5. `receipt check` findet Belege ohne angegebene Endung weiterhin ueber
+6. `receipt check` findet einen Beleg unter
+   `<root>/Buchhaltung 2026/Ausgaben/<name>.pdf`, wenn
+   `year_dir = "Buchhaltung {year}"` gesetzt ist.
+7. `receipt check` findet Belege ohne angegebene Endung weiterhin über
    `.pdf/.jpg/.jpeg/.png`.
-6. `receipt check` meldet bei fehlendem Beleg die neuen Kandidatenpfade.
-7. Alte Config mit nur `receipts.expenses`/`receipts.income` erzeugt eine
-   deutsche Migrationsmeldung und keinen stillen Fallback.
-8. `receipt open` verwendet dieselbe neue Pfadlogik.
-9. `warn_missing_receipt()` nach `add expense --receipt ...` zeigt neue
+8. `receipt check` meldet bei fehlendem Beleg die neuen Kandidatenpfade.
+9. Bei fehlendem `payment_date` wird für die Pfad-Auflösung kein
+    Rechnungsdatum als Jahresersatz verwendet.
+10. `receipt open` verwendet dieselbe neue Pfadlogik.
+11. `warn_missing_receipt()` nach `add expense --receipt ...` zeigt neue
    Kandidatenpfade.
 
 ## Dokumentation
@@ -265,7 +239,7 @@ Bei Implementierung aktualisieren:
 - `docs/templates/Agents-Template.md`
 - `docs/RELEASE_NOTES.md`
 - `README.md`, falls Schnellstart oder Beispiele Belegpfade nennen
-- `DEVELOPMENT.md` Spec-Tabelle und Funktionsueberblick
+- `DEVELOPMENT.md` Spec-Tabelle und Funktionsüberblick
 
 Onboarding muss aus Beispielpfaden `Jahr/Typ` ableiten:
 
@@ -277,7 +251,7 @@ daraus:
 
 ```text
 receipts.root = "/Users/max/Dropbox/Buchhaltung"
-receipts.layout = "year_type"
+receipts.year_dir = "{year}"
 receipts.expenses_dir = "Ausgaben"
 ```
 
@@ -285,24 +259,24 @@ Die generierten Setup-Befehle sollen entsprechend lauten:
 
 ```bash
 euer setup --set receipts.root "/Users/max/Dropbox/Buchhaltung"
-euer setup --set receipts.layout "year_type"
+euer setup --set receipts.year_dir "{year}"
 euer setup --set receipts.expenses_dir "Ausgaben"
 euer setup --set receipts.income_dir "Einnahmen"
 ```
 
 ## Release Notes / Upgrade
 
-Diese Spec ist eine Config-Breaking-Change fuer alle bestehenden lokalen
-Installationen mit Belegpruefung.
+Diese Spec ist eine Config-Breaking-Change für alle bestehenden lokalen
+Installationen mit Belegprüfung.
 
-Release Notes muessen enthalten:
+Release Notes müssen enthalten:
 
-1. Backup/Pruefung der bestehenden `~/.config/euer/config.toml`.
-2. Beispielmigration von `receipts.expenses`/`receipts.income` auf
-   `receipts.root`/`layout`/Typ-Unterordner.
+1. Backup/Prüfung der bestehenden `~/.config/euer/config.toml`.
+2. Beispiel für die neue `[receipts]`-Config mit
+   `receipts.root`/`year_dir`/Typ-Unterordner.
 3. Hinweis, dass Belegdateien nicht automatisch verschoben werden.
 4. Beispielbefehle zum Setzen der neuen Config.
-5. Pruefbefehl nach der Migration:
+5. Prüfbefehl nach der Migration:
 
 ```bash
 euer receipt check --year 2026
@@ -310,18 +284,20 @@ euer receipt check --year 2026
 
 ## Akzeptanzkriterien
 
-- `euer setup` erzeugt standardmaessig eine `Jahr/Typ`-Config.
+- `euer setup` erzeugt standardmäßig eine `Jahr/Typ`-Config mit
+  `year_dir = "{year}"`.
 - `euer receipt check --year 2026` findet Belege unter
   `<root>/2026/Ausgaben` und `<root>/2026/Einnahmen`.
-- `euer receipt open <ID>` oeffnet Belege aus der neuen Struktur.
+- `year_dir = "Buchhaltung {year}"` wird korrekt zu
+  `<root>/Buchhaltung 2026/...` aufgelöst.
+- Das Jahr für Belegpfade basiert auf `payment_date`; `invoice_date` wird nicht
+  als Jahresgrundlage für Belegordner bevorzugt.
+- `euer receipt open <ID>` öffnet Belege aus der neuen Struktur.
 - Warnungen nach `add`/`update` nennen die neue Struktur.
-- Alte `receipts.expenses`/`receipts.income`-Configs werden nicht still
-  weiterverwendet, sondern mit Migrationshinweis behandelt.
 - Doku, Onboarding und Skill beschreiben `Jahr/Typ` konsistent als Standard.
-- Alle Tests laufen gruen mit `python -m unittest discover -s tests`.
+- Alle Tests laufen grün mit `python -m unittest discover -s tests`.
 
 ## Verwandte Specs
 
 - Spec 002: Beleg-Management
 - Spec 006: Rechnungs-/Wertstellungsdatum
-- Spec 014: HTML-Pruefbericht fuer Buchungen
