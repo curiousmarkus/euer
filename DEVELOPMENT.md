@@ -314,3 +314,5 @@ Offene Change Requests werden innerhalb der jeweiligen Spec dokumentiert.
 | 010 | Kontenrahmen (Buchungskonten je Kategorie) | Implementiert |
 | 011 | Reverse-Charge-Typ (EU vs. Drittland) | Implementiert |
 | 012 | `vat-report` | Implementiert |
+| 013 | Belegordner Jahr zuerst | Offen |
+| 014 | HTML-Pruefbericht fuer Buchungen | Offen |
