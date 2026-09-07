@@ -596,9 +596,10 @@ Hinweis: Direkte Privatentnahmen/Privateinlagen aus früheren Jahren können nic
 - **Duplikat erkannt**: gleiche Transaktion wurde bereits importiert.
 - **Beleg nicht gefunden**: Pfade in `config.toml` prüfen und Ordnerstruktur beachten.
 
-## Hilfe
+## Hilfe & FAQ
 
-Für Details zu Parametern:
+- ❓ **[Häufig gestellte Fragen (FAQ)](FAQ.md)** – Sonderfälle wie Prepaid-Guthaben (Google AI Studio, OpenAI), Nullbetragsrechnungen und Jahreswechsel.
+- Parameter-Hilfe im Terminal:
 
 ```bash
 euer --help

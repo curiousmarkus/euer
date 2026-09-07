@@ -320,6 +320,12 @@ Die Anwendung leitet `eu`/`third-country` nicht automatisch aus Anbieter oder La
 Bestehende RC-Buchungen ohne EU-/Drittland-Typ per `euer update expense <ID> --rc ...`
 nachpflegen.
 
+### Prepaid-Guthaben & Vorauszahlungen (z. B. Google AI Studio, OpenAI)
+
+Bei Anbietern mit Guthabenaufladung (Prepaid):
+1. **Zahlung erfassen:** Die Guthabenaufladung wird direkt bei Zahlung/Kontoabbuchung mit dem Zahlungsbeleg als Ausgabe erfasst (`--amount -XX.XX`, `--rc eu|third-country`). Als `--invoice-date` pragmatisch das Datum des Zahlungsbelegs/Kontoauszugs nutzen. Eine Warnung bei Wertstellungsdatum vor Rechnungsdatum kann ignoriert werden.
+2. **Monatliche Verbrauchsrechnung:** Weist die spätere Monatsrechnung einen Zahlbetrag von 0,00 EUR auf (da mit Guthaben verrechnet), wird sie **nicht** als neue Ausgabe gebucht (Vermeidung von Doppelzählung). Sie wird im Belegordner abgelegt und optional in den `--notes` der Zahlungsbuchung vermerkt. (Details: siehe `docs/FAQ.md`).
+
 ### Kategorien
 
 Nur diese Kategorien sind verfügbar:

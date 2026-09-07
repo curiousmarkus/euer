@@ -100,6 +100,7 @@ Gib es an deinen KI-Agenten:
 Detaillierte Anleitungen findest du in unseren Guides:
 
 - 📖 **[User Guide](docs/USER_GUIDE.md)** – Installation, Workflows und alle Befehle.
+- ❓ **[FAQ](docs/FAQ.md)** – Häufige Fragen, Sonderfälle (z. B. Prepaid-Guthaben) und Best Practices.
 - 🧾 **[Release Notes](docs/RELEASE_NOTES.md)** – Upgrade-Hinweise für bestehende lokale Instanzen.
 - 🤖 **[SKILL "euer-buchhaltung"](docs/skills/euer-buchhaltung/SKILL.md)** – Die Anleitung für deinen Agenten
 - 🤖 **[Agent Templates](docs/templates/)** – Konfigurationsvorlagen für KI-Buchhalter
