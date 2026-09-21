@@ -31,18 +31,24 @@ Die Test-Suite deckt folgende Funktionsbereiche ab:
 
 ## Nicht automatisiert (manuell)
 
-- `export --format xlsx` und `vat-report --format xlsx` (benötigt `openpyxl`)
 - `receipt open` erfolgreicher Pfad (öffnet GUI/Datei-System)
 
 ## Ausführen
 
 ```bash
-python3 -m unittest discover -s tests
+make test
 ```
 
-Optional (mit `openpyxl` installiert):
+Linting, Formatprüfung und Coverage-Bericht:
 
 ```bash
-euer export --year 2026 --format xlsx
-euer vat-report --year 2026 --format xlsx
+make lint
+make coverage
 ```
+
+Die XLSX-Integrationstests werden automatisch ausgeführt, wenn `openpyxl` installiert
+ist. `make install` installiert dafür die Extras `dev` und `xlsx`. Ohne `openpyxl`
+werden ausschließlich diese optionalen Tests übersprungen.
+
+In GitHub Actions läuft die Suite auf Linux, macOS und Windows mit Python 3.11 sowie
+zusätzlich auf Linux mit der aktuellen unterstützten Python-Version.

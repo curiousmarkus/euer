@@ -39,9 +39,33 @@ Die meisten Tools zwingen dich zu einer Entscheidung: Entweder du nutzt unflexib
 
 `pipx` installiert `euer` global, ohne dass du je eine virtuelle Umgebung aktivieren musst:
 
+**macOS:**
+
 ```bash
 # pipx einmalig installieren (falls noch nicht vorhanden)
 brew install pipx
+pipx ensurepath
+
+# euer installieren
+pipx install git+https://github.com/curiousmarkus/euer.git
+```
+
+**Windows (PowerShell):**
+
+```powershell
+# pipx einmalig installieren (falls noch nicht vorhanden)
+py -m pip install --user pipx
+py -m pipx ensurepath
+
+# PowerShell anschließend neu öffnen und euer installieren
+pipx install git+https://github.com/curiousmarkus/euer.git
+```
+
+**Linux:** Installiere `pipx` über den Paketmanager deiner Distribution und führe dann
+Folgendes aus:
+
+```bash
+pipx ensurepath
 
 # euer installieren
 pipx install git+https://github.com/curiousmarkus/euer.git
@@ -52,6 +76,22 @@ Danach ist `euer` sofort und dauerhaft in jedem Terminal verfügbar.
 **Update auf die neueste Version:**
 ```bash
 pipx upgrade euercli
+```
+
+Für den optionalen Excel-Export kann `openpyxl` in die isolierte Installation ergänzt
+werden:
+
+```bash
+pipx inject euercli openpyxl
+```
+
+**Entwicklungsinstallation unter Windows (PowerShell):**
+
+```powershell
+py -3 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e ".[dev,xlsx]"
+python -m unittest discover -s tests
 ```
 
 (Details siehe [User Guide](docs/USER_GUIDE.md#installation))

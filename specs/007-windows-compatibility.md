@@ -153,11 +153,11 @@ pip install -e .
 
 ## Umsetzungsplan
 
-1. [ ] `euercli/constants.py`: `get_config_path()` einführen und `CONFIG_PATH` daraus ableiten.
-2. [ ] `tests/test_cli.py`: `USERPROFILE` und `APPDATA` ergänzen.
-3. [ ] `tests/test_cli.py`: Config-Assertions robust auf geparste TOML-Daten umstellen.
-4. [ ] `README.md`: Windows-PowerShell-Setup ergänzen.
-5. [ ] `.github/workflows/*`: Windows-Testjob hinzufügen.
+1. [x] `euercli/constants.py`: `get_config_path()` einführen und `CONFIG_PATH` daraus ableiten.
+2. [x] `tests/test_cli.py`: `USERPROFILE` und `APPDATA` ergänzen.
+3. [x] `tests/test_cli.py`: Config-Assertions robust auf geparste TOML-Daten umstellen.
+4. [x] `README.md`: Windows-PowerShell-Setup ergänzen.
+5. [x] `.github/workflows/*`: Windows-Testjob hinzufügen.
 
 ---
 
@@ -174,34 +174,3 @@ pip install -e .
 2. `euer setup`
 3. `euer config show`
 4. Prüfen, dass Pfad unter `%APPDATA%\euer\config.toml` liegt.
-
-
-### NOTE:
-
-aus dem Projekt entfernt fürs erste:
-```
-name: CI
-
-on:
-  push:
-  pull_request:
-
-jobs:
-  test-windows:
-    runs-on: windows-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install package
-        run: python -m pip install -e .
-
-      - name: Run tests
-        run: python -m unittest discover -s tests
-```

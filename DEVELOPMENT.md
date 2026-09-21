@@ -5,23 +5,37 @@ Architektur und Entwicklungs‑Workflows.
 
 ## Setup
 
+### macOS und Linux
+
 ```bash
-python -m pip install -e .
+make install
 
 # Datenbank lokal anlegen
-euer init
+.venv/bin/euer init
 ```
 
-Ohne Installation:
+Die Entwicklungsumgebung enthält Ruff, Coverage, das Build-Werkzeug und die optionale
+XLSX-Unterstützung. Ohne Installation kann die CLI über das System-Python gestartet
+werden:
 
 ```bash
-python -m euercli <command>
+python3 -m euercli <command>
+```
+
+### Windows (PowerShell)
+
+```powershell
+py -3 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e ".[dev,xlsx]"
+python -m euercli init
 ```
 
 ## Projektstruktur (Kurzüberblick)
 
 ```
 euer/
+├── .github/workflows/      # Automatisierte Tests und Qualitätsprüfungen
 ├── euercli/                 # Core Package
 │   ├── cli.py               # CLI Parser + Dispatch
 │   ├── commands/            # Command Implementierungen
@@ -165,7 +179,8 @@ Nach Abschluss einer Spec-Implementierung oder eines größeren Feature-Bundles:
 2. Sicherstellen, dass beide Dateien den **identischen** Versionsstring haben
 3. `docs/RELEASE_NOTES.md` prüfen und bei Nutzer-, Schema-, CLI-, Import-/Export-,
    Steuerlogik- oder Agenten-Änderungen konkrete Upgrade-/Migrationsschritte ergänzen
-4. Alle Tests müssen grün sein (`python -m unittest discover -s tests`)
+4. Alle Tests müssen grün sein (`make test` bzw. unter Windows
+   `python -m unittest discover -s tests`)
 
 ## Entwicklungs-Richtlinien
 
@@ -266,11 +281,17 @@ Ausnahme: Kategorienamen und Fachbegriffe in User-Strings bleiben Deutsch (ELSTE
 ## Tests
 
 ```bash
-python -m unittest discover -s tests
+make test
+make lint
+make coverage
 ```
 
 Zusätzliche Unit-Tests liegen in `tests/test_services_*.py` und laufen gegen
 eine In-Memory SQLite DB.
+
+Die CI prüft Python 3.11 auf Linux, macOS und Windows sowie die aktuelle unterstützte
+Python-Version auf Linux. Ein zusätzlicher Job testet die optionalen XLSX-Exporte und
+erstellt einen Coverage-Bericht.
 
 Weitere Details: `TESTING.md`.
 
@@ -289,7 +310,7 @@ Bevor du Code schreibst oder änderst:
 - [ ] `DEVELOPMENT.md` gelesen (dieses Dokument)
 - [ ] Betroffene Service-Funktionen in `euercli/services/` identifiziert
 - [ ] Keine direkten SQL-Writes in `euercli/commands/` geplant
-- [ ] Bestehende Tests laufen: `python -m unittest discover -s tests`
+- [ ] Bestehende Tests laufen: `make test`
 - [ ] Bei Schema-Änderungen: `euercli/schema.py` + Migration in `commands/init.py`
 - [ ] Bei neuen Features: Spec in `specs/` angelegt oder bestehendes Spec erweitert
 - [ ] Bei implementierten Specs: `docs/RELEASE_NOTES.md` auf nötige Upgrade-Hinweise prüfen

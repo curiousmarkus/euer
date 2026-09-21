@@ -13,14 +13,26 @@ Verbesserungsvorschlägen, Dokumentation und Code sind willkommen.
 
 ## Entwicklungsumgebung einrichten
 
-Benötigt wird Python 3.11 oder neuer. Installiere das Projekt im Repository mit:
+Benötigt wird Python 3.11 oder neuer. Unter macOS und Linux richtet `make install` eine
+virtuelle Umgebung einschließlich der Entwicklungs- und XLSX-Abhängigkeiten ein:
 
 ```bash
-python -m pip install -e .
-euer init
+make install
+make test
 ```
 
-Ohne Installation kann die CLI über `python -m euercli <command>` aufgerufen werden.
+Unter Windows kann dieselbe Umgebung in PowerShell eingerichtet werden:
+
+```powershell
+py -3 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e ".[dev,xlsx]"
+python -m unittest discover -s tests
+```
+
+Ohne Installation kann die CLI unter macOS und Linux über
+`python3 -m euercli <command>` aufgerufen werden. In einer aktivierten virtuellen
+Umgebung lautet der plattformübergreifende Aufruf `python -m euercli <command>`.
 Architektur, Service-Layer-Regeln und Code-Konventionen sind im
 [`DEVELOPMENT.md`](DEVELOPMENT.md) dokumentiert und müssen vor einer Codeänderung
 gelesen werden.
@@ -32,14 +44,13 @@ gelesen werden.
 3. Führe die Test-Suite aus:
 
    ```bash
-   python -m unittest discover -s tests
+   make test
    ```
 
-4. Prüfe optional Formatierung und Linting:
+4. Prüfe Formatierung und Linting:
 
    ```bash
-   ruff check euercli
-   ruff format --check euercli
+   make lint
    ```
 
 5. Erstelle einen Pull Request und beschreibe Motivation, Umsetzung und durchgeführte
