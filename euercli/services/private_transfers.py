@@ -5,8 +5,8 @@ import uuid
 
 from ..db import log_audit, row_to_dict
 from ..utils import compute_hash
-from .expenses import row_to_expense
 from .errors import RecordNotFoundError, ValidationError
+from .expenses import row_to_expense
 from .models import Expense, PrivateTransfer
 from .utils import get_optional
 
@@ -383,9 +383,7 @@ def get_private_summary(
 
     deposits_direct = (direct["deposits_direct"] if direct else 0.0) or 0.0
     withdrawals_total = (direct["withdrawals_total"] if direct else 0.0) or 0.0
-    deposits_sacheinlagen = (
-        (sacheinlagen["deposits_private_paid"] if sacheinlagen else 0.0) or 0.0
-    )
+    deposits_sacheinlagen = (sacheinlagen["deposits_private_paid"] if sacheinlagen else 0.0) or 0.0
 
     return {
         "deposits_direct": deposits_direct,

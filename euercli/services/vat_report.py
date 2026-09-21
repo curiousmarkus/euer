@@ -593,8 +593,7 @@ def build_vat_report(
 
     period = build_vat_period(year=year, quarter=quarter, month=month)
     totals = {
-        kennzahl: {"basis": Decimal("0"), "tax": Decimal("0")}
-        for kennzahl in LINE_DEFINITIONS
+        kennzahl: {"basis": Decimal("0"), "tax": Decimal("0")} for kennzahl in LINE_DEFINITIONS
     }
     diagnostics: list[VatReportDiagnostic] = []
 
@@ -603,10 +602,7 @@ def build_vat_report(
     _aggregate_expenses(conn, period, tax_mode, totals, diagnostics)
 
     output_tax = (
-        totals["81"]["tax"]
-        + totals["86"]["tax"]
-        + totals["47"]["tax"]
-        + totals["85"]["tax"]
+        totals["81"]["tax"] + totals["86"]["tax"] + totals["47"]["tax"] + totals["85"]["tax"]
     )
     input_tax = totals["66"]["tax"] + totals["67"]["tax"]
     totals["83"]["tax"] = output_tax - input_tax

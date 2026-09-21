@@ -9,7 +9,7 @@ from ..services.categories import get_category_list
 from ..services.errors import ValidationError
 from ..services.expenses import list_expenses
 from ..services.income import list_income
-from ..services.private_transfers import get_private_transfer_list, get_private_paid_expenses
+from ..services.private_transfers import get_private_paid_expenses, get_private_transfer_list
 from ..utils import format_rc_type
 
 
@@ -107,9 +107,7 @@ def cmd_list_expenses(args):
 
         full_view = bool(getattr(args, "full", False))
         has_vat = any(
-            (r.vat_input and r.vat_input != 0)
-            or (r.vat_output and r.vat_output != 0)
-            or r.is_rc
+            (r.vat_input and r.vat_input != 0) or (r.vat_output and r.vat_output != 0) or r.is_rc
             for r in rows
         )
 
@@ -636,10 +634,7 @@ def cmd_list_private_deposits(args):
 
     print(f"Privateinlagen {year}")
     print("=" * 60)
-    print(
-        f"{'ID':<5} {'Datum':<12} {'Beschreibung':<30} {'EUR':>10} "
-        f"{'Quelle':<20} {'Klass.':<12}"
-    )
+    print(f"{'ID':<5} {'Datum':<12} {'Beschreibung':<30} {'EUR':>10} {'Quelle':<20} {'Klass.':<12}")
     print("-" * 98)
 
     total = 0.0
@@ -675,7 +670,9 @@ def cmd_list_private_withdrawals(args):
         writer = csv.writer(sys.stdout)
         writer.writerow(["ID", "Datum", "Beschreibung", "EUR", "Quelle"])
         for row in transfers:
-            writer.writerow([row.id, row.date, row.description, f"{row.amount_eur:.2f}", "Direktbuchung"])
+            writer.writerow(
+                [row.id, row.date, row.description, f"{row.amount_eur:.2f}", "Direktbuchung"]
+            )
         return
 
     if not transfers:
@@ -708,7 +705,9 @@ def cmd_list_private_transfers(args):
         writer = csv.writer(sys.stdout)
         writer.writerow(["type", "id", "date", "description", "amount_eur", "source"])
         for row in deposits:
-            writer.writerow(["deposit", row.id, row.date, row.description, f"{row.amount_eur:.2f}", "direct"])
+            writer.writerow(
+                ["deposit", row.id, row.date, row.description, f"{row.amount_eur:.2f}", "direct"]
+            )
         for row in private_paid_expenses:
             writer.writerow(
                 [

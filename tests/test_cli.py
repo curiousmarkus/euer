@@ -41,10 +41,7 @@ class EuerCLITestCase(unittest.TestCase):
             env=self.env,
         )
         if check and result.returncode != 0:
-            self.fail(
-                "Command failed: "
-                f"{args}\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}"
-            )
+            self.fail(f"Command failed: {args}\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}")
         return result
 
     def parse_csv(self, output: str) -> list[list[str]]:
@@ -357,9 +354,7 @@ category = "Laufende EDV-Kosten"
         self.assertIn("Zahlung ausstehend", rows[1][8])
 
     def test_add_expense_requires_any_date(self):
-        result = self.run_cli(
-            ["add", "expense", "--vendor", "NoDate", "--amount", "-10.00"]
-        )
+        result = self.run_cli(["add", "expense", "--vendor", "NoDate", "--amount", "-10.00"])
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("payment_date", result.stderr)
 
@@ -506,7 +501,6 @@ category = "Laufende EDV-Kosten"
         rows = self.parse_csv(query.stdout)
         self.assertEqual(rows[1][0], "1")
         self.assertEqual(rows[1][1], "manual")
-
 
     def test_duplicate_detection(self):
         first = self.add_expense()
@@ -800,9 +794,7 @@ account_number = "8400"
     def test_vat_report_requires_year_and_exclusive_period(self):
         missing_year = self.run_cli(["vat-report"])
         self.assertNotEqual(missing_year.returncode, 0)
-        conflict = self.run_cli(
-            ["vat-report", "--year", "2026", "--quarter", "1", "--month", "1"]
-        )
+        conflict = self.run_cli(["vat-report", "--year", "2026", "--quarter", "1", "--month", "1"])
         self.assertNotEqual(conflict.returncode, 0)
 
     def test_vat_report_table_and_csv_export(self):
@@ -975,15 +967,9 @@ account_number = "8400"
         self.assertTrue(inc_file.exists())
         self.assertTrue(private_file.exists())
 
-        exp_rows = list(
-            csv.reader(exp_file.read_text(encoding="utf-8-sig").splitlines())
-        )
-        inc_rows = list(
-            csv.reader(inc_file.read_text(encoding="utf-8-sig").splitlines())
-        )
-        private_rows = list(
-            csv.reader(private_file.read_text(encoding="utf-8-sig").splitlines())
-        )
+        exp_rows = list(csv.reader(exp_file.read_text(encoding="utf-8-sig").splitlines()))
+        inc_rows = list(csv.reader(inc_file.read_text(encoding="utf-8-sig").splitlines()))
+        private_rows = list(csv.reader(private_file.read_text(encoding="utf-8-sig").splitlines()))
 
         exp_dates = {row[1] for row in exp_rows[1:]}
         inc_dates = {row[1] for row in inc_rows[1:]}
@@ -1070,13 +1056,13 @@ account_number = "8400"
 
         config_path = self.expected_config_path()
         config_path.parent.mkdir(parents=True, exist_ok=True)
-        config_path.write_text("[accounts]\nprivate = [\"completely_other\"]\n", encoding="utf-8")
+        config_path.write_text('[accounts]\nprivate = ["completely_other"]\n', encoding="utf-8")
 
         second = self.run_cli(["private-summary", "--year", "2026"], check=True)
         self.assertIn("50.00 EUR", second.stdout)
 
     def test_reconcile_private_updates_and_logs(self):
-        self.write_config("[accounts]\nprivate = [\"privat\"]\n")
+        self.write_config('[accounts]\nprivate = ["privat"]\n')
         self.add_expense(account="Sparkasse Kreditkarte", amount="-35.00")
 
         before = self.run_cli(
@@ -1097,7 +1083,7 @@ account_number = "8400"
         self.assertEqual(before_rows[1][0], "0")
         self.assertEqual(before_rows[1][1], "none")
 
-        self.write_config("[accounts]\nprivate = [\"Sparkasse Kreditkarte\"]\n")
+        self.write_config('[accounts]\nprivate = ["Sparkasse Kreditkarte"]\n')
         result = self.run_cli(
             ["reconcile", "private", "--year", "2026"],
             check=True,
@@ -1150,9 +1136,9 @@ account_number = "8400"
         self.assertEqual(audit_rows[1][0], "1")
 
     def test_reconcile_private_dry_run_changes_nothing(self):
-        self.write_config("[accounts]\nprivate = [\"privat\"]\n")
+        self.write_config('[accounts]\nprivate = ["privat"]\n')
         self.add_expense(account="Kreditkarte Privat", amount="-45.00")
-        self.write_config("[accounts]\nprivate = [\"Kreditkarte Privat\"]\n")
+        self.write_config('[accounts]\nprivate = ["Kreditkarte Privat"]\n')
 
         result = self.run_cli(
             ["reconcile", "private", "--year", "2026", "--dry-run"],
@@ -1181,7 +1167,7 @@ account_number = "8400"
 
     def test_reconcile_private_keeps_manual_classification(self):
         self.add_expense(account="Geschäft", private_paid=True, amount="-18.00")
-        self.write_config("[accounts]\nprivate = [\"anderes konto\"]\n")
+        self.write_config('[accounts]\nprivate = ["anderes konto"]\n')
 
         result = self.run_cli(["reconcile", "private", "--year", "2026"], check=True)
         self.assertIn("Übersprungen (manuell): 1", result.stdout)
@@ -1463,9 +1449,7 @@ category = "Laufende EDV-Kosten"
         (receipt_dir / f"{receipt_name}.pdf").write_text("dummy", encoding="utf-8")
         self.add_expense(receipt=receipt_name)
 
-        result = self.run_cli(
-            ["receipt", "check", "--year", "2026", "--type", "expense"]
-        )
+        result = self.run_cli(["receipt", "check", "--year", "2026", "--type", "expense"])
         self.assertEqual(result.returncode, 0, msg=result.stderr)
 
     def test_receipt_check_finds_income_receipt(self):
@@ -1478,9 +1462,7 @@ category = "Laufende EDV-Kosten"
         (receipt_dir / receipt_name).write_text("dummy", encoding="utf-8")
         self.add_income(receipt=receipt_name)
 
-        result = self.run_cli(
-            ["receipt", "check", "--year", "2026", "--type", "income"]
-        )
+        result = self.run_cli(["receipt", "check", "--year", "2026", "--type", "income"])
         self.assertEqual(result.returncode, 0, msg=result.stderr)
 
     def test_receipt_check_uses_custom_year_dir(self):
@@ -1495,9 +1477,7 @@ category = "Laufende EDV-Kosten"
         (receipt_dir / receipt_name).write_text("dummy", encoding="utf-8")
         self.add_expense(receipt=receipt_name)
 
-        result = self.run_cli(
-            ["receipt", "check", "--year", "2026", "--type", "expense"]
-        )
+        result = self.run_cli(["receipt", "check", "--year", "2026", "--type", "expense"])
         self.assertEqual(result.returncode, 0, msg=result.stderr)
 
     def test_add_receipt_warning_uses_new_candidate_paths(self):
@@ -1557,9 +1537,7 @@ account_number = "4940"
             encoding="utf-8",
         )
 
-        result = self.run_cli(
-            ["import", "--file", str(import_file), "--format", "csv"], check=True
-        )
+        result = self.run_cli(["import", "--file", str(import_file), "--format", "csv"], check=True)
         self.assertIn("Ausgaben angelegt: 1", result.stdout)
 
         rows = self.list_expenses_csv()
@@ -1688,13 +1666,9 @@ account_number = "4940"
 
         self.run_cli(["init"], check=True)
         with sqlite3.connect(self.db_path) as conn:
-            columns = {
-                row[1]
-                for row in conn.execute("PRAGMA table_info(expenses)").fetchall()
-            }
+            columns = {row[1] for row in conn.execute("PRAGMA table_info(expenses)").fetchall()}
             income_columns = {
-                row[1]
-                for row in conn.execute("PRAGMA table_info(income)").fetchall()
+                row[1] for row in conn.execute("PRAGMA table_info(income)").fetchall()
             }
             rc_type = conn.execute(
                 "SELECT rc_type FROM expenses WHERE uuid = ?",
@@ -1742,14 +1716,13 @@ account_number = "4940"
             check=True,
         )
 
-        incomplete_result = self.run_cli(
-            ["incomplete", "list", "--format", "csv"], check=True
-        )
+        incomplete_result = self.run_cli(["incomplete", "list", "--format", "csv"], check=True)
         rows = self.parse_csv(incomplete_result.stdout)
         self.assertEqual(len(rows), 2)
         self.assertIn("category", incomplete_result.stdout)
         self.assertIn("receipt", incomplete_result.stdout)
         self.assertIn("account", incomplete_result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

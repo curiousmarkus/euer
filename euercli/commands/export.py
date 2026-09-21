@@ -31,8 +31,7 @@ def cmd_export(args):
         print(f"Fehler: {exc.message}", file=sys.stderr)
         sys.exit(1)
     ledger_account_numbers = {
-        account.key.lower(): account.account_number or ""
-        for account in ledger_accounts
+        account.key.lower(): account.account_number or "" for account in ledger_accounts
     }
 
     if args.output:
@@ -75,8 +74,7 @@ def cmd_export(args):
         is not None
     )
     expense_columns = {
-        row["name"]
-        for row in conn.execute("PRAGMA table_info(expenses)").fetchall()
+        row["name"] for row in conn.execute("PRAGMA table_info(expenses)").fetchall()
     }
     has_private_expense_cols = {
         "is_private_paid",
@@ -165,11 +163,7 @@ def cmd_export(args):
             )
             for r in expenses:
                 if r["category"]:
-                    cat = (
-                        f"{r['category']} ({r['eur_line']})"
-                        if r["eur_line"]
-                        else r["category"]
-                    )
+                    cat = f"{r['category']} ({r['eur_line']})" if r["eur_line"] else r["category"]
                 else:
                     cat = "Ohne Kategorie"
                 writer.writerow(
@@ -216,11 +210,7 @@ def cmd_export(args):
             )
             for r in income:
                 if r["category"]:
-                    cat = (
-                        f"{r['category']} ({r['eur_line']})"
-                        if r["eur_line"]
-                        else r["category"]
-                    )
+                    cat = f"{r['category']} ({r['eur_line']})" if r["eur_line"] else r["category"]
                 else:
                     cat = "Ohne Kategorie"
                 writer.writerow(
@@ -336,11 +326,7 @@ def cmd_export(args):
         )
         for r in expenses:
             if r["category"]:
-                cat = (
-                    f"{r['category']} ({r['eur_line']})"
-                    if r["eur_line"]
-                    else r["category"]
-                )
+                cat = f"{r['category']} ({r['eur_line']})" if r["eur_line"] else r["category"]
             else:
                 cat = "Ohne Kategorie"
             ws.append(
@@ -389,11 +375,7 @@ def cmd_export(args):
         )
         for r in income:
             if r["category"]:
-                cat = (
-                    f"{r['category']} ({r['eur_line']})"
-                    if r["eur_line"]
-                    else r["category"]
-                )
+                cat = f"{r['category']} ({r['eur_line']})" if r["eur_line"] else r["category"]
             else:
                 cat = "Ohne Kategorie"
             ws.append(

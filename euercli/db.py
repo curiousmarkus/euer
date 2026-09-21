@@ -44,9 +44,7 @@ def log_audit(
     )
 
 
-def get_category_id(
-    conn: sqlite3.Connection, name: str, cat_type: str
-) -> Optional[int]:
+def get_category_id(conn: sqlite3.Connection, name: str, cat_type: str) -> Optional[int]:
     """Sucht Kategorie-ID nach Name (case-insensitive)."""
     row = conn.execute(
         "SELECT id FROM categories WHERE LOWER(name) = LOWER(?) AND type = ?",

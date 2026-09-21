@@ -4,7 +4,6 @@ import sys
 
 # Copyright (C) 2026 EÜR Contributors
 # Licensed under GNU AGPLv3
-
 from .commands import (
     cmd_add_expense,
     cmd_add_income,
@@ -28,9 +27,9 @@ from .commands import (
     cmd_list_private_withdrawals,
     cmd_private_summary,
     cmd_query,
-    cmd_reconcile_private,
     cmd_receipt_check,
     cmd_receipt_open,
+    cmd_reconcile_private,
     cmd_setup,
     cmd_summary,
     cmd_update_expense,
@@ -101,9 +100,7 @@ def main() -> None:
         "--file",
         help="Pfad zur Importdatei (csv|jsonl), '-' für stdin",
     )
-    import_parser.add_argument(
-        "--format", choices=["csv", "jsonl"], help="Importformat"
-    )
+    import_parser.add_argument("--format", choices=["csv", "jsonl"], help="Importformat")
     import_parser.add_argument(
         "--dry-run", action="store_true", help="Nur prüfen, nichts speichern"
     )
@@ -136,9 +133,7 @@ def main() -> None:
         "--ledger-account",
         help="Buchungskonto aus dem Kontenrahmen (setzt Kategorie automatisch)",
     )
-    add_expense_parser.add_argument(
-        "--amount", required=True, type=float, help="Betrag in EUR"
-    )
+    add_expense_parser.add_argument("--amount", required=True, type=float, help="Betrag in EUR")
     add_expense_parser.add_argument("--account", help="Bankkonto")
     add_expense_parser.add_argument("--foreign", help="Fremdwährungsbetrag")
     add_expense_parser.add_argument("--receipt", help="Belegname")
@@ -175,15 +170,11 @@ def main() -> None:
         "--ledger-account",
         help="Buchungskonto aus dem Kontenrahmen (setzt Kategorie automatisch)",
     )
-    add_income_parser.add_argument(
-        "--amount", required=True, type=float, help="Betrag in EUR"
-    )
+    add_income_parser.add_argument("--amount", required=True, type=float, help="Betrag in EUR")
     add_income_parser.add_argument("--foreign", help="Fremdwährungsbetrag")
     add_income_parser.add_argument("--receipt", help="Belegname")
     add_income_parser.add_argument("--notes", help="Bemerkung")
-    add_income_parser.add_argument(
-        "--vat", type=float, help="Umsatzsteuer-Betrag (für Regelb.)"
-    )
+    add_income_parser.add_argument("--vat", type=float, help="Umsatzsteuer-Betrag (für Regelb.)")
     add_income_parser.add_argument(
         "--vat-rate",
         type=float,
@@ -205,9 +196,7 @@ def main() -> None:
     add_private_deposit_parser.add_argument(
         "--amount", required=True, type=float, help="Betrag in EUR (positiv)"
     )
-    add_private_deposit_parser.add_argument(
-        "--description", required=True, help="Beschreibung"
-    )
+    add_private_deposit_parser.add_argument("--description", required=True, help="Beschreibung")
     add_private_deposit_parser.add_argument("--notes", help="Bemerkung")
     add_private_deposit_parser.add_argument(
         "--related-expense-id",
@@ -220,15 +209,11 @@ def main() -> None:
     add_private_withdrawal_parser = add_subparsers.add_parser(
         "private-withdrawal", help="Privatentnahme hinzufügen"
     )
-    add_private_withdrawal_parser.add_argument(
-        "--date", required=True, help="Datum (YYYY-MM-DD)"
-    )
+    add_private_withdrawal_parser.add_argument("--date", required=True, help="Datum (YYYY-MM-DD)")
     add_private_withdrawal_parser.add_argument(
         "--amount", required=True, type=float, help="Betrag in EUR (positiv)"
     )
-    add_private_withdrawal_parser.add_argument(
-        "--description", required=True, help="Beschreibung"
-    )
+    add_private_withdrawal_parser.add_argument("--description", required=True, help="Beschreibung")
     add_private_withdrawal_parser.add_argument("--notes", help="Bemerkung")
     add_private_withdrawal_parser.add_argument(
         "--related-expense-id",
@@ -276,17 +261,11 @@ def main() -> None:
     list_inc_parser.set_defaults(func=cmd_list_income)
 
     # list categories
-    list_cat_parser = list_subparsers.add_parser(
-        "categories", help="Kategorien anzeigen"
-    )
-    list_cat_parser.add_argument(
-        "--type", choices=["expense", "income"], help="Typ filtern"
-    )
+    list_cat_parser = list_subparsers.add_parser("categories", help="Kategorien anzeigen")
+    list_cat_parser.add_argument("--type", choices=["expense", "income"], help="Typ filtern")
     list_cat_parser.set_defaults(func=cmd_list_categories)
 
-    list_ledger_parser = list_subparsers.add_parser(
-        "ledger-accounts", help="Kontenrahmen anzeigen"
-    )
+    list_ledger_parser = list_subparsers.add_parser("ledger-accounts", help="Kontenrahmen anzeigen")
     list_ledger_parser.add_argument("--category", help="Kategorie filtern")
     list_ledger_parser.set_defaults(func=cmd_list_ledger_accounts)
 
@@ -319,9 +298,7 @@ def main() -> None:
     update_subparsers = update_parser.add_subparsers(dest="type", required=True)
 
     # update expense
-    upd_exp_parser = update_subparsers.add_parser(
-        "expense", help="Ausgabe aktualisieren"
-    )
+    upd_exp_parser = update_subparsers.add_parser("expense", help="Ausgabe aktualisieren")
     upd_exp_parser.add_argument("id", type=int, help="ID der Ausgabe")
     upd_exp_parser.add_argument(
         "--payment-date",
@@ -373,9 +350,7 @@ def main() -> None:
     upd_exp_parser.set_defaults(func=cmd_update_expense)
 
     # update income
-    upd_inc_parser = update_subparsers.add_parser(
-        "income", help="Einnahme aktualisieren"
-    )
+    upd_inc_parser = update_subparsers.add_parser("income", help="Einnahme aktualisieren")
     upd_inc_parser.add_argument("id", type=int, help="ID der Einnahme")
     upd_inc_parser.add_argument(
         "--payment-date",
@@ -452,9 +427,7 @@ def main() -> None:
         "private-transfer", help="Privatvorgang löschen"
     )
     del_private_parser.add_argument("id", type=int, help="ID des Privatvorgangs")
-    del_private_parser.add_argument(
-        "--force", action="store_true", help="Keine Rückfrage"
-    )
+    del_private_parser.add_argument("--force", action="store_true", help="Keine Rückfrage")
     del_private_parser.set_defaults(func=cmd_delete_private_transfer)
 
     # --- export ---
@@ -469,8 +442,7 @@ def main() -> None:
         "--output",
         default=None,
         help=(
-            "Ausgabeverzeichnis (default: exports.directory aus Config oder "
-            f"{DEFAULT_EXPORT_DIR})"
+            f"Ausgabeverzeichnis (default: exports.directory aus Config oder {DEFAULT_EXPORT_DIR})"
         ),
     )
     export_parser.set_defaults(func=cmd_export)
@@ -514,9 +486,7 @@ def main() -> None:
     private_summary_parser = subparsers.add_parser(
         "private-summary", help="Zeigt ELSTER-Summen für Privatvorgänge"
     )
-    private_summary_parser.add_argument(
-        "--year", type=int, required=True, help="Jahr"
-    )
+    private_summary_parser.add_argument("--year", type=int, required=True, help="Jahr")
     private_summary_parser.set_defaults(func=cmd_private_summary)
 
     # --- reconcile ---
@@ -570,9 +540,7 @@ def main() -> None:
     config_subparsers = config_parser.add_subparsers(dest="action", required=True)
 
     # config show
-    config_show_parser = config_subparsers.add_parser(
-        "show", help="Zeigt aktuelle Konfiguration"
-    )
+    config_show_parser = config_subparsers.add_parser("show", help="Zeigt aktuelle Konfiguration")
     config_show_parser.set_defaults(func=cmd_config_show)
 
     # --- receipt ---
@@ -583,9 +551,7 @@ def main() -> None:
     receipt_check_parser = receipt_subparsers.add_parser(
         "check", help="Prüft Transaktionen auf fehlende Belege"
     )
-    receipt_check_parser.add_argument(
-        "--year", type=int, help="Jahr (default: aktuelles)"
-    )
+    receipt_check_parser.add_argument("--year", type=int, help="Jahr (default: aktuelles)")
     receipt_check_parser.add_argument(
         "--type", choices=["expense", "income"], help="Nur diesen Typ prüfen"
     )
@@ -605,22 +571,14 @@ def main() -> None:
     receipt_open_parser.set_defaults(func=cmd_receipt_open)
 
     # --- incomplete ---
-    incomplete_parser = subparsers.add_parser(
-        "incomplete", help="Unvollständige Buchungen"
-    )
-    incomplete_subparsers = incomplete_parser.add_subparsers(
-        dest="action", required=True
-    )
+    incomplete_parser = subparsers.add_parser("incomplete", help="Unvollständige Buchungen")
+    incomplete_subparsers = incomplete_parser.add_subparsers(dest="action", required=True)
     incomplete_list_parser = incomplete_subparsers.add_parser(
         "list", help="Listet unvollständige Einträge"
     )
-    incomplete_list_parser.add_argument(
-        "--type", choices=["expense", "income"], help="Typ filtern"
-    )
+    incomplete_list_parser.add_argument("--type", choices=["expense", "income"], help="Typ filtern")
     incomplete_list_parser.add_argument("--year", type=int, help="Jahr filtern")
-    incomplete_list_parser.add_argument(
-        "--format", choices=["table", "csv"], default="table"
-    )
+    incomplete_list_parser.add_argument("--format", choices=["table", "csv"], default="table")
     incomplete_list_parser.set_defaults(func=cmd_incomplete_list)
 
     load_plugins(subparsers)

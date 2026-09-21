@@ -47,10 +47,7 @@ def _reconcile_private_expenses(
             private_accounts=private_accounts,
         )
 
-        if (
-            new_is_private_paid == old_is_private_paid
-            and new_classification == old_classification
-        ):
+        if new_is_private_paid == old_is_private_paid and new_classification == old_classification:
             continue
 
         changed += 1

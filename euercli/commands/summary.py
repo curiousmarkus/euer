@@ -57,9 +57,7 @@ def cmd_summary(args):
         (str(year),),
     ).fetchone()["cnt"]
     if legacy_rc_count > 0:
-        print(
-            f"Hinweis: {legacy_rc_count} Reverse-Charge-Buchung(en) ohne EU-/Drittland-Typ."
-        )
+        print(f"Hinweis: {legacy_rc_count} Reverse-Charge-Buchung(en) ohne EU-/Drittland-Typ.")
         print(
             "  → Für die spätere USt-Voranmeldung bitte per "
             "`euer update expense <ID> --rc eu|third-country` nachpflegen."
@@ -103,10 +101,7 @@ def cmd_summary(args):
         print("Bewirtungsaufwendungen (70/30):")
         print(f"  {'Gesamtbetrag (100%)':<40} {abs(bewirtung_total):>12.2f} EUR")
         print(f"  {'Abziehbar (70%, Aufwand)':<40} {abs(deductible):>12.2f} EUR")
-        print(
-            f"  {'Nicht abziehbar (30%, ELSTER)':<40} "
-            f"{abs(non_deductible):>12.2f} EUR"
-        )
+        print(f"  {'Nicht abziehbar (30%, ELSTER)':<40} {abs(non_deductible):>12.2f} EUR")
         print()
 
     # Steuerberechnung (USt-Zahllast)
@@ -143,19 +138,13 @@ def cmd_summary(args):
     if tax_mode == "small_business":
         if total_vat_output != 0:
             print("Umsatzsteuer (Kleinunternehmer):")
-            print(
-                f"  {'USt aus Reverse-Charge (Schuld)':<40} {total_vat_output:>12.2f} EUR"
-            )
+            print(f"  {'USt aus Reverse-Charge (Schuld)':<40} {total_vat_output:>12.2f} EUR")
             print()
     else:
         # Regelbesteuerung
         print("Umsatzsteuer-Voranmeldung (Berechnung):")
-        print(
-            f"  {'Umsatzsteuer (aus Einnahmen + RC)':<40} {total_vat_output:>12.2f} EUR"
-        )
-        print(
-            f"  {'Abziehbare Vorsteuer (aus Ausgaben)':<40} {-total_vat_input:>12.2f} EUR"
-        )
+        print(f"  {'Umsatzsteuer (aus Einnahmen + RC)':<40} {total_vat_output:>12.2f} EUR")
+        print(f"  {'Abziehbare Vorsteuer (aus Ausgaben)':<40} {-total_vat_input:>12.2f} EUR")
         print("  " + "-" * 54)
         label = "ZAHLLAST" if vat_payment >= 0 else "ERSTATTUNG"
         print(f"  {label:<40} {vat_payment:>12.2f} EUR")
@@ -195,13 +184,7 @@ def cmd_summary(args):
         summary = get_private_summary(conn, year=year)
         print()
         print("Privatvorgänge (ELSTER Zeilen 121/122):")
-        print(
-            f"  {'Privateinlagen (Zeile 122)':<40} "
-            f"{summary['deposits_total']:>12.2f} EUR"
-        )
-        print(
-            f"  {'Privatentnahmen (Zeile 121)':<40} "
-            f"{summary['withdrawals_total']:>12.2f} EUR"
-        )
+        print(f"  {'Privateinlagen (Zeile 122)':<40} {summary['deposits_total']:>12.2f} EUR")
+        print(f"  {'Privatentnahmen (Zeile 121)':<40} {summary['withdrawals_total']:>12.2f} EUR")
 
     conn.close()

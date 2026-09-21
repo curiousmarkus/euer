@@ -23,9 +23,7 @@ def _migrate_expenses_dates(conn) -> None:
     if "rc_type" in columns:
         rc_type_expr = "rc_type"
     elif "is_rc" in columns:
-        rc_jurisdiction_expr = (
-            "rc_jurisdiction" if "rc_jurisdiction" in columns else "NULL"
-        )
+        rc_jurisdiction_expr = "rc_jurisdiction" if "rc_jurisdiction" in columns else "NULL"
         rc_type_expr = (
             "CASE "
             "WHEN COALESCE(is_rc, 0) = 0 THEN 'none' "
@@ -93,12 +91,8 @@ def _migrate_expenses_dates(conn) -> None:
         """
     )
     conn.execute("DROP TABLE expenses_old")
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_expenses_payment_date ON expenses(payment_date)"
-    )
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses(category_id)"
-    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_expenses_payment_date ON expenses(payment_date)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses(category_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_expenses_vendor ON expenses(vendor)")
 
 
@@ -202,10 +196,7 @@ def ensure_payment_invoice_columns(conn) -> None:
 
 def ensure_expenses_private_columns(conn) -> None:
     """Ergänzt fehlende private-Spalten in bestehenden Datenbanken."""
-    columns = {
-        row["name"]
-        for row in conn.execute("PRAGMA table_info(expenses)").fetchall()
-    }
+    columns = {row["name"] for row in conn.execute("PRAGMA table_info(expenses)").fetchall()}
     if "is_private_paid" not in columns:
         conn.execute(
             """ALTER TABLE expenses ADD COLUMN
@@ -221,13 +212,9 @@ def ensure_expenses_private_columns(conn) -> None:
 def ensure_ledger_account_columns(conn) -> None:
     """Ergänzt fehlende ledger_account-Spalten in bestehenden Datenbanken."""
     expense_columns = {
-        row["name"]
-        for row in conn.execute("PRAGMA table_info(expenses)").fetchall()
+        row["name"] for row in conn.execute("PRAGMA table_info(expenses)").fetchall()
     }
-    income_columns = {
-        row["name"]
-        for row in conn.execute("PRAGMA table_info(income)").fetchall()
-    }
+    income_columns = {row["name"] for row in conn.execute("PRAGMA table_info(income)").fetchall()}
     if "ledger_account" not in expense_columns:
         conn.execute("ALTER TABLE expenses ADD COLUMN ledger_account TEXT")
     if "ledger_account" not in income_columns:
@@ -237,13 +224,9 @@ def ensure_ledger_account_columns(conn) -> None:
 def ensure_vat_classification_columns(conn) -> None:
     """Ergänzt fehlende USt-Klassifikationsspalten in bestehenden Datenbanken."""
     expense_columns = {
-        row["name"]
-        for row in conn.execute("PRAGMA table_info(expenses)").fetchall()
+        row["name"] for row in conn.execute("PRAGMA table_info(expenses)").fetchall()
     }
-    income_columns = {
-        row["name"]
-        for row in conn.execute("PRAGMA table_info(income)").fetchall()
-    }
+    income_columns = {row["name"] for row in conn.execute("PRAGMA table_info(income)").fetchall()}
     if "vat_rate" not in expense_columns:
         conn.execute(
             "ALTER TABLE expenses ADD COLUMN "

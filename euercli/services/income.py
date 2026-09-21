@@ -213,17 +213,15 @@ def create_income(
         ledger_accounts=ledger_accounts,
     )
 
-    resolved_vat_rate, resolved_vat_output, resolved_vat_code = (
-        _resolve_income_vat_classification(
-            amount_eur=amount_eur,
-            tax_mode=tax_mode,
-            legacy_vat=vat,
-            vat_output=vat_output,
-            vat_rate=vat_rate,
-            vat_code=vat_code,
-            tax_free=tax_free,
-            skip_vat_auto=skip_vat_auto,
-        )
+    resolved_vat_rate, resolved_vat_output, resolved_vat_code = _resolve_income_vat_classification(
+        amount_eur=amount_eur,
+        tax_mode=tax_mode,
+        legacy_vat=vat,
+        vat_output=vat_output,
+        vat_rate=vat_rate,
+        vat_code=vat_code,
+        tax_free=tax_free,
+        skip_vat_auto=skip_vat_auto,
     )
 
     tx_hash = compute_hash(

@@ -210,7 +210,5 @@ def cmd_incomplete_list(args):
     print(
         "Hinweis: Unvollständige Buchungen bitte per `euer update expense|income <ID>` vervollständigen."
     )
-    print(
-        "Fehlende Felder: payment_date, invoice_date, category, receipt, vat, account."
-    )
+    print("Fehlende Felder: payment_date, invoice_date, category, receipt, vat, account.")
     conn.close()

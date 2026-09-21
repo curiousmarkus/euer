@@ -1,4 +1,4 @@
-.PHONY: install install-pipx test lint clean
+.PHONY: build clean coverage format install install-pipx lint test
 
 VENV := .venv
 PYTHON := $(VENV)/bin/python
@@ -13,7 +13,7 @@ install-pipx:
 # Create venv and install in editable mode (for development)
 install:
 	python3 -m venv $(VENV)
-	$(PIP) install -e .
+	$(PIP) install -e ".[dev,xlsx]"
 	@echo ""
 	@echo "✓ Dev-Installation abgeschlossen."
 	@echo "  Aktiviere die Umgebung mit: source $(VENV)/bin/activate"
@@ -22,10 +22,24 @@ install:
 test:
 	$(PYTHON) -m unittest discover -s tests
 
-# Run linter (requires ruff)
+# Check linting and formatting without changing files
 lint:
-	$(VENV)/bin/ruff check euercli
-	$(VENV)/bin/ruff format euercli
+	$(VENV)/bin/ruff check .
+	$(VENV)/bin/ruff format --check .
+
+# Format Python files
+format:
+	$(VENV)/bin/ruff check --fix .
+	$(VENV)/bin/ruff format .
+
+# Run tests and report coverage
+coverage:
+	$(VENV)/bin/coverage run -m unittest discover -s tests
+	$(VENV)/bin/coverage report
+
+# Build wheel and source distribution
+build:
+	$(PYTHON) -m build
 
 # Versioning
 bump-patch:

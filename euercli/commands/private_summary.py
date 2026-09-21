@@ -17,38 +17,20 @@ def print_private_summary(conn, year: int) -> None:
         f"{'Sacheinlagen (persistiert in expenses):':<46}"
         f"{summary['deposits_private_paid']:>10.2f} EUR"
     )
-    print(
-        "  "
-        f"{'Direkte Einlagen (private_transfers):':<46}"
-        f"{summary['deposits_direct']:>10.2f} EUR"
-    )
+    print(f"  {'Direkte Einlagen (private_transfers):':<46}{summary['deposits_direct']:>10.2f} EUR")
     print("  " + "-" * 58)
-    print(
-        "  "
-        f"{'GESAMT Privateinlagen:':<46}"
-        f"{summary['deposits_total']:>10.2f} EUR"
-    )
+    print(f"  {'GESAMT Privateinlagen:':<46}{summary['deposits_total']:>10.2f} EUR")
     print()
 
     print("Privatentnahmen (Zeile 121):")
     print(
-        "  "
-        f"{'Direkte Entnahmen (private_transfers):':<46}"
-        f"{summary['withdrawals_total']:>10.2f} EUR"
+        f"  {'Direkte Entnahmen (private_transfers):':<46}{summary['withdrawals_total']:>10.2f} EUR"
     )
     print("  " + "-" * 58)
-    print(
-        "  "
-        f"{'GESAMT Privatentnahmen:':<46}"
-        f"{summary['withdrawals_total']:>10.2f} EUR"
-    )
+    print(f"  {'GESAMT Privatentnahmen:':<46}{summary['withdrawals_total']:>10.2f} EUR")
     print()
     print("  " + "=" * 58)
-    print(
-        "  "
-        f"{'SALDO (Einlagen - Entnahmen):':<46}"
-        f"{summary['balance']:>10.2f} EUR"
-    )
+    print(f"  {'SALDO (Einlagen - Entnahmen):':<46}{summary['balance']:>10.2f} EUR")
 
 
 def cmd_private_summary(args):

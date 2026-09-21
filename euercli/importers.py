@@ -103,9 +103,7 @@ def parse_vat_rate(value: object | None) -> float | None:
 def normalize_import_row(row: dict) -> dict:
     """Normalisiert Importzeile auf kanonische Keys."""
     raw_type = get_row_value(row, "type", "kind", "direction", "Typ")
-    amount_value = get_row_value(
-        row, "amount_eur", "amount", "EUR", "Betrag", "Betrag in EUR"
-    )
+    amount_value = get_row_value(row, "amount_eur", "amount", "EUR", "Betrag", "Betrag in EUR")
     amount = parse_amount(amount_value)
 
     row_type = parse_import_type(raw_type)
@@ -177,26 +175,18 @@ def normalize_import_row(row: dict) -> dict:
         "foreign_amount": get_row_value(
             row, "foreign_amount", "foreign", "Fremdwährung", "Fremdwaehrung"
         ),
-        "receipt_name": get_row_value(
-            row, "receipt_name", "receipt", "Belegname", "Beleg"
-        ),
+        "receipt_name": get_row_value(row, "receipt_name", "receipt", "Belegname", "Beleg"),
         "notes": get_row_value(row, "notes", "Bemerkung", "Notiz"),
         "rc_type": rc_type,
         "rc_raw": rc_value,
         "rc_jurisdiction_raw": rc_jurisdiction_value,
-        "private_paid": parse_bool(
-            get_row_value(row, "private_paid", "Privat bezahlt")
-        ),
-        "vat_input": parse_amount(
-            get_row_value(row, "vat_input", "Vorsteuer", "USt-VA")
-        ),
+        "private_paid": parse_bool(get_row_value(row, "private_paid", "Privat bezahlt")),
+        "vat_input": parse_amount(get_row_value(row, "vat_input", "Vorsteuer", "USt-VA")),
         "vat_output": parse_amount(get_row_value(row, "vat_output", "Umsatzsteuer")),
         "vat_rate": parse_vat_rate(vat_rate_raw),
         "vat_rate_raw": vat_rate_raw,
         "vat_code": str(vat_code).strip() if vat_code is not None else None,
-        "tax_free": parse_bool(
-            get_row_value(row, "tax_free", "tax-free", "Steuerfrei")
-        ),
+        "tax_free": parse_bool(get_row_value(row, "tax_free", "tax-free", "Steuerfrei")),
         "raw_data": row,
     }
 

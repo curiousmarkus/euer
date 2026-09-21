@@ -16,7 +16,6 @@ from ..services.vat_report import (
 )
 from ..utils import format_amount
 
-
 REPORT_COLUMNS = [
     "period_label",
     "period_start",
@@ -137,10 +136,7 @@ def _print_vat_report(report: VatReport) -> None:
         if line.tax_eur_rounded is not None:
             tax_label = "Steuer" if line.section != "Vorsteuer" else line.description
             prefix = " " * 8 if line.basis_eur_rounded is not None else f"  {line.line_label:<6}"
-            print(
-                f"{prefix} {tax_label:<44} "
-                f"{_format_report_amount(line.tax_eur_rounded):>12} EUR"
-            )
+            print(f"{prefix} {tax_label:<44} {_format_report_amount(line.tax_eur_rounded):>12} EUR")
     unsupported = [line for line in report.lines if line.status == "unsupported"]
     if unsupported:
         print("Nicht unterstützte Bereiche:")

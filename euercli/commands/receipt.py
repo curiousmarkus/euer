@@ -63,9 +63,7 @@ def cmd_receipt_check(args):
             display_date = r["payment_date"] or r["invoice_date"] or ""
             total_count["expenses"] += 1
             if not r["receipt_name"]:
-                missing_expenses.append(
-                    (r["id"], display_date, r["vendor"], "(kein Beleg)", [])
-                )
+                missing_expenses.append((r["id"], display_date, r["vendor"], "(kein Beleg)", []))
                 missing_count["expenses"] += 1
                 continue
 
@@ -106,9 +104,7 @@ def cmd_receipt_check(args):
             display_date = r["payment_date"] or r["invoice_date"] or ""
             total_count["income"] += 1
             if not r["receipt_name"]:
-                missing_income.append(
-                    (r["id"], display_date, r["source"], "(kein Beleg)", [])
-                )
+                missing_income.append((r["id"], display_date, r["source"], "(kein Beleg)", []))
                 missing_count["income"] += 1
                 continue
 
@@ -194,9 +190,7 @@ def cmd_receipt_open(args):
     )
 
     if not found_path:
-        print(
-            f"Fehler: Beleg '{row['receipt_name']}' nicht gefunden.", file=sys.stderr
-        )
+        print(f"Fehler: Beleg '{row['receipt_name']}' nicht gefunden.", file=sys.stderr)
         if not row["payment_date"]:
             print(
                 "Hinweis: Ohne Wertstellungsdatum kann kein jahresbezogener "

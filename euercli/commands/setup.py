@@ -158,7 +158,7 @@ def cmd_setup(args):
 
     config = load_config()
     try:
-        existing_ledger_accounts = get_ledger_accounts(config)
+        get_ledger_accounts(config)
     except ValidationError as exc:
         print(f"Fehler: {exc.message}", file=sys.stderr)
         sys.exit(1)

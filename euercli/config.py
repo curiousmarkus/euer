@@ -41,11 +41,11 @@ def toml_format_value(value: object) -> str:
     if isinstance(value, float):
         return f"{value}"
     if isinstance(value, str):
-        return f"\"{toml_escape(value)}\""
+        return f'"{toml_escape(value)}"'
     if isinstance(value, list):
         inner = ", ".join(toml_format_value(v) for v in value)
         return f"[{inner}]"
-    return f"\"{toml_escape(str(value))}\""
+    return f'"{toml_escape(str(value))}"'
 
 
 def dump_toml(config: dict) -> str:
@@ -130,9 +130,8 @@ def normalize_receipt_path(value: str) -> str:
     if not value:
         return ""
     cleaned = value
-    if (
-        (cleaned.startswith('"') and cleaned.endswith('"'))
-        or (cleaned.startswith("'") and cleaned.endswith("'"))
+    if (cleaned.startswith('"') and cleaned.endswith('"')) or (
+        cleaned.startswith("'") and cleaned.endswith("'")
     ):
         cleaned = cleaned[1:-1]
     return str(Path(cleaned).expanduser())
@@ -141,9 +140,8 @@ def normalize_receipt_path(value: str) -> str:
 def normalize_config_text(value: str) -> str:
     """Normalisiert einfache Config-Textwerte."""
     cleaned = value.strip()
-    if (
-        (cleaned.startswith('"') and cleaned.endswith('"'))
-        or (cleaned.startswith("'") and cleaned.endswith("'"))
+    if (cleaned.startswith('"') and cleaned.endswith('"')) or (
+        cleaned.startswith("'") and cleaned.endswith("'")
     ):
         cleaned = cleaned[1:-1]
     return cleaned.strip()
@@ -357,9 +355,7 @@ def resolve_receipt_path(
 
     candidates: list[Path] = []
     type_dir = (
-        receipt_config.expenses_dir
-        if receipt_type == "expenses"
-        else receipt_config.income_dir
+        receipt_config.expenses_dir if receipt_type == "expenses" else receipt_config.income_dir
     )
     receipt_dir = Path(receipt_config.root) / receipt_config.year_dir.format(year=year) / type_dir
     for name in names:
@@ -383,9 +379,7 @@ def warn_missing_receipt(
         return
 
     try:
-        found_path, checked_paths = resolve_receipt_path(
-            receipt_name, date, receipt_type, config
-        )
+        found_path, checked_paths = resolve_receipt_path(receipt_name, date, receipt_type, config)
     except ValidationError as exc:
         print(f"! Belegprüfung übersprungen: {exc.message}", file=sys.stderr)
         return

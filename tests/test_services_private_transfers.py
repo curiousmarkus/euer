@@ -8,9 +8,9 @@ from euercli.services.expenses import create_expense
 from euercli.services.private_transfers import (
     create_private_transfer,
     delete_private_transfer,
+    get_private_paid_expenses,
     get_private_summary,
     get_private_transfer_list,
-    get_private_paid_expenses,
     update_private_transfer,
 )
 

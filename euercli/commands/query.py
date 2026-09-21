@@ -4,7 +4,6 @@ import sqlite3
 import sys
 from pathlib import Path
 
-
 FORBIDDEN_KEYWORDS = {
     "insert",
     "update",
