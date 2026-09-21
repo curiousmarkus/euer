@@ -19,7 +19,7 @@ dependencies = []
 xlsx = ["openpyxl>=3.1.0"]
 dev = [
     "build>=1.2",
-    "coverage>=7.6",
+    "coverage>=7.10",
     "ruff>=0.8",
 ]
 
@@ -39,6 +39,7 @@ select = ["E4", "E7", "E9", "F", "I"]
 
 [tool.coverage.run]
 branch = true
+patch = ["subprocess"]
 source = ["euercli"]
 
 [tool.coverage.report]

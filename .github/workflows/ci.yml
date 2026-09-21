@@ -82,4 +82,5 @@ jobs:
       - name: Tests mit Coverage ausführen
         run: |
           coverage run -m unittest discover -s tests
+          coverage combine
           coverage report

@@ -35,6 +35,7 @@ format:
 # Run tests and report coverage
 coverage:
 	$(VENV)/bin/coverage run -m unittest discover -s tests
+	$(VENV)/bin/coverage combine
 	$(VENV)/bin/coverage report
 
 # Build wheel and source distribution
