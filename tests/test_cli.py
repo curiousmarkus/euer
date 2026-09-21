@@ -8,6 +8,7 @@ import sys
 import tempfile
 import tomllib
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -1010,7 +1011,7 @@ account_number = "8400"
         self.assertIn("Umsatzsteuer (Kleinunternehmer)", result.stdout)
 
     def test_summary_warns_for_legacy_rc_without_jurisdiction(self):
-        with sqlite3.connect(self.db_path) as conn:
+        with closing(sqlite3.connect(self.db_path)) as conn, conn:
             conn.execute(
                 """INSERT INTO expenses
                    (uuid, payment_date, vendor, amount_eur, rc_type, vat_input,
@@ -1588,7 +1589,7 @@ account_number = "4940"
 
     def test_init_migrates_legacy_rc_columns_to_rc_type(self):
         self.db_path.unlink()
-        with sqlite3.connect(self.db_path) as conn:
+        with closing(sqlite3.connect(self.db_path)) as conn, conn:
             conn.executescript(
                 """
                 CREATE TABLE categories (
@@ -1665,7 +1666,7 @@ account_number = "4940"
             )
 
         self.run_cli(["init"], check=True)
-        with sqlite3.connect(self.db_path) as conn:
+        with closing(sqlite3.connect(self.db_path)) as conn, conn:
             columns = {row[1] for row in conn.execute("PRAGMA table_info(expenses)").fetchall()}
             income_columns = {
                 row[1] for row in conn.execute("PRAGMA table_info(income)").fetchall()
