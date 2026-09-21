@@ -104,7 +104,8 @@ Detaillierte Anleitungen findest du in unseren Guides:
 - 🧾 **[Release Notes](docs/RELEASE_NOTES.md)** – Upgrade-Hinweise für bestehende lokale Instanzen.
 - 🤖 **[SKILL "euer-buchhaltung"](docs/skills/euer-buchhaltung/SKILL.md)** – Die Anleitung für deinen Agenten
 - 🤖 **[Agent Templates](docs/templates/)** – Konfigurationsvorlagen für KI-Buchhalter
-- 🛠️ **[Development](DEVELOPMENT.md)** – Architektur und Mitwirkung.
+- 🤝 **[Mitwirken](CONTRIBUTING.md)** – Hinweise für Issues, Änderungen und Pull Requests.
+- 🛠️ **[Development](DEVELOPMENT.md)** – Architektur und technische Entwicklungsregeln.
 
 ---
 

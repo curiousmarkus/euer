@@ -37,6 +37,7 @@ euer/
 │   ├── RELEASE_NOTES.md      # Upgrade-Hinweise für bestehende lokale Instanzen
 │   ├── skills/               # AI Agent Skills
 │   └── templates/            # Agent-Konfigurationsvorlagen
+├── CONTRIBUTING.md          # Einstieg für Beiträge und Pull Requests
 ├── DEVELOPMENT.md           # Diese Datei
 └── TESTING.md               # Teststrategie
 ```
@@ -275,6 +276,7 @@ Weitere Details: `TESTING.md`.
 
 ## Beiträge
 
+- Der allgemeine Ablauf für Beiträge und Pull Requests steht in `CONTRIBUTING.md`.
 - Kleine, fokussierte PRs bevorzugt.
 - Bitte relevante Doku aktualisieren (`README.md`, `docs/USER_GUIDE.md`,
   `docs/RELEASE_NOTES.md`, `DEVELOPMENT.md`).
