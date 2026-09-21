@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,10 +8,20 @@ version = "0.7.0"
 description = "EÜR (Einnahmenüberschussrechnung) CLI"
 readme = "README.md"
 requires-python = ">=3.11"
-license = {text = "GNU AGPLv3"}
+license = "AGPL-3.0-or-later"
+license-files = ["LICENSE"]
+authors = [
+    {name = "Markus"},
+]
+keywords = ["buchhaltung", "euer", "finanzen", "freelancer", "sqlite"]
 classifiers = [
-    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+    "Environment :: Console",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Office/Business :: Financial :: Accounting",
 ]
 dependencies = []
 
@@ -25,6 +35,10 @@ dev = [
 
 [project.scripts]
 euer = "euercli.cli:main"
+
+[project.urls]
+Issues = "https://github.com/curiousmarkus/euer/issues"
+Repository = "https://github.com/curiousmarkus/euer"
 
 [tool.setuptools]
 packages = ["euercli", "euercli.commands", "euercli.services"]

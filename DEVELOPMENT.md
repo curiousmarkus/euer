@@ -339,3 +339,4 @@ Offene Change Requests werden innerhalb der jeweiligen Spec dokumentiert.
 | 012 | `vat-report` | Implementiert |
 | 013 | Belegordner Jahr zuerst | Implementiert |
 | 014 | HTML-Pruefbericht fuer Buchungen | Offen |
+| 015 | Veröffentlichung auf PyPI | Offen |
