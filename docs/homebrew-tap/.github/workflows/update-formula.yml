@@ -28,6 +28,15 @@ jobs:
       - name: PyPI-Daten und Ressourcen aktualisieren
         run: python3 scripts/update_formula.py Formula/euer.rb
 
+      - name: Homebrew bereitstellen (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          if ! command -v brew >/dev/null 2>&1; then
+            NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          fi
+          echo "/home/linuxbrew/.linuxbrew/bin" >> "$GITHUB_PATH"
+          echo "/home/linuxbrew/.linuxbrew/sbin" >> "$GITHUB_PATH"
+
       - name: Lokale Tap-Arbeitskopie für Homebrew registrieren
         run: |
           tap_repository_full="$(printf '%s' "$GITHUB_REPOSITORY" | cut -d/ -f2)"
@@ -72,6 +81,14 @@ jobs:
       - name: Formula erneut aktualisieren
         run: |
           python3 scripts/update_formula.py Formula/euer.rb
+
+      - name: Homebrew bereitstellen (Linux)
+        run: |
+          if ! command -v brew >/dev/null 2>&1; then
+            NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          fi
+          echo "/home/linuxbrew/.linuxbrew/bin" >> "$GITHUB_PATH"
+          echo "/home/linuxbrew/.linuxbrew/sbin" >> "$GITHUB_PATH"
 
       - name: Lokale Tap-Arbeitskopie für Homebrew registrieren
         run: |
