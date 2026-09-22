@@ -1,8 +1,9 @@
-.PHONY: build bump-major bump-minor bump-patch clean coverage format install install-pipx lint test
+.PHONY: build bump-major bump-minor bump-patch clean coverage format install install-pipx lint release-check test
 
 VENV := .venv
 PYTHON := $(VENV)/bin/python
 PIP := $(VENV)/bin/pip
+VERSION := $(shell sed -nE 's/^VERSION = "([0-9]+\.[0-9]+\.[0-9]+)"$$/\1/p' euercli/__init__.py)
 
 # Install globally via pipx (recommended for end users)
 install-pipx:
@@ -40,7 +41,12 @@ coverage:
 
 # Build wheel and source distribution
 build:
+	rm -rf dist
 	$(PYTHON) -m build
+
+# Validate the tag, canonical version, main ancestry and release notes.
+release-check:
+	$(PYTHON) -m scripts.release_check --tag v$(VERSION) --main-ref main
 
 # Versioning
 bump-patch:

@@ -4,6 +4,7 @@ import sys
 
 # Copyright (C) 2026 EÜR Contributors
 # Licensed under GNU AGPLv3
+from . import VERSION
 from .commands import (
     cmd_add_expense,
     cmd_add_income,
@@ -64,6 +65,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="EÜR - Einnahmenüberschussrechnung CLI",
         formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=VERSION,
+        help="Zeigt die installierte Version an",
     )
     parser.add_argument(
         "--db",

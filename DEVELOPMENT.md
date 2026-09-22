@@ -151,16 +151,17 @@ damit Erweiterungen konsistent und risikoarm umgesetzt werden können.
 
 Das Projekt verwendet [Semantic Versioning](https://semver.org/lang/de/) (`MAJOR.MINOR.PATCH`).
 
-Die Version wird an **zwei Stellen** gepflegt — beide MÜSSEN synchron aktualisiert werden:
+Die Version wird nur in `euercli/__init__.py` gepflegt. `pyproject.toml` übernimmt sie
+über Setuptools Dynamic Metadata:
 
 | Datei | Feld |
 |-------|------|
-| `pyproject.toml` | `version = "X.Y.Z"` |
 | `euercli/__init__.py` | `VERSION = "X.Y.Z"` |
+| `pyproject.toml` | `dynamic = ["version"]` und `attr = "euercli.VERSION"` |
 
 ### Automatisierung
 
-Ein Skript `scripts/bump-version.sh` automatisiert das Erhöhen der Version an beiden Stellen.
+Ein Skript `scripts/bump-version.sh` automatisiert das Erhöhen der kanonischen Versionsquelle.
 Es kann auch bequem über `make bump-patch` (bzw. `bump-minor`, `bump-major`) aufgerufen werden.
 
 ### Wann die Version erhöhen?
@@ -193,14 +194,77 @@ Es kann auch bequem über `make bump-patch` (bzw. `bump-minor`, `bump-major`) au
 ### Pflicht vor jedem Release
 
 1. Passenden SemVer-Bump festlegen.
-2. Version in `pyproject.toml` und `euercli/__init__.py` erhöhen (bevorzugt via Script/Make).
-3. Sicherstellen, dass beide Dateien den **identischen** Versionsstring haben.
+2. Version ausschließlich in `euercli/__init__.py` erhöhen (bevorzugt via Script/Make).
+3. Sicherstellen, dass die gebauten Paketmetadaten diese kanonische Version übernehmen.
 4. Einen neuen Abschnitt in `docs/RELEASE_NOTES.md` anlegen; niemals einen bereits
    veröffentlichten Abschnitt um neue Änderungen ergänzen.
 5. Bei Nutzer-, Schema-, CLI-, Import-/Export-, Steuerlogik- oder Agenten-Änderungen
    konkrete Upgrade- und Migrationsschritte ergänzen.
-6. Alle Tests und Qualitätsprüfungen müssen grün sein (`make test` und `make lint`; unter
-   Windows `python -m unittest discover -s tests`).
+6. `make test`, `make lint` und `make build` erfolgreich ausführen; anschließend den
+   Artefakt-Smoke-Test mit `python -m scripts.verify_artifacts dist` ausführen.
+7. Den Release-Commit auf `main` bringen, einen annotierten Tag im Format
+   `vMAJOR.MINOR.PATCH` erstellen und lokal mit `make release-check` prüfen:
+
+   ```bash
+   git tag -a v0.8.0 -m "Release v0.8.0"
+   make release-check
+   git push origin v0.8.0
+   ```
+
+   Das Pushen des geschützten Tags ist die einzige reguläre manuelle Veröffentlichung.
+   Die Pipeline validiert den Tag, baut Wheel und sdist genau einmal, prüft dieselben
+   Artefakte und veröffentlicht sie über PyPI und GitHub. Das separate Homebrew-Tap
+   aktualisiert die Formel aus der veröffentlichten PyPI-Version in seinem geplanten
+   oder manuellen Workflow-Lauf.
+
+### Einmalige Plattform-Konfiguration und offene Maintainer-Schritte
+
+Die folgenden Punkte sind außerhalb des Repositorys erforderlich und werden nicht durch
+einen Commit verändert:
+
+| Punkt | Status am 2026-09-22 | Zuständig | Nachweis/Erledigung |
+|-------|----------------------|-----------|---------------------|
+| PyPI-Name `euer` verfügbar | Erledigt | Codex | PyPI-API liefert 404 für das Projekt |
+| Pending Trusted Publisher für `curiousmarkus/euer`, `release.yml`, Environment `pypi` | Offen | Maintainer | PyPI-Projekt-Einstellungen |
+| GitHub Environment `pypi` auf geschützte `v*`-Tags beschränkt | Offen | Maintainer | Repository Settings → Environments |
+| Ruleset für annotierte `v*`-Tags ohne Verschieben/Löschen | Offen | Maintainer | Repository Settings → Rulesets |
+| Immutable Releases aktiviert | Offen | Maintainer | Repository Settings → General → Releases |
+| `curiousmarkus/homebrew-tap` angelegt und Bootstrap-Dateien übernommen | Offen | Maintainer | separates Tap-Repository |
+| Tap-Workflow auf macOS und Linux erfolgreich gelaufen | Offen | Maintainer/Codex | Actions-Lauf und Formula-Test |
+
+Die offenen Punkte sind bewusst Maintainer-Schritte: Sie erfordern Zugriff auf PyPI- und
+GitHub-Einstellungen sowie ein separates Repository. Der vorbereitete Tap-Inhalt liegt
+unter `docs/homebrew-tap/`. Für die Erledigung:
+
+1. In PyPI einen Pending Trusted Publisher für `curiousmarkus/euer` mit Workflow
+   `release.yml` und Environment `pypi` anlegen.
+2. Im GitHub-Repository das Environment `pypi` anlegen und auf geschützte `v*`-Tags
+   beschränken. Zusätzlich ein aktives Ruleset für `v*`-Tags mit Schutz vor Erstellen,
+   Verschieben und Löschen durch nicht berechtigte Nutzer konfigurieren und Immutable
+   Releases aktivieren.
+3. Das separate Repository `curiousmarkus/homebrew-tap` anlegen und den Inhalt von
+   `docs/homebrew-tap/` übernehmen. `Formula/euer.rb.template` in `Formula/euer.rb`
+   umbenennen. Nach der ersten PyPI-Veröffentlichung Formel, Style, Audit, Installation
+   und Tests auf macOS und Linux prüfen.
+4. Vor dem ersten Produktions-Tag optional den einmaligen TestPyPI-Bootstrap mit einer
+   separaten Testversion durchführen; Produktionsversion und Release-Tag danach nicht
+   wiederverwenden.
+
+### Recovery-Runbook
+
+- Schlägt `validate`, `test`, `build` oder `verify-artifacts` fehl, wird zuerst die
+  Ursache im selben Workflow-Lauf behoben. Es gibt noch keinen externen Upload.
+- Schlägt `github-draft` fehl, darf der Job desselben Laufs wiederholt werden. Ein
+  vorhandener Draft wird aktualisiert; ein bereits veröffentlichtes Release wird nie
+  überschrieben.
+- Nach einem erfolgreichen PyPI-Upload wird `publish-pypi` nicht erneut ausgeführt.
+  Schlägt danach GitHub fehl, wird ausschließlich `publish-github` wiederholt und der
+  vorhandene Draft veröffentlicht.
+- Ein Homebrew-Fehler macht PyPI und GitHub nicht ungültig. Der Tap fragt die noch nicht
+  übernommene PyPI-Version beim nächsten Sechs-Stunden-Lauf erneut ab.
+- `skip-existing` ist im Produktions-PyPI-Job deaktiviert. Ein unerwarteter doppelter
+  Upload muss sichtbar fehlschlagen; korrigiert wird ausschließlich mit einer neuen
+  PATCH-Version.
 
 ## Entwicklungs-Richtlinien
 

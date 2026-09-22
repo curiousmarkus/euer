@@ -11,6 +11,8 @@ import unittest
 from contextlib import closing
 from pathlib import Path
 
+from euercli import VERSION
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CLI = [sys.executable, "-m", "euercli"]
 
@@ -58,6 +60,12 @@ class EuerCLITestCase(unittest.TestCase):
         config_path = self.expected_config_path()
         config_path.parent.mkdir(parents=True, exist_ok=True)
         config_path.write_text(content, encoding="utf-8")
+
+    def test_version_flag(self) -> None:
+        result = self.run_cli(["--version"])
+
+        self.assertEqual(0, result.returncode)
+        self.assertEqual(f"{VERSION}\n", result.stdout)
 
     def add_expense(self, **overrides):
         data = {

@@ -1,0 +1,73 @@
+name: Update Homebrew Formula
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: homebrew-formula-update
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: Formula prüfen (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+    steps:
+      - name: Repository auschecken
+        run: git clone --depth 1 "https://github.com/${GITHUB_REPOSITORY}.git" .
+
+      - name: PyPI-Daten und Ressourcen aktualisieren
+        run: python3 scripts/update_formula.py Formula/euer.rb
+
+      - name: Formula-Stil und Audit prüfen
+        run: |
+          brew style Formula/euer.rb
+          brew audit --formula Formula/euer.rb
+
+      - name: Formula installieren und testen
+        run: |
+          brew install --build-from-source Formula/euer.rb
+          brew test euer
+
+  commit:
+    name: Geprüfte Formula übernehmen
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Repository auschecken
+        run: >-
+          git clone --depth 1
+          "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          .
+
+      - name: Formula erneut aktualisieren
+        run: |
+          python3 scripts/update_formula.py Formula/euer.rb
+          brew style Formula/euer.rb
+          brew audit --formula Formula/euer.rb
+
+      - name: Änderung mit eigenem Repository-Token übernehmen
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- Formula/euer.rb; then
+            echo "Keine neue PyPI-Version vorhanden."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/euer.rb
+          git commit -m "euer: update formula"
+          git push

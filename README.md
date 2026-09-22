@@ -1,4 +1,4 @@
-![euer Logo](euer_logo.png)
+![euer Logo](https://raw.githubusercontent.com/curiousmarkus/euer/main/euer_logo.png)
 
 # EÜR-Buchhaltung für KI-Agenten
 
@@ -37,37 +37,39 @@ Die meisten Tools zwingen dich zu einer Entscheidung: Entweder du nutzt unflexib
 
 ### 1. Installation
 
-`pipx` installiert `euer` global, ohne dass du je eine virtuelle Umgebung aktivieren musst:
+`pipx` installiert `euer` global, ohne dass du je eine virtuelle Umgebung aktivieren musst.
 
-**macOS:**
+**macOS und Linux (Homebrew):**
+
+```bash
+brew install curiousmarkus/tap/euer
+```
+
+**Alle Plattformen (PyPI):**
 
 ```bash
 # pipx einmalig installieren (falls noch nicht vorhanden)
-brew install pipx
+python3 -m pip install --user pipx
 pipx ensurepath
 
-# euer installieren
-pipx install git+https://github.com/curiousmarkus/euer.git
+pipx install euer
 ```
 
-**Windows (PowerShell):**
+Für den optionalen Excel-Export installierst du direkt das XLSX-Extra:
 
 ```powershell
-# pipx einmalig installieren (falls noch nicht vorhanden)
-py -m pip install --user pipx
-py -m pipx ensurepath
-
-# PowerShell anschließend neu öffnen und euer installieren
-pipx install git+https://github.com/curiousmarkus/euer.git
+pipx install "euer[xlsx]"
 ```
 
-**Linux:** Installiere `pipx` über den Paketmanager deiner Distribution und führe dann
-Folgendes aus:
+Unter Windows kannst du stattdessen `py -m pip install --user pipx` und danach
+`pipx ensurepath` verwenden. Die Paketinstallation bleibt identisch.
+
+**GitHub-Fallback:**
+
+Für Entwicklungsversionen oder einen Checkout ohne PyPI kannst du weiterhin direkt aus
+dem Repository installieren:
 
 ```bash
-pipx ensurepath
-
-# euer installieren
 pipx install git+https://github.com/curiousmarkus/euer.git
 ```
 
@@ -75,14 +77,13 @@ Danach ist `euer` sofort und dauerhaft in jedem Terminal verfügbar.
 
 **Update auf die neueste Version:**
 ```bash
-pipx upgrade euercli
+pipx upgrade euer
 ```
 
-Für den optionalen Excel-Export kann `openpyxl` in die isolierte Installation ergänzt
-werden:
+Bei einer Homebrew-Installation aktualisierst du mit:
 
 ```bash
-pipx inject euercli openpyxl
+brew upgrade euer
 ```
 
 **Entwicklungsinstallation unter Windows (PowerShell):**
@@ -94,11 +95,11 @@ python -m pip install -e ".[dev,xlsx]"
 python -m unittest discover -s tests
 ```
 
-(Details siehe [User Guide](docs/USER_GUIDE.md#installation))
+(Details siehe [User Guide](https://github.com/curiousmarkus/euer/blob/main/docs/USER_GUIDE.md#installation))
 
 ### 2. Personalisierung
 
-Kopiere den [Onboarding Prompt](docs/templates/onboarding-prompt.md) in einen LLM-Chat und beantworte die Fragen. 
+Kopiere den [Onboarding Prompt](https://github.com/curiousmarkus/euer/blob/main/docs/templates/onboarding-prompt.md) in einen LLM-Chat und beantworte die Fragen.
 Du erhältst eine personalisierte `AGENTS.md` mit dem nötigen Kontext für deine KI-Agenten sowie die konkreten nächsten Schritte, um loszulegen.
 
 ### 3. Initialisierung
@@ -139,13 +140,13 @@ Gib es an deinen KI-Agenten:
 
 Detaillierte Anleitungen findest du in unseren Guides:
 
-- 📖 **[User Guide](docs/USER_GUIDE.md)** – Installation, Workflows und alle Befehle.
-- ❓ **[FAQ](docs/FAQ.md)** – Häufige Fragen, Sonderfälle (z. B. Prepaid-Guthaben) und Best Practices.
-- 🧾 **[Release Notes](docs/RELEASE_NOTES.md)** – Upgrade-Hinweise für bestehende lokale Instanzen.
-- 🤖 **[SKILL "euer-buchhaltung"](docs/skills/euer-buchhaltung/SKILL.md)** – Die Anleitung für deinen Agenten
-- 🤖 **[Agent Templates](docs/templates/)** – Konfigurationsvorlagen für KI-Buchhalter
-- 🤝 **[Mitwirken](CONTRIBUTING.md)** – Hinweise für Issues, Änderungen und Pull Requests.
-- 🛠️ **[Development](DEVELOPMENT.md)** – Architektur und technische Entwicklungsregeln.
+- 📖 **[User Guide](https://github.com/curiousmarkus/euer/blob/main/docs/USER_GUIDE.md)** – Installation, Workflows und alle Befehle.
+- ❓ **[FAQ](https://github.com/curiousmarkus/euer/blob/main/docs/FAQ.md)** – Häufige Fragen, Sonderfälle (z. B. Prepaid-Guthaben) und Best Practices.
+- 🧾 **[Release Notes](https://github.com/curiousmarkus/euer/blob/main/docs/RELEASE_NOTES.md)** – Upgrade-Hinweise für bestehende lokale Instanzen.
+- 🤖 **[SKILL "euer-buchhaltung"](https://github.com/curiousmarkus/euer/blob/main/docs/skills/euer-buchhaltung/SKILL.md)** – Die Anleitung für deinen Agenten
+- 🤖 **[Agent Templates](https://github.com/curiousmarkus/euer/tree/main/docs/templates)** – Konfigurationsvorlagen für KI-Buchhalter
+- 🤝 **[Mitwirken](https://github.com/curiousmarkus/euer/blob/main/CONTRIBUTING.md)** – Hinweise für Issues, Änderungen und Pull Requests.
+- 🛠️ **[Development](https://github.com/curiousmarkus/euer/blob/main/DEVELOPMENT.md)** – Architektur und technische Entwicklungsregeln.
 
 ---
 

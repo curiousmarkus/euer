@@ -4,6 +4,11 @@
 
 Offen
 
+Die Repository-Implementierung ist vorbereitet und lokal verifiziert. Die in
+`DEVELOPMENT.md` dokumentierten externen Maintainer-Schritte (PyPI Trusted Publisher,
+GitHub-Settings und separates Homebrew-Tap-Repository) sind noch offen; deshalb bleibt
+der Spec-Status bis zu deren Nachweis `Offen`.
+
 ## Kontext
 
 `euer` wird derzeit direkt aus dem GitHub-Repository via
@@ -299,21 +304,21 @@ werden durch den Wechsel des Distributionsnamens nicht verändert.
 
 ### Schritt 1: Release-Grundlagen
 
-- [ ] Verfügbarkeit des PyPI-Namens `euer` prüfen.
-- [ ] `euercli.VERSION` als einzige Versionsquelle einrichten und Setuptools Dynamic
+- [x] Verfügbarkeit des PyPI-Namens `euer` prüfen.
+- [x] `euercli.VERSION` als einzige Versionsquelle einrichten und Setuptools Dynamic
       Metadata konfigurieren.
-- [ ] `scripts/bump-version.sh` und Packaging-Tests auf die einzelne Versionsquelle
+- [x] `scripts/bump-version.sh` und Packaging-Tests auf die einzelne Versionsquelle
       umstellen.
-- [ ] Plattformunabhängiges `scripts/release-check.py` implementieren.
-- [ ] `make release-check` ergänzen.
-- [ ] Release-Notes-Extraktion implementieren und testen.
+- [x] Plattformunabhängiges `scripts/release-check.py` implementieren.
+- [x] `make release-check` ergänzen.
+- [x] Release-Notes-Extraktion implementieren und testen.
 
 ### Schritt 2: Paket und Metadaten
 
-- [ ] In `pyproject.toml` den Distributionsnamen auf `euer` ändern.
-- [ ] `Documentation`- und `Changelog`-URLs in `[project.urls]` ergänzen.
-- [ ] README-Links und Bilder für die Darstellung auf PyPI stabilisieren.
-- [ ] Wheel und sdist bauen und deren Inhalt, Metadaten und Installation testen.
+- [x] In `pyproject.toml` den Distributionsnamen auf `euer` ändern.
+- [x] `Documentation`- und `Changelog`-URLs in `[project.urls]` ergänzen.
+- [x] README-Links und Bilder für die Darstellung auf PyPI stabilisieren.
+- [x] Wheel und sdist bauen und deren Inhalt, Metadaten und Installation testen.
 - [ ] Einmaliger Bootstrap-Test über TestPyPI mit einer dafür geeigneten Testversion;
       TestPyPI danach nicht als regulären Release-Kanal verwenden.
 
@@ -327,16 +332,16 @@ werden durch den Wechsel des Distributionsnamens nicht verändert.
 - [ ] GitHub Environment `pypi` auf Produktionstags beschränken.
 - [ ] Ruleset für `v*`-Tags konfigurieren.
 - [ ] Immutable Releases aktivieren.
-- [ ] Dependabot für GitHub Actions konfigurieren.
+- [x] Dependabot für GitHub Actions konfigurieren.
 
 ### Schritt 4: Release-Workflow
 
-- [ ] `.github/workflows/release.yml` mit den beschriebenen getrennten Jobs und
+- [x] `.github/workflows/release.yml` mit den beschriebenen getrennten Jobs und
       minimalen Job-Berechtigungen erstellen.
-- [ ] Externe Actions auf vollständige Commit-SHAs pinnen.
-- [ ] Release-Läufe über `concurrency` serialisieren; `cancel-in-progress: false`.
-- [ ] Build-Artefakte genau einmal erzeugen und zwischen Jobs weitergeben.
-- [ ] GitHub-Draft vor dem PyPI-Publish erstellen und nach erfolgreichem Upload
+- [x] Externe Actions auf vollständige Commit-SHAs pinnen.
+- [x] Release-Läufe über `concurrency` serialisieren; `cancel-in-progress: false`.
+- [x] Build-Artefakte genau einmal erzeugen und zwischen Jobs weitergeben.
+- [x] GitHub-Draft vor dem PyPI-Publish erstellen und nach erfolgreichem Upload
       veröffentlichen.
 - [ ] Recovery-Verhalten für Teilfehler praktisch testen.
 
@@ -345,22 +350,22 @@ werden durch den Wechsel des Distributionsnamens nicht verändert.
 - [ ] Repository `curiousmarkus/homebrew-tap` anlegen.
 - [ ] `Formula/euer.rb` auf Basis des PyPI-sdists erstellen.
 - [ ] `openpyxl` und transitive Abhängigkeiten als Homebrew-Ressourcen aufnehmen.
-- [ ] Aussagekräftigen `test do`-Block einschließlich `euer --version` und XLSX-
+- [x] Aussagekräftigen `test do`-Block einschließlich `euer --version` und XLSX-
       Smoke-Test ergänzen.
-- [ ] Tokenlosen Polling-Workflow im Tap einrichten.
+- [x] Tokenlosen Polling-Workflow im Tap vorbereiten.
 - [ ] Formula-Aktualisierung, Wiederholung und Tests auf macOS und Linux prüfen.
 
 ### Schritt 6: Dokumentation und Migration
 
-- [ ] `README.md`: Homebrew, PyPI, XLSX-Extra und Git-Fallback dokumentieren.
-- [ ] `docs/USER_GUIDE.md`: Installation und Updates über `pipx upgrade euer` und
+- [x] `README.md`: Homebrew, PyPI, XLSX-Extra und Git-Fallback dokumentieren.
+- [x] `docs/USER_GUIDE.md`: Installation und Updates über `pipx upgrade euer` und
       `brew upgrade euer` dokumentieren.
-- [ ] `docs/RELEASE_NOTES.md`: Abschnitt `0.8.0` mit der einmaligen
+- [x] `docs/RELEASE_NOTES.md`: Abschnitt `0.8.0` mit der einmaligen
       `euercli`-zu-`euer`-Migration ergänzen.
-- [ ] `DEVELOPMENT.md`: Tag-basierten Release-Prozess und Recovery-Runbook ergänzen.
-- [ ] `AGENTS.md`: Agenten verpflichten, Release-Check, Versionstag und unveränderliche
+- [x] `DEVELOPMENT.md`: Tag-basierten Release-Prozess und Recovery-Runbook ergänzen.
+- [x] `AGENTS.md`: Agenten verpflichten, Release-Check, Versionstag und unveränderliche
       Release Notes zu beachten.
-- [ ] Veraltete Befehle wie `pipx upgrade euercli` in aktiver Nutzerdokumentation
+- [x] Veraltete Befehle wie `pipx upgrade euercli` in aktiver Nutzerdokumentation
       ersetzen, ohne historische Release-Abschnitte nachträglich zu verändern.
 
 ## Akzeptanzkriterien

@@ -1,0 +1,28 @@
+class Euer < Formula
+  include Language::Python::Virtualenv
+
+  desc "Lokale EÜR-Buchhaltung für Freelancer und Kleinunternehmer"
+  homepage "https://github.com/curiousmarkus/euer"
+  url "__PYPI_SDIST_URL__"
+  sha256 "__PYPI_SDIST_SHA256__"
+  license "AGPL-3.0-or-later"
+
+  depends_on "python"
+
+  # BEGIN AUTO-GENERATED PYTHON RESOURCES
+  # END AUTO-GENERATED PYTHON RESOURCES
+
+  def install
+    virtualenv_install_with_resources
+  end
+
+  test do
+    assert_match version.to_s, shell_output("#{bin}/euer --version")
+
+    database = testpath / "euer.db"
+    output = testpath / "xlsx-output"
+    system bin / "euer", "--db", database, "init"
+    system bin / "euer", "--db", database, "export", "--format", "xlsx", "--output", output
+    assert_predicate output / "EÜR_Ausgaben.xlsx", :exist?
+  end
+end

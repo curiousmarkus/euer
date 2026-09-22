@@ -1,5 +1,5 @@
 #!/bin/bash
-# script to bump version in pyproject.toml and euercli/__init__.py
+# Ändert die einzige kanonische Versionsquelle in euercli/__init__.py.
 set -e
 
 BUMP_TYPE=$1
@@ -8,10 +8,10 @@ if [[ ! "$BUMP_TYPE" =~ ^(major|minor|patch)$ ]]; then
     exit 1
 fi
 
-# Get current version from pyproject.toml
-CURRENT_VERSION=$(grep -m 1 "version =" pyproject.toml | sed -E 's/version = "(.*)"/\1/')
+# Get current version from euercli/__init__.py
+CURRENT_VERSION=$(sed -nE 's/^VERSION = "([0-9]+\.[0-9]+\.[0-9]+)"$/\1/p' euercli/__init__.py | head -n 1)
 if [ -z "$CURRENT_VERSION" ]; then
-    echo "Error: Could not find current version in pyproject.toml"
+    echo "Error: Could not find canonical VERSION in euercli/__init__.py"
     exit 1
 fi
 echo "Current version: $CURRENT_VERSION"
@@ -35,10 +35,7 @@ increment_version() {
 NEW_VERSION=$(increment_version $CURRENT_VERSION $BUMP_TYPE)
 echo "New version: $NEW_VERSION"
 
-# Update pyproject.toml
-sed "s/version = \"$CURRENT_VERSION\"/version = \"$NEW_VERSION\"/" pyproject.toml > pyproject.toml.tmp && mv pyproject.toml.tmp pyproject.toml
-
-# Update euercli/__init__.py
+# Update the single canonical source.
 sed "s/VERSION = \"$CURRENT_VERSION\"/VERSION = \"$NEW_VERSION\"/" euercli/__init__.py > euercli/__init__.py.tmp && mv euercli/__init__.py.tmp euercli/__init__.py
 
-echo "Successfully bumped version to $NEW_VERSION in pyproject.toml and euercli/__init__.py"
+echo "Successfully bumped canonical version to $NEW_VERSION in euercli/__init__.py"

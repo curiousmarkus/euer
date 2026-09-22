@@ -3,8 +3,8 @@ requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "euercli"
-version = "0.7.1"
+name = "euer"
+dynamic = ["version"]
 description = "EÜR (Einnahmenüberschussrechnung) CLI"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -31,6 +31,7 @@ dev = [
     "build>=1.2",
     "coverage>=7.10",
     "ruff>=0.8",
+    "twine>=6.1",
 ]
 
 [project.scripts]
@@ -39,6 +40,11 @@ euer = "euercli.cli:main"
 [project.urls]
 Issues = "https://github.com/curiousmarkus/euer/issues"
 Repository = "https://github.com/curiousmarkus/euer"
+Documentation = "https://github.com/curiousmarkus/euer/blob/main/docs/USER_GUIDE.md"
+Changelog = "https://github.com/curiousmarkus/euer/blob/main/docs/RELEASE_NOTES.md"
+
+[tool.setuptools.dynamic]
+version = {attr = "euercli.VERSION"}
 
 [tool.setuptools]
 packages = ["euercli", "euercli.commands", "euercli.services"]

@@ -1,14 +1,18 @@
 # Release Notes
 
 Diese Hinweise richten sich an Nutzer:innen mit bestehenden lokalen Instanzen.
-Sie ergänzen die normale Update-Sequenz aus dem User Guide:
+Für Installationen ab 0.8.0 ergänzen sie die normale Update-Sequenz aus dem User Guide:
 
 ```bash
-pipx upgrade euercli
+pipx upgrade euer
 euer init
 euer incomplete list
 euer summary --year 2026
 ```
+
+Bei einer bestehenden `euercli`-Installation zuerst die einmalige Migration im
+Abschnitt `0.8.0` ausführen. Die historischen Abschnitte darunter behalten bewusst
+ihre ursprünglichen Upgrade-Befehle.
 
 Bei Releases mit Agenten-Änderungen müssen lokal kopierte Agenten-Dateien
 zusätzlich aktualisiert werden. Das betrifft insbesondere:
@@ -19,6 +23,56 @@ zusätzlich aktualisiert werden. Das betrifft insbesondere:
 
 Die persönliche `AGENTS.md` sollte nie blind ersetzt werden, weil sie individuelle
 Pfade, Konten, Lieferanten-Mappings und steuerliche Stammdaten enthält.
+
+## 0.8.0
+
+### Warum relevant?
+
+`euer` wird ab diesem Release als Paket über PyPI veröffentlicht. Die reguläre
+Installation erfolgt damit ohne Git-Checkout:
+
+```bash
+pipx install euer
+pipx install "euer[xlsx]"
+```
+
+Zusätzlich steht das unveränderte Release-Artefakt im GitHub Release bereit und der
+Homebrew-Tap übernimmt neue PyPI-Releases automatisch. Die Basisinstallation bleibt
+ohne `openpyxl`; das optionale Extra und Homebrew bringen die XLSX-Unterstützung mit.
+
+### Einmalige Migration von `euercli` zu `euer`
+
+Bestehende Installationen aus dem GitHub-Repository müssen einmalig umgestellt werden:
+
+```bash
+pipx uninstall euercli
+pipx install euer
+```
+
+Für XLSX-Unterstützung gilt anschließend:
+
+```bash
+pipx install "euer[xlsx]"
+```
+
+Prüfe vor und nach der Umstellung mit `pipx list`, dass kein zweiter `euer`-Entry-Point
+aus einer alten Umgebung aktiv bleibt. Die lokale SQLite-Datenbank und die Konfiguration
+werden durch den Distributionsnamen nicht verändert. Führe danach im Buchhaltungsordner
+weiterhin `euer init` aus, damit eventuelle Schema-Migrationen des jeweiligen Releases
+ausgeführt werden.
+
+### Homebrew
+
+Auf macOS und Linux kann `euer` alternativ über den Tap installiert und aktualisiert
+werden:
+
+```bash
+brew install curiousmarkus/tap/euer
+brew upgrade euer
+```
+
+Der Tap verwendet ausschließlich das PyPI-sdist und aktualisiert sich eventual-consistent
+innerhalb von höchstens sechs Stunden nach einem PyPI-Release.
 
 ## 0.7.1
 

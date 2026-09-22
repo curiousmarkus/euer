@@ -17,16 +17,38 @@ Umgebung aktivieren musst:
 
 ```bash
 # euer installieren
-pipx install git+https://github.com/curiousmarkus/euer.git
+pipx install euer
 ```
 
 Danach ist `euer` sofort und dauerhaft in jedem Terminal verfügbar.
 
+Für den optionalen XLSX-Export installierst du das Extra direkt mit:
+
+```bash
+pipx install "euer[xlsx]"
+```
+
+Alternativ ist auf macOS und Linux der Homebrew-Tap verfügbar:
+
+```bash
+brew install curiousmarkus/tap/euer
+```
+
+Der GitHub-Checkout bleibt als Fallback für Entwicklungsversionen möglich:
+
+```bash
+pipx install git+https://github.com/curiousmarkus/euer.git
+```
+
 **Update auf die neueste Version:**
 
 ```bash
-pipx upgrade euercli
+pipx upgrade euer
 ```
+
+Bei einer Homebrew-Installation verwendest du `brew upgrade euer`. Die Basisinstallation
+enthält kein `openpyxl`; für XLSX muss das Extra installiert sein oder Homebrew verwendet
+werden.
 
 ### Bestehende Installation aktualisieren
 
@@ -44,7 +66,7 @@ cd /pfad/zu/deinem/buchhaltungsordner
 cp euer.db euer.backup.db
 
 # CLI aktualisieren
-pipx upgrade euercli
+pipx upgrade euer
 
 # lokale Datenbank migrieren
 euer init

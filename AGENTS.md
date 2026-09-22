@@ -79,8 +79,10 @@ Bei Änderungen auch die Tabelle in `DEVELOPMENT.md` aktualisieren.
 `docs/templates/onboarding-prompt.md`, `docs/RELEASE_NOTES.md`, `README.md`,
 `DEVELOPMENT.md`
 
-**Versionierung & Release Notes:** Vor Abschluss jeder Änderung prüfen, ob sie einen
-Release erfordert. Bereits veröffentlichte Versionsabschnitte in
+**Versionierung, Release Notes & Veröffentlichung:** Vor Abschluss jeder Änderung
+prüfen, ob sie einen Release erfordert. `euercli.VERSION` in
+`euercli/__init__.py` ist die einzige Versionsquelle; die Paketmetadaten übernehmen
+die Version dynamisch daraus. Bereits veröffentlichte Versionsabschnitte in
 `docs/RELEASE_NOTES.md` dürfen nicht um spätere Änderungen ergänzt werden. Änderungen
 nach einem Release gehören unter `Unveröffentlicht` oder — bei unmittelbar geplanter
 Veröffentlichung — unter die nächste Versionsnummer.
@@ -93,6 +95,17 @@ Veröffentlichung — unter die nächste Versionsnummer.
 
 Wenn sich Schema, CLI-Verhalten, Import-/Exportformate, Steuerlogik, Agenten-Skill,
 Agenten-Template oder Onboarding/`AGENTS.md` ändern, `docs/RELEASE_NOTES.md` mit
-konkreten Upgrade- und Migrationsschritten aktualisieren. Vor einem Release müssen
-`pyproject.toml` und `euercli/__init__.py` dieselbe neue Version enthalten. Details:
-`DEVELOPMENT.md` → „Versionierung“.
+konkreten Upgrade- und Migrationsschritten aktualisieren. Vor einem Release muss die
+kanonische Version aus `euercli/__init__.py` in den gebauten Metadaten erscheinen.
+
+Vor einer Veröffentlichung müssen Tests, Linting, Build und der
+Artefakt-Smoke-Test grün sein. Veröffentlicht wird ausschließlich durch einen
+annotierten, geschützten Tag `vMAJOR.MINOR.PATCH` auf `main`. Dieser Tag startet die
+Multi-Channel-Pipeline: Sie validiert Tag, Version, `main`-Ancestry und Release Notes,
+baut Wheel und sdist genau einmal, prüft dieselben Artefakte und veröffentlicht sie
+über PyPI sowie als GitHub-Release. Die Homebrew-Formel wird anschließend aus der
+veröffentlichten PyPI-Version durch den geplanten oder manuellen Lauf des separaten
+Homebrew-Taps aktualisiert. Bei Fehlern gelten die Wiederholungs- und Recovery-Regeln
+aus `DEVELOPMENT.md`.
+
+Details: `DEVELOPMENT.md` → „Versionierung“.
