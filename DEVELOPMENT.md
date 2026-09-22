@@ -217,38 +217,6 @@ Es kann auch bequem über `make bump-patch` (bzw. `bump-minor`, `bump-major`) au
    aktualisiert die Formel aus der veröffentlichten PyPI-Version in seinem geplanten
    oder manuellen Workflow-Lauf.
 
-### Einmalige Plattform-Konfiguration und offene Maintainer-Schritte
-
-Die folgenden Punkte sind außerhalb des Repositorys erforderlich und werden nicht durch
-einen Commit verändert:
-
-| Punkt | Status am 2026-09-22 | Zuständig | Nachweis/Erledigung |
-|-------|----------------------|-----------|---------------------|
-| PyPI-Name `euer` verfügbar | Erledigt | Codex | PyPI-API liefert 404 für das Projekt |
-| Pending Trusted Publisher für `curiousmarkus/euer`, `release.yml`, Environment `pypi` | Offen | Maintainer | PyPI-Projekt-Einstellungen |
-| GitHub Environment `pypi` auf geschützte `v*`-Tags beschränkt | Offen | Maintainer | Repository Settings → Environments |
-| Ruleset für annotierte `v*`-Tags ohne Verschieben/Löschen | Offen | Maintainer | Repository Settings → Rulesets |
-| Immutable Releases aktiviert | Offen | Maintainer | Repository Settings → General → Releases |
-| `curiousmarkus/homebrew-tap` angelegt und Bootstrap-Dateien übernommen | Offen | Maintainer | separates Tap-Repository |
-| Tap-Workflow auf macOS und Linux erfolgreich gelaufen | Offen | Maintainer/Codex | Actions-Lauf und Formula-Test |
-
-Die offenen Punkte sind bewusst Maintainer-Schritte: Sie erfordern Zugriff auf PyPI- und
-GitHub-Einstellungen sowie ein separates Repository. Der vorbereitete Tap-Inhalt liegt
-unter `docs/homebrew-tap/`. Für die Erledigung:
-
-1. In PyPI einen Pending Trusted Publisher für `curiousmarkus/euer` mit Workflow
-   `release.yml` und Environment `pypi` anlegen.
-2. Im GitHub-Repository das Environment `pypi` anlegen und auf geschützte `v*`-Tags
-   beschränken. Zusätzlich ein aktives Ruleset für `v*`-Tags mit Schutz vor Erstellen,
-   Verschieben und Löschen durch nicht berechtigte Nutzer konfigurieren und Immutable
-   Releases aktivieren.
-3. Das separate Repository `curiousmarkus/homebrew-tap` anlegen und den Inhalt von
-   `docs/homebrew-tap/` übernehmen. `Formula/euer.rb.template` in `Formula/euer.rb`
-   umbenennen. Nach der ersten PyPI-Veröffentlichung Formel, Style, Audit, Installation
-   und Tests auf macOS und Linux prüfen.
-4. Vor dem ersten Produktions-Tag optional den einmaligen TestPyPI-Bootstrap mit einer
-   separaten Testversion durchführen; Produktionsversion und Release-Tag danach nicht
-   wiederverwenden.
 
 ### Recovery-Runbook
 

@@ -4,10 +4,12 @@
 
 Offen
 
-Die Repository-Implementierung ist vorbereitet und lokal verifiziert. Die in
-`DEVELOPMENT.md` dokumentierten externen Maintainer-Schritte (PyPI Trusted Publisher,
-GitHub-Settings und separates Homebrew-Tap-Repository) sind noch offen; deshalb bleibt
-der Spec-Status bis zu deren Nachweis `Offen`.
+Die Repository-Implementierung ist auf `main` veröffentlicht und lokal sowie in der
+Pull-/Push-CI verifiziert. Der PyPI Pending Trusted Publisher und die GitHub-Schutz-
+konfiguration (Environment, Tag-Rulesets und Immutable Releases) sind eingerichtet.
+Offen bleiben der optionale TestPyPI-Bootstrap, der praktische Recovery-Test sowie das
+separate Homebrew-Tap-Repository und dessen Plattformtests; deshalb bleibt der
+Spec-Status bis zu deren Nachweis `Offen`.
 
 ## Kontext
 
@@ -324,14 +326,14 @@ werden durch den Wechsel des Distributionsnamens nicht verändert.
 
 ### Schritt 3: PyPI und GitHub konfigurieren
 
-- [ ] Pending Trusted Publisher für `euer` konfigurieren:
+- [x] Pending Trusted Publisher für `euer` konfigurieren:
   - Owner: `curiousmarkus`
   - Repository: `euer`
   - Workflow: `release.yml`
   - Environment: `pypi`
-- [ ] GitHub Environment `pypi` auf Produktionstags beschränken.
-- [ ] Ruleset für `v*`-Tags konfigurieren.
-- [ ] Immutable Releases aktivieren.
+- [x] GitHub Environment `pypi` auf Produktionstags beschränken.
+- [x] Rulesets für `v*`-Tags konfigurieren.
+- [x] Immutable Releases aktivieren.
 - [x] Dependabot für GitHub Actions konfigurieren.
 
 ### Schritt 4: Release-Workflow
