@@ -31,7 +31,7 @@ jobs:
       - name: Formula-Stil und Audit prüfen
         run: |
           brew style Formula/euer.rb
-          brew audit --formula Formula/euer.rb
+          brew audit --tap="$GITHUB_REPOSITORY" --formula
 
       - name: Formula installieren und testen
         run: |
@@ -57,7 +57,7 @@ jobs:
         run: |
           python3 scripts/update_formula.py Formula/euer.rb
           brew style Formula/euer.rb
-          brew audit --formula Formula/euer.rb
+          brew audit --tap="$GITHUB_REPOSITORY" --formula
 
       - name: Änderung mit eigenem Repository-Token übernehmen
         run: |

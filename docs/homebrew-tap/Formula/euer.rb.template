@@ -23,6 +23,6 @@ class Euer < Formula
     output = testpath / "xlsx-output"
     system bin / "euer", "--db", database, "init"
     system bin / "euer", "--db", database, "export", "--format", "xlsx", "--output", output
-    assert_predicate output / "EÜR_Ausgaben.xlsx", :exist?
+    assert_path_exists output / "EÜR_Ausgaben.xlsx"
   end
 end
