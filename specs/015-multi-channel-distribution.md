@@ -2,14 +2,18 @@
 
 ## Status
 
-Offen
+Implementiert
 
 Die Repository-Implementierung ist auf `main` veröffentlicht und lokal sowie in der
 Pull-/Push-CI verifiziert. Der PyPI Pending Trusted Publisher und die GitHub-Schutz-
 konfiguration (Environment, Tag-Rulesets und Immutable Releases) sind eingerichtet.
-Offen bleiben der optionale TestPyPI-Bootstrap, der praktische Recovery-Test sowie das
-separate Homebrew-Tap-Repository und dessen Plattformtests; deshalb bleibt der
-Spec-Status bis zu deren Nachweis `Offen`.
+Das separate Homebrew-Tap-Repository `curiousmarkus/homebrew-euer` ist veröffentlicht;
+der tokenlose Update-Workflow wurde auf macOS und Linux erfolgreich ausgeführt.
+Der optionale TestPyPI-Bootstrap wurde bewusst nicht durchgeführt, da TestPyPI kein
+regulärer Release-Kanal ist. Das Recovery-Verhalten wurde beim Release `0.8.1`
+praktisch nachgewiesen: Nach dem Fehler im GitHub-Publish-Schritt wurde der vorhandene
+Draft mit denselben bereits veröffentlichten Artefakten erfolgreich fertiggestellt und
+anschließend als immutable Release veröffentlicht.
 
 ## Kontext
 
@@ -323,8 +327,8 @@ werden durch den Wechsel des Distributionsnamens nicht verändert.
 - [x] `Documentation`- und `Changelog`-URLs in `[project.urls]` ergänzen.
 - [x] README-Links und Bilder für die Darstellung auf PyPI stabilisieren.
 - [x] Wheel und sdist bauen und deren Inhalt, Metadaten und Installation testen.
-- [ ] Einmaliger Bootstrap-Test über TestPyPI mit einer dafür geeigneten Testversion;
-      TestPyPI danach nicht als regulären Release-Kanal verwenden.
+- [x] Optionalen TestPyPI-Bootstrap bewerten und bewusst überspringen; TestPyPI nicht
+      als regulären Release-Kanal verwenden.
 
 ### Schritt 3: PyPI und GitHub konfigurieren
 
@@ -347,17 +351,19 @@ werden durch den Wechsel des Distributionsnamens nicht verändert.
 - [x] Build-Artefakte genau einmal erzeugen und zwischen Jobs weitergeben.
 - [x] GitHub-Draft vor dem PyPI-Publish erstellen und nach erfolgreichem Upload
       veröffentlichen.
-- [ ] Recovery-Verhalten für Teilfehler praktisch testen.
+- [x] Recovery-Verhalten für Teilfehler praktisch testen (Release `0.8.1`: vorhandenen
+      GitHub-Draft nach einem Publish-Fehler ohne Neubau der Artefakte fertigstellen).
 
 ### Schritt 5: Homebrew Tap
 
-- [ ] Repository `curiousmarkus/homebrew-euer` anlegen.
-- [ ] `Formula/euer.rb` auf Basis des PyPI-sdists erstellen.
-- [ ] `openpyxl` und transitive Abhängigkeiten als Homebrew-Ressourcen aufnehmen.
+- [x] Repository `curiousmarkus/homebrew-euer` anlegen.
+- [x] `Formula/euer.rb` auf Basis des PyPI-sdists erstellen.
+- [x] `openpyxl` und transitive Abhängigkeiten als Homebrew-Ressourcen aufnehmen.
 - [x] Aussagekräftigen `test do`-Block einschließlich `euer --version` und XLSX-
       Smoke-Test ergänzen.
 - [x] Tokenlosen Polling-Workflow im Tap vorbereiten.
-- [ ] Formula-Aktualisierung, Wiederholung und Tests auf macOS und Linux prüfen.
+- [x] Formula-Aktualisierung, Wiederholung und Tests auf macOS und Linux prüfen
+      (Workflow-Lauf `35739060072` erfolgreich).
 
 ### Schritt 6: Dokumentation und Migration
 
