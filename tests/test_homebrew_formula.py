@@ -59,7 +59,7 @@ class HomebrewFormulaTestCase(unittest.TestCase):
         run: |
           python3 scripts/update_formula.py Formula/euer.rb
           brew style Formula/euer.rb
-          brew audit --formula Formula/euer.rb""",
+          brew audit --tap="$GITHUB_REPOSITORY" --formula""",
             workflow,
         )
 
