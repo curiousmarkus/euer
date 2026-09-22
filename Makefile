@@ -1,4 +1,4 @@
-.PHONY: build clean coverage format install install-pipx lint test
+.PHONY: build bump-major bump-minor bump-patch clean coverage format install install-pipx lint test
 
 VENV := .venv
 PYTHON := $(VENV)/bin/python
@@ -54,4 +54,6 @@ bump-major:
 
 # Remove venv and build artifacts
 clean:
-	rm -rf $(VENV) *.egg-info euercli.egg-info __pycache__ euercli/__pycache__
+	rm -rf $(VENV) build dist *.egg-info euercli.egg-info .coverage* .ruff_cache
+	rm -rf __pycache__ euercli/__pycache__ euercli/commands/__pycache__
+	rm -rf euercli/services/__pycache__ tests/__pycache__
