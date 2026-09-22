@@ -165,22 +165,42 @@ Es kann auch bequem über `make bump-patch` (bzw. `bump-minor`, `bump-major`) au
 
 ### Wann die Version erhöhen?
 
-| Änderungstyp | Bump | Beispiel |
-|--------------|------|----------|
-| Bugfixes, Refactoring, Doku | PATCH | `0.1.0` → `0.1.1` |
-| Neue Features, neue Commands | MINOR | `0.1.1` → `0.2.0` |
-| Breaking Changes (Schema, CLI-API) | MAJOR | `0.2.0` → `1.0.0` |
+| Änderungstyp | Release | Beispiel |
+|--------------|---------|----------|
+| Nutzerwirksamer, abwärtskompatibler Bugfix | PATCH | `0.7.0` → `0.7.1` |
+| Neues abwärtskompatibles Feature oder Command | MINOR | `0.7.1` → `0.8.0` |
+| Breaking Change an Schema oder CLI-API | MAJOR | `0.8.0` → `1.0.0` |
+| Nur CI, Tests, Refactoring oder Entwicklerdoku | Kein eigener Release nötig | Im nächsten Release enthalten |
 
-### Pflicht bei Feature-Implementierung
+### Release-Notes-Workflow
 
-Nach Abschluss einer Spec-Implementierung oder eines größeren Feature-Bundles:
+1. Vor dem Eintragen einer Änderung klären, welche Version zuletzt **veröffentlicht**
+   wurde. Im Zweifel nicht allein aus der obersten Überschrift der Release Notes auf den
+   Veröffentlichungsstatus schließen.
+2. Abschnitte bereits veröffentlichter Versionen bleiben historisch unverändert. Ein
+   später entdeckter Bugfix gehört niemals nachträglich in diesen Abschnitt.
+3. Änderungen ohne fest geplanten Release zunächst unter `## Unveröffentlicht`
+   dokumentieren. Sobald die Veröffentlichung vorbereitet wird, den Inhalt in einen
+   neuen Abschnitt `## X.Y.Z` verschieben.
+4. Bei einem unmittelbar geplanten Release kann direkt ein Abschnitt für die nächste
+   Version angelegt werden.
+5. Release Notes beschreiben primär nutzerrelevante Änderungen. Interne Test- oder
+   CI-Details nur erwähnen, wenn sie eine relevante Plattform- oder Qualitätsgarantie
+   dokumentieren.
+6. Immer angeben, ob bestehende Installationen Datenbank-, Konfigurations- oder andere
+   Migrationsschritte benötigen. Falls nicht, dies ausdrücklich festhalten.
 
-1. Version in `pyproject.toml` und `euercli/__init__.py` erhöhen (bevorzugt via Script/Make)
-2. Sicherstellen, dass beide Dateien den **identischen** Versionsstring haben
-3. `docs/RELEASE_NOTES.md` prüfen und bei Nutzer-, Schema-, CLI-, Import-/Export-,
-   Steuerlogik- oder Agenten-Änderungen konkrete Upgrade-/Migrationsschritte ergänzen
-4. Alle Tests müssen grün sein (`make test` bzw. unter Windows
-   `python -m unittest discover -s tests`)
+### Pflicht vor jedem Release
+
+1. Passenden SemVer-Bump festlegen.
+2. Version in `pyproject.toml` und `euercli/__init__.py` erhöhen (bevorzugt via Script/Make).
+3. Sicherstellen, dass beide Dateien den **identischen** Versionsstring haben.
+4. Einen neuen Abschnitt in `docs/RELEASE_NOTES.md` anlegen; niemals einen bereits
+   veröffentlichten Abschnitt um neue Änderungen ergänzen.
+5. Bei Nutzer-, Schema-, CLI-, Import-/Export-, Steuerlogik- oder Agenten-Änderungen
+   konkrete Upgrade- und Migrationsschritte ergänzen.
+6. Alle Tests und Qualitätsprüfungen müssen grün sein (`make test` und `make lint`; unter
+   Windows `python -m unittest discover -s tests`).
 
 ## Entwicklungs-Richtlinien
 

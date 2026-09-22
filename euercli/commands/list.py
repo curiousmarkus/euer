@@ -61,7 +61,7 @@ def cmd_list_expenses(args):
     conn.close()
 
     if args.format == "csv":
-        writer = csv.writer(sys.stdout)
+        writer = csv.writer(sys.stdout, lineterminator="\n")
         writer.writerow(
             [
                 "ID",
@@ -359,7 +359,7 @@ def cmd_list_income(args):
     conn.close()
 
     if args.format == "csv":
-        writer = csv.writer(sys.stdout)
+        writer = csv.writer(sys.stdout, lineterminator="\n")
         writer.writerow(
             [
                 "ID",
@@ -602,7 +602,7 @@ def cmd_list_private_deposits(args):
     conn.close()
 
     if args.format == "csv":
-        writer = csv.writer(sys.stdout)
+        writer = csv.writer(sys.stdout, lineterminator="\n")
         writer.writerow(["ID", "Datum", "Beschreibung", "EUR", "Quelle", "Klassifikation"])
         for row in transfers:
             writer.writerow(
@@ -667,7 +667,7 @@ def cmd_list_private_withdrawals(args):
     conn.close()
 
     if args.format == "csv":
-        writer = csv.writer(sys.stdout)
+        writer = csv.writer(sys.stdout, lineterminator="\n")
         writer.writerow(["ID", "Datum", "Beschreibung", "EUR", "Quelle"])
         for row in transfers:
             writer.writerow(
@@ -702,7 +702,7 @@ def cmd_list_private_transfers(args):
     conn.close()
 
     if args.format == "csv":
-        writer = csv.writer(sys.stdout)
+        writer = csv.writer(sys.stdout, lineterminator="\n")
         writer.writerow(["type", "id", "date", "description", "amount_eur", "source"])
         for row in deposits:
             writer.writerow(

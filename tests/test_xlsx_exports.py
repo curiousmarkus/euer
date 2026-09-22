@@ -37,6 +37,7 @@ class XlsxExportTestCase(unittest.TestCase):
         result = subprocess.run(
             CLI + ["--db", str(self.db_path)] + args,
             text=True,
+            encoding="utf-8",
             capture_output=True,
             cwd=REPO_ROOT,
             env=self.env,

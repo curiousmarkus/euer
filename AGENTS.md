@@ -79,7 +79,20 @@ Bei Änderungen auch die Tabelle in `DEVELOPMENT.md` aktualisieren.
 `docs/templates/onboarding-prompt.md`, `docs/RELEASE_NOTES.md`, `README.md`,
 `DEVELOPMENT.md`
 
-**Release Notes:** Nach jeder implementierten Spec prüfen, ob bestehende lokale
-Instanzen handeln müssen. Wenn sich Schema, CLI-Verhalten, Import-/Exportformate,
-Steuerlogik, Agenten-Skill, Agenten-Template oder Onboarding/`AGENTS.md` ändern,
-`docs/RELEASE_NOTES.md` mit konkreten Upgrade- und Migrationsschritten aktualisieren.
+**Versionierung & Release Notes:** Vor Abschluss jeder Änderung prüfen, ob sie einen
+Release erfordert. Bereits veröffentlichte Versionsabschnitte in
+`docs/RELEASE_NOTES.md` dürfen nicht um spätere Änderungen ergänzt werden. Änderungen
+nach einem Release gehören unter `Unveröffentlicht` oder — bei unmittelbar geplanter
+Veröffentlichung — unter die nächste Versionsnummer.
+
+- Nutzerwirksame Bugfixes → PATCH
+- Abwärtskompatible Features und Commands → MINOR
+- Breaking Changes an Schema oder CLI-API → MAJOR
+- Reine CI-, Test-, Refactoring- oder Entwicklerdoku-Änderungen erzwingen keinen
+  eigenen Release
+
+Wenn sich Schema, CLI-Verhalten, Import-/Exportformate, Steuerlogik, Agenten-Skill,
+Agenten-Template oder Onboarding/`AGENTS.md` ändern, `docs/RELEASE_NOTES.md` mit
+konkreten Upgrade- und Migrationsschritten aktualisieren. Vor einem Release müssen
+`pyproject.toml` und `euercli/__init__.py` dieselbe neue Version enthalten. Details:
+`DEVELOPMENT.md` → „Versionierung“.

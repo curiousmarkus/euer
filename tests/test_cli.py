@@ -37,6 +37,7 @@ class EuerCLITestCase(unittest.TestCase):
             CLI + ["--db", str(self.db_path)] + args,
             input=input,
             text=True,
+            encoding="utf-8",
             capture_output=True,
             cwd=REPO_ROOT,
             env=self.env,
@@ -1395,7 +1396,7 @@ category = "Laufende EDV-Kosten"
     def test_receipt_check_missing_file(self):
         receipts_root = self.root / "receipts"
         receipts_root.mkdir(parents=True)
-        self.write_config(f'[receipts]\nroot = "{receipts_root}"\n')
+        self.write_config(f"[receipts]\nroot = '{receipts_root}'\n")
         self.add_expense(receipt="missing.pdf")
 
         result = self.run_cli(["receipt", "check", "--year", "2026", "--type", "expense"])
@@ -1406,7 +1407,7 @@ category = "Laufende EDV-Kosten"
     def test_receipt_open_missing_file(self):
         receipts_root = self.root / "receipts"
         receipts_root.mkdir(parents=True)
-        self.write_config(f'[receipts]\nroot = "{receipts_root}"\n')
+        self.write_config(f"[receipts]\nroot = '{receipts_root}'\n")
         self.add_expense(receipt="missing.pdf")
 
         result = self.run_cli(["receipt", "open", "1"])
@@ -1417,7 +1418,7 @@ category = "Laufende EDV-Kosten"
     def test_receipt_open_without_payment_date_explains_missing_year_context(self):
         receipts_root = self.root / "receipts"
         receipts_root.mkdir(parents=True)
-        self.write_config(f'[receipts]\nroot = "{receipts_root}"\n')
+        self.write_config(f"[receipts]\nroot = '{receipts_root}'\n")
         self.run_cli(
             [
                 "add",
@@ -1444,7 +1445,7 @@ category = "Laufende EDV-Kosten"
         receipts_root = self.root / "receipts"
         receipt_dir = receipts_root / "2026" / "Ausgaben"
         receipt_dir.mkdir(parents=True)
-        self.write_config(f'[receipts]\nroot = "{receipts_root}"\n')
+        self.write_config(f"[receipts]\nroot = '{receipts_root}'\n")
 
         receipt_name = "2026-01-15_TestVendor"
         (receipt_dir / f"{receipt_name}.pdf").write_text("dummy", encoding="utf-8")
@@ -1457,7 +1458,7 @@ category = "Laufende EDV-Kosten"
         receipts_root = self.root / "receipts"
         receipt_dir = receipts_root / "2026" / "Einnahmen"
         receipt_dir.mkdir(parents=True)
-        self.write_config(f'[receipts]\nroot = "{receipts_root}"\n')
+        self.write_config(f"[receipts]\nroot = '{receipts_root}'\n")
 
         receipt_name = "2026-01-20_Rechnung_001.pdf"
         (receipt_dir / receipt_name).write_text("dummy", encoding="utf-8")
@@ -1471,7 +1472,7 @@ category = "Laufende EDV-Kosten"
         receipt_dir = receipts_root / "Buchhaltung 2026" / "Ausgaben"
         receipt_dir.mkdir(parents=True)
         self.write_config(
-            f'[receipts]\nroot = "{receipts_root}"\nyear_dir = "Buchhaltung {{year}}"\n'
+            f"[receipts]\nroot = '{receipts_root}'\nyear_dir = \"Buchhaltung {{year}}\"\n"
         )
 
         receipt_name = "2026-01-15_TestVendor.pdf"
@@ -1484,7 +1485,7 @@ category = "Laufende EDV-Kosten"
     def test_add_receipt_warning_uses_new_candidate_paths(self):
         receipts_root = self.root / "receipts"
         receipts_root.mkdir(parents=True)
-        self.write_config(f'[receipts]\nroot = "{receipts_root}"\n')
+        self.write_config(f"[receipts]\nroot = '{receipts_root}'\n")
 
         result = self.add_expense(receipt="missing")
         self.assertEqual(result.returncode, 0, msg=result.stderr)
@@ -1493,7 +1494,7 @@ category = "Laufende EDV-Kosten"
     def test_add_receipt_warning_does_not_use_invoice_date_as_year(self):
         receipts_root = self.root / "receipts"
         receipts_root.mkdir(parents=True)
-        self.write_config(f'[receipts]\nroot = "{receipts_root}"\n')
+        self.write_config(f"[receipts]\nroot = '{receipts_root}'\n")
 
         result = self.run_cli(
             [

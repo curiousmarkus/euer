@@ -20,6 +20,20 @@ zusätzlich aktualisiert werden. Das betrifft insbesondere:
 Die persönliche `AGENTS.md` sollte nie blind ersetzt werden, weil sie individuelle
 Pfade, Konten, Lieferanten-Mappings und steuerliche Stammdaten enthält.
 
+## 0.7.1
+
+### Fehlerbehebungen
+
+- CSV-Ausgaben auf Windows verwenden jetzt explizit `\n` als Zeilenende und enthalten
+  dadurch keine zusätzlichen Leerzeilen mehr.
+- UTF-8-Ausgaben, Umlaute und temporäre Windows-Pfade werden durch die
+  Windows-Integrationstests zuverlässig abgedeckt.
+
+### Nach dem Upgrade
+
+Es sind keine Datenbank- oder Konfigurationsmigrationen erforderlich. Ein normales
+Upgrade mit `pipx upgrade euercli` genügt.
+
 ## 0.7.0
 
 ### Warum relevant?

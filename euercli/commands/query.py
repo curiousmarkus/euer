@@ -76,7 +76,7 @@ def cmd_query(args):
     try:
         cursor = conn.execute(sql)
         columns = [col[0] for col in cursor.description] if cursor.description else []
-        writer = csv.writer(sys.stdout)
+        writer = csv.writer(sys.stdout, lineterminator="\n")
         if columns:
             writer.writerow(columns)
         for row in cursor.fetchall():

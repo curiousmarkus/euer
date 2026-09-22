@@ -155,7 +155,7 @@ def cmd_incomplete_list(args):
     )
 
     if args.format == "csv":
-        writer = csv.writer(sys.stdout)
+        writer = csv.writer(sys.stdout, lineterminator="\n")
         writer.writerow(
             [
                 "ID",
