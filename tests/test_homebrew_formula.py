@@ -54,14 +54,9 @@ class HomebrewFormulaTestCase(unittest.TestCase):
             REPO_ROOT / "docs" / "homebrew-tap" / ".github" / "workflows" / "update-formula.yml"
         ).read_text(encoding="utf-8")
 
-        self.assertIn(
-            """      - name: Formula erneut aktualisieren
-        run: |
-          python3 scripts/update_formula.py Formula/euer.rb
-          brew style Formula/euer.rb
-          brew audit --tap="$GITHUB_REPOSITORY" --formula""",
-            workflow,
-        )
+        self.assertIn('brew audit --tap="$tap_name" --formula', workflow)
+        self.assertIn('brew trust --tap "$tap_name"', workflow)
+        self.assertIn('cp -R "$GITHUB_WORKSPACE/." "$tap_path/"', workflow)
 
     def test_update_formula_resolves_xlsx_resources(self) -> None:
         updater = load_formula_updater()
