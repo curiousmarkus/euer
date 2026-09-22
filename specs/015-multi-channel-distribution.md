@@ -42,7 +42,9 @@ Der offizielle Distributionsname auf PyPI und Homebrew lautet verbindlich **`eue
 - Der Wechsel des Distributionsnamens ist eine nutzerwirksame Änderung und wird als
   Migration dokumentiert.
 
-Der erste Multi-Channel-Release ist **`0.8.0`**. Der Release `0.7.1` bleibt davon
+Der erste erfolgreiche Multi-Channel-Release ist **`0.8.1`**. Der unveröffentlichte
+Tag `v0.8.0` hat die Release-Metadatenprüfung nicht bestanden und darf wegen der
+Tag-Immutability nicht wiederverwendet werden. Der Release `0.7.1` bleibt davon
 getrennt der Windows-Bugfix unter dem bisherigen Distributionsnamen.
 
 ## Ziel
@@ -80,7 +82,7 @@ unabhängige Systeme wird nicht versprochen.
 
 ### Version und Tags
 
-- Release-Tags entsprechen exakt `vMAJOR.MINOR.PATCH`, zum Beispiel `v0.8.0`.
+- Release-Tags entsprechen exakt `vMAJOR.MINOR.PATCH`, zum Beispiel `v0.8.1`.
 - Der Release-Workflow prüft das Format zusätzlich, da der GitHub-Filter `v*` allein
   nicht streng genug ist.
 - Der getaggte Commit muss Bestandteil von `main` sein.
@@ -285,7 +287,7 @@ Bestehende Installationen aus dem GitHub-Repository besitzen den bisherigen
 Distributionsnamen `euercli`. Ein normales `pipx upgrade euercli` kann den Wechsel auf
 den neuen Namen nicht zuverlässig abbilden.
 
-Die Release Notes für `0.8.0` dokumentieren deshalb verbindlich:
+Die Release Notes für `0.8.1` dokumentieren deshalb verbindlich:
 
 ```bash
 pipx uninstall euercli
@@ -362,7 +364,7 @@ werden durch den Wechsel des Distributionsnamens nicht verändert.
 - [x] `README.md`: Homebrew, PyPI, XLSX-Extra und Git-Fallback dokumentieren.
 - [x] `docs/USER_GUIDE.md`: Installation und Updates über `pipx upgrade euer` und
       `brew upgrade euer` dokumentieren.
-- [x] `docs/RELEASE_NOTES.md`: Abschnitt `0.8.0` mit der einmaligen
+- [x] `docs/RELEASE_NOTES.md`: Abschnitt `0.8.1` mit der einmaligen
       `euercli`-zu-`euer`-Migration ergänzen.
 - [x] `DEVELOPMENT.md`: Tag-basierten Release-Prozess und Recovery-Runbook ergänzen.
 - [x] `AGENTS.md`: Agenten verpflichten, Release-Check, Versionstag und unveränderliche

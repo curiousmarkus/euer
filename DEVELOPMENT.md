@@ -206,9 +206,9 @@ Es kann auch bequem über `make bump-patch` (bzw. `bump-minor`, `bump-major`) au
    `vMAJOR.MINOR.PATCH` erstellen und lokal mit `make release-check` prüfen:
 
    ```bash
-   git tag -a v0.8.0 -m "Release v0.8.0"
+   git tag -a v0.8.1 -m "Release v0.8.1"
    make release-check
-   git push origin v0.8.0
+   git push origin v0.8.1
    ```
 
    Das Pushen des geschützten Tags ist die einzige reguläre manuelle Veröffentlichung.

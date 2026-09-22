@@ -33,3 +33,9 @@ class WorkflowTestCase(unittest.TestCase):
         self.assertIn("skip-existing: false", workflow)
         self.assertIn("cancel-in-progress: false", workflow)
         self.assertIn("attestations: true", workflow)
+        self.assertEqual(
+            2,
+            workflow.count(
+                'git fetch --force origin "refs/tags/${GITHUB_REF_NAME}:refs/tags/${GITHUB_REF_NAME}"'
+            ),
+        )

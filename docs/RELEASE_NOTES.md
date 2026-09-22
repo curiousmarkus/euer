@@ -1,7 +1,7 @@
 # Release Notes
 
 Diese Hinweise richten sich an Nutzer:innen mit bestehenden lokalen Instanzen.
-Für Installationen ab 0.8.0 ergänzen sie die normale Update-Sequenz aus dem User Guide:
+Für Installationen ab 0.8.1 ergänzen sie die normale Update-Sequenz aus dem User Guide:
 
 ```bash
 pipx upgrade euer
@@ -11,7 +11,7 @@ euer summary --year 2026
 ```
 
 Bei einer bestehenden `euercli`-Installation zuerst die einmalige Migration im
-Abschnitt `0.8.0` ausführen. Die historischen Abschnitte darunter behalten bewusst
+Abschnitt `0.8.1` ausführen. Die historischen Abschnitte darunter behalten bewusst
 ihre ursprünglichen Upgrade-Befehle.
 
 Bei Releases mit Agenten-Änderungen müssen lokal kopierte Agenten-Dateien
@@ -24,7 +24,7 @@ zusätzlich aktualisiert werden. Das betrifft insbesondere:
 Die persönliche `AGENTS.md` sollte nie blind ersetzt werden, weil sie individuelle
 Pfade, Konten, Lieferanten-Mappings und steuerliche Stammdaten enthält.
 
-## 0.8.0
+## 0.8.1
 
 ### Warum relevant?
 
