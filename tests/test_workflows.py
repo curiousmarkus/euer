@@ -39,3 +39,5 @@ class WorkflowTestCase(unittest.TestCase):
                 'git fetch --force origin "refs/tags/${GITHUB_REF_NAME}:refs/tags/${GITHUB_REF_NAME}"'
             ),
         )
+        self.assertIn('gh release view "$RELEASE_TAG" --json databaseId', workflow)
+        self.assertNotIn("releases/tags/${RELEASE_TAG}", workflow)

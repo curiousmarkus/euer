@@ -213,7 +213,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.ref_name }}
-        run: >-
-          gh api --method PATCH
-          "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}"
-          -F draft=false
+        run: |
+          set -euo pipefail
+          release_id="$(gh release view "$RELEASE_TAG" --json databaseId --jq '.databaseId')"
+          gh api --method PATCH \
+            "repos/${GITHUB_REPOSITORY}/releases/${release_id}" \
+            -F draft=false
