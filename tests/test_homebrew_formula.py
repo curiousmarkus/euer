@@ -57,6 +57,8 @@ class HomebrewFormulaTestCase(unittest.TestCase):
         self.assertIn('brew audit --tap="$tap_name" --formula', workflow)
         self.assertIn('brew trust --tap "$tap_name"', workflow)
         self.assertIn('cp -R "$GITHUB_WORKSPACE/." "$tap_path/"', workflow)
+        self.assertIn('brew install --build-from-source "$tap_name/euer"', workflow)
+        self.assertIn('brew test "$tap_name/euer"', workflow)
 
     def test_update_formula_resolves_xlsx_resources(self) -> None:
         updater = load_formula_updater()

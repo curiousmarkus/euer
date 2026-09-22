@@ -1,4 +1,4 @@
-# Bootstrap für `curiousmarkus/homebrew-tap`
+# Bootstrap für `curiousmarkus/homebrew-euer`
 
 Der Tap ist absichtlich ein eigenes Repository. Diese Dateien werden einmalig dorthin
 übernommen; der laufende Update-Workflow des Taps benötigt danach keinen Token aus dem
@@ -6,7 +6,7 @@ Der Tap ist absichtlich ein eigenes Repository. Diese Dateien werden einmalig do
 
 ## Einmalige Einrichtung
 
-1. Repository `curiousmarkus/homebrew-tap` mit dem Inhalt dieses Verzeichnisses anlegen.
+1. Repository `curiousmarkus/homebrew-euer` mit dem Inhalt dieses Verzeichnisses anlegen.
 2. `Formula/euer.rb.template` nach `Formula/euer.rb` kopieren.
 3. Nach dem ersten PyPI-Release den mitgelieferten Updater ausführen:
 

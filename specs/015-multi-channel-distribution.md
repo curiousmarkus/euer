@@ -166,12 +166,12 @@ verwendet.
 
 ### 3. Homebrew Tap – komfortabler Installationsweg
 
-- **Repository:** `curiousmarkus/homebrew-tap`
+- **Repository:** `curiousmarkus/homebrew-euer`
 - **Formula:** `Formula/euer.rb`
 - **Installation:**
 
   ```bash
-  brew install curiousmarkus/tap/euer
+  brew install curiousmarkus/euer/euer
   ```
 
 - **Quelle:** ausschließlich der auf PyPI veröffentlichte sdist samt SHA256; nicht das
@@ -213,7 +213,7 @@ sequenceDiagram
     participant GHA as release.yml
     participant GHRel as GitHub Release Draft
     participant PyPI as PyPI
-    participant Tap as homebrew-tap
+    participant Tap as homebrew-euer
 
     Dev->>Git: Annotierten, geschützten Tag vX.Y.Z pushen
     Git->>GHA: Release-Workflow starten
@@ -351,7 +351,7 @@ werden durch den Wechsel des Distributionsnamens nicht verändert.
 
 ### Schritt 5: Homebrew Tap
 
-- [ ] Repository `curiousmarkus/homebrew-tap` anlegen.
+- [ ] Repository `curiousmarkus/homebrew-euer` anlegen.
 - [ ] `Formula/euer.rb` auf Basis des PyPI-sdists erstellen.
 - [ ] `openpyxl` und transitive Abhängigkeiten als Homebrew-Ressourcen aufnehmen.
 - [x] Aussagekräftigen `test do`-Block einschließlich `euer --version` und XLSX-
@@ -394,7 +394,7 @@ werden durch den Wechsel des Distributionsnamens nicht verändert.
 9. Die README wird auf PyPI ohne gebrochene Bilder oder Dokumentationslinks gerendert.
 10. Der Homebrew Tap erkennt einen neuen PyPI-Release automatisch spätestens innerhalb
     von sechs Stunden, ohne Token aus dem `euer`-Repository.
-11. `brew install curiousmarkus/tap/euer` und `brew upgrade euer` funktionieren auf
+11. `brew install curiousmarkus/euer/euer` und `brew upgrade euer` funktionieren auf
     macOS und Linux; `euer --version` und ein XLSX-Smoke-Test sind erfolgreich.
 12. Ein temporärer Fehler nach dem PyPI-Upload kann durch Wiederholen der betroffenen
     Jobs behoben werden, ohne Versionen oder bereits veröffentlichte Artefakte zu

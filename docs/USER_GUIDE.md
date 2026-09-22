@@ -31,7 +31,7 @@ pipx install "euer[xlsx]"
 Alternativ ist auf macOS und Linux der Homebrew-Tap verfügbar:
 
 ```bash
-brew install curiousmarkus/tap/euer
+brew install curiousmarkus/euer/euer
 ```
 
 Der GitHub-Checkout bleibt als Fallback für Entwicklungsversionen möglich:

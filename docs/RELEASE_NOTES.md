@@ -67,7 +67,7 @@ Auf macOS und Linux kann `euer` alternativ über den Tap installiert und aktuali
 werden:
 
 ```bash
-brew install curiousmarkus/tap/euer
+brew install curiousmarkus/euer/euer
 brew upgrade euer
 ```
 

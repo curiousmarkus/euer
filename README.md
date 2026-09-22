@@ -42,7 +42,7 @@ Die meisten Tools zwingen dich zu einer Entscheidung: Entweder du nutzt unflexib
 **macOS und Linux (Homebrew):**
 
 ```bash
-brew install curiousmarkus/tap/euer
+brew install curiousmarkus/euer/euer
 ```
 
 **Alle Plattformen (PyPI):**

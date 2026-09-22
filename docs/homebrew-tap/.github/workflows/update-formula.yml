@@ -31,9 +31,9 @@ jobs:
       - name: Lokale Tap-Arbeitskopie für Homebrew registrieren
         run: |
           tap_repository_full="$(printf '%s' "$GITHUB_REPOSITORY" | cut -d/ -f2)"
-          tap_path="$(brew --repository)/Library/Taps/$GITHUB_REPOSITORY_OWNER/$tap_repository_full"
           tap_repository="$(printf '%s' "$tap_repository_full" | sed 's/^homebrew-//')"
           tap_name="$GITHUB_REPOSITORY_OWNER/$tap_repository"
+          tap_path="$(brew --repository)/Library/Taps/$GITHUB_REPOSITORY_OWNER/homebrew-$tap_repository"
           mkdir -p "$tap_path"
           cp -R "$GITHUB_WORKSPACE/." "$tap_path/"
           brew trust --tap "$tap_name"
@@ -48,8 +48,11 @@ jobs:
 
       - name: Formula installieren und testen
         run: |
-          brew install --build-from-source Formula/euer.rb
-          brew test euer
+          tap_repository_full="$(printf '%s' "$GITHUB_REPOSITORY" | cut -d/ -f2)"
+          tap_repository="$(printf '%s' "$tap_repository_full" | sed 's/^homebrew-//')"
+          tap_name="$GITHUB_REPOSITORY_OWNER/$tap_repository"
+          brew install --build-from-source "$tap_name/euer"
+          brew test "$tap_name/euer"
 
   commit:
     name: Geprüfte Formula übernehmen
@@ -73,9 +76,9 @@ jobs:
       - name: Lokale Tap-Arbeitskopie für Homebrew registrieren
         run: |
           tap_repository_full="$(printf '%s' "$GITHUB_REPOSITORY" | cut -d/ -f2)"
-          tap_path="$(brew --repository)/Library/Taps/$GITHUB_REPOSITORY_OWNER/$tap_repository_full"
           tap_repository="$(printf '%s' "$tap_repository_full" | sed 's/^homebrew-//')"
           tap_name="$GITHUB_REPOSITORY_OWNER/$tap_repository"
+          tap_path="$(brew --repository)/Library/Taps/$GITHUB_REPOSITORY_OWNER/homebrew-$tap_repository"
           mkdir -p "$tap_path"
           cp -R "$GITHUB_WORKSPACE/." "$tap_path/"
           brew trust --tap "$tap_name"
