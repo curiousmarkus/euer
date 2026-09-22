@@ -60,7 +60,10 @@ class HomebrewFormulaTestCase(unittest.TestCase):
         self.assertIn('brew install --build-from-source "$tap_name/euer"', workflow)
         self.assertIn('brew test "$tap_name/euer"', workflow)
         self.assertIn("if: runner.os == 'Linux'", workflow)
-        self.assertIn('NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"', workflow)
+        self.assertIn(
+            'NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"',
+            workflow,
+        )
         self.assertIn('echo "/home/linuxbrew/.linuxbrew/bin" >> "$GITHUB_PATH"', workflow)
 
     def test_update_formula_resolves_xlsx_resources(self) -> None:
