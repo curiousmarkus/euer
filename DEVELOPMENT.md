@@ -392,3 +392,5 @@ Offene Change Requests werden innerhalb der jeweiligen Spec dokumentiert.
 | 013 | Belegordner Jahr zuerst | Implementiert |
 | 014 | HTML-Pruefbericht fuer Buchungen | Offen |
 | 015 | Multi-Channel-Distribution (PyPI, GitHub Releases, Homebrew) | Offen |
+| 016 | Agent-Safety & Guardrails (Schutz vor destruktiven Aktionen & Plausibilitaet) | Offen |
+| 017 | Nicht eingebuchte Belege erkennen (`receipt unbooked`) | Offen |

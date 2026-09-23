@@ -5,8 +5,8 @@
 `euer` ermöglicht es deutschen Freelancern und Kleinunternehmern, ihre
 Einnahmenüberschussrechnung (EÜR) vollständig an KI-Agenten zu delegieren.
 Das Tool ist **CLI-first** und für LLM-gesteuerte Workflows optimiert:
-Text rein, strukturierter Text raus. Die Buchhaltungsdaten liegen lokal in
-einer einzigen SQLite-Datei — revisionssicher mit Audit-Log, ohne Cloud-Abhängigkeit.
+Belege und Kontoauszüge an KI-Agenten übergeben, dieser liest die Daten aus und bucht sie über die CLI. Die Buchhaltungsdaten liegen lokal in
+einer einzigen SQLite-Datei — nachvollziehbar mit Audit-Log, ohne Cloud-Abhängigkeit.
 
 Kernfeatures: EÜR-konforme Kategorien (Anlage EÜR Zeilennummern),
 Umsatzsteuer-Logik (Regel-/Kleinunternehmer/Reverse-Charge),

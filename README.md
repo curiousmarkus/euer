@@ -15,9 +15,9 @@ Die meisten Tools zwingen dich zu einer Entscheidung: Entweder du nutzt unflexib
 *   **Do one thing well:** Kein Feature-Bloat. Nur EÜR. Agenten lieben Tools mit klarem Scope.
 *   **SQL Superpowers:** Für komplexe Abfragen kann der Agent direkt SQL nutzen. Volle Flexibilität für intelligente Automatisierung.
 
-### 🔒 Revisionssicher & Lokal
-*   **Local First:** Eine SQLite-Datei. Deine Daten. Dein Backup. Deine Kontrolle.
-*   **Audit-Log:** Jede Änderung wird unveränderbar protokolliert. Sicherheit für dich und das Finanzamt.
+### 🔒 Nachvollziehbar & Lokal
+*   **Local First:** Eine SQLite-Datei. Deine Daten. Dein Backup. Volle Datenhoheit ohne Cloud-Zwang.
+*   **Audit-Trail:** Jede Buchung und Änderung über die CLI wird in einer Historie protokolliert (`euer audit`). Volle Transparenz darüber, was dein Agent getan hat.
 *   **Leichtgewichtig:** Nur Python 3.11+. Keine schweren Abhängigkeiten. Läuft überall.
 *   **Kein Lock-in:** Daten einfach in CSV oder Excel exportieren.
 
