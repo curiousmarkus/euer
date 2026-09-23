@@ -3,6 +3,10 @@
 Dieses Dokument richtet sich an Nutzer:innen des CLI‑Tools. Es erklärt Installation,
 Konfiguration und typische Workflows.
 
+Den vollständigen Ablauf aus Nutzersicht zeigt die [User Journey](USER_JOURNEY.md):
+Installation, Onboarding, erste Rechnung, Monatsabgleich, Finanzüberblick und
+Jahresabschluss mit Mermaid-Diagramm.
+
 ## Voraussetzungen
 
 - Python 3.11+
@@ -88,7 +92,8 @@ nicht automatisch Dateien, die du bereits in deine KI-Anwendung kopiert hast.
 Bei Releases mit geänderter Agenten-Logik musst du diese lokalen Kopien
 zusätzlich aus dem aktuellen Release/Repo aktualisieren:
 
-- `docs/skills/euer-buchhaltung/SKILL.md` in den Skill-Ordner deiner lokalen KI-Anwendung kopieren.
+- Den vollständigen Ordner `docs/skills/euer-buchhaltung/` inklusive `references/`
+  in den Skill-Ordner deiner lokalen KI-Anwendung kopieren.
 - `docs/templates/accountant-agent.md` in deiner lokalen Agenten-Konfiguration ersetzen.
 - `docs/templates/onboarding-prompt.md` erneut nutzen, wenn die Release Notes eine
   Änderung an deiner persönlichen `AGENTS.md` verlangen.
@@ -118,19 +123,27 @@ Im Ordner `docs/templates/` findest du Vorlagen für die Agent-Konfiguration.
 
 ### Schnellstart für KI-Agenten
 
-1. **Onboarding durchführen:**
-   - Kopiere den Inhalt von `docs/templates/onboarding-prompt.md` in einen neuen LLM-Chat
-   - Der Assistent führt ein Interview und erstellt deine persönliche `AGENTS.md`
+1. **Agent konfigurieren:**
+   - Kopiere den vollständigen Ordner `docs/skills/euer-buchhaltung/` einschließlich
+     `references/` in den Skill-Pfad deiner KI-Anwendung.
+   - Füge bei Bedarf `accountant-agent.md` als Agent-Definition hinzu.
+   - Starte den Agenten in deinem Buchhaltungsordner.
 
-2. **Agent konfigurieren:**
-   - Speichere die generierte `AGENTS.md` in deinem Buchhaltungsordner
-   - Füge die `accountant-agent.md` als Agent-Definition zu deinem Agent-Framework hinzu
-   - kopiere den Skill in den korrekten Pfad, so dass dein Agent darauf Zugriff hat: `docs/skills/euer-buchhaltung/SKILL.md`
-   - Starte deinen KI-Agenten im Buchhaltungsordner (so hat er Zugriff auf `AGENTS.md` als Kontext)
+2. **Einrichtung beauftragen:**
+   - Sage: „Richte meine Buchhaltung mit euer ein.“
+   - Der Skill prüft den Bestand und lädt bei fehlender Einrichtung den
+     [Onboarding-Leitfaden](skills/euer-buchhaltung/references/onboarding.md).
+   - Der Agent fragt nur fehlende Angaben ab und erstellt oder ergänzt das persönliche
+     Mandanten-Dossier sowie die technische Konfiguration. Vorhandene Dateien bleiben erhalten.
+   - Alternativ führt der [Onboarding-Prompt](templates/onboarding-prompt.md) durch ein
+     Interview in einem separaten Chat; anschließend lokal speichern und einrichten.
 
-3. **CLI einrichten:**
-   - Führe `euer init` und `euer setup` aus, um die Datenbank und die Konfiguration anzulegen (achte darauf, dass du im Buchhaltungsordner bist!)
-   - Die Konfiguration wird unter macOS/Linux in `~/.config/euer/config.toml` gespeichert, unter Windows in `%APPDATA%\\euer\\config.toml`
+3. **Einrichtung prüfen und starten:**
+   - Der Agent prüft Datenbank, Config und Ablage, dann setzt er einen bereits
+     erteilten Buchungsauftrag fort. Bei vollständiger Einrichtung entfällt das Interview.
+   - Die Config liegt unter macOS/Linux in `~/.config/euer/config.toml`, unter Windows
+     in `%APPDATA%\euer\config.toml` und gilt über Arbeitsordner hinweg.
+   - Die Prüfung ist eine Agenten-Anweisung im Skill, kein neuer CLI-Befehl.
 
 ### Empfohlene Tools für Agenten
 

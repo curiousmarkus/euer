@@ -63,6 +63,7 @@ Details und Beispiele: `DEVELOPMENT.md` → „Neue Commands hinzufügen"
 | `specs/` | Offene Change Requests und Backlog |
 | `euercli/schema.py` | DB-Schema |
 | `docs/USER_GUIDE.md` | Nutzer-Dokumentation |
+| `docs/USER_JOURNEY.md` | Vollständige User Journey von Installation bis Jahresabschluss |
 | `docs/RELEASE_NOTES.md` | Upgrade-Hinweise für bestehende lokale Instanzen |
 | `docs/skills/euer-buchhaltung/SKILL.md` | Buchungsregeln für AI-Agenten |
 | `docs/templates/` | Agent-Konfigurationsvorlagen |

@@ -24,6 +24,34 @@ zusätzlich aktualisiert werden. Das betrifft insbesondere:
 Die persönliche `AGENTS.md` sollte nie blind ersetzt werden, weil sie individuelle
 Pfade, Konten, Lieferanten-Mappings und steuerliche Stammdaten enthält.
 
+## 0.9.0
+
+### Onboarding direkt im Buchhaltungs-Skill
+
+Der Skill prüft vor Buchungsaufträgen die vorhandene Einrichtung und lädt bei Bedarf
+`references/onboarding.md`. Er fragt nur fehlende Angaben ab und übernimmt bereits
+vorhandene Mandantendaten. Der separate Onboarding-Prompt bleibt als Einstieg für
+einen normalen LLM-Chat erhalten und nutzt denselben Leitfaden.
+
+**Upgrade:** Den vollständigen Ordner `docs/skills/euer-buchhaltung/` einschließlich
+`references/` in der KI-Anwendung aktualisieren; nur `SKILL.md` zu kopieren reicht
+nicht mehr. Auch die lokale Kopie von `docs/templates/accountant-agent.md`
+aktualisieren, sofern genutzt. Die persönliche `AGENTS.md` erhalten; fehlende
+Angaben gezielt ergänzen lassen. Ein erneutes Vollinterview ist nicht nötig.
+Es gibt keine Datenbank- oder Config-Migration und keinen neuen CLI-Befehl.
+Ein Paketupdate allein aktualisiert lokal kopierte Agenten-Dateien nicht.
+
+### User Journey und ELSTER-Abschluss
+
+Die neue User Journey dokumentiert den Weg vom Onboarding über Buchungsalltag und
+Monatsabgleich bis zum Jahresabschluss. Sie zeigt, wie Nutzer:innen die EÜR-Berichte
+anhand ihrer Zeilennummern und Buchungsexporte prüfen und die Werte selbst nach
+ELSTER übertragen. Die Journey benennt außerdem den Berichtsumfang und offene
+Buchungsfragen.
+
+**Upgrade:** Keine Datenbank- oder Config-Migration erforderlich. Die Journey steht
+im Repository und ist von README und Benutzerhandbuch aus verlinkt.
+
 ## 0.8.1
 
 ### Warum relevant?

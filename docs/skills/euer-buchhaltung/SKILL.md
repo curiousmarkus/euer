@@ -1,11 +1,33 @@
 ---
 name: euer-buchhaltung
-description: Verwaltet EÜR-Buchhaltung für deutsche Kleinunternehmer. Nutze es um Ausgaben und Einnahmen zu erfassen, Belege zu prüfen und Zusammenfassungen zu erstellen. Triggers "Ausgabe buchen", "Einnahme erfassen", "Buchhaltung", "EÜR", "Beleg prüfen", "Rechnung buchen"
+description: Richtet die lokale EÜR-Buchhaltung mit euer ein und verwaltet Einnahmen, Ausgaben, Belege und Auswertungen für deutsche Selbstständige. Nutze den Skill für Buchhaltungs-Onboarding, Mandanten-Dossiers und Buchungsaufträge wie „Rechnung buchen“, „Belege prüfen“ oder „EÜR zusammenfassen“.
 ---
 
 # EÜR Buchhaltung
 
-Dieses Skill ermöglicht die Verwaltung einer Einnahmenüberschussrechnung (EÜR) für deutsche Kleinunternehmer via CLI.
+Dieser Skill unterstützt Einrichtung und laufende EÜR-Buchhaltung via CLI.
+
+## Einstieg: Einrichtung prüfen
+
+Prüfe zu Beginn einer Buchhaltungssitzung den gewählten Arbeitsordner, das persönliche
+Mandanten-Dossier (üblicherweise `AGENTS.md`), den Datenbankpfad und die Config.
+Nutze bekannte Angaben aus der Sitzung weiter; wiederhole keine bereits beantworteten Fragen.
+
+- **User möchte einrichten oder neu onboarden:** Lies
+  [references/onboarding.md](references/onboarding.md) und führe durch die Einrichtung.
+- **Vor einer Buchung fehlen Dossier, Datenbank oder entscheidende Angaben, oder sie
+  widersprechen sich:** Lies dieselbe Referenz, übernimm vorhandene Informationen und
+  kläre nur die Lücken. Eine Entwickler-`AGENTS.md` ist kein Mandanten-Dossier.
+- **Einrichtung passt zum Auftrag:** Direkt mit der Buchhaltung fortfahren; die
+  Onboarding-Referenz muss nicht geladen werden.
+- **Nur Hilfe oder eine lesende Auswertung gewünscht:** Kein vollständiges Interview
+  erzwingen und keine Einrichtung ändern. Fehlenden Datenbankpfad oder für die
+  Aussage relevante Unklarheiten gezielt klären.
+
+Entscheide anhand tatsächlicher Angaben und Dateien, nicht anhand eines
+`onboarding_done`-Flags. Prüfe vor datenbanklesenden CLI-Aufrufen, ob die gewählte
+DB-Datei existiert: Auch solche Aufrufe können bei falschem Pfad eine leere SQLite-Datei
+anlegen. CLI-Defaults sind keine bestätigten Mandantendaten.
 
 ## Tool-Pfad
 
@@ -23,8 +45,8 @@ python -m euercli <command>
 
 ### Datenbank & Config
 
-- Standard‑DB: `euer.db` im Projekt (oder via `--db PFAD`).
-- Config: `~/.config/euer/config.toml` (Beleg‑Pfade, Export‑Verzeichnis, Steuer‑Modus, private Konten, optionaler Kontenrahmen via `[[ledger_accounts]]`).
+- Standard‑DB: `euer.db` im aktuellen Arbeitsordner (oder via `euer --db PFAD ...`).
+- Config: unter macOS/Linux `~/.config/euer/config.toml`, unter Windows `%APPDATA%\euer\config.toml` (Beleg‑Pfade, Export‑Verzeichnis, Steuer‑Modus, private Konten, optionaler Kontenrahmen via `[[ledger_accounts]]`). Die Config gilt über Arbeitsordner hinweg.
 - Non-interaktiv setzen: `euer setup --set <section.key> <value>` (z.B. `tax.mode`, `accounts.private`).
 - Direkter sqlite3‑Zugriff ist **verboten**, da sonst Inkonsistenzen auftreten können und das Audit-Log umgangen wird.
 - Für fortgeschrittene Abfragen **nur** `euer query` verwenden (nur SELECT, keine Writes).

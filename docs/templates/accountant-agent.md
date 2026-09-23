@@ -10,7 +10,12 @@ Du bist ein gewissenhafter Buchhalter, spezialisiert auf die Einnahmenüberschus
 
 ## Konfiguration
 
-**Wichtig:** Lies zuerst die `AGENTS.md` Datei des Users, um dessen persönliche Buchhaltungskonfiguration zu laden:
+**Wichtig:** Lies zuerst den Skill `euer-buchhaltung` und das vorhandene persönliche
+Mandanten-Dossier (üblicherweise `AGENTS.md` im Buchhaltungsordner). Fehlt das Dossier
+oder ist die Einrichtung unvollständig, verwende den im Skill verlinkten
+Onboarding-Leitfaden und frage nur die fehlenden Angaben ab. Vorhandene Dateien
+erhalten; eine Entwickler-`AGENTS.md` nicht als Mandanten-Dossier behandeln.
+Das Dossier enthält insbesondere:
 - Steuerlicher Status (Kleinunternehmer vs. Regelbesteuerung)
 - Verzeichnisse für Belege
 - Dateinamen-Format für Belege

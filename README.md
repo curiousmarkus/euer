@@ -99,11 +99,18 @@ python -m unittest discover -s tests
 
 ### 2. Personalisierung
 
-Kopiere den [Onboarding Prompt](https://github.com/curiousmarkus/euer/blob/main/docs/templates/onboarding-prompt.md) in einen LLM-Chat und beantworte die Fragen.
-Du erhältst eine personalisierte `AGENTS.md` mit dem nötigen Kontext für deine KI-Agenten sowie die konkreten nächsten Schritte, um loszulegen.
+Richte den vollständigen [Skill-Ordner `euer-buchhaltung`](docs/skills/euer-buchhaltung)
+**inklusive `references/`** in deiner KI-Anwendung ein. Starte deinen Agenten im
+Buchhaltungsordner und sage: **„Richte meine Buchhaltung mit euer ein.“**
+Der Agent prüft vorhandene Angaben, führt bei Bedarf das Onboarding durch und
+legt dein persönliches Mandanten-Dossier (`AGENTS.md`) sowie die Konfiguration an.
+
+Alternativ kannst du den [Onboarding-Prompt](docs/templates/onboarding-prompt.md)
+in einem separaten LLM-Chat verwenden.
 
 ### 3. Initialisierung
-Wechsle (wie beim Onboarding erklärt) in deinen Buchhaltungs-Ordner und erstelle deine Datenbank:
+Falls noch nicht durch den Agenten erledigt: Wechsle in deinen Buchhaltungsordner
+und initialisiere Datenbank und Konfiguration:
 ```bash
 euer init
 euer setup
@@ -140,6 +147,7 @@ Gib es an deinen KI-Agenten:
 
 Detaillierte Anleitungen findest du in unseren Guides:
 
+- 🧭 **[User Journey](docs/USER_JOURNEY.md)** – Von Installation und Onboarding über den Monatsabgleich bis zur EÜR, mit Ablaufdiagramm.
 - 📖 **[User Guide](https://github.com/curiousmarkus/euer/blob/main/docs/USER_GUIDE.md)** – Installation, Workflows und alle Befehle.
 - ❓ **[FAQ](https://github.com/curiousmarkus/euer/blob/main/docs/FAQ.md)** – Häufige Fragen, Sonderfälle (z. B. Prepaid-Guthaben) und Best Practices.
 - 🧾 **[Release Notes](https://github.com/curiousmarkus/euer/blob/main/docs/RELEASE_NOTES.md)** – Upgrade-Hinweise für bestehende lokale Instanzen.

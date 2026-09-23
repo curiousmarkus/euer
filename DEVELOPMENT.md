@@ -48,6 +48,7 @@ euer/
 ├── specs/                   # Historische Anforderungen + Backlog Items
 ├── docs/
 │   ├── USER_GUIDE.md         # Nutzer:innen-Doku
+│   ├── USER_JOURNEY.md       # Ablauf von Onboarding bis Jahresabschluss
 │   ├── RELEASE_NOTES.md      # Upgrade-Hinweise für bestehende lokale Instanzen
 │   ├── skills/               # AI Agent Skills
 │   └── templates/            # Agent-Konfigurationsvorlagen
@@ -57,6 +58,16 @@ euer/
 ```
 
 ## Architektur
+
+### Agenten-Onboarding pflegen
+
+`docs/skills/euer-buchhaltung/SKILL.md` enthält die Zustandsprüfung und verweist bei
+fehlender Einrichtung auf `references/onboarding.md` im selben Skill-Ordner.
+Dieser Leitfaden ist die gemeinsame Quelle für Interview, Dossier und Setup;
+`docs/templates/onboarding-prompt.md` dient als Einstieg für separate LLM-Chats.
+Keine zweite Interview-Anleitung im Prompt pflegen. Bei Skill-Updates müssen auch
+die Referenzen verteilt werden. Das Routing ist eine Agenten-Anweisung, keine
+technische Sperre in der CLI. Änderungen daran gehören in die Release Notes.
 
 ### Schichtenmodell
 
