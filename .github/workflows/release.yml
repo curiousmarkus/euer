@@ -209,6 +209,9 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Repository auschecken
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
       - name: Draft als immutable Release veröffentlichen
         env:
           GH_TOKEN: ${{ github.token }}

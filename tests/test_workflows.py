@@ -30,6 +30,8 @@ class WorkflowTestCase(unittest.TestCase):
             self.assertIn(job, workflow)
         self.assertIn("needs: github-draft", workflow)
         self.assertIn("needs: publish-pypi", workflow)
+        publish_github = workflow.split("  publish-github:", 1)[1]
+        self.assertIn("uses: actions/checkout@", publish_github)
         self.assertIn("skip-existing: false", workflow)
         self.assertIn("cancel-in-progress: false", workflow)
         self.assertIn("attestations: true", workflow)
