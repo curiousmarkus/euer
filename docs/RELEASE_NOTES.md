@@ -24,7 +24,7 @@ zusätzlich aktualisiert werden. Das betrifft insbesondere:
 Die persönliche `AGENTS.md` sollte nie blind ersetzt werden, weil sie individuelle
 Pfade, Konten, Lieferanten-Mappings und steuerliche Stammdaten enthält.
 
-## 0.10.0
+## 0.10.1
 
 ### Bewirtungen und Formularjahr-Zuordnungen
 
