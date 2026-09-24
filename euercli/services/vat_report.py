@@ -446,6 +446,18 @@ def _aggregate_expenses(
         rc_type = row["rc_type"] or "none"
         code = row["vat_code"]
 
+        if row["eur_key"] == "entertainment" and (row["amount_eur"] >= 0 or rc_type != "none"):
+            diagnostics.append(
+                _diagnostic_from_row(
+                    row,
+                    status="unsupported",
+                    booking_type="expense",
+                    reason="Bewirtungs-Erstattung oder Reverse Charge muss separat geprüft werden.",
+                    reason_code="unsupported_entertainment_booking",
+                )
+            )
+            continue
+
         if rc_type == "unclassified":
             diagnostics.append(
                 _diagnostic_from_row(

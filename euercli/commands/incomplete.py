@@ -42,10 +42,11 @@ def collect_expense_missing(row: dict, tax_mode: str) -> list[str]:
     if row["rc_type"] == "unclassified":
         missing.append("rc_type")
 
-    if is_entertainment_category(row["eur_key"]) and row["entertainment_vat_status"] not in {
-        "deductible",
-        "no_deduction",
-    }:
+    if is_entertainment_category(row["eur_key"]) and (
+        row["entertainment_vat_status"] not in {"deductible", "no_deduction"}
+        or row["amount_eur"] >= 0
+        or row["rc_type"] != "none"
+    ):
         missing.append("entertainment_vat_status")
 
     return missing

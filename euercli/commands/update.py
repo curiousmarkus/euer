@@ -10,8 +10,8 @@ from ..config import (
 )
 from ..db import get_db_connection
 from ..importers import get_tax_config
-from ..services.errors import RecordNotFoundError, ValidationError
 from ..services.entertainment import calculate_entertainment_breakdown
+from ..services.errors import RecordNotFoundError, ValidationError
 from ..services.eur import is_entertainment_category
 from ..services.expenses import update_expense
 from ..services.income import update_income

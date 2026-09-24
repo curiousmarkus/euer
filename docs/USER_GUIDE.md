@@ -692,3 +692,11 @@ euer --help
 euer add expense --help
 euer receipt --help
 ```
+
+### Grenzen bei Bewirtungs-Sonderfällen
+
+Bewirtungen mit Reverse Charge sowie positive Erstattungsbuchungen werden aktuell
+nicht neu unterstützt. Vorhandene Sonderfälle erhalten keine automatische
+70/30-Aufteilung; die EÜR bleibt als unvollständig gekennzeichnet. Diese Belege
+separat prüfen und keine negativen Ausgaben erfinden, um eine Erstattung zu buchen.
+Nach einem Upgrade betroffene Berichte und XLSX-Exporte erneut erzeugen.

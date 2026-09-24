@@ -61,6 +61,86 @@ class EuerCLITestCase(unittest.TestCase):
         config_path.parent.mkdir(parents=True, exist_ok=True)
         config_path.write_text(content, encoding="utf-8")
 
+    def test_summary_rc_does_not_net_off_unpaid_input_vat(self):
+        self.write_config('[tax]\nmode = "standard"\n')
+        self.add_expense(amount="-100", rc="eu")
+        result = self.run_cli(["summary", "--year", "2026"], check=True)
+        expenses = result.stdout.split("Umsatzsteuer")[0]
+        self.assertRegex(expenses, r"Arbeitsmittel .*?-100\.00 EUR")
+        self.assertNotIn("Abziehbare Vorsteuer", expenses)
+
+    def test_summary_entertainment_and_open_review(self):
+        self.write_config('[tax]\nmode = "standard"\n')
+        self.add_expense(amount="-129", category="Bewirtungsaufwendungen", vat="19")
+        result = self.run_cli(["summary", "--year", "2026"], check=True)
+        self.assertRegex(result.stdout, r"GESAMT Ausgaben .*?-96\.00 EUR")
+        self.assertRegex(result.stdout, r"Abziehbare Vorsteuer \(Zeile 58\).*?-19\.00 EUR")
+        self.add_expense(amount="-50", vendor="Other", category="Bewirtungsaufwendungen")
+        result = self.run_cli(["summary", "--year", "2026"], check=True)
+        self.assertIn("unvollständig", result.stdout)
+        self.assertNotIn("GEWINN", result.stdout)
+
+    def test_entertainment_export_roundtrip_and_numeric_xlsx(self):
+        from openpyxl import load_workbook
+
+        self.write_config('[tax]\nmode = "standard"\n')
+        self.run_cli(
+            [
+                "add",
+                "expense",
+                "--date",
+                "2026-01-15",
+                "--vendor",
+                "Restaurant",
+                "--category",
+                "Bewirtungsaufwendungen",
+                "--amount",
+                "-129",
+                "--vat",
+                "19",
+                "--tip",
+                "10",
+            ],
+            check=True,
+        )
+        export_dir = self.root / "exports"
+        self.run_cli(
+            ["export", "--year", "2026", "--format", "xlsx", "--output", str(export_dir)],
+            check=True,
+        )
+        workbook = load_workbook(next(export_dir.glob("*_Ausgaben.xlsx")))
+        try:
+            sheet = workbook.worksheets[0]
+            headers = {cell.value: cell.column for cell in sheet[1]}
+            for name, expected in [
+                ("Trinkgeld", 10),
+                ("Bewirtung Kostenbasis", 110),
+                ("Bewirtung abziehbar", 77),
+                ("Bewirtung nicht abziehbar", 33),
+            ]:
+                cell = sheet.cell(2, headers[name])
+                self.assertEqual(cell.data_type, "n")
+                self.assertEqual(cell.value, expected)
+        finally:
+            workbook.close()
+        result = self.run_cli(
+            ["export", "--year", "2026", "--format", "csv", "--output", str(export_dir)], check=True
+        )
+        expense_file = next(
+            line.split("Exportiert: ", 1)[1]
+            for line in result.stdout.splitlines()
+            if line.startswith("Exportiert: ")
+        )
+        self.db_path = self.root / "roundtrip.db"
+        self.run_cli(["init"], check=True)
+        self.write_config('[tax]\nmode = "small_business"\n')
+        self.run_cli(["import", "--file", expense_file, "--format", "csv"], check=True)
+        with sqlite3.connect(self.db_path) as conn:
+            row = conn.execute(
+                "SELECT amount_eur, vat_input, entertainment_tip_eur, entertainment_vat_status FROM expenses"
+            ).fetchone()
+        self.assertEqual(row, (-129, 19, 10, "deductible"))
+
     def test_version_flag(self) -> None:
         result = self.run_cli(["--version"])
 
@@ -227,11 +307,13 @@ class EuerCLITestCase(unittest.TestCase):
             rc,
             vat_input,
             vat_output,
+            *entertainment_fields,
         ) = rows[1]
+        self.assertEqual(entertainment_fields, [""] * 5)
         self.assertEqual(payment_date, "2026-01-15")
         self.assertEqual(invoice_date, "")
         self.assertEqual(vendor, "TestVendor")
-        self.assertEqual(category, "(51) Arbeitsmittel")
+        self.assertEqual(category, "(52) Arbeitsmittel")
         self.assertEqual(amount, "-10.00")
         self.assertEqual(account, "Bank")
         self.assertEqual(receipt, "receipt.pdf")
@@ -296,7 +378,7 @@ account_number = "4940"
 
         rows = self.list_expenses_csv()
         self.assertEqual(rows[1][3], "Hetzner")
-        self.assertEqual(rows[1][4], "(50) Laufende EDV-Kosten")
+        self.assertEqual(rows[1][4], "(51) Laufende EDV-Kosten")
 
         query = self.run_cli(
             [
@@ -625,7 +707,7 @@ account_number = "8400"
         list_result = self.run_cli(["list", "expenses", "--year", "2026"], check=True)
         self.assertIn("USt", list_result.stdout)
         self.assertIn("OpenAI", list_result.stdout)
-        self.assertIn("(50)", list_result.stdout)
+        self.assertIn("(51)", list_result.stdout)
 
     def test_add_expense_rc_requires_jurisdiction(self):
         result = self.run_cli(
@@ -1046,7 +1128,7 @@ account_number = "8400"
             check=True,
         )
         self.assertIn("Privatvorgänge", result.stdout)
-        self.assertIn("Privateinlagen (Zeile 122)", result.stdout)
+        self.assertIn("Privateinlagen (Zeile 108)", result.stdout)
 
     def test_private_summary_command(self):
         self.add_expense(account="privat", amount="-25.00")
@@ -1552,7 +1634,7 @@ account_number = "4940"
 
         rows = self.list_expenses_csv()
         self.assertEqual(len(rows), 2)
-        self.assertEqual(rows[1][4], "(51) Arbeitsmittel")
+        self.assertEqual(rows[1][4], "(52) Arbeitsmittel")
         self.assertEqual(rows[1][3], "1und1")
 
     def test_import_accepts_vat_classification_fields(self):

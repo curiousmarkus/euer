@@ -72,6 +72,9 @@ Wenn `markitdown` keinen oder nur unbrauchbaren Text liefert (z.B. bei Scans):
 
 ### Bewirtungsaufwendungen
 
+- Bewirtungs-Erstattungen und Bewirtung mit Reverse Charge werden nicht unterstützt;
+  separat prüfen und keine Ersatzbuchung mit falschem Vorzeichen erzeugen.
+
 - Eine geschäftliche Bewirtung als einen Zahlungsvorgang mit negativem Gesamtbetrag erfassen.
 - `--vat` ist ausschließlich die belegte, tatsächlich abziehbare Vorsteuer. Bei gemischten
   Steuersätzen die auf dem Beleg ausgewiesenen Vorsteuerbeträge summieren; keinen Steuersatz
@@ -177,6 +180,9 @@ In beiden Fällen gilt:
 ## Spezialfälle
 
 ### Bewirtungsaufwendungen
+
+- Bewirtungs-Erstattungen und Bewirtung mit Reverse Charge werden nicht unterstützt;
+  separat prüfen und keine Ersatzbuchung mit falschem Vorzeichen erzeugen.
 
 - Eine geschäftliche Bewirtung als einen Zahlungsvorgang mit negativem Gesamtbetrag buchen.
 - `--vat` enthält nur tatsächlich abziehbare, belegte Vorsteuer. Nie aus dem Zahlbetrag

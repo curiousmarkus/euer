@@ -28,6 +28,12 @@ Pfade, Konten, Lieferanten-Mappings und steuerliche Stammdaten enthält.
 
 ### Bewirtungen und Formularjahr-Zuordnungen
 
+User Journey und FAQ beschreiben nun die Bewirtungserfassung, offene Belegprüfungen,
+Jahreszuordnung und Nachpflege alter Buchungen. Die Entwickler-Checkliste und
+Repository-`AGENTS.md` verlangen künftig auch die Prüfung dieser beiden Dokumente.
+Diese Dokumentationsergänzung benötigt keine zusätzliche Datenbank- oder
+Konfigurationsmigration.
+
 Bewirtungen werden als ein Zahlungsvorgang mit belegter Vorsteuer und optionalem,
 im Zahlbetrag enthaltenem Trinkgeld erfasst. `summary` berechnet die 70/30-Aufteilung
 aus Zahlbetrag abzüglich Vorsteuer; der volle belegte Vorsteuerbetrag bleibt im
@@ -42,6 +48,15 @@ anderem Bewirtung, Vorsteuer, Zahlungen ans Finanzamt, die übrigen Seed-Kategor
 und Privateinlagen/-entnahmen. Das Zeile-13-Feld wird als Unterfeld nicht noch einmal
 zu den Betriebseinnahmen addiert. Für nicht mitgelieferte Formularjahre wird keine
 Zeilennummer behauptet.
+
+**Review-Korrekturen:** Reverse-Charge-Vorsteuer wird in der EÜR nicht vom
+Zahlbetrag abgezogen oder als bezahlte Rechnungs-Vorsteuer ausgewiesen. Neue
+Bewirtungen mit Reverse Charge werden abgelehnt; historische RC-Bewirtungen und
+Erstattungen bleiben ausdrücklich ungeprüft und werden nicht als normale
+Bewirtungskosten berechnet. Das Zeile-13-Unterfeld lässt auch bei Updates keine
+Umsatzsteuer zu. XLSX enthält die neuen Bewirtungsbeträge als numerische Zellen.
+Bereits erzeugte Berichte und Exporte bei betroffenen Buchungen neu erstellen.
+Lokal kopierten Buchhaltungs-Skill und Accountant-Template aktualisieren.
 
 **Upgrade:** `euer init` ergänzt die Datenbank additiv um Kategorie-Schlüssel,
 Trinkgeld und Bewirtungs-Vorsteuerstatus. Bestehende Beträge und Vorsteuerwerte

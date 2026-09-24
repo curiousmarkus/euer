@@ -196,9 +196,7 @@ def normalize_import_row(row: dict) -> dict:
         "rc_jurisdiction_raw": rc_jurisdiction_value,
         "private_paid": parse_bool(get_row_value(row, "private_paid", "Privat bezahlt")),
         "vat_input": parse_amount(get_row_value(row, "vat_input", "Vorsteuer", "USt-VA")),
-        "entertainment_tip_eur": parse_amount(
-            entertainment_tip_raw
-        ),
+        "entertainment_tip_eur": parse_amount(entertainment_tip_raw),
         "entertainment_tip_raw": entertainment_tip_raw,
         "entertainment_vat_status": (
             str(entertainment_vat_status_raw).strip() or None

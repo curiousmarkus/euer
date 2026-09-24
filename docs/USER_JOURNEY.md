@@ -4,7 +4,8 @@ Du installierst `euer`, richtest deinen KI-Buchhalter einmal ein und übergibst 
 anschließend Rechnungen und Kontoauszüge. Der Agent erfasst und vervollständigt die
 Buchungen, hält Rückfragen fest und erstellt Auswertungen. Du lieferst die Unterlagen,
 klärst unklare Vorgänge, prüfst die Ergebnisse und überträgst die Werte selbst nach
-ELSTER. Die Berichte unterstützen dich dabei mit EÜR-Zeilennummern beziehungsweise
+ELSTER. Die Berichte unterstützen dich dabei mit jahresbezogenen EÜR-Zeilennummern
+für mitgelieferte Formularjahre beziehungsweise
 UStVA-Kennzahlen; Exporte machen die zugrunde liegenden Buchungen kontrollierbar.
 
 Diese Journey beschreibt den vorhandenen Funktionsumfang. Die Beispieljahre und
@@ -198,12 +199,54 @@ den Zahlungseingang später. Eine Rechnung allein belegt noch keinen Zahlungsein
 | Rechnung vorhanden, Zahlung fehlt | Ohne Zahlungsdatum erfassen, Zahlungsstatus offenhalten |
 | Betriebsausgabe privat bezahlt | Privates Konto bzw. `--private-paid` verwenden; Sacheinlage berücksichtigen |
 | Privateinlage oder Privatentnahme | Als eigenen Privatvorgang erfassen, getrennt von Betriebseinnahmen/-ausgaben |
+| Geschäftlicher Bewirtungsbeleg | Gesamten Zahlbetrag inklusive Trinkgeld erfassen; belegte abziehbare Vorsteuer und Prüfstatus festhalten (siehe unten) |
 | Fremdwährung | Tatsächlichen EUR-Zahlbetrag verwenden, Originalbetrag zusätzlich dokumentieren |
 | Teilzahlung, Sammelzahlung, Erstattung oder unklare Zuordnung | Sachverhalt klären und Aufteilung dokumentieren; keinen ungeprüften Standardfall unterstellen |
 
 Korrekturen erfolgen über `euer update`; die CLI protokolliert Änderungen im
 Audit-Log. Wiederkehrende Regeln, die sich aus deinen Korrekturen ergeben, kann der
 Agent zur Ergänzung deiner persönlichen `AGENTS.md` vorschlagen.
+
+### Einen geschäftlichen Bewirtungsbeleg übergeben
+
+> Erfasse diesen Bewirtungsbeleg samt Zahlungs- und Trinkgeldnachweis. Prüfe,
+> ob er schon gebucht ist und ob Angaben zur Bewirtung oder Vorsteuer fehlen.
+
+Du stellst die Rechnung, den Zahlungsnachweis und die Angaben zu Anlass und
+Teilnehmern bereit; gegebenenfalls auch den Trinkgeldnachweis. Der Agent prüft,
+ob der Vorgang in die Kategorie `Bewirtungsaufwendungen` gehört. Eine Bewirtung
+nur eigener Arbeitnehmer fällt nicht unter diesen Workflow.
+
+Beispiel bei Regelbesteuerung: Bezahlt wurden insgesamt 129,00 EUR, darin sind
+10,00 EUR freiwilliges Trinkgeld enthalten. Die Rechnung weist 19,00 EUR
+abziehbare Vorsteuer aus. Der Agent übernimmt den tatsächlichen Vorsteuerbetrag
+vom geprüften Beleg; er rechnet ihn nicht pauschal aus dem Zahlbetrag zurück.
+
+```bash
+euer add expense --invoice-date 2026-09-18 --payment-date 2026-09-18 \
+  --vendor "Beispielrestaurant" --category "Bewirtungsaufwendungen" \
+  --amount -129.00 --vat 19.00 --tip 10.00 --account g-geschaeftskonto \
+  --receipt "2026-09-18_Beispielrestaurant.pdf"
+```
+
+Das Konto ersetzt du durch deine eigene Konto-Kennung. `--tip` beschreibt einen
+bereits im Zahlbetrag enthaltenen Anteil. Der Agent legt weder eine zweite
+Trinkgeldbuchung noch eigene 70-%-/30-%-Buchungen an. `summary` berechnet aus
+110,00 EUR Kostenbasis 77,00 EUR abziehbaren und 33,00 EUR nicht abziehbaren
+Aufwand. Die 19,00 EUR Vorsteuer erscheinen zusätzlich als eigene EÜR-Ausgabe;
+die gesamte Ausgabenwirkung beträgt hier 96,00 EUR. Ohne Vorsteuerabzug im
+Kleinunternehmermodus sind es 90,30 EUR abziehbar und 38,70 EUR nicht abziehbar.
+
+Fehlt bei Regelbesteuerung die belegte Vorsteuerbehandlung, lässt der Agent `--vat`
+weg: Die Buchung erhält `needs_review`. `--vat 0` ist nur für einen geprüften
+fehlenden Vorsteuerabzug gedacht. Nach der Klärung ergänzt er die bestehende
+Buchung, beispielsweise mit `euer update expense <ID> --vat 19.00 --tip 10.00`.
+`euer incomplete list` und die erneute Jahresauswertung zeigen den Folgestand.
+Ein gespeicherter Vorsteuerstatus ersetzt nicht die fachliche Belegprüfung.
+
+Bewirtungs-Erstattungen und Bewirtung mit Reverse Charge sind derzeit nicht
+unterstützt. Der Agent hält sie zur gesonderten Klärung offen. Weitere Antworten
+stehen in den [Bewirtungs-FAQ](FAQ.md#4-wie-buche-ich-einen-bewirtungsbeleg-mit-trinkgeld).
 
 ## 6. Zum Monatswechsel die Konten abgleichen
 
@@ -256,7 +299,9 @@ nächsten Schritt. Das ist ein Arbeitsstand, keine technische Periodensperre.
 > Jahresstand. Nenne unbezahlte Rechnungen, fehlende Belege und den Stand des Abgleichs.
 
 `euer summary --year 2026` liefert die Jahresauswertung nach Kategorien mit
-Gewinn/Verlust und Steuerinformationen. Eine Monatsoption gibt es für `summary`
+Gewinn/Verlust und Steuerinformationen. Bei ungeprüften Bewirtungen werden
+vorläufige Teilwerte und ein unvollständiger Zwischensaldo ausgewiesen; der Agent
+darf diesen nicht als abschließenden Gewinn darstellen. Eine Monatsoption gibt es für `summary`
 nicht. Für Monatszahlen nutzt der Agent die gefilterten Listen oder lesende
 Abfragen über `euer query` und benennt die Berechnungsgrundlage.
 
@@ -286,6 +331,9 @@ euer vat-report --year 2026 --quarter 3 --format csv --output exports/2026-Q3
 
 Der Bericht enthält ELSTER-Kennzahlen, Zahllast/Erstattung und Warnungen. Beim
 CSV-Export entsteht zusätzlich eine Diagnose-Datei; XLSX ist optional verfügbar.
+Bei Bewirtungen wird die belegte abziehbare Vorsteuer nicht auf 70 % gekürzt.
+Ein Diagnosehinweis zu `needs_review` bleibt auch dann zu klären, wenn schon ein
+vorläufiger Vorsteuerbetrag im Bericht enthalten ist.
 Der Agent klärt fehlende Steuerklassifikationen und ausgeschlossene Buchungen,
 bevor du die Werte verwendest. Kleinunternehmer sollten Umsatzsteuerthemen nicht
 pauschal überspringen: Auch sie können etwa bei Reverse Charge betroffen sein.
@@ -342,9 +390,20 @@ euer export --year 2026 --format csv --output exports/2026
 
 Bei Bedarf kommt `euer vat-report --year 2026` als jährliche Kontrollauswertung
 hinzu. Es ersetzt weder die Umsatzsteuer-Jahreserklärung noch die einzelnen UStVA.
-Auch Kategorie-/Zeilenzuordnungen müssen zum Formularjahr passen.
+Vor dem Abschluss klärt der Agent insbesondere alle Bewirtungen mit
+`needs_review`, gleicht Zahlbetrag, Trinkgeld und Vorsteuer mit dem Beleg ab und
+kontrolliert die getrennten abziehbaren/nicht abziehbaren Beträge. Der 30-%-Anteil
+wird nicht zusätzlich als Privatentnahme gebucht.
 
-**Du erhältst:** Jahresauswertung mit EÜR-Zeilennummern, Buchungsexporte,
+Auch Kategorie-/Zeilenzuordnungen müssen zum Formularjahr passen:
+`euer list categories --year 2026` zeigt die mitgelieferte Zuordnung. Für unbekannte
+Jahre gibt die CLI keine Zeilennummern vor; der Agent kennzeichnet den fehlenden
+Formularabgleich. Neue Zuordnungen kommen derzeit über ein Paketupdate, nicht
+über einen automatischen Online-Abruf. Die 2026-Zuordnung ist anhand der
+BMF-Unterlagen hinterlegt; dies ist keine Bestätigung einer geprüften Live-Maske
+in Mein ELSTER. Prüfe dort stets Formularjahr, Feldbezeichnung und Teilfeld.
+
+**Du erhältst:** Jahresauswertung mit verfügbaren EÜR-Zeilennummern, Buchungsexporte,
 Privatübersicht, Belegbestand und eine Liste verbleibender Abschlussfragen.
 Damit erledigst du den Abschluss selbst:
 
@@ -353,7 +412,10 @@ Damit erledigst du den Abschluss selbst:
    Unterlagen abzugleichen. Nach Korrekturen lässt du die Berichte neu erstellen.
 2. Öffne die Anlage EÜR für das passende Jahr in ELSTER. Übertrage die geprüften
    Werte per Copy-and-paste anhand der im Bericht angegebenen Zeilennummern in die
-   entsprechenden Felder; gleiche dabei auch die Feldbezeichnungen ab.
+   entsprechenden Felder; gleiche dabei auch die Feldbezeichnungen ab. Fehlt die
+   Jahreszuordnung, muss die Zuordnung anhand der amtlichen Jahresunterlagen
+   zuerst geprüft werden. Abziehbare und nicht abziehbare Bewirtung sind getrennte
+   Teilfelder derselben Zeile.
 3. Ergänze weitere erforderliche Angaben, prüfe die Eingaben und die
    ELSTER-Prüfmeldungen und sende die Erklärung ab. Bewahre das Übermittlungsprotokoll auf.
 
@@ -377,6 +439,13 @@ führst du im richtigen Buchhaltungsordner `euer init` für eventuelle Migration
 und anschließend die dort beschriebenen Prüfungen aus. Lokal kopierte Skills und
 Agenten-Vorlagen müssen gegebenenfalls separat aktualisiert werden. Dein
 persönliches Dossier bleibt erhalten und wird gezielt angepasst.
+
+Beim Bewirtungs-Upgrade bleiben historische Beträge und Vorsteuerwerte erhalten;
+`euer init` markiert bisherige Bewirtungen ohne Einzelstatus als `needs_review`.
+Der Agent prüft diese am jeweiligen Beleg und berücksichtigt den damaligen
+Vorsteuerabzug. Ein späterer Wechsel des globalen Steuermodus entscheidet nicht
+über die Behandlung alter Buchungen. Anschließend erstellt er betroffene Berichte
+und Exporte neu.
 
 ## Vorhandene Funktionen und offene Erweiterungen
 

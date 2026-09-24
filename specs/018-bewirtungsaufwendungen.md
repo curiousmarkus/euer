@@ -294,3 +294,14 @@ aus.
    ans Finanzamt nicht als Vorsteuer und private Transfers nicht als
    Zeilen 121/122 bezeichnet. Das Zeile-13-Unterfeld erzeugt keine
    doppelten Betriebseinnahmen.
+
+## Review-Nachtrag
+
+Reverse-Charge-Vorsteuer ist keine im Zahlbetrag enthaltene Rechnungssteuer und
+wird deshalb in der EÜR nicht aus dem Aufwand herausgerechnet. Bewirtung mit RC
+sowie Erstattungen sind mit diesem Datenmodell nicht abschließend unterstützt:
+Neuanlage/Umstellung wird abgelehnt; entsprechende Altbestände erhalten keine
+70/30-Berechnung und halten den Bericht ausdrücklich unvollständig.
+XLSX-Beträge müssen numerische Zellen sein. Änderungen des Zeile-13-Unterfelds
+dürfen keine Umsatzsteuer ergänzen. Regressionstests decken diese Fälle sowie
+Rundung, Steuermoduswechsel, Migration und Jahreszuordnungen ab.

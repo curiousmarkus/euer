@@ -367,7 +367,7 @@ Weitere Details: `TESTING.md`.
 - Der allgemeine Ablauf für Beiträge und Pull Requests steht in `CONTRIBUTING.md`.
 - Kleine, fokussierte PRs bevorzugt.
 - Bitte relevante Doku aktualisieren (`README.md`, `docs/USER_GUIDE.md`,
-  `docs/RELEASE_NOTES.md`, `DEVELOPMENT.md`).
+  `docs/USER_JOURNEY.md`, `docs/FAQ.md`, `docs/RELEASE_NOTES.md`, `DEVELOPMENT.md`).
 - User‑Facing Texte auf Deutsch halten.
 
 ## Checkliste vor dem Entwickeln
@@ -381,6 +381,27 @@ Bevor du Code schreibst oder änderst:
 - [ ] Bei Schema-Änderungen: `euercli/schema.py` + Migration in `commands/init.py`
 - [ ] Bei neuen Features: Spec in `specs/` angelegt oder bestehendes Spec erweitert
 - [ ] Bei implementierten Specs: `docs/RELEASE_NOTES.md` auf nötige Upgrade-Hinweise prüfen
+
+## Dokumentations-Checkliste vor Abschluss
+
+Bei jeder nutzerwirksamen Änderung die folgenden Dokumente auf Betroffenheit
+prüfen und nötige Anpassungen im selben Change durchführen:
+
+- [ ] `docs/USER_GUIDE.md`: CLI-Aufrufe, Felder und Produktgrenzen aktualisiert.
+- [ ] `docs/USER_JOURNEY.md`: betroffene Schritte vom Onboarding über Belegerfassung,
+  Rückfragen und Monatsabgleich bis UStVA, Jahresabschluss und Upgrade aktualisiert.
+  Aufgaben von Nutzer und Agent, vorläufige Ergebnisse und Übergabe an ELSTER prüfen.
+- [ ] `docs/FAQ.md`: bestehende Antworten abgeglichen; wiederkehrende Fragen und
+  fehleranfällige Sonderfälle bei Bedarf ergänzt und aus der Journey verlinkt.
+- [ ] Skill, Referenzen und Agenten-/Onboarding-Templates auf konsistente Regeln geprüft.
+- [ ] `README.md`, Spec-Status und diese Dokumentation abgeglichen.
+- [ ] `docs/RELEASE_NOTES.md`: nutzerrelevante Änderungen und Upgrade-Schritte unter
+  `Unveröffentlicht` oder der nächsten Version dokumentiert.
+
+Bei Steuer- und Formularänderungen Geltungsjahr und amtliche Quellen nennen.
+BMF-Formularzuordnung und verifizierte Mein-ELSTER-Oberfläche auseinanderhalten;
+keine ungeprüften Jahresnummern fortschreiben. Beispiele gegen die aktuelle CLI
+prüfen und relative Dokumentationslinks kontrollieren.
 
 ## Backlog & Spezifikationen
 
@@ -409,4 +430,4 @@ Offene Change Requests werden innerhalb der jeweiligen Spec dokumentiert.
 | 015 | Multi-Channel-Distribution (PyPI, GitHub Releases, Homebrew) | Offen |
 | 016 | Agent-Safety & Guardrails (Schutz vor destruktiven Aktionen & Plausibilitaet) | Offen |
 | 017 | Nicht eingebuchte Belege erkennen (`receipt unbooked`) | Offen |
-| 018 | Bewirtungsaufwendungen, Vorsteuer und EÜR-Zuordnung | Implementiert |
+| 018 | Bewirtungsaufwendungen, Vorsteuer und EÜR-Zuordnung (inkl. Review-Korrekturen) | Implementiert |

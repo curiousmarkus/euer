@@ -76,3 +76,65 @@ Ich lade im Dezember 100 € Guthaben auf, verbrauche davon aber bis zum 31.12. 
 
 ### Antwort
 Nach dem Abflussprinzip (§ 11 Abs. 2 Satz 1 EStG) sind die gesamten 100 € im Jahr der Zahlung als Betriebsausgabe abzugsfähig. Im Folgejahr fallen bei der Nutzung des restlichen Guthabens keine weiteren Betriebsausgaben mehr an. Es ist keine rechnerische Abgrenzung in der EÜR erforderlich.
+
+---
+
+## 4. Wie buche ich einen Bewirtungsbeleg mit Trinkgeld?
+
+Erfasse eine geschäftliche Bewirtung als eine Ausgabe in `Bewirtungsaufwendungen`.
+`--amount` enthält den gesamten negativen Zahlbetrag einschließlich Trinkgeld.
+`--tip` dokumentiert den darin bereits enthaltenen Trinkgeldanteil; dieser wird
+nicht nochmals addiert. `--vat` ist der belegte, tatsächlich abziehbare
+Vorsteuerbetrag. Rechnung, Bewirtungsangaben und Trinkgeldnachweis gehören zur
+Belegprüfung. Die CLI prüft deren steuerliche Voraussetzungen nicht automatisch.
+
+Einen vollständigen Ablauf mit CLI-Beispiel findest du in der
+[User Journey](USER_JOURNEY.md#einen-geschäftlichen-bewirtungsbeleg-übergeben).
+Bei unterschiedlichen Steuersätzen auf dem Beleg übernimmt der Agent die
+belegten abziehbaren Steuerbeträge; er schätzt keinen einheitlichen Satz.
+
+## 5. Muss ich die 70/30-Aufteilung selbst buchen? Was gilt für Kleinunternehmer?
+
+Nein. Buche den ganzen Zahlungsvorgang; `summary` übernimmt die Aufteilung.
+Für angemessene und nachgewiesene geschäftliche Bewirtung gilt die Begrenzung
+auf 70 % des Aufwands. Grundlage ist
+[§ 4 Abs. 5 Satz 1 Nr. 2 EStG](https://www.gesetze-im-internet.de/estg/__4.html).
+Die 30 % sind nicht abziehbarer betrieblicher Aufwand und keine zusätzliche
+Privatentnahme.
+
+Die abziehbare Vorsteuer wird bei erfüllten Voraussetzungen nicht auf 70 %
+gekürzt; siehe [§ 15 Abs. 1 und 1a UStG](https://www.gesetze-im-internet.de/ustg_1980/__15.html).
+Sie wird vor der Aufteilung aus dem Zahlbetrag herausgerechnet. Ohne
+Vorsteuerabzug wird dagegen der gesamte Zahlbetrag aufgeteilt.
+
+Beispiel: Zahlung 129,00 EUR einschließlich 10,00 EUR Trinkgeld, bei
+Regelbesteuerung 19,00 EUR belegte abziehbare Vorsteuer:
+
+| Ergebnis | Mit Vorsteuerabzug | Kleinunternehmer ohne Vorsteuerabzug |
+|---|---:|---:|
+| Kostenbasis | 110,00 EUR | 129,00 EUR |
+| Abziehbare Bewirtung (70 %) | 77,00 EUR | 90,30 EUR |
+| Nicht abziehbarer Anteil (30 %) | 33,00 EUR | 38,70 EUR |
+| Separate Vorsteuer-Ausgabe in der EÜR | 19,00 EUR | 0,00 EUR |
+| Gesamte Ausgabenwirkung | 96,00 EUR | 90,30 EUR |
+
+Keine zusätzlichen Buchungen für die Teilbeträge oder die bereits in der
+Zahlung enthaltene Vorsteuer anlegen. Das Beispiel setzt einen geprüften,
+unterstützten Bewirtungsfall voraus; reine Arbeitnehmerbewirtung gehört nicht
+in diesen Workflow.
+
+## 6. Was bedeutet `needs_review`? Darf ich fehlende Vorsteuer mit null angeben?
+
+`needs_review` bedeutet, dass die Vorsteuerbehandlung noch am Beleg geprüft
+werden muss. Bei Regelbesteuerung lässt du `--vat` weg, wenn diese Angabe fehlt.
+`--vat 0` bestätigt dagegen einen geprüften fehlenden Vorsteuerabzug. Null ist
+kein Ersatz für eine unbekannte Angabe.
+
+Nach der Prüfung korrigiert der Agent die bestehende Buchung, zum Beispiel mit
+`euer update expense <ID> --vat 19.00` oder bei geprüftem fehlendem Abzug mit
+`euer update expense <ID> --vat 0`. Die CLI speichert den passenden Status.
+
+Solange Bewirtungen ungeprüft sind, bleibt die EÜR-Auswertung unvollständig.
+Bereits vorhandene Vorsteuerwerte können in Berichten vorläufig berücksichtigt
+sein; Hinweise und UStVA-Diagnosen müssen vor der Übernahme nach ELSTER geklärt
+werden. Ein technisch gesetzter Status ersetzt keine vollständigen Belege.

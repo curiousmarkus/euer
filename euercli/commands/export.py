@@ -162,6 +162,7 @@ def cmd_export(args):
             amount_eur=row["amount_eur"],
             vat_input=row["vat_input"],
             vat_status=row["entertainment_vat_status"],
+            rc_type=row["rc_type"],
         )
         return (
             tip,
@@ -392,7 +393,10 @@ def cmd_export(args):
                     r["vat_output"] if r["vat_output"] else None,
                     r["vat_rate"] if r["vat_rate"] is not None else None,
                     r["vat_code"] or "",
-                    *[value or None for value in entertainment_values],
+                    *[
+                        (value if index == 1 else float(value)) if value else None
+                        for index, value in enumerate(entertainment_values)
+                    ],
                 ]
             )
         wb.save(exp_path)

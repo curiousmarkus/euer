@@ -76,7 +76,8 @@ Details und Beispiele: `DEVELOPMENT.md` → „Neue Commands hinzufügen"
 Bei Änderungen auch die Tabelle in `DEVELOPMENT.md` aktualisieren.
 
 **Doku-Update:** Betroffene Dokumente prüfen und aktualisieren:
-`docs/USER_GUIDE.md`, `docs/skills/euer-buchhaltung/SKILL.md`,
+`docs/USER_GUIDE.md`, `docs/USER_JOURNEY.md`, `docs/FAQ.md`,
+`docs/skills/euer-buchhaltung/SKILL.md`,
 `docs/templates/onboarding-prompt.md`, `docs/RELEASE_NOTES.md`, `README.md`,
 `DEVELOPMENT.md`
 

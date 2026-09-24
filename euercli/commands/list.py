@@ -99,11 +99,16 @@ def cmd_list_expenses(args):
         )
         for r in rows:
             cat_str = format_category_label(r.category_name, r.category_eur_key, year)
-            entertainment = calculate_entertainment_breakdown(
-                amount_eur=r.amount_eur,
-                vat_input=r.vat_input,
-                vat_status=r.entertainment_vat_status,
-            ) if is_entertainment_category(r.category_eur_key) else None
+            entertainment = (
+                calculate_entertainment_breakdown(
+                    amount_eur=r.amount_eur,
+                    vat_input=r.vat_input,
+                    vat_status=r.entertainment_vat_status,
+                    rc_type=r.rc_type,
+                )
+                if is_entertainment_category(r.category_eur_key)
+                else None
+            )
             writer.writerow(
                 [
                     r.id,
@@ -320,28 +325,23 @@ def cmd_list_expenses(args):
                     amount_eur=r.amount_eur,
                     vat_input=r.vat_input,
                     vat_status=r.entertainment_vat_status,
+                    rc_type=r.rc_type,
                 )
                 status_label = {
                     "deductible": "geprüft, abziehbar",
                     "no_deduction": "geprüft, kein Vorsteuerabzug",
                     "needs_review": "Belegprüfung offen",
                 }.get(
-                    r.entertainment_vat_status or "needs_review",
+                    breakdown.status,
                     "unbekannter Status",
                 )
-                vat_text = (
-                    f"{r.vat_input:.2f} EUR"
-                    if r.vat_input is not None
-                    else "nicht erfasst"
-                )
+                vat_text = f"{r.vat_input:.2f} EUR" if r.vat_input is not None else "nicht erfasst"
                 tip_text = (
                     f"{r.entertainment_tip_eur:.2f} EUR"
                     if r.entertainment_tip_eur is not None
                     else "nicht erfasst"
                 )
-                detail = (
-                    f"Status {status_label}, Vorsteuer {vat_text}, Trinkgeld {tip_text}"
-                )
+                detail = f"Status {status_label}, Vorsteuer {vat_text}, Trinkgeld {tip_text}"
                 if breakdown.cost_basis_eur is None:
                     detail += "; keine 70/30-Aufteilung berechnet"
                 else:

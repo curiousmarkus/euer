@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 from .errors import ValidationError
 
@@ -152,6 +152,7 @@ def calculate_entertainment_breakdown(
     amount_eur: float,
     vat_input: float | None,
     vat_status: str | None,
+    rc_type: str = "none",
 ) -> EntertainmentBreakdown:
     """Berechnet die 70/30-Aufteilung; Altwerte bleiben klar vorläufig."""
     amount = _to_decimal(amount_eur, "amount_eur")
@@ -160,6 +161,10 @@ def calculate_entertainment_breakdown(
     paid = abs(amount).quantize(CENT, rounding=ROUND_HALF_UP)
     status = vat_status or "needs_review"
     provisional = status == "needs_review"
+    if amount >= 0 or rc_type != "none":
+        # Altbestände können Erstattungen oder bisher unerkannte Sonderfälle
+        # enthalten. Diese dürfen nicht als normale Bewirtung berechnet werden.
+        return EntertainmentBreakdown(paid, vat, None, None, None, "needs_review", True)
 
     can_calculate = status in {"deductible", "no_deduction"} or (
         provisional and vat is not None and vat > 0

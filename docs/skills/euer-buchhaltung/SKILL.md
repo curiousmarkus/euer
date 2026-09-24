@@ -363,6 +363,10 @@ Bei Anbietern mit Guthabenaufladung (Prepaid):
 
 ### Bewirtungsaufwendungen
 
+Bewirtung mit Reverse Charge und positive Erstattungen sind derzeit nicht
+unterstützt. Nicht durch Vorzeichenwechsel oder eine andere Kategorie umgehen.
+Altbestände separat prüfen; der Bericht bleibt dafür unvollständig.
+
 Eine geschäftliche Bewirtung wird als ein Zahlungsvorgang in
 `Bewirtungsaufwendungen` erfasst. Bei 129,00 € Zahlbetrag und 19,00 € belegter
 Vorsteuer ergibt sich eine Kostenbasis von 110,00 €, davon 77,00 € abziehbar und

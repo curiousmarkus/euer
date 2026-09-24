@@ -93,7 +93,7 @@ def cmd_summary(args):
         print()
 
     entertainment_rows = conn.execute(
-        """SELECT e.id, e.amount_eur, e.vat_input, e.entertainment_vat_status
+        """SELECT e.id, e.amount_eur, e.vat_input, e.entertainment_vat_status, e.rc_type
            FROM expenses e
            JOIN categories c ON e.category_id = c.id
            WHERE c.eur_key = 'entertainment'
@@ -102,37 +102,41 @@ def cmd_summary(args):
            ORDER BY e.id""",
         (str(year),),
     ).fetchall()
-    open_entertainment = [
-        row
+    entertainment_breakdowns = {
+        row["id"]: calculate_entertainment_breakdown(
+            amount_eur=row["amount_eur"],
+            vat_input=row["vat_input"],
+            vat_status=row["entertainment_vat_status"],
+            rc_type=row["rc_type"],
+        )
         for row in entertainment_rows
-        if row["entertainment_vat_status"] not in {"deductible", "no_deduction"}
+    }
+    open_entertainment = [
+        row for row in entertainment_rows if entertainment_breakdowns[row["id"]].provisional
     ]
     finalized_entertainment_deductible = Decimal("0.00")
     finalized_entertainment_non_deductible = Decimal("0.00")
     provisional_entertainment_deductible = Decimal("0.00")
     provisional_entertainment_non_deductible = Decimal("0.00")
     for row in entertainment_rows:
-        breakdown = calculate_entertainment_breakdown(
-            amount_eur=row["amount_eur"],
-            vat_input=row["vat_input"],
-            vat_status=row["entertainment_vat_status"],
-        )
+        breakdown = entertainment_breakdowns[row["id"]]
         if breakdown.deductible_eur is None:
             continue
         if breakdown.provisional:
             provisional_entertainment_deductible += breakdown.deductible_eur
-            provisional_entertainment_non_deductible += (
-                breakdown.non_deductible_eur or Decimal("0.00")
+            provisional_entertainment_non_deductible += breakdown.non_deductible_eur or Decimal(
+                "0.00"
             )
         else:
             finalized_entertainment_deductible += breakdown.deductible_eur
-            finalized_entertainment_non_deductible += (
-                breakdown.non_deductible_eur or Decimal("0.00")
+            finalized_entertainment_non_deductible += breakdown.non_deductible_eur or Decimal(
+                "0.00"
             )
 
     expense_rows = conn.execute(
         """SELECT c.name, c.eur_key, SUM(e.amount_eur) as total,
-                  SUM(COALESCE(e.vat_input, 0)) as vat_input_total
+                  SUM(CASE WHEN COALESCE(e.rc_type, 'none') = 'none'
+                           THEN COALESCE(e.vat_input, 0) ELSE 0 END) as vat_input_total
            FROM expenses e
            LEFT JOIN categories c ON e.category_id = c.id
            WHERE e.payment_date IS NOT NULL
@@ -184,7 +188,7 @@ def cmd_summary(args):
     provisional_entertainment_vat = sum(
         Decimal(str(row["vat_input"] or 0)).quantize(Decimal("0.01"))
         for row in entertainment_rows
-        if row["entertainment_vat_status"] not in {"deductible", "no_deduction"}
+        if entertainment_breakdowns[row["id"]].provisional and row["rc_type"] == "none"
     )
     known_input_vat = total_input_vat - provisional_entertainment_vat
     if known_input_vat:
@@ -207,7 +211,7 @@ def cmd_summary(args):
         final_payment = sum(
             Decimal(str(abs(row["amount_eur"]))).quantize(Decimal("0.01"))
             for row in entertainment_rows
-            if row["entertainment_vat_status"] in {"deductible", "no_deduction"}
+            if not entertainment_breakdowns[row["id"]].provisional
         )
         print("Bewirtungsaufwendungen:")
         print(f"  {'Geprüfte Zahlungsvorgänge (100%)':<56} {final_payment:>12.2f} EUR")
@@ -285,11 +289,14 @@ def cmd_summary(args):
         for row in income_rows
         if is_small_business_subset(row["eur_key"])
     )
-    ku_total = sum(
-        Decimal(str(row["total"] or 0))
-        for row in income_rows
-        if row["eur_key"] == "small_business_income"
-    ) + subset_total
+    ku_total = (
+        sum(
+            Decimal(str(row["total"] or 0))
+            for row in income_rows
+            if row["eur_key"] == "small_business_income"
+        )
+        + subset_total
+    )
 
     print("Einnahmen nach Kategorie:")
     income_total = Decimal("0.00")

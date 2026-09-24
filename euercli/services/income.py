@@ -549,11 +549,10 @@ def update_income(
                 "income",
             )
 
-    if (
-        resolved_category_key != existing_category_key
-        and is_small_business_subset(resolved_category_key)
-    ):
-        if tax_mode != "small_business":
+    if is_small_business_subset(resolved_category_key):
+        if tax_mode != "small_business" and (
+            resolved_category_key != existing_category_key or explicit_tax_change
+        ):
             raise ValidationError(
                 "Zeile 13 ist ein Unterfeld für nicht steuerbare Kleinunternehmerumsätze.",
                 code="small_business_subset_requires_small_business_mode",

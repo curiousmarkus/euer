@@ -366,6 +366,11 @@ def create_expense(
     resolved_entertainment_tip = None
     resolved_entertainment_vat_status = None
     if is_entertainment_category(resolved_category_key):
+        if resolved_rc_type != "none":
+            raise ValidationError(
+                "Bewirtung mit Reverse Charge wird nicht unterstützt.",
+                code="unsupported_entertainment_reverse_charge",
+            )
         raw_vat_input = vat_input if vat_input is not None else vat
         resolved_vat_input, resolved_entertainment_tip, resolved_entertainment_vat_status = (
             resolve_entertainment_fields(
@@ -788,9 +793,7 @@ def update_expense(
 
     is_entertainment = is_entertainment_category(resolved_category_key)
     new_entertainment_tip = (
-        entertainment_tip_eur
-        if entertainment_tip_eur is not None
-        else row["entertainment_tip_eur"]
+        entertainment_tip_eur if entertainment_tip_eur is not None else row["entertainment_tip_eur"]
     )
     new_entertainment_status = (
         entertainment_vat_status
@@ -798,6 +801,11 @@ def update_expense(
         else row["entertainment_vat_status"]
     )
     if is_entertainment:
+        if new_rc_type != "none":
+            raise ValidationError(
+                "Bewirtung mit Reverse Charge wird nicht unterstützt.",
+                code="unsupported_entertainment_reverse_charge",
+            )
         if existing_category_key != "entertainment" and entertainment_vat_status is None:
             # Beim erstmaligen Umklassifizieren keine historische Behandlung aus
             # dem aktuell eingestellten Steuermodus ableiten.
@@ -821,10 +829,7 @@ def update_expense(
         )
         new_vat_rate = None
         new_vat_code = INPUT_INVOICE if (new_vat_input or 0) > 0 else None
-    elif (
-        entertainment_tip_eur is not None
-        or entertainment_vat_status is not None
-    ):
+    elif entertainment_tip_eur is not None or entertainment_vat_status is not None:
         raise ValidationError(
             "Trinkgeld und Vorsteuerstatus sind nur für Bewirtungsaufwendungen zulässig.",
             code="entertainment_fields_require_category",
