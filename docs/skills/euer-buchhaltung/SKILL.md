@@ -119,7 +119,8 @@ euer add expense \
 euer list expenses [--year YYYY] [--month MM] [--category "..."] [--full]
 # Zeigt RC-Typ, USt (Output) und VorSt (Input) an, falls vorhanden.
 # Mit --full zeigt die Tabelle zusätzlich Konto, Beleg, Fremdwährung und Notiz.
-# Kategorieanzeige in Listen: `(<EÜR-Zeile>) <Name>` (z.B. `(51) Arbeitsmittel`).
+# Kategorieanzeige zeigt eine EÜR-Zeile nur für ein geprüftes Formularjahr;
+# ohne Mapping bleibt es beim Kategorienamen.
 
 # Ausgabe aktualisieren
 euer update expense <ID> [--payment-date ...] [--invoice-date ...] [--vendor ...] [--amount ...] [--rc eu|third-country|--no-rc] [--private-paid|--no-private-paid] ...
@@ -185,7 +186,7 @@ euer delete private-transfer <ID> [--force]
 euer summary [--year YYYY]
 euer summary [--year YYYY] [--include-private]
 
-# Privat-Zusammenfassung (ELSTER Zeile 121/122)
+# Privat-Zusammenfassung mit Jahreszeilen der Anlage EÜR
 euer private-summary --year YYYY
 
 # Persistierte private Klassifikation nachziehen (z.B. nach Setup-Änderung)
@@ -200,8 +201,8 @@ euer export --year YYYY --output "/pfad/zu/Buchhaltung/YYYY/Exporte"
 # SQL-Query (nur SELECT, Ausgabe als CSV)
 euer query "SELECT ... FROM ... WHERE ..."
 
-# Kategorien anzeigen
-euer list categories [--type expense|income]
+# Kategorien und geprüfte Jahreszeilen anzeigen
+euer list categories [--type expense|income] [--year YYYY]
 
 # Kontenrahmen anzeigen
 euer list ledger-accounts [--category "..."]
@@ -231,18 +232,22 @@ Hinweis:
 Workflow:
 1. Importieren bzw. Eintrag erfassen, Pflichtfelder müssen vorhanden sein.
 2. `euer incomplete list` prüfen und offene Aufgaben festhalten
-   (fehlende `payment_date`, `invoice_date`, `category`, `receipt`, `vat`, `account`).
+   (fehlende `payment_date`, `invoice_date`, `category`, `receipt`, `vat`,
+   `entertainment_vat_status`, `account`).
 3. Fehlende Felder per `euer update expense <ID>` /
    `euer update income <ID>` ergänzen.
-Hinweis: Für die Kategorie **Gezahlte USt (57)** ist kein Beleg erforderlich.
+Hinweis: Für die Kategorie **Gezahlte USt** ist kein Beleg erforderlich. Ihre
+Formularzeile hängt vom Berichtsjahr ab; sie ist keine Vorsteuerzeile.
 
 Import-Schema (Kurzfassung):
 - Pflichtfelder: `type`, `party`, `amount_eur` und mindestens eines aus `payment_date`/`invoice_date` (`date` gilt als Alias für `payment_date`)
 - Optional: `category`, `account`, `ledger_account`, `foreign_amount`, `receipt_name`, `notes`, `rc`,
-  `private_paid`, `vat_input`, `vat_output`, `vat_rate`, `vat_code`, `tax_free`
+  `private_paid`, `vat_input`, `vat_output`, `vat_rate`, `vat_code`, `tax_free`,
+  `entertainment_tip_eur`, `entertainment_vat_status`
 - Fehlende Pflichtfelder führen zu einem Import-Abbruch.
 - Alias-Keys (Auszug): `EUR`, `Belegname`, `Lieferant`, `Quelle`, `RC`,
-  `Vorsteuer`, `Umsatzsteuer`, `Privat bezahlt`
+  `Vorsteuer`, `Umsatzsteuer`, `Privat bezahlt`, `Trinkgeld`,
+  `Bewirtung Vorsteuerstatus`
 - `rc` akzeptiert `eu` oder `third-country`; Legacy-Werte `rc=true|X` brauchen
   zusätzlich eine Jurisdiktionsspalte.
 - `vat_rate` akzeptiert `19`, `7`, `0`, `19%`, `7%`, `0%`.
@@ -259,6 +264,14 @@ Import-Schema (Kurzfassung):
     `output_tax_free_no_vorsteuer` klassifiziert.
   - `standard` + Ausgaben: `vat_input` wird per `--vat`/Import erfasst
     (außer bei RC, dort automatisch).
+  - Bewirtung: `amount_eur` ist der ganze negative Zahlbetrag. `--vat` bzw.
+    `vat_input` enthält ausschließlich die belegte, tatsächlich abziehbare
+    Vorsteuer. Nie den Zahlbetrag mit 7 % oder 19 % zurückrechnen. `--tip` bzw.
+    `entertainment_tip_eur` dokumentiert enthaltenes Trinkgeld und erhöht den
+    Zahlbetrag nicht. Im Standardmodus bedeutet weggelassenes `--vat`
+    `needs_review`; `--vat 0` bedeutet geprüfte Null-Vorsteuer. Im
+    Kleinunternehmermodus wird `no_deduction` gespeichert. `update expense`
+    ergänzt Vorsteuer, Trinkgeld und Status.
   - `standard` + Einnahmen: ohne Angabe gilt `vat_rate=19`. Nutze
     `--vat-rate 7`, `--vat-rate 0` oder `--tax-free` für abweichende Fälle.
     `amount_eur` wird immer 1:1 als Brutto-Zahlfluss gespeichert.
@@ -348,46 +361,43 @@ Bei Anbietern mit Guthabenaufladung (Prepaid):
 1. **Zahlung erfassen:** Die Guthabenaufladung wird direkt bei Zahlung/Kontoabbuchung mit dem Zahlungsbeleg als Ausgabe erfasst (`--amount -XX.XX`, `--rc eu|third-country`). Als `--invoice-date` pragmatisch das Datum des Zahlungsbelegs/Kontoauszugs nutzen. Eine Warnung bei Wertstellungsdatum vor Rechnungsdatum kann ignoriert werden.
 2. **Monatliche Verbrauchsrechnung:** Weist die spätere Monatsrechnung einen Zahlbetrag von 0,00 EUR auf (da mit Guthaben verrechnet), wird sie **nicht** als neue Ausgabe gebucht (Vermeidung von Doppelzählung). Sie wird im Belegordner abgelegt und optional in den `--notes` der Zahlungsbuchung vermerkt. (Details: siehe `docs/FAQ.md`).
 
+### Bewirtungsaufwendungen
+
+Eine geschäftliche Bewirtung wird als ein Zahlungsvorgang in
+`Bewirtungsaufwendungen` erfasst. Bei 129,00 € Zahlbetrag und 19,00 € belegter
+Vorsteuer ergibt sich eine Kostenbasis von 110,00 €, davon 77,00 € abziehbar und
+33,00 € nicht abziehbar. Die 19,00 € Vorsteuer bleiben vollständig erhalten.
+Freiwilliges Trinkgeld ist bereits Teil des Zahlbetrags und wird nur als
+Plausibilitätsangabe erfasst.
+
+```bash
+euer add expense --payment-date YYYY-MM-DD --vendor "Restaurant" \
+    --category "Bewirtungsaufwendungen" --amount -129.00 --vat 19.00 --tip 10.00
+```
+
+Prüfe die Rechnung und den Nachweis statt einen Steuersatz zu schätzen. Alte
+Bewirtungsbuchungen werden bei `euer init` als `needs_review` markiert. Positive
+alte Vorsteuer kann nur als vorläufige Aufteilung erscheinen; fehlende oder
+ungeprüfte Daten machen die EÜR-Summe und den Gewinn unvollständig. Der
+nicht abziehbare 30-%-Anteil ist keine Privatentnahme. Bewirtung ausschließlich
+eigener Arbeitnehmer gehört nicht in diese Kategorie.
+
 ### Kategorien
 
-Nur diese Kategorien sind verfügbar:
+EÜR-Zeilen sind Formularjahr-Metadaten. Für 2025 und 2026 mitgelieferte
+Zuordnungen werden mit `euer list categories --year YYYY` angezeigt; ohne
+geprüfte Zuordnung wird keine Zeilennummer behauptet. Ein Teil der Zeilen hat
+sich zum Formularjahr 2026 verschoben. Verlasse dich nicht auf eine feste
+Jahresliste aus dem Gedächtnis.
 
-**Ausgaben (expense):**
-| Kategorie | EÜR-Zeile |
-|-----------|-----------|
-| Waren, Rohstoffe und Hilfsstoffe | 27 |
-| Bezogene Fremdleistungen | 29 |
-| Aufwendungen für geringwertige Wirtschaftsgüter (GWG) | 36 |
-| Telekommunikation | 43 |
-| Übernachtungs- und Reisenebenkosten | 44 |
-| Fortbildungskosten | 45 |
-| Rechts- und Steuerberatung, Buchführung | 46 |
-| Beiträge, Gebühren, Abgaben und Versicherungen | 49 |
-| Laufende EDV-Kosten | 50 |
-| Arbeitsmittel | 51 |
-| Werbekosten | 54 |
-| Gezahlte USt | 57 |
-| Übrige Betriebsausgaben | 60 |
-| Bewirtungsaufwendungen | 63 |
-| Verpflegungsmehraufwendungen | 64 |
-| Fahrtkosten (Nutzungseinlage) | 71 |
-
-Hinweis: **Bewirtungsaufwendungen** werden in `euer summary` automatisch **70/30**
-aufgeteilt. In `list expenses` und Exporten bleibt der volle Betrag (100%) erhalten;
-der nicht abziehbare 30%-Anteil wird nur im Summary ausgewiesen.
-
-**Einnahmen (income):**
-| Kategorie | EÜR-Zeile |
-|-----------|-----------|
-| Betriebseinnahmen als Kleinunternehmer | 12 |
-| Nicht steuerbare Umsätze | 13 |
-| Umsatzsteuerpflichtige Betriebseinnahmen | 15 |
-| Umsatzsteuerfreie, nicht umsatzsteuerbare Betriebseinnahmen | 16 |
-| Vereinnahmte Umsatzsteuer | 17 |
-| Vom Finanzamt erstattete Umsatzsteuer | 18 |
-| Veräußerung oder Entnahme von Anlagevermögen | 19 |
-| Private Kfz-Nutzung | 20 |
-| Sonstige Sach-, Nutzungs- und Leistungsentnahmen | 21 |
+`Nicht steuerbare Umsätze` ist fachlich das Unterfeld „Davon nicht steuerbare
+Kleinunternehmerumsätze (§ 19 Abs. 2 UStG)“ in Zeile 13. Es wird nur für
+Kleinunternehmer verwendet. Eine Buchung zählt genau einmal zu den Einnahmen;
+`summary` zeigt den Betrag zusätzlich als „davon“-Wert unter Zeile 12.
+`Gezahlte USt` ist die Zahlung ans Finanzamt; sie ist nicht die abziehbare
+Vorsteuer (2025 Zeile 57, 2026 Zeile 58). Privatentnahmen und Privateinlagen
+haben ebenfalls jahresabhängige Zeilen; `private-summary` zeigt die geprüfte
+Jahreszuordnung.
 
 ### Datenmodell (Interpretation der Spalten)
 

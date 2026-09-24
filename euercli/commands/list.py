@@ -6,7 +6,13 @@ from pathlib import Path
 from ..config import get_ledger_accounts, load_config
 from ..db import get_db_connection
 from ..services.categories import get_category_list
+from ..services.entertainment import calculate_entertainment_breakdown
 from ..services.errors import ValidationError
+from ..services.eur import (
+    get_category_display_name,
+    get_category_eur_line,
+    is_entertainment_category,
+)
 from ..services.expenses import list_expenses
 from ..services.income import list_income
 from ..services.private_transfers import get_private_paid_expenses, get_private_transfer_list
@@ -37,11 +43,17 @@ def infer_booking_status(
     return "Unvollständig"
 
 
-def format_category_label(category_name: str | None, category_eur_line: int | None) -> str:
+def format_category_label(
+    category_name: str | None,
+    category_eur_key: str | None,
+    year: int | None,
+) -> str:
     if not category_name:
         return "Ohne Kategorie"
-    if category_eur_line:
-        return f"({category_eur_line}) {category_name}"
+    category_name = get_category_display_name(category_name, category_eur_key) or category_name
+    line = get_category_eur_line(year, category_eur_key) if year is not None else None
+    if line is not None:
+        return f"({line}) {category_name}"
     return category_name
 
 
@@ -78,10 +90,20 @@ def cmd_list_expenses(args):
                 "RC",
                 "Vorsteuer",
                 "Umsatzsteuer",
+                "Trinkgeld",
+                "Bewirtung Vorsteuerstatus",
+                "Bewirtung Kostenbasis",
+                "Bewirtung abziehbar",
+                "Bewirtung nicht abziehbar",
             ]
         )
         for r in rows:
-            cat_str = format_category_label(r.category_name, r.category_eur_line)
+            cat_str = format_category_label(r.category_name, r.category_eur_key, year)
+            entertainment = calculate_entertainment_breakdown(
+                amount_eur=r.amount_eur,
+                vat_input=r.vat_input,
+                vat_status=r.entertainment_vat_status,
+            ) if is_entertainment_category(r.category_eur_key) else None
             writer.writerow(
                 [
                     r.id,
@@ -98,6 +120,23 @@ def cmd_list_expenses(args):
                     format_rc_type(r.rc_type),
                     f"{r.vat_input:.2f}" if r.vat_input else "",
                     f"{r.vat_output:.2f}" if r.vat_output else "",
+                    f"{r.entertainment_tip_eur:.2f}" if r.entertainment_tip_eur is not None else "",
+                    r.entertainment_vat_status or "",
+                    (
+                        f"{entertainment.cost_basis_eur:.2f}"
+                        if entertainment and entertainment.cost_basis_eur is not None
+                        else ""
+                    ),
+                    (
+                        f"{entertainment.deductible_eur:.2f}"
+                        if entertainment and entertainment.deductible_eur is not None
+                        else ""
+                    ),
+                    (
+                        f"{entertainment.non_deductible_eur:.2f}"
+                        if entertainment and entertainment.non_deductible_eur is not None
+                        else ""
+                    ),
                 ]
             )
     else:
@@ -197,7 +236,7 @@ def cmd_list_expenses(args):
         vat_out_total = 0.0
         vat_in_total = 0.0
         for r in rows:
-            cat_str = format_category_label(r.category_name, r.category_eur_line)
+            cat_str = format_category_label(r.category_name, r.category_eur_key, year)
             status = infer_booking_status(r.payment_date, r.invoice_date, r.receipt_name)
             if full_view and has_vat:
                 vout_str = f"{r.vat_output:.2f}" if r.vat_output else ""
@@ -276,6 +315,45 @@ def cmd_list_expenses(args):
                         account=r.account or "",
                     )
                 )
+            if is_entertainment_category(r.category_eur_key):
+                breakdown = calculate_entertainment_breakdown(
+                    amount_eur=r.amount_eur,
+                    vat_input=r.vat_input,
+                    vat_status=r.entertainment_vat_status,
+                )
+                status_label = {
+                    "deductible": "geprüft, abziehbar",
+                    "no_deduction": "geprüft, kein Vorsteuerabzug",
+                    "needs_review": "Belegprüfung offen",
+                }.get(
+                    r.entertainment_vat_status or "needs_review",
+                    "unbekannter Status",
+                )
+                vat_text = (
+                    f"{r.vat_input:.2f} EUR"
+                    if r.vat_input is not None
+                    else "nicht erfasst"
+                )
+                tip_text = (
+                    f"{r.entertainment_tip_eur:.2f} EUR"
+                    if r.entertainment_tip_eur is not None
+                    else "nicht erfasst"
+                )
+                detail = (
+                    f"Status {status_label}, Vorsteuer {vat_text}, Trinkgeld {tip_text}"
+                )
+                if breakdown.cost_basis_eur is None:
+                    detail += "; keine 70/30-Aufteilung berechnet"
+                else:
+                    detail = (
+                        f"{detail}, "
+                        f"Kostenbasis {breakdown.cost_basis_eur:.2f} EUR, "
+                        f"abziehbar {breakdown.deductible_eur:.2f} EUR, "
+                        f"nicht abziehbar {breakdown.non_deductible_eur:.2f} EUR"
+                    )
+                    if breakdown.provisional:
+                        detail += " (vorläufig, Belegprüfung offen)"
+                print(f"      Bewirtung #{r.id}: {detail}")
             total += r.amount_eur
         print("-" * len(header))
         if full_view and has_vat:
@@ -376,7 +454,7 @@ def cmd_list_income(args):
             ]
         )
         for r in rows:
-            cat_str = format_category_label(r.category_name, r.category_eur_line)
+            cat_str = format_category_label(r.category_name, r.category_eur_key, year)
             writer.writerow(
                 [
                     r.id,
@@ -436,7 +514,7 @@ def cmd_list_income(args):
         vat_out_total = 0.0
 
         for r in rows:
-            cat_str = format_category_label(r.category_name, r.category_eur_line)
+            cat_str = format_category_label(r.category_name, r.category_eur_key, year)
             status = infer_booking_status(r.payment_date, r.invoice_date, r.receipt_name)
             amount_str = f"{r.amount_eur:.2f}"
             vat_str = f"{r.vat_output:.2f}" if r.vat_output else ""
@@ -508,11 +586,16 @@ def cmd_list_categories(args):
     rows = get_category_list(conn, args.type)
     conn.close()
 
-    print(f"{'ID':<4} {'Typ':<8} {'EÜR':<5} {'Name':<40}")
-    print("-" * 60)
+    print(f"{'ID':<4} {'Typ':<8} {'EÜR':<14} {'Name':<40}")
+    print("-" * 69)
     for r in rows:
-        eur = str(r.eur_line) if r.eur_line else "-"
-        print(f"{r.id:<4} {r.type:<8} {eur:<5} {r.name:<40}")
+        eur = (
+            str(get_category_eur_line(args.year, r.eur_key))
+            if args.year and get_category_eur_line(args.year, r.eur_key) is not None
+            else ("nicht geprüft" if args.year else "jahresabh.")
+        )
+        display_name = get_category_display_name(r.name, r.eur_key) or r.name
+        print(f"{r.id:<4} {r.type:<8} {eur:<14} {display_name:<40}")
 
 
 def cmd_list_ledger_accounts(args):
@@ -577,8 +660,8 @@ def cmd_list_ledger_accounts(args):
             sys.exit(1)
 
         type_label = "Ausgabe" if category.type == "expense" else "Einnahme"
-        eur_line = str(category.eur_line) if category.eur_line else "-"
-        print(f"{category.name} (Zeile {eur_line}, {type_label}):")
+        display_name = get_category_display_name(category.name, category.eur_key)
+        print(f"{display_name} (EÜR-Zeile je Formularjahr, {type_label}):")
 
         key_width = max(len(account.key) for account in accounts_for_category) + 2
         name_width = max(len(account.name) for account in accounts_for_category) + 2

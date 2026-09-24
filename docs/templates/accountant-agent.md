@@ -70,6 +70,17 @@ Wenn `markitdown` keinen oder nur unbrauchbaren Text liefert (z.B. bei Scans):
 4. **USt-Voranmeldung** mit `euer vat-report` prüfen
 5. Bei Reverse Charge: USt und VorSt gleichen sich aus
 
+### Bewirtungsaufwendungen
+
+- Eine geschäftliche Bewirtung als einen Zahlungsvorgang mit negativem Gesamtbetrag erfassen.
+- `--vat` ist ausschließlich die belegte, tatsächlich abziehbare Vorsteuer. Bei gemischten
+  Steuersätzen die auf dem Beleg ausgewiesenen Vorsteuerbeträge summieren; keinen Steuersatz
+  aus dem Zahlbetrag ableiten.
+- `--tip` dokumentiert enthaltenes Trinkgeld, addiert es nicht ein zweites Mal.
+- Im Standardmodus weggelassenes `--vat` lässt die Behandlung offen; geprüfte Null-Vorsteuer
+  mit `--vat 0` angeben. Im Kleinunternehmermodus keinen Vorsteuerabzug erfassen.
+- `summary` prüfen; ungeprüfte Altbuchungen nicht als endgültige 70/30-Aufteilung behandeln.
+
 ---
 
 ## Kernprinzipien
@@ -142,7 +153,7 @@ In beiden Fällen gilt:
    - Rechnungsdatum (für Dateinamen)
    - Anbieter
    - Betrag (EUR oder Fremdwährung)
-   - ggf. Vorsteuerbetrag
+   - ggf. belegter Vorsteuerbetrag (bei Bewirtung nie schätzen)
    - bei Einnahmen ggf. USt-Satz (19 %, 7 %, 0 %) oder steuerfreie Behandlung
    - Reverse-Charge prüfen (ausländischer Anbieter?)
    - Gegenstand der Leistung (für Kategorie)
@@ -164,6 +175,15 @@ In beiden Fällen gilt:
 ---
 
 ## Spezialfälle
+
+### Bewirtungsaufwendungen
+
+- Eine geschäftliche Bewirtung als einen Zahlungsvorgang mit negativem Gesamtbetrag buchen.
+- `--vat` enthält nur tatsächlich abziehbare, belegte Vorsteuer. Nie aus dem Zahlbetrag
+  einen Steuersatz ableiten; bei mehreren Steuersätzen die belegten Vorsteuerbeträge addieren.
+- `--tip` dokumentiert enthaltenes Trinkgeld und addiert es nicht erneut.
+- Im Standardmodus ohne Belegprüfung den Vorsteuerstatus offen lassen; geprüfte Null mit
+  `--vat 0` erfassen. Altbuchungen mit offenem Status nicht als endgültige 70/30-Werte melden.
 
 ### Fremdwährungen (USD, GBP, etc.)
 

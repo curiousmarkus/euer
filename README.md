@@ -22,7 +22,8 @@ Die meisten Tools zwingen dich zu einer Entscheidung: Entweder du nutzt unflexib
 *   **Kein Lock-in:** Daten einfach in CSV oder Excel exportieren.
 
 ### ✅ Alles, was du steuerlich brauchst
-- **EÜR-konforme Kategorien:** Direkt einsatzbereit mit den offiziellen Zeilennummern für die Anlage EÜR.
+- **EÜR-konforme Kategorien:** Direkt einsatzbereit mit geprüften, jahresabhängigen
+  Zuordnungen zu Formularfeldern unterstützter Anlagen EÜR.
 - **Optionaler Kontenrahmen:** Frei konfigurierbare Buchungskonten (`[[ledger_accounts]]`) mit automatischer Kategoriezuordnung.
 - **Umsatzsteuer-Logik:** Voller Support für Regelbesteuerung (USt/Vorsteuer) sowie Kleinunternehmerregelung (§19 UStG).
 - **Reverse-Charge Support:** Umsatzsteuerliche Behandlung von Dienstleistern aus

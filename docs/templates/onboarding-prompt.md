@@ -29,6 +29,10 @@ Falls du den Leitfaden nicht abrufen kannst, bitte mich, seinen Inhalt einzufüg
 Übernimm vorhandene Angaben und führe das Interview nur für fehlende Informationen.
 Stelle höchstens drei zusammengehörige Fragen auf einmal und warte auf meine Antwort.
 
+Bei Bewirtungen Vorsteuer ausschließlich vom Beleg übernehmen, nie aus dem
+Zahlbetrag schätzen. Die Buchungsregeln und nötigen Prüfangaben stehen im
+Buchhaltungs-Skill.
+
 Erstelle daraus meine persönliche AGENTS.md und konkrete Setup-Befehle für meine
 Umgebung. Kennzeichne offene Punkte. Ohne lokalen Zugriff behaupte nicht, Dateien
 oder Einstellungen geprüft oder geändert zu haben.

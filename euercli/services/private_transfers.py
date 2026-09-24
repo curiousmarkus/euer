@@ -340,8 +340,10 @@ def get_private_paid_expenses(
     query = """
         SELECT e.id, e.uuid, e.payment_date, e.invoice_date, e.vendor, e.category_id,
                c.name as category_name,
-               c.eur_line as category_eur_line, e.amount_eur, e.account, e.receipt_name,
+               c.eur_key as category_eur_key,
+               e.amount_eur, e.account, e.receipt_name,
                e.foreign_amount, e.notes, e.rc_type, e.vat_input, e.vat_output,
+               e.entertainment_tip_eur, e.entertainment_vat_status,
                e.is_private_paid, e.private_classification, e.hash
         FROM expenses e
         LEFT JOIN categories c ON e.category_id = c.id

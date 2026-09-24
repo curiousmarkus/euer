@@ -70,6 +70,9 @@ offen; optionale Lieferanten-Mappings oder SKR-Nummern blockieren keine erste Bu
 - Verfügbare PDF-Textextraktion/OCR prüfen. `markitdown` ist eine Möglichkeit;
   vorhandene geeignete Werkzeuge können weiter genutzt werden. Die euer-CLI liest
   selbst keine Rechnungs-PDFs aus.
+- Für Bewirtungen gilt der Buchhaltungs-Skill: Vorsteuer ausschließlich vom Beleg
+  übernehmen, Trinkgeld nicht doppelt zum Zahlbetrag addieren und offene Fälle
+  sichtbar nachpflegen.
 
 ### Konten und private Vorgänge
 
@@ -85,8 +88,8 @@ offen; optionale Lieferanten-Mappings oder SKR-Nummern blockieren keine erste Bu
 ### Wiederkehrende Fälle und Zusammenarbeit
 
 - Typische Lieferanten und gewünschte Kategoriezuordnungen erfragen. Kategorien
-  nach Initialisierung mit `euer list categories` prüfen; keine feste EÜR-Zeilenliste
-  aus dem Gedächtnis übernehmen.
+  nach Initialisierung mit `euer list categories` prüfen; bei Bedarf ein Jahr mit
+  `--year YYYY` angeben. Keine feste EÜR-Zeilenliste aus dem Gedächtnis übernehmen.
 - Optional Buchungskonten (`[[ledger_accounts]]`) mit Schlüssel, Name, Kategorie
   und gegebenenfalls SKR-Nummer vereinbaren.
 - Rhythmus für Kontoauszüge und Monatsabgleich, Ablage offener Fragen und

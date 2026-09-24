@@ -5,13 +5,12 @@ from pathlib import Path
 from ..config import load_config
 from ..db import get_db_connection
 from ..importers import get_tax_config
+from ..services.eur import is_entertainment_category, is_paid_vat_category
 from ..utils import format_missing_fields
 
 
-def is_gezahlte_ust(category_name: str | None, eur_line: int | None) -> bool:
-    if category_name and category_name.strip().lower() == "gezahlte ust":
-        return True
-    return eur_line == 58
+def is_gezahlte_ust(category_key: str | None) -> bool:
+    return is_paid_vat_category(category_key)
 
 
 def collect_expense_missing(row: dict, tax_mode: str) -> list[str]:
@@ -25,7 +24,7 @@ def collect_expense_missing(row: dict, tax_mode: str) -> list[str]:
     if row["category_id"] is None:
         missing.append("category")
 
-    receipt_required = not is_gezahlte_ust(row["category_name"], row["eur_line"])
+    receipt_required = not is_gezahlte_ust(row["eur_key"])
     if receipt_required and not row["receipt_name"]:
         missing.append("receipt")
 
@@ -42,6 +41,12 @@ def collect_expense_missing(row: dict, tax_mode: str) -> list[str]:
 
     if row["rc_type"] == "unclassified":
         missing.append("rc_type")
+
+    if is_entertainment_category(row["eur_key"]) and row["entertainment_vat_status"] not in {
+        "deductible",
+        "no_deduction",
+    }:
+        missing.append("entertainment_vat_status")
 
     return missing
 
@@ -79,8 +84,8 @@ def cmd_incomplete_list(args):
         query = """
             SELECT e.id, e.payment_date, e.invoice_date, e.vendor AS party,
                    e.category_id, c.name AS category_name,
-                   c.eur_line, e.amount_eur, e.account, e.receipt_name, e.notes,
-                   e.rc_type, e.vat_input, e.vat_output
+                   c.eur_key, e.amount_eur, e.account, e.receipt_name, e.notes,
+                   e.rc_type, e.vat_input, e.vat_output, e.entertainment_vat_status
             FROM expenses e
             LEFT JOIN categories c ON e.category_id = c.id
             WHERE 1=1
@@ -115,7 +120,7 @@ def cmd_incomplete_list(args):
         query = """
             SELECT i.id, i.payment_date, i.invoice_date, i.source AS party,
                    i.category_id, c.name AS category_name,
-                   c.eur_line, i.amount_eur, i.receipt_name, i.notes, i.vat_output
+                   i.amount_eur, i.receipt_name, i.notes, i.vat_output
             FROM income i
             LEFT JOIN categories c ON i.category_id = c.id
             WHERE 1=1
@@ -210,5 +215,8 @@ def cmd_incomplete_list(args):
     print(
         "Hinweis: Unvollständige Buchungen bitte per `euer update expense|income <ID>` vervollständigen."
     )
-    print("Fehlende Felder: payment_date, invoice_date, category, receipt, vat, account.")
+    print(
+        "Fehlende Felder: payment_date, invoice_date, category, receipt, vat, "
+        "entertainment_vat_status, account."
+    )
     conn.close()

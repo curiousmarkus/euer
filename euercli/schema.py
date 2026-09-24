@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS categories (
     uuid TEXT UNIQUE NOT NULL,
     name TEXT NOT NULL,
     eur_line INTEGER,
+    eur_key TEXT,
     type TEXT NOT NULL CHECK(type IN ('expense', 'income'))
 );
 
@@ -32,6 +33,9 @@ CREATE TABLE IF NOT EXISTS expenses (
         'reverse_charge_eu',
         'reverse_charge_third_country'
     )),
+    entertainment_tip_eur REAL CHECK(entertainment_tip_eur IS NULL OR entertainment_tip_eur >= 0),
+    entertainment_vat_status TEXT CHECK(entertainment_vat_status IS NULL OR
+        entertainment_vat_status IN ('deductible', 'no_deduction', 'needs_review')),
     is_private_paid INTEGER NOT NULL DEFAULT 0 CHECK(is_private_paid IN (0, 1)),
     private_classification TEXT NOT NULL DEFAULT 'none'
         CHECK(private_classification IN ('none', 'account_rule', 'category_rule', 'manual')),

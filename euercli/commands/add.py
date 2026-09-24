@@ -12,6 +12,8 @@ from ..db import get_db_connection
 from ..importers import get_tax_config
 from ..services.categories import get_category_list, get_ledger_accounts_for_category
 from ..services.errors import ValidationError
+from ..services.entertainment import calculate_entertainment_breakdown
+from ..services.eur import is_entertainment_category
 from ..services.expenses import create_expense
 from ..services.income import create_income
 from ..services.private_transfers import create_private_transfer
@@ -52,7 +54,12 @@ def cmd_add_expense(args):
     rc_type = normalize_cli_rc_type(args.rc)
     is_rc = rc_type != "none"
 
-    if tax_mode == "small_business" and not is_rc and args.vat is not None:
+    if (
+        tax_mode == "small_business"
+        and not is_rc
+        and args.vat is not None
+        and (args.category or "").casefold() != "bewirtungsaufwendungen"
+    ):
         print(
             "Warnung: --vat wird im Kleinunternehmermodus bei normalen Ausgaben ignoriert.",
             file=sys.stderr,
@@ -79,6 +86,8 @@ def cmd_add_expense(args):
             notes=args.notes,
             rc_type=rc_type,
             vat=args.vat,
+            entertainment_tip_eur=args.entertainment_tip_eur,
+            entertainment_vat_status=args.entertainment_vat_status,
             private_paid=bool(args.private_paid),
             private_accounts=private_accounts,
             tax_mode=tax_mode,
@@ -122,6 +131,27 @@ def cmd_add_expense(args):
     print(
         f"Ausgabe #{expense.id} hinzugefügt: {expense.vendor} {format_amount(expense.amount_eur)} EUR{vat_info}"
     )
+
+    if is_entertainment_category(expense.category_eur_key):
+        breakdown = calculate_entertainment_breakdown(
+            amount_eur=expense.amount_eur,
+            vat_input=expense.vat_input,
+            vat_status=expense.entertainment_vat_status,
+        )
+        if breakdown.deductible_eur is None:
+            print(
+                "  Bewirtung: Vorsteuerbehandlung prüfen; ohne belegten Betrag "
+                "wird keine 70/30-Aufteilung berechnet."
+            )
+        else:
+            state = " (vorläufig, Belegprüfung offen)" if breakdown.provisional else ""
+            print(
+                f"  Bewirtung: Zahlbetrag {breakdown.paid_eur:.2f} EUR, "
+                f"Vorsteuer {breakdown.vat_input_eur:.2f} EUR, "
+                f"Kostenbasis {breakdown.cost_basis_eur:.2f} EUR, "
+                f"abziehbar {breakdown.deductible_eur:.2f} EUR, "
+                f"nicht abziehbar {breakdown.non_deductible_eur:.2f} EUR{state}"
+            )
 
     warn_missing_receipt(
         expense.receipt_name,

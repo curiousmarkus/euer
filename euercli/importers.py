@@ -34,7 +34,10 @@ def normalize_category_name(value: object) -> str | None:
         return None
     if text.endswith(")") and " (" in text:
         base, _, tail = text.rpartition(" (")
-        if tail[:-1].isdigit():
+        suffix = tail[:-1].strip()
+        if suffix.isdigit() or (
+            suffix.casefold().startswith("zeile ") and suffix[6:].strip().isdigit()
+        ):
             return base
     return text
 
@@ -146,6 +149,17 @@ def normalize_import_row(row: dict) -> dict:
 
     vat_rate_raw = get_row_value(row, "vat_rate", "vat-rate", "Steuersatz")
     vat_code = get_row_value(row, "vat_code", "vat-code", "Steuerklasse")
+    entertainment_tip_raw = get_row_value(
+        row,
+        "entertainment_tip_eur",
+        "tip",
+        "Trinkgeld",
+    )
+    entertainment_vat_status_raw = get_row_value(
+        row,
+        "entertainment_vat_status",
+        "Bewirtung Vorsteuerstatus",
+    )
 
     return {
         "type": row_type,
@@ -182,6 +196,15 @@ def normalize_import_row(row: dict) -> dict:
         "rc_jurisdiction_raw": rc_jurisdiction_value,
         "private_paid": parse_bool(get_row_value(row, "private_paid", "Privat bezahlt")),
         "vat_input": parse_amount(get_row_value(row, "vat_input", "Vorsteuer", "USt-VA")),
+        "entertainment_tip_eur": parse_amount(
+            entertainment_tip_raw
+        ),
+        "entertainment_tip_raw": entertainment_tip_raw,
+        "entertainment_vat_status": (
+            str(entertainment_vat_status_raw).strip() or None
+            if entertainment_vat_status_raw is not None
+            else None
+        ),
         "vat_output": parse_amount(get_row_value(row, "vat_output", "Umsatzsteuer")),
         "vat_rate": parse_vat_rate(vat_rate_raw),
         "vat_rate_raw": vat_rate_raw,

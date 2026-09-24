@@ -233,6 +233,7 @@ euer list expenses --year 2026 --full
 euer list income --year 2026
 euer list income --year 2026 --full
 euer list categories
+euer list categories --year 2026
 euer list ledger-accounts
 euer list ledger-accounts --category "Laufende EDV-Kosten"
 ```
@@ -243,8 +244,11 @@ Hinweis: `euer list expenses --full` erweitert die Tabellenansicht um fachliche 
 Hinweis: `euer list income` zeigt in der Tabellenansicht die Spalte `USt` (vat_output) immer an.
 Hinweis: RC-Ausgaben zeigen in der Spalte `RC` den Typ `eu` oder `third-country`.
 Hinweis: `euer list income --full` ergänzt die Tabellenansicht um die Spalte `Notiz`.
-Hinweis: Kategorien werden in Listen als `(<EÜR-Zeile>) <Name>` dargestellt, z.B.
-`(51) Arbeitsmittel`.
+Hinweis: `list expenses` und `list income` zeigen für das angezeigte Jahr eine
+EÜR-Zeile nur dann an, wenn dafür eine geprüfte Formularzuordnung mitgeliefert
+wird. Mit `euer list categories --year YYYY` lässt sich die Zuordnung für ein
+konkretes Formularjahr anzeigen. Ohne Formularjahr erscheinen keine festen
+ELSTER-Zeilennummern.
 
 ### Privatvorgänge
 
@@ -328,12 +332,47 @@ konkreten Jahresordner oder setze die Config entsprechend um:
 euer export --year 2026 --output "/pfad/zu/Buchhaltung/2026/Exporte"
 ```
 
-Hinweis: Exporte für Ausgaben und Einnahmen enthalten zusätzlich die Spalten
-`Buchungskonto`, `Kontonummer`, `Steuersatz` und `Steuerklasse`.
+Hinweis: Jahres-Exporte für Ausgaben und Einnahmen enthalten zusätzlich die
+Spalten `Buchungskonto`, `Kontonummer`, `Steuersatz` und `Steuerklasse`.
+Ausgabenexporte ergänzen bei Bewirtung Vorsteuerstatus, Trinkgeld, Kostenbasis
+und die berechnete Aufteilung. Ohne `--year` werden keine ELSTER-Zeilen behauptet.
 
-Hinweis: Für die Kategorie **Bewirtungsaufwendungen** rechnet `euer summary`
-den Aufwand automatisch als **70% abziehbar / 30% nicht abziehbar**. In
-`list expenses` und Exporten bleibt der Betrag **100%**.
+### Bewirtungsaufwendungen buchen
+
+Eine geschäftliche Bewirtung wird als ein Zahlungsvorgang mit dem vollständigen,
+negativen Zahlbetrag erfasst. `--vat` ist die am Beleg ausgewiesene und tatsächlich
+abziehbare Vorsteuer; `--tip` erfasst freiwilliges Trinkgeld, das bereits im
+Zahlbetrag enthalten ist. Das folgende Beispiel gilt für die Regelbesteuerung
+und einen Beleg, der 19,00 € abziehbare Vorsteuer ausweist.
+
+```bash
+euer add expense --payment-date 2026-03-19 --vendor "Restaurant Beispiel" \
+    --category "Bewirtungsaufwendungen" --amount -129.00 --vat 19.00 --tip 10.00 \
+    --account "Geschäftskonto" --receipt "rechnung.pdf"
+```
+
+Beispielausgabe:
+
+```text
+Ausgabe #1 hinzugefügt: Restaurant Beispiel -129,00 EUR (Vorst: 19.00, USt: 0.00, Saldo: -19.00)
+  Bewirtung: Zahlbetrag 129.00 EUR, Vorsteuer 19.00 EUR, Kostenbasis 110.00 EUR, abziehbar 77.00 EUR, nicht abziehbar 33.00 EUR
+```
+
+Der Service berechnet `Kostenbasis = Zahlbetrag − Vorsteuer`, danach 70 %
+abziehbar und 30 % nicht abziehbar. Die belegte Vorsteuer bleibt vollständig
+separat erfasst; sie wird nicht aus einem Steuersatz geschätzt. Für eine geprüfte
+Null-Vorsteuer im Standardmodus `--vat 0` angeben. Ohne `--vat` bleibt die
+Behandlung `needs_review`, bis der Beleg geprüft und per `update expense` ergänzt
+wurde. Im Kleinunternehmermodus wird `no_deduction` gespeichert; positive
+Vorsteuerangaben werden bei neuen Buchungen abgewiesen. Importzeilen mit einem
+expliziten Bewirtungsstatus erhalten den gespeicherten historischen Status auch
+bei geändertem Steuermodus.
+
+`summary` zeigt abziehbaren Bewirtungsaufwand und Vorsteuer getrennt. Bei
+ungeprüften Altbuchungen zeigt es IDs und bekannte vorläufige Teilbeträge; die
+70/30-Aufteilung, der Gewinn und die EÜR-Werte werden als unvollständig markiert.
+Der nicht abziehbare Anteil wird nicht automatisch als Privatentnahme gebucht.
+Bewirtung ausschließlich eigener Arbeitnehmer gehört nicht in diese Kategorie.
 
 ### SQL‑Abfragen (nur lesend)
 
@@ -356,10 +395,11 @@ euer incomplete list --format csv
 
 Hinweise zum Import:
 - Pflichtfelder: `type`, `party`, `amount_eur` und mindestens eines aus `payment_date`/`invoice_date` (`date` ist Alias für `payment_date`)
-- Optionale Felder: `category`, `account`, `ledger_account`, `foreign_amount`, `receipt_name`, `notes`, `rc`, `private_paid`, `vat_input`, `vat_output`, `vat_rate`, `vat_code`, `tax_free`
+- Optionale Felder: `category`, `account`, `ledger_account`, `foreign_amount`, `receipt_name`, `notes`, `rc`, `private_paid`, `vat_input`, `vat_output`, `vat_rate`, `vat_code`, `tax_free`, `entertainment_tip_eur`, `entertainment_vat_status`
 - Fehlende Pflichtfelder führen zu einem Import-Abbruch.
 - `type` kann fehlen, wenn `amount_eur` ein Vorzeichen hat (negativ = Ausgabe, positiv = Einnahme).
 - CSV‑Exports für **Ausgaben/Einnahmen** können direkt re‑importiert werden (Spaltennamen sind gemappt).
+- Historische Kategorienlabels mit einer Endung wie `(63)` oder `(Zeile 64)` werden anhand des Kategorienamens aufgelöst.
 - Exporte `PrivateTransfers` und `Sacheinlagen` sind nicht als Standard-Importquelle vorgesehen.
 - Kategorien mit `"(NN)"` werden beim Import automatisch bereinigt.
 - Alias‑Keys werden akzeptiert (z.B. `EUR`, `Belegname`, `Lieferant`, `Quelle`, `RC`).
@@ -369,6 +409,15 @@ Hinweise zum Import:
 - `vat_code` akzeptiert persistierte Steuerklassen wie `output_standard_19`,
   `output_reduced_7`, `output_zero_0`, `output_tax_free_no_vorsteuer`,
   `input_invoice`, `reverse_charge_eu`, `reverse_charge_third_country`.
+- Bewirtungsimporte können `entertainment_tip_eur`/`tip`/`Trinkgeld` und
+  `entertainment_vat_status`/`Bewirtung Vorsteuerstatus` enthalten. Vorsteuer ist
+  ein belegter Betrag, kein aus dem Zahlbetrag geschätzter Steuersatz. Ein
+  expliziter Status erhält bei einem Round-Trip die Behandlung der Einzelbuchung,
+  auch wenn sich der globale Steuermodus geändert hat.
+- `Nicht steuerbare Umsätze` ist fachlich das Unterfeld „Davon nicht steuerbare
+  Kleinunternehmerumsätze (§ 19 Abs. 2 UStG)“. Es wird nur einmal als Einnahme
+  gezählt; `summary` zeigt Zeile 13 zusätzlich als „davon“-Betrag innerhalb der
+  Kleinunternehmer-Einnahmen.
 
 ## Kontenrahmen
 
@@ -399,7 +448,7 @@ Wichtig:
     `vat_input` wird auf `0.0` gesetzt (Felder können weggelassen werden).
   - `small_business` + Einnahmen: neue Einnahmen werden als
     `output_tax_free_no_vorsteuer` klassifiziert.
-  - `standard` + Ausgaben: `--vat` bzw. `vat_input` ist der Vorsteuerbetrag;
+  - `standard` + Ausgaben: `--vat` bzw. `vat_input` ist der belegte Vorsteuerbetrag;
     RC bucht `vat_input` und `vat_output` automatisch.
   - `standard` + Einnahmen: ohne explizite Angabe gilt `vat_rate=19`. Nutze
     `--vat-rate 7`, `--vat-rate 0` oder `--tax-free` für abweichende Fälle.
@@ -408,9 +457,11 @@ Wichtig:
 Workflow für unvollständige Einträge:
 1. Import/Add ausführen → Buchungen werden angelegt (Pflichtfelder müssen vorhanden sein).
 2. `euer incomplete list` zeigt fehlende **Qualitätsfelder**:
-   `payment_date`, `invoice_date`, `category`, `receipt`, `vat`, `account` (abhängig von Typ/Steuermodus).
+   `payment_date`, `invoice_date`, `category`, `receipt`, `vat`,
+   `entertainment_vat_status`, `account` (abhängig von Typ/Steuermodus).
 3. Fehlende Infos per `euer update expense|income <ID>` nachpflegen.
-Hinweis: Für die Kategorie **Gezahlte USt (57)** ist kein Beleg erforderlich.
+Hinweis: Für die Kategorie **Gezahlte USt** ist kein Beleg erforderlich. Ihre
+Formularzeile hängt vom Berichtsjahr ab und ist keine Vorsteuerzeile.
 
 ## Beleg‑Verwaltung
 

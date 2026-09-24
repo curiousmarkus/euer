@@ -433,11 +433,12 @@ def _aggregate_expenses(
     diagnostics: list[VatReportDiagnostic],
 ) -> None:
     rows = conn.execute(
-        """SELECT id, payment_date, amount_eur, rc_type, vat_input, vat_output,
-                  vat_rate, vat_code
-           FROM expenses
-           WHERE payment_date BETWEEN ? AND ?
-           ORDER BY payment_date, id""",
+        """SELECT e.id, e.payment_date, e.amount_eur, e.rc_type, e.vat_input, e.vat_output,
+                  e.vat_rate, e.vat_code, e.entertainment_vat_status, c.eur_key
+           FROM expenses e
+           LEFT JOIN categories c ON e.category_id = c.id
+           WHERE e.payment_date BETWEEN ? AND ?
+           ORDER BY e.payment_date, e.id""",
         (period.start, period.end),
     ).fetchall()
 
@@ -522,6 +523,39 @@ def _aggregate_expenses(
             continue
 
         vat_input = _decimal_or_none(row["vat_input"])
+        if row["eur_key"] == "entertainment":
+            status = row["entertainment_vat_status"] or "needs_review"
+            if status == "needs_review":
+                diagnostics.append(
+                    _diagnostic_from_row(
+                        row,
+                        status="warning",
+                        booking_type="expense",
+                        reason="Bewirtung: Vorsteuerbehandlung muss am Beleg geprüft werden.",
+                        reason_code="entertainment_vat_needs_review",
+                    )
+                )
+                if vat_input is None:
+                    continue
+            elif status == "no_deduction":
+                continue
+            if vat_input is None:
+                diagnostics.append(
+                    _diagnostic_from_row(
+                        row,
+                        status="warning",
+                        booking_type="expense",
+                        reason="Bewirtung ohne gespeicherten Vorsteuerbetrag.",
+                        reason_code="entertainment_missing_vat_input",
+                    )
+                )
+                continue
+            if vat_input > 0:
+                # Für Bewirtung bestimmt der gespeicherte Status die Behandlung,
+                # nicht der inzwischen möglicherweise geänderte globale Modus.
+                _add_amount(totals, "66", tax=round_money(vat_input))
+            continue
+
         if code == INPUT_INVOICE or (code is None and vat_input is not None and vat_input > 0):
             if tax_mode == "standard":
                 _add_amount(totals, "66", tax=round_money(vat_input or Decimal("0")))

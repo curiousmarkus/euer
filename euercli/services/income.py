@@ -8,6 +8,7 @@ from ..utils import compute_hash
 from .categories import get_category_by_name, resolve_ledger_account
 from .duplicates import DuplicateAction
 from .errors import RecordNotFoundError, ValidationError
+from .eur import category_key_for_name, is_small_business_subset
 from .models import Income, LedgerAccount
 from .utils import get_optional, hash_date, resolve_dates
 from .vat import (
@@ -31,7 +32,8 @@ def _row_to_income(row: sqlite3.Row) -> Income:
         amount_eur=row["amount_eur"],
         category_id=get_optional(row, "category_id"),
         category_name=get_optional(row, "category_name"),
-        category_eur_line=get_optional(row, "category_eur_line"),
+        category_eur_line=None,
+        category_eur_key=get_optional(row, "category_eur_key"),
         ledger_account=get_optional(row, "ledger_account"),
         receipt_name=get_optional(row, "receipt_name"),
         foreign_amount=get_optional(row, "foreign_amount"),
@@ -135,7 +137,7 @@ def _resolve_income_category(
     category_name: str | None,
     ledger_account_key: str | None,
     ledger_accounts: list[LedgerAccount] | None,
-) -> tuple[int | None, str | None, str | None]:
+) -> tuple[int | None, str | None, str | None, str | None]:
     resolved_category_name = category_name
     resolved_ledger_account_key: str | None = None
 
@@ -161,6 +163,7 @@ def _resolve_income_category(
         resolved_ledger_account_key = resolved_ledger_account.key
 
     category_id: int | None = None
+    resolved_category_key: str | None = None
     if resolved_category_name:
         category = get_category_by_name(conn, resolved_category_name, "income")
         if not category:
@@ -171,8 +174,12 @@ def _resolve_income_category(
             )
         category_id = category.id
         resolved_category_name = category.name
+        resolved_category_key = category.eur_key or category_key_for_name(
+            category.name,
+            "income",
+        )
 
-    return category_id, resolved_category_name, resolved_ledger_account_key
+    return category_id, resolved_category_name, resolved_ledger_account_key, resolved_category_key
 
 
 def create_income(
@@ -206,7 +213,12 @@ def create_income(
         legacy_date=date,
     )
 
-    category_id, resolved_category_name, resolved_ledger_account_key = _resolve_income_category(
+    (
+        category_id,
+        resolved_category_name,
+        resolved_ledger_account_key,
+        resolved_category_key,
+    ) = _resolve_income_category(
         conn,
         category_name=category_name,
         ledger_account_key=ledger_account_key,
@@ -223,6 +235,18 @@ def create_income(
         tax_free=tax_free,
         skip_vat_auto=skip_vat_auto,
     )
+
+    if is_small_business_subset(resolved_category_key):
+        if tax_mode != "small_business":
+            raise ValidationError(
+                "Zeile 13 ist ein Unterfeld für nicht steuerbare Kleinunternehmerumsätze.",
+                code="small_business_subset_requires_small_business_mode",
+            )
+        if resolved_vat_output not in {None, 0, 0.0}:
+            raise ValidationError(
+                "Das Zeile-13-Unterfeld darf keine Umsatzsteuer enthalten.",
+                code="small_business_subset_vat_conflict",
+            )
 
     tx_hash = compute_hash(
         hash_date(resolved_payment_date, resolved_invoice_date),
@@ -307,6 +331,7 @@ def create_income(
         amount_eur=amount_eur,
         category_id=category_id,
         category_name=resolved_category_name,
+        category_eur_key=resolved_category_key,
         ledger_account=resolved_ledger_account_key,
         receipt_name=receipt_name,
         foreign_amount=foreign_amount,
@@ -328,7 +353,8 @@ def list_income(
     query = """
         SELECT i.id, i.uuid, i.payment_date, i.invoice_date, i.source, i.category_id,
                c.name as category_name,
-               c.eur_line as category_eur_line, i.amount_eur, i.ledger_account, i.receipt_name,
+               c.eur_key as category_eur_key,
+               i.amount_eur, i.ledger_account, i.receipt_name,
                i.foreign_amount, i.notes, i.vat_output, i.vat_rate, i.vat_code, i.hash
         FROM income i
         LEFT JOIN categories c ON i.category_id = c.id
@@ -356,7 +382,8 @@ def get_income_detail(conn: sqlite3.Connection, record_id: int) -> Income:
     row = conn.execute(
         """SELECT i.id, i.uuid, i.payment_date, i.invoice_date, i.source, i.category_id,
                   c.name as category_name,
-                  c.eur_line as category_eur_line, i.amount_eur, i.ledger_account, i.receipt_name,
+                  c.eur_key as category_eur_key,
+                  i.amount_eur, i.ledger_account, i.receipt_name,
                   i.foreign_amount, i.notes, i.vat_output, i.vat_rate, i.vat_code, i.hash
            FROM income i
            LEFT JOIN categories c ON i.category_id = c.id
@@ -459,18 +486,29 @@ def update_income(
         )
 
     existing_category_name: str | None = None
+    existing_category_key: str | None = None
     if row["category_id"]:
         cat_row = conn.execute(
-            "SELECT name FROM categories WHERE id = ?",
+            "SELECT name, eur_key FROM categories WHERE id = ?",
             (row["category_id"],),
         ).fetchone()
         if cat_row:
             existing_category_name = cat_row["name"]
+            existing_category_key = cat_row["eur_key"] or category_key_for_name(
+                cat_row["name"],
+                "income",
+            )
 
     resolved_category_name = existing_category_name
+    resolved_category_key = existing_category_key
     resolved_ledger_account_key = get_optional(row, "ledger_account")
     if ledger_account_key is not None:
-        category_id, resolved_category_name, resolved_ledger_account_key = _resolve_income_category(
+        (
+            category_id,
+            resolved_category_name,
+            resolved_ledger_account_key,
+            resolved_category_key,
+        ) = _resolve_income_category(
             conn,
             category_name=category_name,
             ledger_account_key=ledger_account_key,
@@ -506,6 +544,25 @@ def update_income(
                 )
             category_id = category.id
             resolved_category_name = category.name
+            resolved_category_key = category.eur_key or category_key_for_name(
+                category.name,
+                "income",
+            )
+
+    if (
+        resolved_category_key != existing_category_key
+        and is_small_business_subset(resolved_category_key)
+    ):
+        if tax_mode != "small_business":
+            raise ValidationError(
+                "Zeile 13 ist ein Unterfeld für nicht steuerbare Kleinunternehmerumsätze.",
+                code="small_business_subset_requires_small_business_mode",
+            )
+        if new_vat_output not in {None, 0, 0.0}:
+            raise ValidationError(
+                "Das Zeile-13-Unterfeld darf keine Umsatzsteuer enthalten.",
+                code="small_business_subset_vat_conflict",
+            )
 
     new_hash = compute_hash(
         hash_date(new_payment_date, new_invoice_date),
@@ -579,6 +636,7 @@ def update_income(
         amount_eur=new_amount,
         category_id=category_id,
         category_name=resolved_category_name,
+        category_eur_key=resolved_category_key,
         ledger_account=resolved_ledger_account_key,
         receipt_name=new_receipt,
         foreign_amount=new_foreign,

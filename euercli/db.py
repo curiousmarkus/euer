@@ -53,16 +53,25 @@ def get_category_id(conn: sqlite3.Connection, name: str, cat_type: str) -> Optio
     return row["id"] if row else None
 
 
-def get_category_name_with_line(conn: sqlite3.Connection, category_id: int) -> str:
-    """Gibt Kategorie-Name mit EÜR-Zeile zurück, z.B. 'Laufende EDV-Kosten (51)'."""
+def get_category_name_with_line(
+    conn: sqlite3.Connection,
+    category_id: int,
+    year: int | None = None,
+) -> str:
+    """Gibt den Kategorienamen und optional die geprüfte Jahreszeile zurück."""
     row = conn.execute(
-        "SELECT name, eur_line FROM categories WHERE id = ?", (category_id,)
+        "SELECT name, eur_key FROM categories WHERE id = ?", (category_id,)
     ).fetchone()
     if not row:
         return "Unbekannt"
-    if row["eur_line"]:
-        return f"{row['name']} ({row['eur_line']})"
-    return row["name"]
+    from .services.eur import get_category_display_name, get_category_eur_line
+
+    if year is not None:
+        line = get_category_eur_line(year, row["eur_key"])
+        if line is not None:
+            name = get_category_display_name(row["name"], row["eur_key"])
+            return f"{name or row['name']} ({line})"
+    return get_category_display_name(row["name"], row["eur_key"]) or row["name"]
 
 
 def row_to_dict(row: sqlite3.Row) -> dict:

@@ -11,6 +11,8 @@ from ..config import (
 from ..db import get_db_connection
 from ..importers import get_tax_config
 from ..services.errors import RecordNotFoundError, ValidationError
+from ..services.entertainment import calculate_entertainment_breakdown
+from ..services.eur import is_entertainment_category
 from ..services.expenses import update_expense
 from ..services.income import update_income
 from ..services.private_transfers import UNSET, update_private_transfer
@@ -56,6 +58,8 @@ def cmd_update_expense(args):
             receipt_name=args.receipt,
             notes=args.notes,
             vat=args.vat,
+            entertainment_tip_eur=args.entertainment_tip_eur,
+            entertainment_vat_status=args.entertainment_vat_status,
             rc_type=rc_type,
             private_paid=args.private_paid,
             private_accounts=private_accounts,
@@ -79,6 +83,27 @@ def cmd_update_expense(args):
     warn_unusual_date_order(expense.payment_date, expense.invoice_date)
 
     print(f"Ausgabe #{args.id} aktualisiert.")
+
+    if is_entertainment_category(expense.category_eur_key):
+        breakdown = calculate_entertainment_breakdown(
+            amount_eur=expense.amount_eur,
+            vat_input=expense.vat_input,
+            vat_status=expense.entertainment_vat_status,
+        )
+        if breakdown.deductible_eur is None:
+            print(
+                "  Bewirtung: Vorsteuerbehandlung prüfen; ohne belegten Betrag "
+                "wird keine 70/30-Aufteilung berechnet."
+            )
+        else:
+            state = " (vorläufig, Belegprüfung offen)" if breakdown.provisional else ""
+            print(
+                f"  Bewirtung: Zahlbetrag {breakdown.paid_eur:.2f} EUR, "
+                f"Vorsteuer {breakdown.vat_input_eur:.2f} EUR, "
+                f"Kostenbasis {breakdown.cost_basis_eur:.2f} EUR, "
+                f"abziehbar {breakdown.deductible_eur:.2f} EUR, "
+                f"nicht abziehbar {breakdown.non_deductible_eur:.2f} EUR{state}"
+            )
 
     warn_missing_receipt(
         expense.receipt_name,

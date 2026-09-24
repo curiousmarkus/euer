@@ -155,6 +155,10 @@ damit Erweiterungen konsistent und risikoarm umgesetzt werden können.
 - **Steuermodi**: `small_business` und `standard` (RC Handling inkl. USt/VoSt).
 - **Persistierte USt-Klassifikation**: `vat_rate` und `vat_code` an
   Ausgaben/Einnahmen für auditierbare UStVA-Reports.
+- **Formularjahr-Metadaten**: fachliche `eur_key`-Zuordnung für geprüfte EÜR-Felder;
+  CLI-Berichte zeigen Zeilen nur für lokal mitgelieferte Formularjahre.
+- **Bewirtung**: ein Zahlungsvorgang mit belegter Vorsteuer, Trinkgeldangabe,
+  gespeichertem Prüfstatus und centgenauer 70/30-Aufteilung.
 - **RC-Typ**: Reverse-Charge-Ausgaben speichern `none`, `eu`,
   `third_country` oder den Migrationszustand `unclassified`.
 
@@ -257,7 +261,7 @@ Wenn du ein Feature erweiterst, beachte:
 
 Die vollständigen DDLs stehen in `euercli/schema.py`.
 
-- **categories**: UUID, Name, EÜR‑Zeile, Typ (expense/income).
+- **categories**: UUID, Name, Legacy-Zeilenfeld, stabiler fachlicher `eur_key`, Typ (expense/income).
 - **expenses**: UUID, Ausgaben inkl. Beleg, Konto, Fremdwährung, RC‑Typ,
   Steuern, USt-Klassifikation, Private Klassifikation.
 - **income**: UUID, Einnahmen inkl. Beleg, Fremdwährung, Umsatzsteuer,
@@ -405,4 +409,4 @@ Offene Change Requests werden innerhalb der jeweiligen Spec dokumentiert.
 | 015 | Multi-Channel-Distribution (PyPI, GitHub Releases, Homebrew) | Offen |
 | 016 | Agent-Safety & Guardrails (Schutz vor destruktiven Aktionen & Plausibilitaet) | Offen |
 | 017 | Nicht eingebuchte Belege erkennen (`receipt unbooked`) | Offen |
-| 018 | Bewirtungsaufwendungen, Vorsteuer und EÜR-Zuordnung | Offen |
+| 018 | Bewirtungsaufwendungen, Vorsteuer und EÜR-Zuordnung | Implementiert |

@@ -1,17 +1,40 @@
 from datetime import datetime
+from decimal import Decimal
 from pathlib import Path
 
 from ..config import load_config
 from ..db import get_db_connection
 from ..importers import get_tax_config
+from ..services.entertainment import calculate_entertainment_breakdown
+from ..services.eur import (
+    get_category_display_name,
+    get_category_eur_line,
+    get_eur_field,
+    is_entertainment_category,
+    is_small_business_subset,
+)
 from ..services.private_transfers import get_private_summary
 
 ENTERTAINMENT_CATEGORY = "Bewirtungsaufwendungen"
-ENTERTAINMENT_DEDUCTIBLE_RATE = 0.7
+
+
+def _eur_label(name: str | None, key: str | None, year: int) -> str:
+    if not name:
+        return "Ohne Kategorie"
+    name = get_category_display_name(name, key) or name
+    line = get_category_eur_line(year, key)
+    return f"{name} (Zeile {line})" if line is not None else name
+
+
+def _field_label(year: int, key: str, fallback: str) -> str:
+    field = get_eur_field(year, key)
+    if field is None:
+        return fallback
+    return f"{field.label} (Zeile {field.line})"
 
 
 def cmd_summary(args):
-    """Zeigt Kategorie-Zusammenfassung."""
+    """Zeigt Kategorie-Zusammenfassung und die EÜR-Felder des Berichtsjahrs."""
     db_path = Path(args.db)
     conn = get_db_connection(db_path)
     config = load_config()
@@ -22,8 +45,13 @@ def cmd_summary(args):
     print(f"EÜR-Zusammenfassung {year}")
     print("=" * 50)
     print()
+    if get_eur_field(year, "input_vat") is None:
+        print(
+            f"Hinweis: Für {year} ist keine geprüfte Formularzuordnung mitgeliefert. "
+            "Beträge erscheinen ohne ELSTER-Zeilennummern."
+        )
+        print()
 
-    # Hinweis auf ausgelassene Buchungen ohne Wertstellungsdatum
     skipped_expenses = conn.execute(
         """SELECT COUNT(*) as cnt FROM expenses
            WHERE payment_date IS NULL
@@ -64,50 +92,143 @@ def cmd_summary(args):
         )
         print()
 
-    # Ausgaben nach Kategorie
-    expenses = conn.execute(
-        """SELECT c.name, c.eur_line, SUM(e.amount_eur) as total
+    entertainment_rows = conn.execute(
+        """SELECT e.id, e.amount_eur, e.vat_input, e.entertainment_vat_status
+           FROM expenses e
+           JOIN categories c ON e.category_id = c.id
+           WHERE c.eur_key = 'entertainment'
+             AND e.payment_date IS NOT NULL
+             AND strftime('%Y', e.payment_date) = ?
+           ORDER BY e.id""",
+        (str(year),),
+    ).fetchall()
+    open_entertainment = [
+        row
+        for row in entertainment_rows
+        if row["entertainment_vat_status"] not in {"deductible", "no_deduction"}
+    ]
+    finalized_entertainment_deductible = Decimal("0.00")
+    finalized_entertainment_non_deductible = Decimal("0.00")
+    provisional_entertainment_deductible = Decimal("0.00")
+    provisional_entertainment_non_deductible = Decimal("0.00")
+    for row in entertainment_rows:
+        breakdown = calculate_entertainment_breakdown(
+            amount_eur=row["amount_eur"],
+            vat_input=row["vat_input"],
+            vat_status=row["entertainment_vat_status"],
+        )
+        if breakdown.deductible_eur is None:
+            continue
+        if breakdown.provisional:
+            provisional_entertainment_deductible += breakdown.deductible_eur
+            provisional_entertainment_non_deductible += (
+                breakdown.non_deductible_eur or Decimal("0.00")
+            )
+        else:
+            finalized_entertainment_deductible += breakdown.deductible_eur
+            finalized_entertainment_non_deductible += (
+                breakdown.non_deductible_eur or Decimal("0.00")
+            )
+
+    expense_rows = conn.execute(
+        """SELECT c.name, c.eur_key, SUM(e.amount_eur) as total,
+                  SUM(COALESCE(e.vat_input, 0)) as vat_input_total
            FROM expenses e
            LEFT JOIN categories c ON e.category_id = c.id
            WHERE e.payment_date IS NOT NULL
              AND strftime('%Y', e.payment_date) = ?
            GROUP BY c.id
-           ORDER BY c.eur_line, c.name""",
+           ORDER BY c.name""",
         (str(year),),
     ).fetchall()
 
     print("Ausgaben nach Kategorie:")
-    expense_total = 0.0
-    bewirtung_total = 0.0
-    for r in expenses:
-        raw_total = r["total"] or 0.0
-        display_total = raw_total
-        if r["name"] == ENTERTAINMENT_CATEGORY:
-            bewirtung_total += raw_total
-            display_total = raw_total * ENTERTAINMENT_DEDUCTIBLE_RATE
-        if r["name"]:
-            cat = f"{r['name']} ({r['eur_line']})" if r["eur_line"] else r["name"]
-        else:
-            cat = "Ohne Kategorie"
-        print(f"  {cat:<40} {display_total:>12.2f} EUR")
-        expense_total += display_total
-    print("  " + "-" * 54)
-    print(f"  {'GESAMT Ausgaben':<40} {expense_total:>12.2f} EUR")
+    expense_total = Decimal("0.00")
+    total_input_vat = Decimal("0.00")
+    for row in expense_rows:
+        vat_total = Decimal(str(row["vat_input_total"] or 0)).quantize(Decimal("0.01"))
+        total_input_vat += vat_total
+        if is_entertainment_category(row["eur_key"]):
+            if finalized_entertainment_deductible:
+                amount = -finalized_entertainment_deductible
+                label = _eur_label(ENTERTAINMENT_CATEGORY, row["eur_key"], year)
+                print(f"  {label + ' – abziehbar':<56} {amount:>12.2f} EUR")
+                expense_total += amount
+            if finalized_entertainment_non_deductible:
+                label = _eur_label(ENTERTAINMENT_CATEGORY, row["eur_key"], year)
+                print(
+                    f"  {label + ' – nicht abziehbar':<56} "
+                    f"{finalized_entertainment_non_deductible:>12.2f} EUR"
+                )
+            if provisional_entertainment_deductible:
+                label = _eur_label(ENTERTAINMENT_CATEGORY, row["eur_key"], year)
+                print(
+                    f"  {label + ' – vorläufig abziehbar':<56} "
+                    f"{-provisional_entertainment_deductible:>12.2f} EUR"
+                )
+            if provisional_entertainment_non_deductible:
+                print(
+                    f"  {'Bewirtung – vorläufig nicht abziehbar':<56} "
+                    f"{provisional_entertainment_non_deductible:>12.2f} EUR"
+                )
+            continue
+
+        raw_amount = Decimal(str(row["total"] or 0))
+        # amount_eur enthält den Zahlbetrag. Die abziehbare Vorsteuer wird als
+        # eigener EÜR-Bestandteil ausgewiesen; hier bleibt der Nettobetrag.
+        amount = raw_amount + vat_total
+        label = _eur_label(row["name"], row["eur_key"], year)
+        print(f"  {label:<56} {amount:>12.2f} EUR")
+        expense_total += amount
+
+    provisional_entertainment_vat = sum(
+        Decimal(str(row["vat_input"] or 0)).quantize(Decimal("0.01"))
+        for row in entertainment_rows
+        if row["entertainment_vat_status"] not in {"deductible", "no_deduction"}
+    )
+    known_input_vat = total_input_vat - provisional_entertainment_vat
+    if known_input_vat:
+        input_vat_label = _field_label(year, "input_vat", "Abziehbare Vorsteuer")
+        input_vat_expense = -known_input_vat
+        print(f"  {input_vat_label:<56} {input_vat_expense:>12.2f} EUR")
+        expense_total += input_vat_expense
+    if provisional_entertainment_vat:
+        input_vat_label = _field_label(year, "input_vat", "Vorsteuer, Bewirtung – vorläufig")
+        print(
+            f"  {(input_vat_label + ' – Prüfung offen'):<56} "
+            f"{-provisional_entertainment_vat:>12.2f} EUR"
+        )
+
+    print("  " + "-" * 70)
+    print(f"  {'GESAMT Ausgaben (bekannte, geprüfte Werte)':<56} {expense_total:>12.2f} EUR")
     print()
 
-    if bewirtung_total != 0.0:
-        deductible = bewirtung_total * ENTERTAINMENT_DEDUCTIBLE_RATE
-        non_deductible = bewirtung_total - deductible
-        print("Bewirtungsaufwendungen (70/30):")
-        print(f"  {'Gesamtbetrag (100%)':<40} {abs(bewirtung_total):>12.2f} EUR")
-        print(f"  {'Abziehbar (70%, Aufwand)':<40} {abs(deductible):>12.2f} EUR")
-        print(f"  {'Nicht abziehbar (30%, ELSTER)':<40} {abs(non_deductible):>12.2f} EUR")
+    if entertainment_rows:
+        final_payment = sum(
+            Decimal(str(abs(row["amount_eur"]))).quantize(Decimal("0.01"))
+            for row in entertainment_rows
+            if row["entertainment_vat_status"] in {"deductible", "no_deduction"}
+        )
+        print("Bewirtungsaufwendungen:")
+        print(f"  {'Geprüfte Zahlungsvorgänge (100%)':<56} {final_payment:>12.2f} EUR")
+        print(
+            f"  {_field_label(year, 'entertainment_deductible', 'Abziehbar (70%)'):<56} "
+            f"{-finalized_entertainment_deductible:>12.2f} EUR"
+        )
+        print(
+            f"  {_field_label(year, 'entertainment_non_deductible', 'Nicht abziehbar (30%)'):<56} "
+            f"{finalized_entertainment_non_deductible:>12.2f} EUR"
+        )
+        if open_entertainment:
+            ids = ", ".join(f"#{row['id']}" for row in open_entertainment)
+            print(
+                f"  Prüfung offen: {len(open_entertainment)} Buchung(en) {ids}. "
+                "Vorläufige Teilbeträge stehen oben; EÜR und Gewinn sind unvollständig."
+            )
         print()
 
-    # Steuerberechnung (USt-Zahllast)
-
-    # Ausgaben: Vorsteuer (Input) und RC USt (Output)
-    # Beachte: vat_output ist nun der korrekte Spaltenname (alt: vat_amount)
+    # USt-Summen bleiben an vat_input gebunden; die 70/30-Kürzung ändert den
+    # belegten Vorsteuerbetrag nicht.
     vat_stats_expenses = conn.execute(
         """SELECT SUM(vat_input) as sum_input, SUM(vat_output) as sum_output
            FROM expenses
@@ -115,12 +236,8 @@ def cmd_summary(args):
              AND strftime('%Y', payment_date) = ?""",
         (str(year),),
     ).fetchone()
-
     exp_vat_input = vat_stats_expenses["sum_input"] or 0.0
     exp_vat_output = vat_stats_expenses["sum_output"] or 0.0
-
-    # Einnahmen: USt (Output)
-    # income hat nun auch vat_output
     vat_stats_income = conn.execute(
         """SELECT SUM(vat_output) as sum_output
            FROM income
@@ -128,21 +245,24 @@ def cmd_summary(args):
              AND strftime('%Y', payment_date) = ?""",
         (str(year),),
     ).fetchone()
-
     inc_vat_output = vat_stats_income["sum_output"] or 0.0
-
     total_vat_input = exp_vat_input
     total_vat_output = exp_vat_output + inc_vat_output
     vat_payment = total_vat_output - total_vat_input
 
     if tax_mode == "small_business":
         if total_vat_output != 0:
-            print("Umsatzsteuer (Kleinunternehmer):")
+            vat_title = "Umsatzsteuer (Kleinunternehmer)"
+            if open_entertainment:
+                vat_title += " – Teilwerte, Bewirtungsprüfung offen"
+            print(f"{vat_title}:")
             print(f"  {'USt aus Reverse-Charge (Schuld)':<40} {total_vat_output:>12.2f} EUR")
             print()
     else:
-        # Regelbesteuerung
-        print("Umsatzsteuer-Voranmeldung (Berechnung):")
+        vat_title = "Umsatzsteuer-Voranmeldung (Berechnung)"
+        if open_entertainment:
+            vat_title = "Umsatzsteuer-Voranmeldung (Teilwerte, Bewirtungsprüfung offen)"
+        print(f"{vat_title}:")
         print(f"  {'Umsatzsteuer (aus Einnahmen + RC)':<40} {total_vat_output:>12.2f} EUR")
         print(f"  {'Abziehbare Vorsteuer (aus Ausgaben)':<40} {-total_vat_input:>12.2f} EUR")
         print("  " + "-" * 54)
@@ -150,41 +270,85 @@ def cmd_summary(args):
         print(f"  {label:<40} {vat_payment:>12.2f} EUR")
         print()
 
-    # Einnahmen nach Kategorie
-    income = conn.execute(
-        """SELECT c.name, c.eur_line, SUM(i.amount_eur) as total
+    income_rows = conn.execute(
+        """SELECT c.name, c.eur_key, SUM(i.amount_eur) as total
            FROM income i
            LEFT JOIN categories c ON i.category_id = c.id
            WHERE i.payment_date IS NOT NULL
              AND strftime('%Y', i.payment_date) = ?
            GROUP BY c.id
-           ORDER BY c.eur_line, c.name""",
+           ORDER BY c.name""",
         (str(year),),
     ).fetchall()
+    subset_total = sum(
+        Decimal(str(row["total"] or 0))
+        for row in income_rows
+        if is_small_business_subset(row["eur_key"])
+    )
+    ku_total = sum(
+        Decimal(str(row["total"] or 0))
+        for row in income_rows
+        if row["eur_key"] == "small_business_income"
+    ) + subset_total
 
     print("Einnahmen nach Kategorie:")
-    income_total = 0.0
-    for r in income:
-        if r["name"]:
-            cat = f"{r['name']} ({r['eur_line']})" if r["eur_line"] else r["name"]
-        else:
-            cat = "Ohne Kategorie"
-        print(f"  {cat:<40} {r['total']:>12.2f} EUR")
-        income_total += r["total"]
-    print("  " + "-" * 54)
-    print(f"  {'GESAMT Einnahmen':<40} {income_total:>12.2f} EUR")
+    income_total = Decimal("0.00")
+    has_ku_income = any(row["eur_key"] == "small_business_income" for row in income_rows)
+    for row in income_rows:
+        key = row["eur_key"]
+        if is_small_business_subset(key) or key == "small_business_income":
+            continue
+        amount = Decimal(str(row["total"] or 0))
+        label = _eur_label(row["name"], key, year)
+        print(f"  {label:<56} {amount:>12.2f} EUR")
+        income_total += amount
+    if has_ku_income or subset_total:
+        ku_label = _eur_label(
+            "Betriebseinnahmen als Kleinunternehmer",
+            "small_business_income",
+            year,
+        )
+        print(f"  {ku_label:<56} {ku_total:>12.2f} EUR")
+        income_total += ku_total
+    if subset_total:
+        field = get_eur_field(year, "small_business_non_taxable_subset")
+        line_text = f" (Zeile {field.line})" if field is not None else ""
+        print(
+            f"  {'davon: Nicht steuerbare Kleinunternehmerumsätze' + line_text:<56} "
+            f"{subset_total:>12.2f} EUR"
+        )
+    print("  " + "-" * 70)
+    print(f"  {'GESAMT Einnahmen':<56} {income_total:>12.2f} EUR")
     print()
 
-    print("  " + "=" * 54)
-    result = income_total + expense_total  # expense_total ist negativ
-    label = "GEWINN" if result >= 0 else "VERLUST"
-    print(f"  {label:<40} {result:>12.2f} EUR")
+    result = income_total + expense_total
+    if open_entertainment:
+        print(
+            f"Vorläufiger Zwischensaldo ohne ungeprüfte Bewirtungen: {result:.2f} EUR "
+            "(unvollständig)"
+        )
+    else:
+        print("  " + "=" * 70)
+        label = "GEWINN" if result >= 0 else "VERLUST"
+        print(f"  {label:<56} {result:>12.2f} EUR")
 
     if args.include_private:
         summary = get_private_summary(conn, year=year)
+        deposits = get_eur_field(year, "private_deposits")
+        withdrawals = get_eur_field(year, "private_withdrawals")
+        deposit_label = (
+            f"Privateinlagen (Zeile {deposits.line})"
+            if deposits
+            else "Privateinlagen (Zeile ungeprüft)"
+        )
+        withdrawal_label = (
+            f"Privatentnahmen (Zeile {withdrawals.line})"
+            if withdrawals
+            else "Privatentnahmen (Zeile ungeprüft)"
+        )
         print()
-        print("Privatvorgänge (ELSTER Zeilen 121/122):")
-        print(f"  {'Privateinlagen (Zeile 122)':<40} {summary['deposits_total']:>12.2f} EUR")
-        print(f"  {'Privatentnahmen (Zeile 121)':<40} {summary['withdrawals_total']:>12.2f} EUR")
+        print("Privatvorgänge:")
+        print(f"  {deposit_label:<56} {summary['deposits_total']:>12.2f} EUR")
+        print(f"  {withdrawal_label:<56} {summary['withdrawals_total']:>12.2f} EUR")
 
     conn.close()

@@ -21,6 +21,7 @@ from ..constants import CONFIG_PATH, DEFAULT_EXPORT_DIR
 from ..db import get_db_connection
 from ..services.categories import get_category_list
 from ..services.errors import ValidationError
+from ..services.eur import get_category_display_name
 
 
 def _ordered_config(config: dict) -> dict:
@@ -68,8 +69,8 @@ def _prompt_ledger_accounts(db_path: str) -> list[dict]:
         print("Kategorie wählen:")
         for index, category in enumerate(categories, start=1):
             type_label = "Ausgabe" if category.type == "expense" else "Einnahme"
-            eur_line = str(category.eur_line) if category.eur_line else "-"
-            print(f"  {index}. {category.name} (Zeile {eur_line}, {type_label})")
+            display_name = get_category_display_name(category.name, category.eur_key)
+            print(f"  {index}. {display_name} (EÜR-Zeile je Formularjahr, {type_label})")
 
         selected_category = None
         while selected_category is None:

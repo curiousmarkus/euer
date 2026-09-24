@@ -10,6 +10,7 @@ class Category:
     name: str
     eur_line: int | None
     type: str
+    eur_key: str | None = None
 
 
 @dataclass
@@ -31,6 +32,7 @@ class Expense:
     category_id: int | None
     category_name: str | None = None
     category_eur_line: int | None = None
+    category_eur_key: str | None = None
     account: str | None = None
     ledger_account: str | None = None
     receipt_name: str | None = None
@@ -41,6 +43,8 @@ class Expense:
     vat_output: float | None = None
     vat_rate: float | None = None
     vat_code: str | None = None
+    entertainment_tip_eur: float | None = None
+    entertainment_vat_status: str | None = None
     is_private_paid: bool = False
     private_classification: str = "none"
     hash: str | None = None
@@ -67,6 +71,7 @@ class Income:
     category_id: int | None
     category_name: str | None = None
     category_eur_line: int | None = None
+    category_eur_key: str | None = None
     ledger_account: str | None = None
     receipt_name: str | None = None
     foreign_amount: str | None = None

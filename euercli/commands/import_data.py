@@ -3,8 +3,9 @@ import sys
 from pathlib import Path
 
 from ..config import get_audit_user, get_ledger_accounts, get_private_accounts, load_config
-from ..db import get_category_id, get_db_connection
+from ..db import get_db_connection
 from ..importers import get_tax_config, iter_import_rows, normalize_import_row
+from ..services.categories import get_category_by_name
 from ..services.duplicates import DuplicateAction
 from ..services.errors import ValidationError
 from ..services.expenses import create_expense
@@ -26,6 +27,7 @@ def print_import_schema() -> None:
     print(
         "  category, account, ledger_account, foreign_amount, receipt_name, notes, rc, "
         "private_paid, vat_input, vat_output, vat_rate, vat_code, tax_free"
+        ", entertainment_tip_eur, entertainment_vat_status"
     )
     print()
     print("Minimaler JSONL-Datensatz (Ausgabe):")
@@ -48,6 +50,8 @@ def print_import_schema() -> None:
     print("  rc_jurisdiction (Legacy): rc_jurisdiction, rc-jurisdiction, RC-Jurisdiktion")
     print("  private_paid: private_paid, Privat bezahlt")
     print("  vat_input: vat_input, Vorsteuer, USt-VA")
+    print("  entertainment_tip_eur: entertainment_tip_eur, tip, Trinkgeld")
+    print("  entertainment_vat_status: entertainment_vat_status, Bewirtung Vorsteuerstatus")
     print("  vat_output: vat_output, Umsatzsteuer")
     print("  vat_rate: vat_rate, vat-rate, Steuersatz")
     print("  vat_code: vat_code, vat-code, Steuerklasse")
@@ -61,7 +65,7 @@ def print_import_schema() -> None:
     print()
     print("Hinweis:")
     print("  - CSV-Exporte von 'euer export' können direkt re-importiert werden.")
-    print("  - Kategorien mit '(NN)' werden automatisch bereinigt.")
+    print("  - Kategorien mit '(NN)' oder '(Zeile NN)' werden automatisch bereinigt.")
     print("  - private_paid=true|1|yes|X markiert manuell als Sacheinlage.")
     print("  - rc akzeptiert leer, eu oder third-country.")
     print("  - Legacy rc=true|X erfordert rc_jurisdiction=eu|third-country.")
@@ -126,6 +130,11 @@ def cmd_import(args):
             missing_fields.append("party")
         if normalized["vat_rate_raw"] is not None and normalized["vat_rate"] is None:
             missing_fields.append("invalid_vat_rate")
+        if (
+            normalized["entertainment_tip_raw"] is not None
+            and normalized["entertainment_tip_eur"] is None
+        ):
+            missing_fields.append("invalid_entertainment_tip")
         rc_type = normalized["rc_type"]
         rc_raw = normalized["rc_raw"]
         rc_jurisdiction_raw = normalized["rc_jurisdiction_raw"]
@@ -146,12 +155,14 @@ def cmd_import(args):
         else:
             resolved_category_name = normalized["category"]
             if resolved_category_name:
-                cat_id = get_category_id(
+                category = get_category_by_name(
                     conn,
                     str(resolved_category_name),
                     normalized["type"],
                 )
-                if not cat_id:
+                if category:
+                    resolved_category_name = category.name
+                else:
                     resolved_category_name = None
             normalized["_resolved_category_name"] = resolved_category_name
         normalized_rows.append(normalized)
@@ -187,6 +198,8 @@ def cmd_import(args):
             vat_rate = normalized["vat_rate"]
             vat_code = normalized["vat_code"]
             tax_free = normalized["tax_free"]
+            entertainment_tip_eur = normalized["entertainment_tip_eur"]
+            entertainment_vat_status = normalized["entertainment_vat_status"]
 
             if row_type == "expense":
                 created = create_expense(
@@ -209,6 +222,9 @@ def cmd_import(args):
                     vat_output=vat_output,
                     vat_rate=vat_rate,
                     vat_code=vat_code,
+                    entertainment_tip_eur=entertainment_tip_eur,
+                    entertainment_vat_status=entertainment_vat_status,
+                    allow_historical_entertainment_vat=entertainment_vat_status is not None,
                     private_paid=bool(private_paid),
                     private_accounts=private_accounts,
                     audit_user=audit_user,

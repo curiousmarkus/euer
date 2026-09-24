@@ -7,7 +7,9 @@ from ..db import log_audit, row_to_dict
 from ..utils import compute_hash
 from .categories import get_category_by_name, resolve_ledger_account
 from .duplicates import DuplicateAction
+from .entertainment import resolve_entertainment_fields
 from .errors import RecordNotFoundError, ValidationError
+from .eur import category_key_for_name, is_entertainment_category
 from .models import Expense, LedgerAccount
 from .private_classification import classify_expense_private_paid
 from .utils import get_optional, hash_date, resolve_dates
@@ -43,7 +45,8 @@ def row_to_expense(row: sqlite3.Row) -> Expense:
         amount_eur=row["amount_eur"],
         category_id=get_optional(row, "category_id"),
         category_name=get_optional(row, "category_name"),
-        category_eur_line=get_optional(row, "category_eur_line"),
+        category_eur_line=None,
+        category_eur_key=get_optional(row, "category_eur_key"),
         account=get_optional(row, "account"),
         ledger_account=get_optional(row, "ledger_account"),
         receipt_name=get_optional(row, "receipt_name"),
@@ -54,6 +57,8 @@ def row_to_expense(row: sqlite3.Row) -> Expense:
         vat_output=get_optional(row, "vat_output"),
         vat_rate=get_optional(row, "vat_rate"),
         vat_code=get_optional(row, "vat_code"),
+        entertainment_tip_eur=get_optional(row, "entertainment_tip_eur"),
+        entertainment_vat_status=get_optional(row, "entertainment_vat_status"),
         is_private_paid=bool(get_optional(row, "is_private_paid") or 0),
         private_classification=get_optional(row, "private_classification") or "none",
         hash=get_optional(row, "hash"),
@@ -168,7 +173,7 @@ def _resolve_expense_category(
     category_name: str | None,
     ledger_account_key: str | None,
     ledger_accounts: list[LedgerAccount] | None,
-) -> tuple[int | None, str | None, str | None]:
+) -> tuple[int | None, str | None, str | None, str | None]:
     resolved_category_name = category_name
     resolved_ledger_account_key: str | None = None
 
@@ -194,6 +199,7 @@ def _resolve_expense_category(
         resolved_ledger_account_key = resolved_ledger_account.key
 
     category_id: int | None = None
+    resolved_category_key: str | None = None
     if resolved_category_name:
         category = get_category_by_name(conn, resolved_category_name, "expense")
         if not category:
@@ -204,8 +210,12 @@ def _resolve_expense_category(
             )
         category_id = category.id
         resolved_category_name = category.name
+        resolved_category_key = category.eur_key or category_key_for_name(
+            category.name,
+            "expense",
+        )
 
-    return category_id, resolved_category_name, resolved_ledger_account_key
+    return category_id, resolved_category_name, resolved_ledger_account_key, resolved_category_key
 
 
 def _validate_rc_type(value: str) -> None:
@@ -244,6 +254,48 @@ def _resolve_update_rc_type(
     return rc_type
 
 
+def migrate_legacy_entertainment_statuses(
+    conn: sqlite3.Connection,
+    *,
+    audit_user: str = "default",
+) -> int:
+    """Markiert alte Bewirtungen wiederholbar als prüfbedürftig und auditiert sie."""
+    rows = conn.execute(
+        """SELECT e.id, e.uuid, e.entertainment_tip_eur, e.entertainment_vat_status,
+                  e.amount_eur, e.vat_input, e.category_id
+           FROM expenses e
+           JOIN categories c ON c.id = e.category_id
+           WHERE c.eur_key = 'entertainment'
+             AND e.entertainment_vat_status IS NULL
+           ORDER BY e.id"""
+    ).fetchall()
+    for row in rows:
+        old_data = {
+            "amount_eur": row["amount_eur"],
+            "vat_input": row["vat_input"],
+            "entertainment_tip_eur": row["entertainment_tip_eur"],
+            "entertainment_vat_status": row["entertainment_vat_status"],
+            "category_id": row["category_id"],
+        }
+        conn.execute(
+            "UPDATE expenses SET entertainment_vat_status = 'needs_review' WHERE id = ?",
+            (row["id"],),
+        )
+        log_audit(
+            conn,
+            "expenses",
+            row["id"],
+            "MIGRATE",
+            record_uuid=row["uuid"],
+            old_data=old_data,
+            new_data={**old_data, "entertainment_vat_status": "needs_review"},
+            user=audit_user,
+        )
+    if rows:
+        conn.commit()
+    return len(rows)
+
+
 def create_expense(
     conn: sqlite3.Connection,
     *,
@@ -265,6 +317,9 @@ def create_expense(
     vat_output: float | None = None,
     vat_rate: float | None = None,
     vat_code: str | None = None,
+    entertainment_tip_eur: float | None = None,
+    entertainment_vat_status: str | None = None,
+    allow_historical_entertainment_vat: bool = False,
     private_paid: bool = False,
     private_accounts: list[str] | None = None,
     tax_mode: str = "small_business",
@@ -279,7 +334,12 @@ def create_expense(
         legacy_date=date,
     )
 
-    category_id, resolved_category_name, resolved_ledger_account_key = _resolve_expense_category(
+    (
+        category_id,
+        resolved_category_name,
+        resolved_ledger_account_key,
+        resolved_category_key,
+    ) = _resolve_expense_category(
         conn,
         category_name=category_name,
         ledger_account_key=ledger_account_key,
@@ -302,6 +362,29 @@ def create_expense(
         vat_rate=vat_rate,
         vat_code=vat_code,
     )
+
+    resolved_entertainment_tip = None
+    resolved_entertainment_vat_status = None
+    if is_entertainment_category(resolved_category_key):
+        raw_vat_input = vat_input if vat_input is not None else vat
+        resolved_vat_input, resolved_entertainment_tip, resolved_entertainment_vat_status = (
+            resolve_entertainment_fields(
+                amount_eur=amount_eur,
+                vat_input=raw_vat_input if raw_vat_input is not None else resolved_vat_input,
+                tip_eur=entertainment_tip_eur,
+                vat_status=entertainment_vat_status,
+                tax_mode=tax_mode,
+                vat_was_provided=raw_vat_input is not None,
+                allow_historical_vat=allow_historical_entertainment_vat,
+            )
+        )
+        resolved_vat_rate = None
+        resolved_vat_code = INPUT_INVOICE if (resolved_vat_input or 0) > 0 else None
+    elif entertainment_tip_eur is not None or entertainment_vat_status is not None:
+        raise ValidationError(
+            "Trinkgeld und Vorsteuerstatus sind nur für Bewirtungsaufwendungen zulässig.",
+            code="entertainment_fields_require_category",
+        )
 
     tx_hash = compute_hash(
         hash_date(resolved_payment_date, resolved_invoice_date),
@@ -335,8 +418,9 @@ def create_expense(
            (uuid, receipt_name, payment_date, invoice_date, vendor, category_id,
             amount_eur, account, ledger_account, foreign_amount, notes, rc_type,
             vat_input, vat_output, vat_rate, vat_code,
+            entertainment_tip_eur, entertainment_vat_status,
             is_private_paid, private_classification, hash)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             record_uuid,
             receipt_name,
@@ -354,6 +438,8 @@ def create_expense(
             resolved_vat_output,
             resolved_vat_rate,
             resolved_vat_code,
+            resolved_entertainment_tip,
+            resolved_entertainment_vat_status,
             1 if is_private_paid else 0,
             private_classification,
             tx_hash,
@@ -379,6 +465,8 @@ def create_expense(
         "vat_output": resolved_vat_output,
         "vat_rate": resolved_vat_rate,
         "vat_code": resolved_vat_code,
+        "entertainment_tip_eur": resolved_entertainment_tip,
+        "entertainment_vat_status": resolved_entertainment_vat_status,
         "is_private_paid": 1 if is_private_paid else 0,
         "private_classification": private_classification,
     }
@@ -404,6 +492,7 @@ def create_expense(
         amount_eur=amount_eur,
         category_id=category_id,
         category_name=resolved_category_name,
+        category_eur_key=resolved_category_key,
         account=account,
         ledger_account=resolved_ledger_account_key,
         receipt_name=receipt_name,
@@ -414,6 +503,8 @@ def create_expense(
         vat_output=resolved_vat_output,
         vat_rate=resolved_vat_rate,
         vat_code=resolved_vat_code,
+        entertainment_tip_eur=resolved_entertainment_tip,
+        entertainment_vat_status=resolved_entertainment_vat_status,
         is_private_paid=is_private_paid,
         private_classification=private_classification,
         hash=tx_hash,
@@ -430,10 +521,12 @@ def list_expenses(
     query = """
         SELECT e.id, e.uuid, e.payment_date, e.invoice_date, e.vendor, e.category_id,
                c.name as category_name,
-               c.eur_line as category_eur_line, e.amount_eur, e.account, e.ledger_account,
+               c.eur_key as category_eur_key,
+               e.amount_eur, e.account, e.ledger_account,
                e.receipt_name,
                e.foreign_amount, e.notes, e.rc_type, e.vat_input, e.vat_output,
                e.vat_rate, e.vat_code,
+               e.entertainment_tip_eur, e.entertainment_vat_status,
                e.is_private_paid, e.private_classification, e.hash
         FROM expenses e
         LEFT JOIN categories c ON e.category_id = c.id
@@ -461,10 +554,12 @@ def get_expense_detail(conn: sqlite3.Connection, record_id: int) -> Expense:
     row = conn.execute(
         """SELECT e.id, e.uuid, e.payment_date, e.invoice_date, e.vendor, e.category_id,
                   c.name as category_name,
-                  c.eur_line as category_eur_line, e.amount_eur, e.account, e.ledger_account,
+                  c.eur_key as category_eur_key,
+                  e.amount_eur, e.account, e.ledger_account,
                   e.receipt_name,
                   e.foreign_amount, e.notes, e.rc_type, e.vat_input, e.vat_output,
                   e.vat_rate, e.vat_code,
+                  e.entertainment_tip_eur, e.entertainment_vat_status,
                   e.is_private_paid, e.private_classification, e.hash
            FROM expenses e
            LEFT JOIN categories c ON e.category_id = c.id
@@ -499,6 +594,8 @@ def update_expense(
     vat: float | None = None,
     vat_rate: float | None = None,
     vat_code: str | None = None,
+    entertainment_tip_eur: float | None = None,
+    entertainment_vat_status: str | None = None,
     rc_type: str | None = None,
     private_paid: bool | None = None,
     private_accounts: list[str] | None = None,
@@ -541,6 +638,18 @@ def update_expense(
     new_vat_rate = get_optional(row, "vat_rate")
     new_vat_code = get_optional(row, "vat_code")
 
+    current_category_key: str | None = None
+    if row["category_id"]:
+        current_category_row = conn.execute(
+            "SELECT name, eur_key FROM categories WHERE id = ?",
+            (row["category_id"],),
+        ).fetchone()
+        if current_category_row:
+            current_category_key = current_category_row["eur_key"] or category_key_for_name(
+                current_category_row["name"],
+                "expense",
+            )
+
     manual_vat = vat
     current_rc_type = get_optional(row, "rc_type") or "none"
     new_rc_type = _resolve_update_rc_type(
@@ -554,7 +663,7 @@ def update_expense(
         or (vat_rate is not None)
         or (vat_code is not None)
         or (rc_type is not None)
-        or (amount_eur is not None)
+        or (amount_eur is not None and current_category_key != "entertainment")
     )
 
     if recalc_tax:
@@ -594,21 +703,28 @@ def update_expense(
         )
 
     existing_category_name: str | None = None
+    existing_category_key: str | None = None
     if row["category_id"]:
         cat_row = conn.execute(
-            "SELECT name FROM categories WHERE id = ?",
+            "SELECT name, eur_key FROM categories WHERE id = ?",
             (row["category_id"],),
         ).fetchone()
         if cat_row:
             existing_category_name = cat_row["name"]
+            existing_category_key = cat_row["eur_key"] or category_key_for_name(
+                cat_row["name"],
+                "expense",
+            )
 
     resolved_category_name = existing_category_name
+    resolved_category_key = existing_category_key
     resolved_ledger_account_key = get_optional(row, "ledger_account")
     if ledger_account_key is not None:
         (
             category_id,
             resolved_category_name,
             resolved_ledger_account_key,
+            resolved_category_key,
         ) = _resolve_expense_category(
             conn,
             category_name=category_name,
@@ -645,6 +761,10 @@ def update_expense(
                 )
             category_id = category.id
             resolved_category_name = category.name
+            resolved_category_key = category.eur_key or category_key_for_name(
+                category.name,
+                "expense",
+            )
 
     if private_paid is True:
         new_is_private_paid, new_private_classification = classify_expense_private_paid(
@@ -666,6 +786,53 @@ def update_expense(
         new_is_private_paid = bool(row["is_private_paid"])
         new_private_classification = row["private_classification"]
 
+    is_entertainment = is_entertainment_category(resolved_category_key)
+    new_entertainment_tip = (
+        entertainment_tip_eur
+        if entertainment_tip_eur is not None
+        else row["entertainment_tip_eur"]
+    )
+    new_entertainment_status = (
+        entertainment_vat_status
+        if entertainment_vat_status is not None
+        else row["entertainment_vat_status"]
+    )
+    if is_entertainment:
+        if existing_category_key != "entertainment" and entertainment_vat_status is None:
+            # Beim erstmaligen Umklassifizieren keine historische Behandlung aus
+            # dem aktuell eingestellten Steuermodus ableiten.
+            new_entertainment_status = "needs_review"
+        elif vat is not None and entertainment_vat_status is None:
+            new_entertainment_status = None
+        raw_vat_input = vat if vat is not None else new_vat_input
+        new_vat_input, new_entertainment_tip, new_entertainment_status = (
+            resolve_entertainment_fields(
+                amount_eur=new_amount,
+                vat_input=raw_vat_input,
+                tip_eur=new_entertainment_tip,
+                vat_status=new_entertainment_status,
+                tax_mode=tax_mode,
+                vat_was_provided=vat is not None,
+                allow_historical_vat=(
+                    existing_category_key == "entertainment"
+                    and entertainment_vat_status is not None
+                ),
+            )
+        )
+        new_vat_rate = None
+        new_vat_code = INPUT_INVOICE if (new_vat_input or 0) > 0 else None
+    elif (
+        entertainment_tip_eur is not None
+        or entertainment_vat_status is not None
+    ):
+        raise ValidationError(
+            "Trinkgeld und Vorsteuerstatus sind nur für Bewirtungsaufwendungen zulässig.",
+            code="entertainment_fields_require_category",
+        )
+    else:
+        new_entertainment_tip = None
+        new_entertainment_status = None
+
     new_hash = compute_hash(
         hash_date(new_payment_date, new_invoice_date),
         new_vendor,
@@ -679,6 +846,7 @@ def update_expense(
            category_id = ?, amount_eur = ?,
            account = ?, ledger_account = ?, foreign_amount = ?, notes = ?, rc_type = ?,
            vat_input = ?, vat_output = ?, vat_rate = ?, vat_code = ?,
+           entertainment_tip_eur = ?, entertainment_vat_status = ?,
            is_private_paid = ?, private_classification = ?, hash = ?
            WHERE id = ?""",
         (
@@ -697,6 +865,8 @@ def update_expense(
             new_vat_output,
             new_vat_rate,
             new_vat_code,
+            new_entertainment_tip,
+            new_entertainment_status,
             1 if new_is_private_paid else 0,
             new_private_classification,
             new_hash,
@@ -723,6 +893,8 @@ def update_expense(
         "vat_output": new_vat_output,
         "vat_rate": new_vat_rate,
         "vat_code": new_vat_code,
+        "entertainment_tip_eur": new_entertainment_tip,
+        "entertainment_vat_status": new_entertainment_status,
         "is_private_paid": 1 if new_is_private_paid else 0,
         "private_classification": new_private_classification,
     }
@@ -749,6 +921,7 @@ def update_expense(
         amount_eur=new_amount,
         category_id=category_id,
         category_name=resolved_category_name,
+        category_eur_key=resolved_category_key,
         account=new_account,
         ledger_account=resolved_ledger_account_key,
         receipt_name=new_receipt,
@@ -759,6 +932,8 @@ def update_expense(
         vat_output=new_vat_output,
         vat_rate=new_vat_rate,
         vat_code=new_vat_code,
+        entertainment_tip_eur=new_entertainment_tip,
+        entertainment_vat_status=new_entertainment_status,
         is_private_paid=new_is_private_paid,
         private_classification=new_private_classification,
         hash=new_hash,

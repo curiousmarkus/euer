@@ -13,11 +13,12 @@ def _row_to_category(row: sqlite3.Row) -> Category:
         name=row["name"],
         eur_line=row["eur_line"],
         type=row["type"],
+        eur_key=row["eur_key"] if "eur_key" in row.keys() else None,
     )
 
 
 def get_category_list(conn: sqlite3.Connection, cat_type: str | None = None) -> list[Category]:
-    query = "SELECT id, uuid, name, eur_line, type FROM categories"
+    query = "SELECT id, uuid, name, eur_line, eur_key, type FROM categories"
     params: list[object] = []
     if cat_type:
         query += " WHERE type = ?"
@@ -33,11 +34,21 @@ def get_category_by_name(
     cat_type: str,
 ) -> Category | None:
     row = conn.execute(
-        "SELECT id, uuid, name, eur_line, type FROM categories WHERE LOWER(name) = LOWER(?) AND type = ?",
+        "SELECT id, uuid, name, eur_line, eur_key, type FROM categories "
+        "WHERE LOWER(name) = LOWER(?) AND type = ?",
         (name, cat_type),
     ).fetchone()
     if not row:
-        return None
+        if name.casefold() == (
+            "Davon nicht steuerbare Kleinunternehmerumsätze (§ 19 Abs. 2 UStG)".casefold()
+        ):
+            row = conn.execute(
+                "SELECT id, uuid, name, eur_line, eur_key, type FROM categories "
+                "WHERE LOWER(name) = LOWER(?) AND type = ?",
+                ("Nicht steuerbare Umsätze", cat_type),
+            ).fetchone()
+        if not row:
+            return None
     return _row_to_category(row)
 
 

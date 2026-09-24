@@ -5,6 +5,8 @@ from ..config import get_export_dir, load_config
 from ..constants import DEFAULT_EXPORT_DIR
 from ..db import get_db_connection
 from ..schema import SCHEMA, SEED_CATEGORIES
+from ..services.eur import category_key_for_name
+from ..services.expenses import migrate_legacy_entertainment_statuses
 
 
 def _get_table_columns(conn, table_name: str) -> dict[str, dict]:
@@ -251,8 +253,35 @@ def ensure_vat_classification_columns(conn) -> None:
         )
 
 
+def ensure_entertainment_columns(conn) -> None:
+    """Ergänzt die optionalen Bewirtungsangaben additiv."""
+    columns = {row["name"] for row in conn.execute("PRAGMA table_info(expenses)").fetchall()}
+    if "entertainment_tip_eur" not in columns:
+        conn.execute(
+            "ALTER TABLE expenses ADD COLUMN entertainment_tip_eur REAL "
+            "CHECK(entertainment_tip_eur IS NULL OR entertainment_tip_eur >= 0)"
+        )
+    if "entertainment_vat_status" not in columns:
+        conn.execute(
+            "ALTER TABLE expenses ADD COLUMN entertainment_vat_status TEXT "
+            "CHECK(entertainment_vat_status IS NULL OR entertainment_vat_status IN "
+            "('deductible', 'no_deduction', 'needs_review'))"
+        )
+
+
+def ensure_category_eur_key_column(conn) -> None:
+    """Fügt den stabilen fachlichen EÜR-Schlüssel für Bestandskategorien hinzu."""
+    columns = {row["name"] for row in conn.execute("PRAGMA table_info(categories)").fetchall()}
+    if "eur_key" not in columns:
+        conn.execute("ALTER TABLE categories ADD COLUMN eur_key TEXT")
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_categories_eur_key "
+        "ON categories(type, eur_key) WHERE eur_key IS NOT NULL"
+    )
+
+
 def ensure_seed_categories(conn) -> None:
-    """Ergänzt fehlende Seed-Kategorien und korrigiert EÜR-Zeilen in bestehenden DBs."""
+    """Ergänzt Seeds und weist bekannte fachliche EÜR-Schlüssel zu."""
     # Fix: "Umsatzsteuerpflichtige Betriebseinnahmen" war fälschlich auf Zeile 14 (→ 15)
     conn.execute(
         "UPDATE categories SET eur_line = 15 WHERE name = ? AND type = ? AND eur_line = 14",
@@ -261,19 +290,28 @@ def ensure_seed_categories(conn) -> None:
 
     added = 0
     for name, eur_line, cat_type in SEED_CATEGORIES:
+        eur_key = category_key_for_name(name, cat_type)
         exists = conn.execute(
             "SELECT 1 FROM categories WHERE name = ? AND type = ?",
             (name, cat_type),
         ).fetchone()
         if not exists:
             conn.execute(
-                "INSERT INTO categories (uuid, name, eur_line, type) VALUES (?, ?, ?, ?)",
-                (str(uuid.uuid4()), name, eur_line, cat_type),
+                "INSERT INTO categories (uuid, name, eur_line, eur_key, type) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (str(uuid.uuid4()), name, eur_line, eur_key, cat_type),
             )
             added += 1
 
+        if eur_key is not None:
+            conn.execute(
+                "UPDATE categories SET eur_key = ? WHERE name = ? AND type = ? "
+                "AND (eur_key IS NULL OR eur_key = ?)",
+                (eur_key, name, cat_type, eur_key),
+            )
+
+    conn.commit()
     if added:
-        conn.commit()
         print(f"  {added} neue Kategorie(n) ergänzt")
 
 
@@ -289,6 +327,8 @@ def cmd_init(args):
     ensure_expenses_private_columns(conn)
     ensure_ledger_account_columns(conn)
     ensure_vat_classification_columns(conn)
+    ensure_entertainment_columns(conn)
+    ensure_category_eur_key_column(conn)
     conn.commit()
 
     # Kategorien seeden (nur wenn leer) oder fehlende ergänzen
@@ -302,9 +342,12 @@ def cmd_init(args):
             )
         conn.commit()
         print(f"  {len(SEED_CATEGORIES)} Kategorien angelegt")
+        ensure_seed_categories(conn)
     else:
         print(f"  Kategorien existieren bereits ({existing})")
         ensure_seed_categories(conn)
+
+    migrate_legacy_entertainment_statuses(conn)
 
     conn.close()
 

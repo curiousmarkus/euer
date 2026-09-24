@@ -145,7 +145,22 @@ def main() -> None:
     add_expense_parser.add_argument("--foreign", help="Fremdwährungsbetrag")
     add_expense_parser.add_argument("--receipt", help="Belegname")
     add_expense_parser.add_argument("--notes", help="Bemerkung")
-    add_expense_parser.add_argument("--vat", type=float, help="USt-VA Betrag (manuell)")
+    add_expense_parser.add_argument(
+        "--vat",
+        type=float,
+        help="Belegter abziehbarer Vorsteuerbetrag in EUR (bei Bewirtung ausdrücklich geprüft)",
+    )
+    add_expense_parser.add_argument(
+        "--tip",
+        dest="entertainment_tip_eur",
+        type=float,
+        help="Im Zahlbetrag enthaltenes freiwilliges Trinkgeld (nur Bewirtung)",
+    )
+    add_expense_parser.add_argument(
+        "--entertainment-vat-status",
+        choices=["deductible", "no_deduction", "needs_review"],
+        help="Vorsteuerstatus bzw. Prüfbedarf der Bewirtung",
+    )
     add_expense_parser.add_argument(
         "--private-paid",
         action="store_true",
@@ -270,6 +285,7 @@ def main() -> None:
     # list categories
     list_cat_parser = list_subparsers.add_parser("categories", help="Kategorien anzeigen")
     list_cat_parser.add_argument("--type", choices=["expense", "income"], help="Typ filtern")
+    list_cat_parser.add_argument("--year", type=int, help="Geprüftes Formularjahr anzeigen")
     list_cat_parser.set_defaults(func=cmd_list_categories)
 
     list_ledger_parser = list_subparsers.add_parser("ledger-accounts", help="Kontenrahmen anzeigen")
@@ -325,7 +341,22 @@ def main() -> None:
     upd_exp_parser.add_argument("--foreign", help="Neuer Fremdwährungsbetrag")
     upd_exp_parser.add_argument("--receipt", help="Neuer Belegname")
     upd_exp_parser.add_argument("--notes", help="Neue Bemerkung")
-    upd_exp_parser.add_argument("--vat", type=float, help="Neuer USt-VA Betrag")
+    upd_exp_parser.add_argument(
+        "--vat",
+        type=float,
+        help="Belegter abziehbarer Vorsteuerbetrag in EUR",
+    )
+    upd_exp_parser.add_argument(
+        "--tip",
+        dest="entertainment_tip_eur",
+        type=float,
+        help="Im Zahlbetrag enthaltenes Trinkgeld (nur Bewirtung)",
+    )
+    upd_exp_parser.add_argument(
+        "--entertainment-vat-status",
+        choices=["deductible", "no_deduction", "needs_review"],
+        help="Vorsteuerstatus bzw. Prüfbedarf der Bewirtung nachpflegen",
+    )
     upd_private_paid_group = upd_exp_parser.add_mutually_exclusive_group()
     upd_private_paid_group.add_argument(
         "--private-paid",

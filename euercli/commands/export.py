@@ -5,7 +5,13 @@ from pathlib import Path
 from ..config import get_export_dir, get_ledger_accounts, load_config
 from ..constants import DEFAULT_EXPORT_DIR
 from ..db import get_db_connection
+from ..services.entertainment import calculate_entertainment_breakdown
 from ..services.errors import ValidationError
+from ..services.eur import (
+    get_category_display_name,
+    get_category_eur_line,
+    is_entertainment_category,
+)
 from ..utils import format_rc_type
 
 # Optional: openpyxl für XLSX-Export
@@ -84,9 +90,10 @@ def cmd_export(args):
     # Ausgaben laden
     expenses = conn.execute(
         f"""SELECT e.receipt_name, e.payment_date, e.invoice_date, e.vendor,
-                  c.name as category, c.eur_line,
+                  c.name as category, c.eur_key,
                   e.amount_eur, e.account, e.ledger_account, e.foreign_amount, e.notes,
-                  e.rc_type, e.vat_input, e.vat_output, e.vat_rate, e.vat_code
+                  e.rc_type, e.vat_input, e.vat_output, e.vat_rate, e.vat_code,
+                  e.entertainment_tip_eur, e.entertainment_vat_status
            FROM expenses e
            LEFT JOIN categories c ON e.category_id = c.id
            {year_filter}
@@ -97,7 +104,7 @@ def cmd_export(args):
     # Einnahmen laden
     income = conn.execute(
         f"""SELECT i.receipt_name, i.payment_date, i.invoice_date, i.source,
-                  c.name as category, c.eur_line,
+                  c.name as category, c.eur_key,
                   i.amount_eur, i.ledger_account, i.foreign_amount, i.notes,
                   i.vat_output, i.vat_rate, i.vat_code
            FROM income i
@@ -135,6 +142,39 @@ def cmd_export(args):
 
     conn.close()
 
+    def category_label(name: str | None, category_key: str | None) -> str:
+        if not name:
+            return "Ohne Kategorie"
+        name = get_category_display_name(name, category_key) or name
+        line = get_category_eur_line(year, category_key) if year is not None else None
+        return f"{name} ({line})" if line is not None else name
+
+    def entertainment_export_values(row) -> tuple[str, str, str, str, str]:
+        tip = (
+            f"{row['entertainment_tip_eur']:.2f}"
+            if row["entertainment_tip_eur"] is not None
+            else ""
+        )
+        status = row["entertainment_vat_status"] or ""
+        if not is_entertainment_category(row["eur_key"]):
+            return tip, status, "", "", ""
+        breakdown = calculate_entertainment_breakdown(
+            amount_eur=row["amount_eur"],
+            vat_input=row["vat_input"],
+            vat_status=row["entertainment_vat_status"],
+        )
+        return (
+            tip,
+            status,
+            f"{breakdown.cost_basis_eur:.2f}" if breakdown.cost_basis_eur is not None else "",
+            f"{breakdown.deductible_eur:.2f}" if breakdown.deductible_eur is not None else "",
+            (
+                f"{breakdown.non_deductible_eur:.2f}"
+                if breakdown.non_deductible_eur is not None
+                else ""
+            ),
+        )
+
     if args.format == "csv":
         # CSV Export
         exp_suffix = f"_{year}" if year is not None else ""
@@ -159,13 +199,16 @@ def cmd_export(args):
                     "Umsatzsteuer",
                     "Steuersatz",
                     "Steuerklasse",
+                    "Trinkgeld",
+                    "Bewirtung Vorsteuerstatus",
+                    "Bewirtung Kostenbasis",
+                    "Bewirtung abziehbar",
+                    "Bewirtung nicht abziehbar",
                 ]
             )
             for r in expenses:
-                if r["category"]:
-                    cat = f"{r['category']} ({r['eur_line']})" if r["eur_line"] else r["category"]
-                else:
-                    cat = "Ohne Kategorie"
+                cat = category_label(r["category"], r["eur_key"])
+                entertainment_values = entertainment_export_values(r)
                 writer.writerow(
                     [
                         r["receipt_name"] or "",
@@ -184,6 +227,7 @@ def cmd_export(args):
                         f"{r['vat_output']:.2f}" if r["vat_output"] else "",
                         f"{r['vat_rate']:g}" if r["vat_rate"] is not None else "",
                         r["vat_code"] or "",
+                        *entertainment_values,
                     ]
                 )
         print(f"Exportiert: {exp_path}")
@@ -209,10 +253,7 @@ def cmd_export(args):
                 ]
             )
             for r in income:
-                if r["category"]:
-                    cat = f"{r['category']} ({r['eur_line']})" if r["eur_line"] else r["category"]
-                else:
-                    cat = "Ohne Kategorie"
+                cat = category_label(r["category"], r["eur_key"])
                 writer.writerow(
                     [
                         r["receipt_name"] or "",
@@ -319,16 +360,20 @@ def cmd_export(args):
                 "Fremdwährung",
                 "Bemerkung",
                 "RC",
-                "USt-VA",
+                "Vorsteuer",
+                "Umsatzsteuer",
                 "Steuersatz",
                 "Steuerklasse",
+                "Trinkgeld",
+                "Bewirtung Vorsteuerstatus",
+                "Bewirtung Kostenbasis",
+                "Bewirtung abziehbar",
+                "Bewirtung nicht abziehbar",
             ]
         )
         for r in expenses:
-            if r["category"]:
-                cat = f"{r['category']} ({r['eur_line']})" if r["eur_line"] else r["category"]
-            else:
-                cat = "Ohne Kategorie"
+            cat = category_label(r["category"], r["eur_key"])
+            entertainment_values = entertainment_export_values(r)
             ws.append(
                 [
                     r["receipt_name"] or "",
@@ -343,9 +388,11 @@ def cmd_export(args):
                     r["foreign_amount"] or "",
                     r["notes"] or "",
                     format_rc_type(r["rc_type"]),
+                    r["vat_input"] if r["vat_input"] else None,
                     r["vat_output"] if r["vat_output"] else None,
                     r["vat_rate"] if r["vat_rate"] is not None else None,
                     r["vat_code"] or "",
+                    *[value or None for value in entertainment_values],
                 ]
             )
         wb.save(exp_path)
@@ -374,10 +421,7 @@ def cmd_export(args):
             ]
         )
         for r in income:
-            if r["category"]:
-                cat = f"{r['category']} ({r['eur_line']})" if r["eur_line"] else r["category"]
-            else:
-                cat = "Ohne Kategorie"
+            cat = category_label(r["category"], r["eur_key"])
             ws.append(
                 [
                     r["receipt_name"] or "",

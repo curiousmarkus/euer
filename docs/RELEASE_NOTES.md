@@ -24,6 +24,36 @@ zusätzlich aktualisiert werden. Das betrifft insbesondere:
 Die persönliche `AGENTS.md` sollte nie blind ersetzt werden, weil sie individuelle
 Pfade, Konten, Lieferanten-Mappings und steuerliche Stammdaten enthält.
 
+## Unveröffentlicht
+
+### Bewirtungen und Formularjahr-Zuordnungen
+
+Bewirtungen werden als ein Zahlungsvorgang mit belegter Vorsteuer und optionalem,
+im Zahlbetrag enthaltenem Trinkgeld erfasst. `summary` berechnet die 70/30-Aufteilung
+aus Zahlbetrag abzüglich Vorsteuer; der volle belegte Vorsteuerbetrag bleibt im
+`vat-report` erhalten. Standardmodus-Buchungen ohne angegebene Vorsteuer werden als
+prüfbedürftig markiert. Kleinunternehmerbuchungen speichern den fehlenden
+Vorsteuerabzug pro Buchung. Exportierte Einzelstatus bleiben beim Import auch
+nach einem Wechsel des globalen Steuermodus erhalten.
+
+EÜR-Zeilen werden anhand lokal versionierter Formularjahre aus stabilen fachlichen
+Kategorie-Schlüsseln ermittelt. Die Zuordnungen für 2025 und 2026 korrigieren unter
+anderem Bewirtung, Vorsteuer, Zahlungen ans Finanzamt, die übrigen Seed-Kategorien
+und Privateinlagen/-entnahmen. Das Zeile-13-Feld wird als Unterfeld nicht noch einmal
+zu den Betriebseinnahmen addiert. Für nicht mitgelieferte Formularjahre wird keine
+Zeilennummer behauptet.
+
+**Upgrade:** `euer init` ergänzt die Datenbank additiv um Kategorie-Schlüssel,
+Trinkgeld und Bewirtungs-Vorsteuerstatus. Bestehende Beträge und Vorsteuerwerte
+bleiben unverändert; alte Bewirtungen werden als `needs_review` markiert und mit
+`euer incomplete list` angezeigt. Belegprüfung und Nachpflege erfolgen je Buchung
+über `euer update expense <ID> --vat ... [--tip ...]` oder einen passenden
+`--entertainment-vat-status`. Es ist keine Konfigurationsmigration erforderlich.
+Kategoriezeilen in Exporten/Listen beziehen sich auf das angegebene Berichtsjahr.
+Die Änderung ist ein abwärtskompatibles Feature und gehört beim Release in einen
+MINOR-Bump. Die Website-Beispiele liegen im Schwester-Repository und wurden dort
+auf die 2026-Zuordnungen (Zeile 64/58) aktualisiert.
+
 ## 0.9.0
 
 ### Onboarding direkt im Buchhaltungs-Skill
