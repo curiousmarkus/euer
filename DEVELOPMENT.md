@@ -254,7 +254,7 @@ Es kann auch bequem über `make bump-patch` (bzw. `bump-minor`, `bump-major`) au
 Wenn du ein Feature erweiterst, beachte:
 - **Konventionen**: deutschsprachige Ausgaben, parametrisierte SQL, Audit-Log.
 - **Kompatibilität**: CLI-Argumente sollten abwärtskompatibel bleiben.
-- **Tests**: Passe `tests/test_cli.py` an oder erweitere es bei Feature-Änderungen.
+- **Tests**: Passe die passenden `tests/test_cli_*.py` an (oder `tests/test_cli.py` für alle CLI-Tests) bzw. erweitere sie bei Feature-Änderungen.
 - **Service Layer**: Alle Schreiboperationen gehören in `euercli/services/` (siehe Pflichtregeln oben).
 
 ## Datenmodell (Überblick)
@@ -309,7 +309,7 @@ Der Import akzeptiert zusätzlich UStVA-Klassifikationsfelder (`vat_rate`,
    - Command fängt `ValidationError` / `RecordNotFoundError` und gibt Fehlermeldung aus.
 3. **Parser** in `euercli/cli.py` registrieren.
 4. `set_defaults(func=cmd_<name>)` setzen.
-5. **Tests** in `tests/test_cli.py` (CLI-Integration) und ggf. `tests/test_services_*.py` (Service-Unit-Tests) ergänzen.
+5. **Tests** in `tests/test_cli_*.py` (CLI-Integration) und ggf. `tests/test_services_*.py` (Service-Unit-Tests) ergänzen.
 6. **Spec** in `specs/` dokumentieren, falls das Feature nicht-trivial ist.
 
 ### Plugins (Entry Points)
