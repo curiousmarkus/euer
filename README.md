@@ -10,10 +10,10 @@
 
 Die meisten Tools zwingen dich zu einer Entscheidung: Entweder du nutzt unflexible SaaS-Abos (Lexoffice, SevDesk) oder du bastelst manuell in Excel. `euer` geht einen dritten Weg: **Ein Tool, damit dein Agent die Arbeit übernehmen kann.**
 
-### 🤖 Built for AI Agents, not humans
-*   **CLI first:** Perfekt für LLMs – Text Input, strukturierter Text Output. Kein Halluzinieren von GUI-Klicks.
-*   **Do one thing well:** Kein Feature-Bloat. Nur EÜR. Agenten lieben Tools mit klarem Scope.
-*   **SQL Superpowers:** Für komplexe Abfragen kann der Agent direkt SQL nutzen. Volle Flexibilität für intelligente Automatisierung.
+### 🤖 Built for AI Agents (Claude Code, Hermes, OpenCode, Codex, etc.)
+*   **Structured CLI interface:** Deterministischer Text rein, strukturierter Output raus. Perfekt für Tool-Calling lokaler Coding-Agenten (`euer add expense`, `euer summary`).
+*   **Zero bloat:** Schlanke EÜR nach Zufluss-/Abfluss-Prinzip (§ 11 EStG) ohne doppelte Buchführung, Kontenrahmenzwang oder Bilanzierungs-Overhead.
+*   **SQL Superpowers:** Für komplexe Auswertungen kann der Agent direkt auf die lokale SQLite-Datenbank zugreifen. Volle Flexibilität für intelligente Automatisierung.
 
 ### 🔒 Nachvollziehbar & Lokal
 *   **Local First:** Eine SQLite-Datei. Deine Daten. Dein Backup. Volle Datenhoheit ohne Cloud-Zwang.
