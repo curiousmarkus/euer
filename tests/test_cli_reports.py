@@ -6,6 +6,11 @@ from pathlib import Path
 
 from tests.cli_test_base import BaseCLITestCase
 
+try:
+    from openpyxl import load_workbook
+except ImportError:
+    load_workbook = None
+
 
 class CLIReportsTestCase(BaseCLITestCase):
     def test_summary_rc_does_not_net_off_unpaid_input_vat(self):
@@ -27,9 +32,49 @@ class CLIReportsTestCase(BaseCLITestCase):
         self.assertIn("unvollständig", result.stdout)
         self.assertNotIn("GEWINN", result.stdout)
 
-    def test_entertainment_export_roundtrip_and_numeric_xlsx(self):
-        from openpyxl import load_workbook
+    def test_entertainment_csv_roundtrip(self):
+        self.write_config('[tax]\nmode = "standard"\n')
+        self.run_cli(
+            [
+                "add",
+                "expense",
+                "--date",
+                "2026-01-15",
+                "--vendor",
+                "Restaurant",
+                "--category",
+                "Bewirtungsaufwendungen",
+                "--amount",
+                "-129",
+                "--vat",
+                "19",
+                "--tip",
+                "10",
+            ],
+            check=True,
+        )
+        export_dir = self.root / "exports"
 
+        result = self.run_cli(
+            ["export", "--year", "2026", "--format", "csv", "--output", str(export_dir)], check=True
+        )
+        expense_file = next(
+            line.split("Exportiert: ", 1)[1]
+            for line in result.stdout.splitlines()
+            if line.startswith("Exportiert: ")
+        )
+        self.db_path = self.root / "roundtrip.db"
+        self.run_cli(["init"], check=True)
+        self.write_config('[tax]\nmode = "small_business"\n')
+        self.run_cli(["import", "--file", expense_file, "--format", "csv"], check=True)
+        with sqlite3.connect(self.db_path) as conn:
+            row = conn.execute(
+                "SELECT amount_eur, vat_input, entertainment_tip_eur, entertainment_vat_status FROM expenses"
+            ).fetchone()
+        self.assertEqual(row, (-129, 19, 10, "deductible"))
+
+    @unittest.skipUnless(load_workbook, "openpyxl ist ein optionales XLSX-Extra")
+    def test_entertainment_xlsx_values_are_numeric(self):
         self.write_config('[tax]\nmode = "standard"\n')
         self.run_cli(
             [
@@ -70,23 +115,6 @@ class CLIReportsTestCase(BaseCLITestCase):
                 self.assertEqual(cell.value, expected)
         finally:
             workbook.close()
-        result = self.run_cli(
-            ["export", "--year", "2026", "--format", "csv", "--output", str(export_dir)], check=True
-        )
-        expense_file = next(
-            line.split("Exportiert: ", 1)[1]
-            for line in result.stdout.splitlines()
-            if line.startswith("Exportiert: ")
-        )
-        self.db_path = self.root / "roundtrip.db"
-        self.run_cli(["init"], check=True)
-        self.write_config('[tax]\nmode = "small_business"\n')
-        self.run_cli(["import", "--file", expense_file, "--format", "csv"], check=True)
-        with sqlite3.connect(self.db_path) as conn:
-            row = conn.execute(
-                "SELECT amount_eur, vat_input, entertainment_tip_eur, entertainment_vat_status FROM expenses"
-            ).fetchone()
-        self.assertEqual(row, (-129, 19, 10, "deductible"))
 
     def test_vat_report_requires_year_and_exclusive_period(self):
         missing_year = self.run_cli(["vat-report"])
