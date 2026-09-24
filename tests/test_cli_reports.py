@@ -67,7 +67,7 @@ class CLIReportsTestCase(BaseCLITestCase):
         self.run_cli(["init"], check=True)
         self.write_config('[tax]\nmode = "small_business"\n')
         self.run_cli(["import", "--file", expense_file, "--format", "csv"], check=True)
-        with sqlite3.connect(self.db_path) as conn:
+        with closing(sqlite3.connect(self.db_path)) as conn:
             row = conn.execute(
                 "SELECT amount_eur, vat_input, entertainment_tip_eur, entertainment_vat_status FROM expenses"
             ).fetchone()
