@@ -405,3 +405,4 @@ Offene Change Requests werden innerhalb der jeweiligen Spec dokumentiert.
 | 015 | Multi-Channel-Distribution (PyPI, GitHub Releases, Homebrew) | Offen |
 | 016 | Agent-Safety & Guardrails (Schutz vor destruktiven Aktionen & Plausibilitaet) | Offen |
 | 017 | Nicht eingebuchte Belege erkennen (`receipt unbooked`) | Offen |
+| 018 | Bewirtungsaufwendungen, Vorsteuer und EÜR-Zuordnung | Offen |
