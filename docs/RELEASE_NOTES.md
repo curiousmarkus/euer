@@ -24,7 +24,7 @@ zusätzlich aktualisiert werden. Das betrifft insbesondere:
 Die persönliche `AGENTS.md` sollte nie blind ersetzt werden, weil sie individuelle
 Pfade, Konten, Lieferanten-Mappings und steuerliche Stammdaten enthält.
 
-## Unveröffentlicht
+## 0.10.0
 
 ### Bewirtungen und Formularjahr-Zuordnungen
 
@@ -55,6 +55,8 @@ Bewirtungen mit Reverse Charge werden abgelehnt; historische RC-Bewirtungen und
 Erstattungen bleiben ausdrücklich ungeprüft und werden nicht als normale
 Bewirtungskosten berechnet. Das Zeile-13-Unterfeld lässt auch bei Updates keine
 Umsatzsteuer zu. XLSX enthält die neuen Bewirtungsbeträge als numerische Zellen.
+Bei bestehenden RC-Bewirtungen werden auch reine Metadatenänderungen (z. B. Notizen
+oder Belegdaten) abgelehnt, solange die Buchung als RC-Bewirtung klassifiziert bleibt.
 Bereits erzeugte Berichte und Exporte bei betroffenen Buchungen neu erstellen.
 Lokal kopierten Buchhaltungs-Skill und Accountant-Template aktualisieren.
 
