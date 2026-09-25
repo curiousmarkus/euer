@@ -24,7 +24,7 @@ class BaseCLITestCase(unittest.TestCase):
         self.env["USERPROFILE"] = str(self.home)
         self.env["APPDATA"] = str(self.home / "AppData" / "Roaming")
         self.env["PYTHONIOENCODING"] = "utf-8"
-        self.run_cli(["init"], check=True)
+        self.run_cli(["init", "--create"], check=True)
 
     def tearDown(self) -> None:
         self.temp_dir.cleanup()

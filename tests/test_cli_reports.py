@@ -64,7 +64,7 @@ class CLIReportsTestCase(BaseCLITestCase):
             if line.startswith("Exportiert: ")
         )
         self.db_path = self.root / "roundtrip.db"
-        self.run_cli(["init"], check=True)
+        self.run_cli(["init", "--create"], check=True)
         self.write_config('[tax]\nmode = "small_business"\n')
         self.run_cli(["import", "--file", expense_file, "--format", "csv"], check=True)
         with closing(sqlite3.connect(self.db_path)) as conn:

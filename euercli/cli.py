@@ -61,7 +61,7 @@ def load_plugins(subparsers: argparse._SubParsersAction) -> None:
             )
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
         description="EÜR - Einnahmenüberschussrechnung CLI",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -74,14 +74,31 @@ def main() -> None:
     )
     parser.add_argument(
         "--db",
-        default=str(DEFAULT_DB_PATH),
+        default=None,
         help=f"Pfad zur Datenbank (default: {DEFAULT_DB_PATH})",
     )
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # --- init ---
-    init_parser = subparsers.add_parser("init", help="Initialisiert die Datenbank")
+    init_parser = subparsers.add_parser(
+        "init", help="Initialisiert oder aktualisiert die Datenbank"
+    )
+    init_parser.add_argument(
+        "--create",
+        action="store_true",
+        help="Erlaubt die Neuanlage einer Datenbank an einem explizit angegebenen Pfad",
+    )
+    init_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Führt Migrationen nur zur Probe aus und zeigt den Plan an, ohne Daten zu verändern",
+    )
+    init_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Gibt den Migrationsbericht oder Dry-Run als JSON aus",
+    )
     init_parser.set_defaults(func=cmd_init)
 
     # --- setup ---
@@ -620,7 +637,10 @@ def main() -> None:
     incomplete_list_parser.set_defaults(func=cmd_incomplete_list)
 
     load_plugins(subparsers)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
+    args.is_explicit_db = args.db is not None
+    if not args.db:
+        args.db = str(DEFAULT_DB_PATH)
     args.func(args)
 
 

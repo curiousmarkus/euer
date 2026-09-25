@@ -1,364 +1,327 @@
-import uuid
+"""Command init: Datenbank initialisieren oder transparent migrieren (Spec 020)."""
+
+import json
+import sys
 from pathlib import Path
 
+from ..backup import create_database_backup
 from ..config import get_export_dir, load_config
 from ..constants import DEFAULT_EXPORT_DIR
 from ..db import get_db_connection
-from ..schema import SCHEMA, SEED_CATEGORIES
-from ..services.eur import category_key_for_name
-from ..services.expenses import migrate_legacy_entertainment_statuses
+from ..migrations import MIGRATIONS, get_migration_plan, init_migration_table
 
 
-def _get_table_columns(conn, table_name: str) -> dict[str, dict]:
-    rows = conn.execute(f"PRAGMA table_info({table_name})").fetchall()
-    return {row["name"]: dict(row) for row in rows}
+def cmd_init(args) -> None:
+    """Initialisiert oder aktualisiert die Datenbank."""
+    db_path = Path(args.db)
+    is_explicit = getattr(args, "is_explicit_db", False)
+    allow_create = getattr(args, "create", False)
+    is_dry_run = getattr(args, "dry_run", False)
+    is_json = getattr(args, "json", False)
 
+    db_exists = db_path.exists()
 
-def _migrate_expenses_dates(conn) -> None:
-    columns = _get_table_columns(conn, "expenses")
-    payment_expr = "payment_date" if "payment_date" in columns else "date"
-    invoice_expr = "invoice_date" if "invoice_date" in columns else "NULL"
-    is_private_paid_expr = "is_private_paid" if "is_private_paid" in columns else "0"
-    ledger_account_expr = "ledger_account" if "ledger_account" in columns else "NULL"
-    vat_rate_expr = "vat_rate" if "vat_rate" in columns else "NULL"
-    vat_code_expr = "vat_code" if "vat_code" in columns else "NULL"
-    if "rc_type" in columns:
-        rc_type_expr = "rc_type"
-    elif "is_rc" in columns:
-        rc_jurisdiction_expr = "rc_jurisdiction" if "rc_jurisdiction" in columns else "NULL"
-        rc_type_expr = (
-            "CASE "
-            "WHEN COALESCE(is_rc, 0) = 0 THEN 'none' "
-            f"WHEN {rc_jurisdiction_expr} IN ('eu', 'third_country') "
-            f"THEN {rc_jurisdiction_expr} "
-            "ELSE 'unclassified' END"
-        )
-    else:
-        rc_type_expr = "'none'"
-    private_classification_expr = (
-        "private_classification" if "private_classification" in columns else "'none'"
-    )
+    # 1. Pfad-Guardrail (Spec 016 §2.4, Spec 020 §7):
+    # Expliziter Pfad existiert nicht und kein --create übergeben
+    if is_explicit and not db_exists and not allow_create:
+        msg = f"Datenbank existiert nicht: {db_path}. Nutze --create zur Neuanlage."
+        if is_json:
+            print(json.dumps({"status": "error", "error": msg}, ensure_ascii=False))
+        else:
+            print(f"Fehler: {msg}", file=sys.stderr)
+        sys.exit(1)
 
-    conn.execute("ALTER TABLE expenses RENAME TO expenses_old")
-    conn.execute(
-        """
-        CREATE TABLE expenses (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            uuid TEXT UNIQUE NOT NULL,
-            receipt_name TEXT,
-            payment_date DATE,
-            invoice_date DATE,
-            vendor TEXT NOT NULL,
-            category_id INTEGER REFERENCES categories(id),
-            amount_eur REAL NOT NULL,
-            account TEXT,
-            ledger_account TEXT,
-            foreign_amount TEXT,
-            notes TEXT,
-            rc_type TEXT NOT NULL DEFAULT 'none'
-                CHECK(rc_type IN ('none', 'eu', 'third_country', 'unclassified')),
-            vat_input REAL,
-            vat_output REAL,
-            vat_rate REAL CHECK(vat_rate IS NULL OR vat_rate IN (0, 7, 19)),
-            vat_code TEXT CHECK(vat_code IS NULL OR vat_code IN (
-                'input_invoice',
-                'reverse_charge_eu',
-                'reverse_charge_third_country'
-            )),
-            is_private_paid INTEGER NOT NULL DEFAULT 0 CHECK(is_private_paid IN (0, 1)),
-            private_classification TEXT NOT NULL DEFAULT 'none'
-                CHECK(private_classification IN (
-                    'none', 'account_rule', 'category_rule', 'manual'
-                )),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            hash TEXT UNIQUE NOT NULL,
-            CHECK(invoice_date IS NOT NULL OR payment_date IS NOT NULL)
-        )
-        """
-    )
-    conn.execute(
-        f"""
-        INSERT INTO expenses (
-            id, uuid, receipt_name, payment_date, invoice_date, vendor, category_id,
-            amount_eur, account, ledger_account, foreign_amount, notes, rc_type,
-            vat_input, vat_output, vat_rate, vat_code,
-            is_private_paid, private_classification, created_at, hash
-        )
-        SELECT
-            id, uuid, receipt_name, {payment_expr}, {invoice_expr}, vendor, category_id,
-            amount_eur, account, {ledger_account_expr}, foreign_amount, notes,
-            {rc_type_expr}, vat_input, vat_output, {vat_rate_expr}, {vat_code_expr},
-            {is_private_paid_expr}, {private_classification_expr}, created_at, hash
-        FROM expenses_old
-        """
-    )
-    conn.execute("DROP TABLE expenses_old")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_expenses_payment_date ON expenses(payment_date)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses(category_id)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_expenses_vendor ON expenses(vendor)")
+    # 2. Neuanlage einer Datenbank
+    if not db_exists:
+        target_schema = MIGRATIONS[-1].id if MIGRATIONS else "001_initial_schema"
+        if is_dry_run:
+            if is_json:
+                data = {
+                    "status": "dry_run",
+                    "action": "create",
+                    "db_path": str(db_path.resolve()),
+                    "exists": False,
+                    "target_schema": target_schema,
+                    "pending_migrations": [
+                        {
+                            "id": m.id,
+                            "name": m.name,
+                            "affected_count": 0,
+                            "affected_ids": [],
+                            "description": "Initiale Erstellung",
+                            "next_steps": [],
+                        }
+                        for m in MIGRATIONS
+                    ],
+                    "actions_required": [],
+                }
+                print(json.dumps(data, indent=2, ensure_ascii=False))
+            else:
+                print("=== euer init: Migrationsplan (Dry-Run) ===")
+                print(f"Datenbank: {db_path.resolve()}")
+                print("Status: Datei existiert noch nicht (Neuanlage geplant).")
+                print(f"Ziel-Schemastand: {target_schema}")
+                print(f"\nAnstehende Migrationen ({len(MIGRATIONS)}):")
+                for i, m in enumerate(MIGRATIONS, 1):
+                    print(f"  {i}. [{m.id}] {m.name}")
+                print("\nHinweis: Dry-Run abgeschlossen. Keine Änderungen vorgenommen.")
+            return
 
+        # Echte Neuanlage
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        conn = get_db_connection(db_path)
+        init_migration_table(conn)
 
-def _migrate_income_dates(conn) -> None:
-    columns = _get_table_columns(conn, "income")
-    payment_expr = "payment_date" if "payment_date" in columns else "date"
-    invoice_expr = "invoice_date" if "invoice_date" in columns else "NULL"
-    ledger_account_expr = "ledger_account" if "ledger_account" in columns else "NULL"
-    vat_rate_expr = "vat_rate" if "vat_rate" in columns else "NULL"
-    vat_code_expr = "vat_code" if "vat_code" in columns else "NULL"
+        try:
+            with conn:
+                for m in MIGRATIONS:
+                    m.apply(conn)
+                    conn.execute(
+                        "INSERT INTO _schema_migrations (version, name) VALUES (?, ?)",
+                        (m.id, m.name),
+                    )
+        except Exception as exc:
+            print(f"Fehler bei Neuanlage der Datenbank: {exc}", file=sys.stderr)
+            conn.close()
+            try:
+                db_path.unlink()
+            except OSError:
+                pass
+            sys.exit(1)
 
-    conn.execute("ALTER TABLE income RENAME TO income_old")
-    conn.execute(
-        """
-        CREATE TABLE income (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            uuid TEXT UNIQUE NOT NULL,
-            receipt_name TEXT,
-            payment_date DATE,
-            invoice_date DATE,
-            source TEXT NOT NULL,
-            category_id INTEGER REFERENCES categories(id),
-            amount_eur REAL NOT NULL,
-            ledger_account TEXT,
-            foreign_amount TEXT,
-            notes TEXT,
-            vat_output REAL,
-            vat_rate REAL CHECK(vat_rate IS NULL OR vat_rate IN (0, 7, 19)),
-            vat_code TEXT CHECK(vat_code IS NULL OR vat_code IN (
-                'output_standard_19',
-                'output_reduced_7',
-                'output_zero_0',
-                'output_tax_free_no_vorsteuer'
-            )),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            hash TEXT UNIQUE NOT NULL,
-            CHECK(invoice_date IS NOT NULL OR payment_date IS NOT NULL)
-        )
-        """
-    )
-    conn.execute(
-        f"""
-        INSERT INTO income (
-            id, uuid, receipt_name, payment_date, invoice_date, source, category_id,
-            amount_eur, ledger_account, foreign_amount, notes, vat_output, vat_rate,
-            vat_code, created_at, hash
-        )
-        SELECT
-            id, uuid, receipt_name, {payment_expr}, {invoice_expr}, source, category_id,
-            amount_eur, {ledger_account_expr}, foreign_amount, notes, vat_output,
-            {vat_rate_expr}, {vat_code_expr}, created_at, hash
-        FROM income_old
-        """
-    )
-    conn.execute("DROP TABLE income_old")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_income_payment_date ON income(payment_date)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_income_category ON income(category_id)")
+        conn.close()
 
+        config = load_config()
+        export_dir = get_export_dir(config)
+        export_path = Path(export_dir) if export_dir else DEFAULT_EXPORT_DIR
+        export_path.mkdir(parents=True, exist_ok=True)
 
-def ensure_payment_invoice_columns(conn) -> None:
-    expense_columns = _get_table_columns(conn, "expenses")
-    income_columns = _get_table_columns(conn, "income")
-
-    # Migration ist nötig wenn:
-    # - Altes Schema mit 'date'-Spalte statt 'payment_date' vorliegt
-    # - 'invoice_date'-Spalte fehlt (Spec 006 noch nicht migriert)
-    # - 'payment_date' als NOT NULL definiert ist (muss nullable sein,
-    #   da Buchungen auch nur mit invoice_date erfasst werden können)
-    migrate_expenses = (
-        "date" in expense_columns
-        or "invoice_date" not in expense_columns
-        or expense_columns.get("payment_date", {}).get("notnull") == 1
-        or "rc_type" not in expense_columns
-        or "is_rc" in expense_columns
-        or "rc_jurisdiction" in expense_columns
-    )
-    migrate_income = (
-        "date" in income_columns
-        or "invoice_date" not in income_columns
-        or income_columns.get("payment_date", {}).get("notnull") == 1
-    )
-
-    if not migrate_expenses and not migrate_income:
-        conn.execute("DROP INDEX IF EXISTS idx_expenses_date")
-        conn.execute("DROP INDEX IF EXISTS idx_income_date")
+        if is_json:
+            data = {
+                "status": "success",
+                "action": "create",
+                "db_path": str(db_path.resolve()),
+                "new_schema": target_schema,
+                "applied_migrations": [m.id for m in MIGRATIONS],
+                "export_dir": str(export_path.resolve()),
+                "affected_records": {"count": 0, "ids": [], "details": []},
+                "next_steps": [],
+            }
+            print(json.dumps(data, indent=2, ensure_ascii=False))
+        else:
+            print("=== Neuanlage-Bericht ===")
+            print(f"Datenbank neu angelegt: {db_path.resolve()}")
+            print(f"Schemastand: {target_schema}")
+            print(f"Export-Verzeichnis: {export_path.resolve()}")
+            print("Status: Erfolgreich initialisiert.")
         return
 
-    conn.execute("PRAGMA foreign_keys = OFF")
-    try:
-        if migrate_expenses:
-            _migrate_expenses_dates(conn)
-        if migrate_income:
-            _migrate_income_dates(conn)
-    finally:
-        conn.execute("PRAGMA foreign_keys = ON")
-
-    conn.execute("DROP INDEX IF EXISTS idx_expenses_date")
-    conn.execute("DROP INDEX IF EXISTS idx_income_date")
-    conn.commit()
-
-
-def ensure_expenses_private_columns(conn) -> None:
-    """Ergänzt fehlende private-Spalten in bestehenden Datenbanken."""
-    columns = {row["name"] for row in conn.execute("PRAGMA table_info(expenses)").fetchall()}
-    if "is_private_paid" not in columns:
-        conn.execute(
-            """ALTER TABLE expenses ADD COLUMN
-               is_private_paid INTEGER NOT NULL DEFAULT 0 CHECK(is_private_paid IN (0, 1))"""
-        )
-    if "private_classification" not in columns:
-        conn.execute(
-            """ALTER TABLE expenses ADD COLUMN
-               private_classification TEXT NOT NULL DEFAULT 'none'"""
-        )
-
-
-def ensure_ledger_account_columns(conn) -> None:
-    """Ergänzt fehlende ledger_account-Spalten in bestehenden Datenbanken."""
-    expense_columns = {
-        row["name"] for row in conn.execute("PRAGMA table_info(expenses)").fetchall()
-    }
-    income_columns = {row["name"] for row in conn.execute("PRAGMA table_info(income)").fetchall()}
-    if "ledger_account" not in expense_columns:
-        conn.execute("ALTER TABLE expenses ADD COLUMN ledger_account TEXT")
-    if "ledger_account" not in income_columns:
-        conn.execute("ALTER TABLE income ADD COLUMN ledger_account TEXT")
-
-
-def ensure_vat_classification_columns(conn) -> None:
-    """Ergänzt fehlende USt-Klassifikationsspalten in bestehenden Datenbanken."""
-    expense_columns = {
-        row["name"] for row in conn.execute("PRAGMA table_info(expenses)").fetchall()
-    }
-    income_columns = {row["name"] for row in conn.execute("PRAGMA table_info(income)").fetchall()}
-    if "vat_rate" not in expense_columns:
-        conn.execute(
-            "ALTER TABLE expenses ADD COLUMN "
-            "vat_rate REAL CHECK(vat_rate IS NULL OR vat_rate IN (0, 7, 19))"
-        )
-    if "vat_code" not in expense_columns:
-        conn.execute(
-            "ALTER TABLE expenses ADD COLUMN vat_code TEXT CHECK(vat_code IS NULL OR "
-            "vat_code IN ('input_invoice', 'reverse_charge_eu', "
-            "'reverse_charge_third_country'))"
-        )
-    if "vat_rate" not in income_columns:
-        conn.execute(
-            "ALTER TABLE income ADD COLUMN "
-            "vat_rate REAL CHECK(vat_rate IS NULL OR vat_rate IN (0, 7, 19))"
-        )
-    if "vat_code" not in income_columns:
-        conn.execute(
-            "ALTER TABLE income ADD COLUMN vat_code TEXT CHECK(vat_code IS NULL OR "
-            "vat_code IN ('output_standard_19', 'output_reduced_7', 'output_zero_0', "
-            "'output_tax_free_no_vorsteuer'))"
-        )
-
-
-def ensure_entertainment_columns(conn) -> None:
-    """Ergänzt die optionalen Bewirtungsangaben additiv."""
-    columns = {row["name"] for row in conn.execute("PRAGMA table_info(expenses)").fetchall()}
-    if "entertainment_tip_eur" not in columns:
-        conn.execute(
-            "ALTER TABLE expenses ADD COLUMN entertainment_tip_eur REAL "
-            "CHECK(entertainment_tip_eur IS NULL OR entertainment_tip_eur >= 0)"
-        )
-    if "entertainment_vat_status" not in columns:
-        conn.execute(
-            "ALTER TABLE expenses ADD COLUMN entertainment_vat_status TEXT "
-            "CHECK(entertainment_vat_status IS NULL OR entertainment_vat_status IN "
-            "('deductible', 'no_deduction', 'needs_review'))"
-        )
-
-
-def ensure_category_eur_key_column(conn) -> None:
-    """Fügt den stabilen fachlichen EÜR-Schlüssel für Bestandskategorien hinzu."""
-    columns = {row["name"] for row in conn.execute("PRAGMA table_info(categories)").fetchall()}
-    if "eur_key" not in columns:
-        conn.execute("ALTER TABLE categories ADD COLUMN eur_key TEXT")
-    conn.execute(
-        "CREATE UNIQUE INDEX IF NOT EXISTS idx_categories_eur_key "
-        "ON categories(type, eur_key) WHERE eur_key IS NOT NULL"
-    )
-
-
-def ensure_seed_categories(conn) -> None:
-    """Ergänzt Seeds und weist bekannte fachliche EÜR-Schlüssel zu."""
-    # Fix: "Umsatzsteuerpflichtige Betriebseinnahmen" war fälschlich auf Zeile 14 (→ 15)
-    conn.execute(
-        "UPDATE categories SET eur_line = 15 WHERE name = ? AND type = ? AND eur_line = 14",
-        ("Umsatzsteuerpflichtige Betriebseinnahmen", "income"),
-    )
-
-    added = 0
-    for name, eur_line, cat_type in SEED_CATEGORIES:
-        eur_key = category_key_for_name(name, cat_type)
-        exists = conn.execute(
-            "SELECT 1 FROM categories WHERE name = ? AND type = ?",
-            (name, cat_type),
-        ).fetchone()
-        if not exists:
-            conn.execute(
-                "INSERT INTO categories (uuid, name, eur_line, eur_key, type) "
-                "VALUES (?, ?, ?, ?, ?)",
-                (str(uuid.uuid4()), name, eur_line, eur_key, cat_type),
-            )
-            added += 1
-
-        if eur_key is not None:
-            conn.execute(
-                "UPDATE categories SET eur_key = ? WHERE name = ? AND type = ? "
-                "AND (eur_key IS NULL OR eur_key = ?)",
-                (eur_key, name, cat_type, eur_key),
-            )
-
-    conn.commit()
-    if added:
-        print(f"  {added} neue Kategorie(n) ergänzt")
-
-
-def cmd_init(args):
-    """Initialisiert die Datenbank."""
-    db_path = Path(args.db)
-
-    print(f"Initialisiere Datenbank: {db_path}")
-
+    # 3. Bestehende Datenbank: Pre-Flight & Migration
     conn = get_db_connection(db_path)
-    conn.executescript(SCHEMA)
-    ensure_payment_invoice_columns(conn)
-    ensure_expenses_private_columns(conn)
-    ensure_ledger_account_columns(conn)
-    ensure_vat_classification_columns(conn)
-    ensure_entertainment_columns(conn)
-    ensure_category_eur_key_column(conn)
-    conn.commit()
+    current_schema, target_schema, pending, legacy_stamps = get_migration_plan(conn)
 
-    # Kategorien seeden (nur wenn leer) oder fehlende ergänzen
-    existing = conn.execute("SELECT COUNT(*) as cnt FROM categories").fetchone()["cnt"]
-    if existing == 0:
-        print("Seede Kategorien...")
-        for name, eur_line, cat_type in SEED_CATEGORIES:
-            conn.execute(
-                "INSERT INTO categories (uuid, name, eur_line, type) VALUES (?, ?, ?, ?)",
-                (str(uuid.uuid4()), name, eur_line, cat_type),
+    # 3a. Dry-Run auf bestehender DB
+    if is_dry_run:
+        conn.close()
+        if is_json:
+            data = {
+                "status": "dry_run",
+                "action": "upgrade" if pending else "none",
+                "db_path": str(db_path.resolve()),
+                "exists": True,
+                "current_schema": current_schema,
+                "target_schema": target_schema,
+                "pending_migrations": [
+                    {
+                        "id": m.id,
+                        "name": m.name,
+                        "affected_count": impact.affected_count,
+                        "affected_ids": impact.affected_ids,
+                        "description": impact.description,
+                        "next_steps": impact.next_steps,
+                    }
+                    for m, impact in pending
+                ],
+                "actions_required": [step for _, impact in pending for step in impact.next_steps],
+            }
+            print(json.dumps(data, indent=2, ensure_ascii=False))
+        else:
+            print("=== euer init: Migrationsplan (Dry-Run) ===")
+            print(f"Datenbank: {db_path.resolve()}")
+            print(f"Aktueller Schemastand: {current_schema}")
+            print(f"Ziel-Schemastand: {target_schema}")
+
+            if not pending:
+                print("\nKeine anstehenden Migrationen. Datenbank ist bereits aktuell.")
+            else:
+                print(f"\nAnstehende Migrationen ({len(pending)}):")
+                for i, (m, impact) in enumerate(pending, 1):
+                    print(f"  {i}. [{m.id}] {m.name}")
+                    if impact.description:
+                        print(f"     Beschreibung: {impact.description}")
+                    if impact.affected_ids:
+                        print(
+                            f"     Betroffene Buchungen ({impact.affected_count}): IDs {impact.affected_ids}"
+                        )
+                    if impact.next_steps:
+                        for step in impact.next_steps:
+                            print(f"     Nächster Schritt: {step}")
+            print(
+                "\nHinweis: Dry-Run abgeschlossen. Keine Änderungen vorgenommen, kein Backup erstellt."
             )
-        conn.commit()
-        print(f"  {len(SEED_CATEGORIES)} Kategorien angelegt")
-        ensure_seed_categories(conn)
-    else:
-        print(f"  Kategorien existieren bereits ({existing})")
-        ensure_seed_categories(conn)
+        return
 
-    migrate_legacy_entertainment_statuses(conn)
+    # 3b. Keine anstehenden Migrationen
+    if not pending:
+        if legacy_stamps:
+            # Bestehende Legacy-DB ohne Marker: Stempel eintragen
+            with conn:
+                for m_id in legacy_stamps:
+                    m_obj = next((m for m in MIGRATIONS if m.id == m_id), None)
+                    name = m_obj.name if m_obj else "Legacy Schema"
+                    conn.execute(
+                        "INSERT OR IGNORE INTO _schema_migrations (version, name) VALUES (?, ?)",
+                        (m_id, f"{name} (abgeleitet)"),
+                    )
+
+        conn.close()
+        if is_json:
+            data = {
+                "status": "success",
+                "action": "none",
+                "db_path": str(db_path.resolve()),
+                "current_schema": current_schema,
+                "applied_migrations": [],
+                "affected_records": {"count": 0, "ids": []},
+                "next_steps": [],
+            }
+            print(json.dumps(data, indent=2, ensure_ascii=False))
+        else:
+            print(f"Datenbank ist bereits auf dem aktuellen Schemastand: {current_schema}.")
+            print("Keine Migrationen erforderlich.")
+        return
+
+    # 3c. Echte Migration mit Pre-Flight, Backup und Transaktion
+    if not is_json:
+        print(f"Initialisiere / aktualisiere Datenbank: {db_path.resolve()}")
+        print(f"Aktueller Schemastand: {current_schema}")
+        print(f"Anstehende Migrationen ({len(pending)}):")
+        for m, impact in pending:
+            print(f"  - {m.id}: {m.name}")
+            if impact.affected_ids:
+                print(
+                    f"    Achtung: {impact.affected_count} Buchung(en) betroffen (IDs: {impact.affected_ids})"
+                )
+
+    # Backup erstellen (Spec 016 §1.1, Spec 020 §4)
+    if not is_json:
+        print("Erstelle Sicherheits-Backup vor Migration...")
+    try:
+        backup_path = create_database_backup(conn)
+        if not is_json:
+            print(f"Backup gespeichert unter: {backup_path}")
+    except Exception as exc:
+        conn.close()
+        msg = f"Sicherheits-Backup fehlgeschlagen: {exc}. Migration abgebrochen."
+        if is_json:
+            print(json.dumps({"status": "error", "error": msg}, ensure_ascii=False))
+        else:
+            print(f"Fehler: {msg}", file=sys.stderr)
+        sys.exit(1)
+
+    # Transaktionale Durchführung aller anstehenden Migrationen
+    applied_ids = []
+    all_affected_ids = []
+    all_next_steps = []
+    for m, impact in pending:
+        if impact.affected_ids:
+            all_affected_ids.extend(impact.affected_ids)
+        if impact.next_steps:
+            for step in impact.next_steps:
+                if step not in all_next_steps:
+                    all_next_steps.append(step)
+
+    conn.isolation_level = None
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        for m_id in legacy_stamps:
+            conn.execute(
+                "INSERT OR IGNORE INTO _schema_migrations (version, name) VALUES (?, ?)",
+                (m_id, "Legacy Schema (abgeleitet)"),
+            )
+        for m, _ in pending:
+            m.apply(conn)
+            conn.execute(
+                "INSERT INTO _schema_migrations (version, name) VALUES (?, ?)",
+                (m.id, m.name),
+            )
+            applied_ids.append(m.id)
+        conn.execute("COMMIT")
+    except Exception as exc:
+        try:
+            conn.execute("ROLLBACK")
+        except Exception:
+            pass
+        conn.close()
+        err_msg = (
+            f"FEHLER bei Migration: {exc}\n"
+            "Transaktion wurde zurückgerollt. Die Datenbank ist unverändert.\n"
+            f"Vorab-Sicherung vorhanden unter: {backup_path}"
+        )
+        if is_json:
+            print(
+                json.dumps(
+                    {
+                        "status": "error",
+                        "error": str(exc),
+                        "rollback": True,
+                        "backup_path": str(backup_path),
+                    },
+                    ensure_ascii=False,
+                )
+            )
+        else:
+            print(err_msg, file=sys.stderr)
+        sys.exit(1)
 
     conn.close()
 
     config = load_config()
     export_dir = get_export_dir(config)
-    if export_dir:
-        export_path = Path(export_dir)
-        export_path.mkdir(exist_ok=True)
-        print(f"Export-Verzeichnis: {export_path}")
-    else:
-        DEFAULT_EXPORT_DIR.mkdir(exist_ok=True)
-        print(f"Export-Verzeichnis: {DEFAULT_EXPORT_DIR}")
+    export_path = Path(export_dir) if export_dir else DEFAULT_EXPORT_DIR
+    export_path.mkdir(parents=True, exist_ok=True)
 
-    print("Fertig.")
+    # Abschlussbericht
+    if is_json:
+        data = {
+            "status": "success",
+            "action": "upgrade",
+            "db_path": str(db_path.resolve()),
+            "backup_path": str(backup_path),
+            "previous_schema": current_schema,
+            "new_schema": target_schema,
+            "applied_migrations": applied_ids,
+            "affected_records": {
+                "count": len(all_affected_ids),
+                "ids": all_affected_ids,
+            },
+            "next_steps": all_next_steps,
+        }
+        print(json.dumps(data, indent=2, ensure_ascii=False))
+    else:
+        print("\n=== Upgrade-Bericht ===")
+        print(f"Datenbank: {db_path.resolve()}")
+        print(f"Backup: {backup_path}")
+        print(f"Schemastand: {current_schema} -> {target_schema}")
+        print(f"Angewendete Migrationen ({len(applied_ids)}): {', '.join(applied_ids)}")
+        if all_affected_ids:
+            print(
+                f"Betroffene Buchungen ({len(all_affected_ids)}): IDs {all_affected_ids} als 'needs_review' markiert."
+            )
+        else:
+            print("Betroffene Buchungen: 0")
+        if all_next_steps:
+            print("Nächste Prüfschritte:")
+            for i, step in enumerate(all_next_steps, 1):
+                print(f"  {i}. {step}")
+        print("Status: Erfolgreich aktualisiert.")

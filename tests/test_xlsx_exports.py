@@ -28,7 +28,7 @@ class XlsxExportTestCase(unittest.TestCase):
         self.env["USERPROFILE"] = str(self.home)
         self.env["APPDATA"] = str(self.home / "AppData" / "Roaming")
         self.env["PYTHONIOENCODING"] = "utf-8"
-        self.run_cli(["init"])
+        self.run_cli(["init", "--create"])
 
     def tearDown(self) -> None:
         self.temp_dir.cleanup()
