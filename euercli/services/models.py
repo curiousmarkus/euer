@@ -48,6 +48,7 @@ class Expense:
     is_private_paid: bool = False
     private_classification: str = "none"
     hash: str | None = None
+    deleted_at: str | None = None
 
     @property
     def date(self) -> str:
@@ -80,6 +81,7 @@ class Income:
     vat_rate: float | None = None
     vat_code: str | None = None
     hash: str | None = None
+    deleted_at: str | None = None
 
     @property
     def date(self) -> str:
@@ -98,3 +100,4 @@ class PrivateTransfer:
     notes: str | None = None
     related_expense_id: int | None = None
     hash: str | None = None
+    deleted_at: str | None = None

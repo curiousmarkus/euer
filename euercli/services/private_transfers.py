@@ -24,6 +24,7 @@ def _row_to_private_transfer(row: sqlite3.Row) -> PrivateTransfer:
         notes=get_optional(row, "notes"),
         related_expense_id=get_optional(row, "related_expense_id"),
         hash=get_optional(row, "hash"),
+        deleted_at=get_optional(row, "deleted_at"),
     )
 
 
@@ -138,13 +139,20 @@ def get_private_transfer_list(
     *,
     transfer_type: str | None = None,
     year: int | None = None,
+    include_deleted: bool = False,
+    trash_only: bool = False,
 ) -> list[PrivateTransfer]:
     query = """
-        SELECT id, uuid, date, type, amount_eur, description, notes, related_expense_id, hash
+        SELECT id, uuid, date, type, amount_eur, description, notes, related_expense_id, hash, deleted_at
         FROM private_transfers
         WHERE 1=1
     """
     params: list[object] = []
+
+    if trash_only:
+        query += " AND deleted_at IS NOT NULL"
+    elif not include_deleted:
+        query += " AND deleted_at IS NULL"
 
     if transfer_type:
         query += " AND type = ?"
@@ -162,12 +170,14 @@ def get_private_transfer_list(
 def get_private_transfer_by_id(
     conn: sqlite3.Connection,
     transfer_id: int,
+    include_deleted: bool = False,
 ) -> PrivateTransfer:
-    row = conn.execute(
-        """SELECT id, uuid, date, type, amount_eur, description, notes, related_expense_id, hash
-           FROM private_transfers WHERE id = ?""",
-        (transfer_id,),
-    ).fetchone()
+    query = """SELECT id, uuid, date, type, amount_eur, description, notes, related_expense_id, hash, deleted_at
+           FROM private_transfers WHERE id = ?"""
+    if not include_deleted:
+        query += " AND deleted_at IS NULL"
+
+    row = conn.execute(query, (transfer_id,)).fetchone()
     if not row:
         raise RecordNotFoundError(
             f"Privatvorgang #{transfer_id} nicht gefunden.",
@@ -192,7 +202,7 @@ def update_private_transfer(
         "SELECT * FROM private_transfers WHERE id = ?",
         (transfer_id,),
     ).fetchone()
-    if not row:
+    if not row or (row["deleted_at"] is not None):
         raise RecordNotFoundError(
             f"Privatvorgang #{transfer_id} nicht gefunden.",
             code="private_transfer_not_found",
@@ -303,6 +313,8 @@ def delete_private_transfer(
     transfer_id: int,
     *,
     audit_user: str,
+    purge: bool = False,
+    auto_commit: bool = True,
 ) -> None:
     row = conn.execute(
         "SELECT * FROM private_transfers WHERE id = ?",
@@ -315,21 +327,94 @@ def delete_private_transfer(
             details={"id": transfer_id},
         )
 
+    if not purge and row["deleted_at"] is not None:
+        raise RecordNotFoundError(
+            f"Privatvorgang #{transfer_id} ist bereits gelöscht.",
+            code="private_transfer_already_deleted",
+            details={"id": transfer_id},
+        )
+
     old_data = row_to_dict(row)
     record_uuid = row["uuid"]
 
-    conn.execute("DELETE FROM private_transfers WHERE id = ?", (transfer_id,))
+    if purge:
+        conn.execute("DELETE FROM private_transfers WHERE id = ?", (transfer_id,))
+        log_audit(
+            conn,
+            "private_transfers",
+            transfer_id,
+            "DELETE",
+            record_uuid=record_uuid,
+            old_data=old_data,
+            new_data={"purged": True},
+            user=audit_user,
+        )
+    else:
+        conn.execute(
+            "UPDATE private_transfers SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (transfer_id,),
+        )
+        log_audit(
+            conn,
+            "private_transfers",
+            transfer_id,
+            "DELETE",
+            record_uuid=record_uuid,
+            old_data=old_data,
+            new_data={"deleted_at": "CURRENT_TIMESTAMP"},
+            user=audit_user,
+        )
+
+    if auto_commit:
+        conn.commit()
+
+
+def restore_private_transfer(
+    conn: sqlite3.Connection,
+    transfer_id: int,
+    *,
+    audit_user: str,
+    auto_commit: bool = True,
+) -> PrivateTransfer:
+    row = conn.execute(
+        "SELECT * FROM private_transfers WHERE id = ?",
+        (transfer_id,),
+    ).fetchone()
+    if not row:
+        raise RecordNotFoundError(
+            f"Privatvorgang #{transfer_id} nicht gefunden.",
+            code="private_transfer_not_found",
+            details={"id": transfer_id},
+        )
+    if row["deleted_at"] is None:
+        raise ValidationError(
+            f"Privatvorgang #{transfer_id} ist nicht gelöscht.",
+            code="private_transfer_not_deleted",
+            details={"id": transfer_id},
+        )
+
+    old_data = row_to_dict(row)
+    record_uuid = row["uuid"]
+
+    conn.execute(
+        "UPDATE private_transfers SET deleted_at = NULL WHERE id = ?",
+        (transfer_id,),
+    )
     log_audit(
         conn,
         "private_transfers",
         transfer_id,
-        "DELETE",
+        "UPDATE",
         record_uuid=record_uuid,
         old_data=old_data,
+        new_data={"deleted_at": None},
         user=audit_user,
     )
 
-    conn.commit()
+    if auto_commit:
+        conn.commit()
+
+    return get_private_transfer_by_id(conn, transfer_id)
 
 
 def get_private_paid_expenses(
@@ -344,10 +429,12 @@ def get_private_paid_expenses(
                e.amount_eur, e.account, e.receipt_name,
                e.foreign_amount, e.notes, e.rc_type, e.vat_input, e.vat_output,
                e.entertainment_tip_eur, e.entertainment_vat_status,
-               e.is_private_paid, e.private_classification, e.hash
+               e.is_private_paid, e.private_classification, e.hash,
+               e.deleted_at
         FROM expenses e
         LEFT JOIN categories c ON e.category_id = c.id
         WHERE e.is_private_paid = 1
+          AND e.deleted_at IS NULL
     """
     params: list[object] = []
 
@@ -371,7 +458,8 @@ def get_private_summary(
                SUM(CASE WHEN type = 'deposit' THEN amount_eur ELSE 0 END) AS deposits_direct,
                SUM(CASE WHEN type = 'withdrawal' THEN amount_eur ELSE 0 END) AS withdrawals_total
            FROM private_transfers
-           WHERE strftime('%Y', date) = ?""",
+           WHERE strftime('%Y', date) = ?
+             AND deleted_at IS NULL""",
         (str(year),),
     ).fetchone()
 
@@ -379,7 +467,8 @@ def get_private_summary(
         """SELECT SUM(ABS(amount_eur)) AS deposits_private_paid
            FROM expenses
            WHERE is_private_paid = 1
-             AND strftime('%Y', COALESCE(payment_date, invoice_date)) = ?""",
+             AND strftime('%Y', COALESCE(payment_date, invoice_date)) = ?
+             AND deleted_at IS NULL""",
         (str(year),),
     ).fetchone()
 

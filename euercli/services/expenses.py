@@ -62,6 +62,7 @@ def row_to_expense(row: sqlite3.Row) -> Expense:
         is_private_paid=bool(get_optional(row, "is_private_paid") or 0),
         private_classification=get_optional(row, "private_classification") or "none",
         hash=get_optional(row, "hash"),
+        deleted_at=get_optional(row, "deleted_at"),
     )
 
 
@@ -522,6 +523,8 @@ def list_expenses(
     year: int | None = None,
     month: int | None = None,
     category_name: str | None = None,
+    include_deleted: bool = False,
+    trash_only: bool = False,
 ) -> list[Expense]:
     query = """
         SELECT e.id, e.uuid, e.payment_date, e.invoice_date, e.vendor, e.category_id,
@@ -532,12 +535,18 @@ def list_expenses(
                e.foreign_amount, e.notes, e.rc_type, e.vat_input, e.vat_output,
                e.vat_rate, e.vat_code,
                e.entertainment_tip_eur, e.entertainment_vat_status,
-               e.is_private_paid, e.private_classification, e.hash
+               e.is_private_paid, e.private_classification, e.hash,
+               e.deleted_at
         FROM expenses e
         LEFT JOIN categories c ON e.category_id = c.id
         WHERE 1=1
     """
     params: list[object] = []
+
+    if trash_only:
+        query += " AND e.deleted_at IS NOT NULL"
+    elif not include_deleted:
+        query += " AND e.deleted_at IS NULL"
 
     if year:
         query += " AND strftime('%Y', COALESCE(e.payment_date, e.invoice_date)) = ?"
@@ -555,9 +564,12 @@ def list_expenses(
     return [row_to_expense(row) for row in rows]
 
 
-def get_expense_detail(conn: sqlite3.Connection, record_id: int) -> Expense:
-    row = conn.execute(
-        """SELECT e.id, e.uuid, e.payment_date, e.invoice_date, e.vendor, e.category_id,
+def get_expense_detail(
+    conn: sqlite3.Connection,
+    record_id: int,
+    include_deleted: bool = False,
+) -> Expense:
+    query = """SELECT e.id, e.uuid, e.payment_date, e.invoice_date, e.vendor, e.category_id,
                   c.name as category_name,
                   c.eur_key as category_eur_key,
                   e.amount_eur, e.account, e.ledger_account,
@@ -565,12 +577,15 @@ def get_expense_detail(conn: sqlite3.Connection, record_id: int) -> Expense:
                   e.foreign_amount, e.notes, e.rc_type, e.vat_input, e.vat_output,
                   e.vat_rate, e.vat_code,
                   e.entertainment_tip_eur, e.entertainment_vat_status,
-                  e.is_private_paid, e.private_classification, e.hash
+                  e.is_private_paid, e.private_classification, e.hash,
+                  e.deleted_at
            FROM expenses e
            LEFT JOIN categories c ON e.category_id = c.id
-           WHERE e.id = ?""",
-        (record_id,),
-    ).fetchone()
+           WHERE e.id = ?"""
+    if not include_deleted:
+        query += " AND e.deleted_at IS NULL"
+
+    row = conn.execute(query, (record_id,)).fetchone()
     if not row:
         raise RecordNotFoundError(
             f"Ausgabe #{record_id} nicht gefunden.",
@@ -612,7 +627,7 @@ def update_expense(
         "SELECT * FROM expenses WHERE id = ?",
         (record_id,),
     ).fetchone()
-    if not row:
+    if not row or (row["deleted_at"] is not None):
         raise RecordNotFoundError(
             f"Ausgabe #{record_id} nicht gefunden.",
             code="expense_not_found",
@@ -950,6 +965,7 @@ def delete_expense(
     *,
     record_id: int,
     audit_user: str,
+    purge: bool = False,
     auto_commit: bool = True,
 ) -> None:
     row = conn.execute(
@@ -963,19 +979,91 @@ def delete_expense(
             details={"id": record_id},
         )
 
+    if not purge and row["deleted_at"] is not None:
+        raise RecordNotFoundError(
+            f"Ausgabe #{record_id} ist bereits gelöscht.",
+            code="expense_already_deleted",
+            details={"id": record_id},
+        )
+
     old_data = row_to_dict(row)
     record_uuid = row["uuid"]
 
-    conn.execute("DELETE FROM expenses WHERE id = ?", (record_id,))
+    if purge:
+        conn.execute("DELETE FROM expenses WHERE id = ?", (record_id,))
+        log_audit(
+            conn,
+            "expenses",
+            record_id,
+            "DELETE",
+            record_uuid=record_uuid,
+            old_data=old_data,
+            new_data={"purged": True},
+            user=audit_user,
+        )
+    else:
+        conn.execute(
+            "UPDATE expenses SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (record_id,),
+        )
+        log_audit(
+            conn,
+            "expenses",
+            record_id,
+            "DELETE",
+            record_uuid=record_uuid,
+            old_data=old_data,
+            new_data={"deleted_at": "CURRENT_TIMESTAMP"},
+            user=audit_user,
+        )
+
+    if auto_commit:
+        conn.commit()
+
+
+def restore_expense(
+    conn: sqlite3.Connection,
+    *,
+    record_id: int,
+    audit_user: str,
+    auto_commit: bool = True,
+) -> Expense:
+    row = conn.execute(
+        "SELECT * FROM expenses WHERE id = ?",
+        (record_id,),
+    ).fetchone()
+    if not row:
+        raise RecordNotFoundError(
+            f"Ausgabe #{record_id} nicht gefunden.",
+            code="expense_not_found",
+            details={"id": record_id},
+        )
+    if row["deleted_at"] is None:
+        raise ValidationError(
+            f"Ausgabe #{record_id} ist nicht gelöscht.",
+            code="expense_not_deleted",
+            details={"id": record_id},
+        )
+
+    old_data = row_to_dict(row)
+    record_uuid = row["uuid"]
+
+    conn.execute(
+        "UPDATE expenses SET deleted_at = NULL WHERE id = ?",
+        (record_id,),
+    )
     log_audit(
         conn,
         "expenses",
         record_id,
-        "DELETE",
+        "UPDATE",
         record_uuid=record_uuid,
         old_data=old_data,
+        new_data={"deleted_at": None},
         user=audit_user,
     )
 
     if auto_commit:
         conn.commit()
+
+    return get_expense_detail(conn, record_id)

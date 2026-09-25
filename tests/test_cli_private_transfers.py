@@ -324,14 +324,29 @@ class CLIPrivateTransfersTestCase(BaseCLITestCase):
             ["delete", "private-transfer", "1", "--force"],
             check=True,
         )
-        self.assertIn("Privatvorgang #1 gelöscht", result.stdout)
+        self.assertIn("Privatvorgang #1 gelöscht (in den Papierkorb verschoben)", result.stdout)
 
+        # Im aktiven Datenbestand nicht mehr sichtbar
         query = self.run_cli(
-            ["query", "SELECT", "COUNT(*)", "as", "cnt", "FROM", "private_transfers"],
+            ["query", "SELECT", "COUNT(*)", "as", "cnt", "FROM", "private_transfers", "WHERE", "deleted_at", "IS", "NULL"],
             check=True,
         )
         rows = self.parse_csv(query.stdout)
         self.assertEqual(rows[1][0], "0")
+
+        # Test endgültiges Löschen mit --purge
+        self.add_private_deposit(amount="200.00", description="Einlage 2")
+        result_purge = self.run_cli(
+            ["delete", "private-transfer", "2", "--force", "--purge"],
+            check=True,
+        )
+        self.assertIn("Privatvorgang #2 endgültig gelöscht", result_purge.stdout)
+        query_purge = self.run_cli(
+            ["query", "SELECT", "COUNT(*)", "as", "cnt", "FROM", "private_transfers", "WHERE", "id", "=", "2"],
+            check=True,
+        )
+        rows_purge = self.parse_csv(query_purge.stdout)
+        self.assertEqual(rows_purge[1][0], "0")
 
 
 if __name__ == "__main__":

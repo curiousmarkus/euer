@@ -13,7 +13,7 @@ def _reconcile_private_expenses(
     year: int | None,
     dry_run: bool,
 ) -> tuple[int, int, int, list[tuple[int, bool, str, bool, str]]]:
-    query = "SELECT * FROM expenses WHERE 1=1"
+    query = "SELECT * FROM expenses WHERE deleted_at IS NULL"
     params: list[object] = []
     if year is not None:
         query += " AND strftime('%Y', COALESCE(payment_date, invoice_date)) = ?"

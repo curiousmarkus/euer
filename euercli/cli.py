@@ -31,8 +31,12 @@ from .commands import (
     cmd_receipt_check,
     cmd_receipt_open,
     cmd_reconcile_private,
+    cmd_restore,
     cmd_setup,
     cmd_summary,
+    cmd_trash_empty,
+    cmd_trash_list,
+    cmd_undo,
     cmd_update_expense,
     cmd_update_income,
     cmd_update_private_transfer,
@@ -263,7 +267,13 @@ def main(argv: list[str] | None = None) -> None:
 
     # --- list ---
     list_parser = subparsers.add_parser("list", help="Listet Daten")
-    list_subparsers = list_parser.add_subparsers(dest="type", required=True)
+    list_parser.add_argument("--trash", action="store_true", help="Gelöschte Einträge (Papierkorb) anzeigen")
+    list_subparsers = list_parser.add_subparsers(dest="type", required=False)
+    list_parser.set_defaults(
+        func=lambda args: cmd_trash_list(args)
+        if getattr(args, "trash", False)
+        else (list_parser.print_help(), sys.exit(1))
+    )
 
     # list expenses
     list_exp_parser = list_subparsers.add_parser("expenses", help="Ausgaben anzeigen")
@@ -279,6 +289,11 @@ def main(argv: list[str] | None = None) -> None:
         "--full",
         action="store_true",
         help="Tabellenansicht mit zusätzlichen Spalten (Konto, Beleg, Fremdwährung, Notiz)",
+    )
+    list_exp_parser.add_argument(
+        "--trash",
+        action="store_true",
+        help="Nur gelöschte Ausgaben anzeigen",
     )
     list_exp_parser.set_defaults(func=cmd_list_expenses)
 
@@ -296,6 +311,11 @@ def main(argv: list[str] | None = None) -> None:
         "--full",
         action="store_true",
         help="Tabellenansicht mit zusätzlicher Spalte (Notiz)",
+    )
+    list_inc_parser.add_argument(
+        "--trash",
+        action="store_true",
+        help="Nur gelöschte Einnahmen anzeigen",
     )
     list_inc_parser.set_defaults(func=cmd_list_income)
 
@@ -469,12 +489,18 @@ def main(argv: list[str] | None = None) -> None:
     del_exp_parser = delete_subparsers.add_parser("expense", help="Ausgabe löschen")
     del_exp_parser.add_argument("id", type=int, help="ID der Ausgabe")
     del_exp_parser.add_argument("--force", action="store_true", help="Keine Rückfrage")
+    del_exp_parser.add_argument(
+        "--purge", action="store_true", help="Endgültig löschen (Purge statt Papierkorb)"
+    )
     del_exp_parser.set_defaults(func=cmd_delete_expense)
 
     # delete income
     del_inc_parser = delete_subparsers.add_parser("income", help="Einnahme löschen")
     del_inc_parser.add_argument("id", type=int, help="ID der Einnahme")
     del_inc_parser.add_argument("--force", action="store_true", help="Keine Rückfrage")
+    del_inc_parser.add_argument(
+        "--purge", action="store_true", help="Endgültig löschen (Purge statt Papierkorb)"
+    )
     del_inc_parser.set_defaults(func=cmd_delete_income)
 
     # delete private-transfer
@@ -483,7 +509,44 @@ def main(argv: list[str] | None = None) -> None:
     )
     del_private_parser.add_argument("id", type=int, help="ID des Privatvorgangs")
     del_private_parser.add_argument("--force", action="store_true", help="Keine Rückfrage")
+    del_private_parser.add_argument(
+        "--purge", action="store_true", help="Endgültig löschen (Purge statt Papierkorb)"
+    )
     del_private_parser.set_defaults(func=cmd_delete_private_transfer)
+
+    # --- restore ---
+    restore_parser = subparsers.add_parser("restore", help="Stellt gelöschten Datensatz wieder her")
+    restore_parser.add_argument("id", type=int, help="ID des wiederherzustellenden Eintrags")
+    restore_parser.add_argument(
+        "--table",
+        choices=["expenses", "income", "private_transfers"],
+        help="Tabelle des Eintrags (optional, wird sonst automatisch ermittelt)",
+    )
+    restore_parser.set_defaults(func=cmd_restore)
+
+    # --- undo ---
+    undo_parser = subparsers.add_parser("undo", help="Macht eine Änderung rückgängig")
+    undo_parser.add_argument("--id", type=int, help="Spezifische Audit-Log-ID rückgängig machen")
+    undo_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Keine interaktive Bestätigung anfordern",
+    )
+    undo_parser.set_defaults(func=cmd_undo)
+
+    # --- trash ---
+    trash_parser = subparsers.add_parser("trash", help="Verwaltet den Papierkorb")
+    trash_subparsers = trash_parser.add_subparsers(dest="action", required=False)
+    trash_list_parser = trash_subparsers.add_parser("list", help="Gelöschte Einträge anzeigen")
+    trash_list_parser.set_defaults(func=cmd_trash_list)
+    trash_empty_parser = trash_subparsers.add_parser("empty", help="Papierkorb endgültig leeren")
+    trash_empty_parser.add_argument("--force", action="store_true", help="Keine Rückfrage")
+    trash_empty_parser.set_defaults(func=cmd_trash_empty)
+    trash_parser.set_defaults(
+        func=lambda args: cmd_trash_list(args)
+        if getattr(args, "action", None) is None
+        else None
+    )
 
     # --- export ---
     export_parser = subparsers.add_parser("export", help="Exportiert Daten")
@@ -499,6 +562,11 @@ def main(argv: list[str] | None = None) -> None:
         help=(
             f"Ausgabeverzeichnis (default: exports.directory aus Config oder {DEFAULT_EXPORT_DIR})"
         ),
+    )
+    export_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Bestehende Exportdateien überschreiben",
     )
     export_parser.set_defaults(func=cmd_export)
 

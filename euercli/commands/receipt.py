@@ -53,6 +53,7 @@ def cmd_receipt_check(args):
             """SELECT e.id, e.payment_date, e.invoice_date, e.vendor, e.receipt_name
                FROM expenses e
                WHERE strftime('%Y', COALESCE(e.payment_date, e.invoice_date)) = ?
+                 AND e.deleted_at IS NULL
                ORDER BY COALESCE(e.payment_date, e.invoice_date), e.id""",
             (str(year),),
         ).fetchall()
@@ -94,6 +95,7 @@ def cmd_receipt_check(args):
             """SELECT i.id, i.payment_date, i.invoice_date, i.source, i.receipt_name
                FROM income i
                WHERE strftime('%Y', COALESCE(i.payment_date, i.invoice_date)) = ?
+                 AND i.deleted_at IS NULL
                ORDER BY COALESCE(i.payment_date, i.invoice_date), i.id""",
             (str(year),),
         ).fetchall()
@@ -165,12 +167,12 @@ def cmd_receipt_open(args):
     table = args.table
     if table == "expenses":
         row = conn.execute(
-            "SELECT id, payment_date, invoice_date, receipt_name FROM expenses WHERE id = ?",
+            "SELECT id, payment_date, invoice_date, receipt_name FROM expenses WHERE id = ? AND deleted_at IS NULL",
             (args.id,),
         ).fetchone()
     else:
         row = conn.execute(
-            "SELECT id, payment_date, invoice_date, receipt_name FROM income WHERE id = ?",
+            "SELECT id, payment_date, invoice_date, receipt_name FROM income WHERE id = ? AND deleted_at IS NULL",
             (args.id,),
         ).fetchone()
 

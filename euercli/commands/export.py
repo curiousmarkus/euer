@@ -1,5 +1,7 @@
 import csv
+import os
 import sys
+import uuid
 from pathlib import Path
 
 from ..config import get_export_dir, get_ledger_accounts, load_config
@@ -50,27 +52,57 @@ def cmd_export(args):
     output_dir.mkdir(exist_ok=True)
 
     year = args.year
+    exp_suffix = f"_{year}" if year is not None else ""
+    if args.format == "csv":
+        planned_targets = [
+            output_dir / f"EÜR{exp_suffix}_Ausgaben.csv",
+            output_dir / f"EÜR{exp_suffix}_Einnahmen.csv",
+            output_dir / f"EÜR{exp_suffix}_PrivateTransfers.csv",
+            output_dir / f"EÜR{exp_suffix}_Sacheinlagen.csv",
+        ]
+    else:
+        planned_targets = [
+            output_dir / f"EÜR{exp_suffix}_Ausgaben.xlsx",
+            output_dir / f"EÜR{exp_suffix}_Einnahmen.xlsx",
+            output_dir / f"EÜR{exp_suffix}_Privatvorgaenge.xlsx",
+        ]
+
+    existing_files = [p for p in planned_targets if p.exists()]
+    if existing_files and not getattr(args, "force", False):
+        conn.close()
+        print("Fehler: Zieldatei(en) existieren bereits:", file=sys.stderr)
+        for p in existing_files:
+            print(f"  - {p}", file=sys.stderr)
+        print(
+            "Bitte '--force' angeben, um bestehende Exportdateien zu überschreiben.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     if year is not None:
-        year_filter = "WHERE strftime('%Y', COALESCE(e.payment_date, e.invoice_date)) = ?"
+        year_filter = (
+            "WHERE e.deleted_at IS NULL AND strftime('%Y', COALESCE(e.payment_date, e.invoice_date)) = ?"
+        )
         year_params = (str(year),)
-        income_filter = "WHERE strftime('%Y', COALESCE(i.payment_date, i.invoice_date)) = ?"
+        income_filter = (
+            "WHERE i.deleted_at IS NULL AND strftime('%Y', COALESCE(i.payment_date, i.invoice_date)) = ?"
+        )
         income_params = (str(year),)
-        private_filter = "WHERE strftime('%Y', p.date) = ?"
+        private_filter = "WHERE p.deleted_at IS NULL AND strftime('%Y', p.date) = ?"
         private_params = (str(year),)
         sacheinlagen_filter = (
-            "WHERE e.is_private_paid = 1 "
+            "WHERE e.deleted_at IS NULL AND e.is_private_paid = 1 "
             "AND strftime('%Y', COALESCE(e.payment_date, e.invoice_date)) = ?"
         )
         sacheinlagen_params = (str(year),)
     else:
-        year_filter = ""
+        year_filter = "WHERE e.deleted_at IS NULL"
         year_params = ()
-        income_filter = ""
+        income_filter = "WHERE i.deleted_at IS NULL"
         income_params = ()
-        private_filter = ""
+        private_filter = "WHERE p.deleted_at IS NULL"
         private_params = ()
-        sacheinlagen_filter = "WHERE e.is_private_paid = 1"
+        sacheinlagen_filter = "WHERE e.deleted_at IS NULL AND e.is_private_paid = 1"
         sacheinlagen_params = ()
 
     has_private_transfers = (
@@ -176,13 +208,187 @@ def cmd_export(args):
             ),
         )
 
-    if args.format == "csv":
-        # CSV Export
-        exp_suffix = f"_{year}" if year is not None else ""
-        exp_path = output_dir / f"EÜR{exp_suffix}_Ausgaben.csv"
-        with open(exp_path, "w", newline="", encoding="utf-8-sig") as f:
-            writer = csv.writer(f)
-            writer.writerow(
+    staging_files: list[tuple[Path, Path]] = []
+
+    def make_staging_path(target: Path) -> Path:
+        tmp = target.with_name(f".{target.name}.tmp.{uuid.uuid4().hex[:8]}")
+        staging_files.append((tmp, target))
+        return tmp
+
+    try:
+        if args.format == "csv":
+            # CSV Export
+            exp_suffix = f"_{year}" if year is not None else ""
+            exp_path = output_dir / f"EÜR{exp_suffix}_Ausgaben.csv"
+            exp_tmp = make_staging_path(exp_path)
+            with open(exp_tmp, "w", newline="", encoding="utf-8-sig") as f:
+                writer = csv.writer(f)
+                writer.writerow(
+                    [
+                        "Belegname",
+                        "Wertstellung",
+                        "Rechnungsdatum",
+                        "Lieferant",
+                        "Kategorie",
+                        "EUR",
+                        "Konto",
+                        "Buchungskonto",
+                        "Kontonummer",
+                        "Fremdwährung",
+                        "Bemerkung",
+                        "RC",
+                        "Vorsteuer",
+                        "Umsatzsteuer",
+                        "Steuersatz",
+                        "Steuerklasse",
+                        "Trinkgeld",
+                        "Bewirtung Vorsteuerstatus",
+                        "Bewirtung Kostenbasis",
+                        "Bewirtung abziehbar",
+                        "Bewirtung nicht abziehbar",
+                    ]
+                )
+                for r in expenses:
+                    cat = category_label(r["category"], r["eur_key"])
+                    entertainment_values = entertainment_export_values(r)
+                    writer.writerow(
+                        [
+                            r["receipt_name"] or "",
+                            r["payment_date"] or "",
+                            r["invoice_date"] or "",
+                            r["vendor"],
+                            cat,
+                            f"{r['amount_eur']:.2f}",
+                            r["account"] or "",
+                            r["ledger_account"] or "",
+                            ledger_account_numbers.get((r["ledger_account"] or "").lower(), ""),
+                            r["foreign_amount"] or "",
+                            r["notes"] or "",
+                            format_rc_type(r["rc_type"]),
+                            f"{r['vat_input']:.2f}" if r["vat_input"] else "",
+                            f"{r['vat_output']:.2f}" if r["vat_output"] else "",
+                            f"{r['vat_rate']:g}" if r["vat_rate"] is not None else "",
+                            r["vat_code"] or "",
+                            *entertainment_values,
+                        ]
+                    )
+
+            inc_path = output_dir / f"EÜR{exp_suffix}_Einnahmen.csv"
+            inc_tmp = make_staging_path(inc_path)
+            with open(inc_tmp, "w", newline="", encoding="utf-8-sig") as f:
+                writer = csv.writer(f)
+                writer.writerow(
+                    [
+                        "Belegname",
+                        "Wertstellung",
+                        "Rechnungsdatum",
+                        "Quelle",
+                        "Kategorie",
+                        "EUR",
+                        "Buchungskonto",
+                        "Kontonummer",
+                        "Fremdwährung",
+                        "Bemerkung",
+                        "Umsatzsteuer",
+                        "Steuersatz",
+                        "Steuerklasse",
+                    ]
+                )
+                for r in income:
+                    cat = category_label(r["category"], r["eur_key"])
+                    writer.writerow(
+                        [
+                            r["receipt_name"] or "",
+                            r["payment_date"] or "",
+                            r["invoice_date"] or "",
+                            r["source"],
+                            cat,
+                            f"{r['amount_eur']:.2f}",
+                            r["ledger_account"] or "",
+                            ledger_account_numbers.get((r["ledger_account"] or "").lower(), ""),
+                            r["foreign_amount"] or "",
+                            r["notes"] or "",
+                            f"{r['vat_output']:.2f}" if r["vat_output"] else "",
+                            f"{r['vat_rate']:g}" if r["vat_rate"] is not None else "",
+                            r["vat_code"] or "",
+                        ]
+                    )
+
+            private_path = output_dir / f"EÜR{exp_suffix}_PrivateTransfers.csv"
+            private_tmp = make_staging_path(private_path)
+            with open(private_tmp, "w", newline="", encoding="utf-8-sig") as f:
+                writer = csv.writer(f)
+                writer.writerow(
+                    [
+                        "ID",
+                        "Datum",
+                        "Typ",
+                        "EUR",
+                        "Beschreibung",
+                        "Bemerkung",
+                        "related_expense_id",
+                    ]
+                )
+                for r in private_transfers:
+                    writer.writerow(
+                        [
+                            r["id"],
+                            r["date"],
+                            r["type"],
+                            f"{r['amount_eur']:.2f}",
+                            r["description"],
+                            r["notes"] or "",
+                            r["related_expense_id"] or "",
+                        ]
+                    )
+
+            sache_path = output_dir / f"EÜR{exp_suffix}_Sacheinlagen.csv"
+            sache_tmp = make_staging_path(sache_path)
+            with open(sache_tmp, "w", newline="", encoding="utf-8-sig") as f:
+                writer = csv.writer(f)
+                writer.writerow(
+                    [
+                        "expense_id",
+                        "Wertstellung",
+                        "Rechnungsdatum",
+                        "Lieferant",
+                        "Kategorie",
+                        "EUR",
+                        "Konto",
+                        "Klassifikation",
+                    ]
+                )
+                for r in sacheinlagen:
+                    writer.writerow(
+                        [
+                            r["id"],
+                            r["payment_date"] or "",
+                            r["invoice_date"] or "",
+                            r["vendor"],
+                            r["category"] or "",
+                            f"{abs(r['amount_eur']):.2f}",
+                            r["account"] or "",
+                            r["private_classification"] or "",
+                        ]
+                    )
+
+        else:
+            # XLSX Export
+            if not HAS_OPENPYXL:
+                print(
+                    "Fehler: openpyxl nicht installiert. Bitte 'pip install openpyxl'.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+
+            # Ausgaben
+            exp_suffix = f"_{year}" if year is not None else ""
+            exp_path = output_dir / f"EÜR{exp_suffix}_Ausgaben.xlsx"
+            exp_tmp = make_staging_path(exp_path)
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Ausgaben"
+            ws.append(
                 [
                     "Belegname",
                     "Wertstellung",
@@ -210,33 +416,39 @@ def cmd_export(args):
             for r in expenses:
                 cat = category_label(r["category"], r["eur_key"])
                 entertainment_values = entertainment_export_values(r)
-                writer.writerow(
+                ws.append(
                     [
                         r["receipt_name"] or "",
                         r["payment_date"] or "",
                         r["invoice_date"] or "",
                         r["vendor"],
                         cat,
-                        f"{r['amount_eur']:.2f}",
+                        r["amount_eur"],
                         r["account"] or "",
                         r["ledger_account"] or "",
                         ledger_account_numbers.get((r["ledger_account"] or "").lower(), ""),
                         r["foreign_amount"] or "",
                         r["notes"] or "",
                         format_rc_type(r["rc_type"]),
-                        f"{r['vat_input']:.2f}" if r["vat_input"] else "",
-                        f"{r['vat_output']:.2f}" if r["vat_output"] else "",
-                        f"{r['vat_rate']:g}" if r["vat_rate"] is not None else "",
+                        r["vat_input"] if r["vat_input"] else None,
+                        r["vat_output"] if r["vat_output"] else None,
+                        r["vat_rate"] if r["vat_rate"] is not None else None,
                         r["vat_code"] or "",
-                        *entertainment_values,
+                        *[
+                            (value if index == 1 else float(value)) if value else None
+                            for index, value in enumerate(entertainment_values)
+                        ],
                     ]
                 )
-        print(f"Exportiert: {exp_path}")
+            wb.save(exp_tmp)
 
-        inc_path = output_dir / f"EÜR{exp_suffix}_Einnahmen.csv"
-        with open(inc_path, "w", newline="", encoding="utf-8-sig") as f:
-            writer = csv.writer(f)
-            writer.writerow(
+            # Einnahmen
+            inc_path = output_dir / f"EÜR{exp_suffix}_Einnahmen.xlsx"
+            inc_tmp = make_staging_path(inc_path)
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Einnahmen"
+            ws.append(
                 [
                     "Belegname",
                     "Wertstellung",
@@ -255,29 +467,31 @@ def cmd_export(args):
             )
             for r in income:
                 cat = category_label(r["category"], r["eur_key"])
-                writer.writerow(
+                ws.append(
                     [
                         r["receipt_name"] or "",
                         r["payment_date"] or "",
                         r["invoice_date"] or "",
                         r["source"],
                         cat,
-                        f"{r['amount_eur']:.2f}",
+                        r["amount_eur"],
                         r["ledger_account"] or "",
                         ledger_account_numbers.get((r["ledger_account"] or "").lower(), ""),
                         r["foreign_amount"] or "",
                         r["notes"] or "",
-                        f"{r['vat_output']:.2f}" if r["vat_output"] else "",
-                        f"{r['vat_rate']:g}" if r["vat_rate"] is not None else "",
+                        r["vat_output"] if r["vat_output"] else None,
+                        r["vat_rate"] if r["vat_rate"] is not None else None,
                         r["vat_code"] or "",
                     ]
                 )
-        print(f"Exportiert: {inc_path}")
+            wb.save(inc_tmp)
 
-        private_path = output_dir / f"EÜR{exp_suffix}_PrivateTransfers.csv"
-        with open(private_path, "w", newline="", encoding="utf-8-sig") as f:
-            writer = csv.writer(f)
-            writer.writerow(
+            private_path = output_dir / f"EÜR{exp_suffix}_Privatvorgaenge.xlsx"
+            private_tmp = make_staging_path(private_path)
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "PrivateTransfers"
+            ws.append(
                 [
                     "ID",
                     "Datum",
@@ -289,23 +503,20 @@ def cmd_export(args):
                 ]
             )
             for r in private_transfers:
-                writer.writerow(
+                ws.append(
                     [
                         r["id"],
                         r["date"],
                         r["type"],
-                        f"{r['amount_eur']:.2f}",
+                        r["amount_eur"],
                         r["description"],
                         r["notes"] or "",
-                        r["related_expense_id"] or "",
+                        r["related_expense_id"] or None,
                     ]
                 )
-        print(f"Exportiert: {private_path}")
 
-        sache_path = output_dir / f"EÜR{exp_suffix}_Sacheinlagen.csv"
-        with open(sache_path, "w", newline="", encoding="utf-8-sig") as f:
-            writer = csv.writer(f)
-            writer.writerow(
+            ws2 = wb.create_sheet("Sacheinlagen")
+            ws2.append(
                 [
                     "expense_id",
                     "Wertstellung",
@@ -318,187 +529,29 @@ def cmd_export(args):
                 ]
             )
             for r in sacheinlagen:
-                writer.writerow(
+                ws2.append(
                     [
                         r["id"],
                         r["payment_date"] or "",
                         r["invoice_date"] or "",
                         r["vendor"],
                         r["category"] or "",
-                        f"{abs(r['amount_eur']):.2f}",
+                        abs(r["amount_eur"]),
                         r["account"] or "",
                         r["private_classification"] or "",
                     ]
                 )
-        print(f"Exportiert: {sache_path}")
+            wb.save(private_tmp)
 
-    else:
-        # XLSX Export
-        if not HAS_OPENPYXL:
-            print(
-                "Fehler: openpyxl nicht installiert. Bitte 'pip install openpyxl'.",
-                file=sys.stderr,
-            )
-            sys.exit(1)
+        # Atomares Ersetzen aller Zieldateien
+        for tmp_path, final_path in staging_files:
+            os.replace(tmp_path, final_path)
+            print(f"Exportiert: {final_path}")
 
-        # Ausgaben
-        exp_suffix = f"_{year}" if year is not None else ""
-        exp_path = output_dir / f"EÜR{exp_suffix}_Ausgaben.xlsx"
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "Ausgaben"
-        ws.append(
-            [
-                "Belegname",
-                "Wertstellung",
-                "Rechnungsdatum",
-                "Lieferant",
-                "Kategorie",
-                "EUR",
-                "Konto",
-                "Buchungskonto",
-                "Kontonummer",
-                "Fremdwährung",
-                "Bemerkung",
-                "RC",
-                "Vorsteuer",
-                "Umsatzsteuer",
-                "Steuersatz",
-                "Steuerklasse",
-                "Trinkgeld",
-                "Bewirtung Vorsteuerstatus",
-                "Bewirtung Kostenbasis",
-                "Bewirtung abziehbar",
-                "Bewirtung nicht abziehbar",
-            ]
-        )
-        for r in expenses:
-            cat = category_label(r["category"], r["eur_key"])
-            entertainment_values = entertainment_export_values(r)
-            ws.append(
-                [
-                    r["receipt_name"] or "",
-                    r["payment_date"] or "",
-                    r["invoice_date"] or "",
-                    r["vendor"],
-                    cat,
-                    r["amount_eur"],
-                    r["account"] or "",
-                    r["ledger_account"] or "",
-                    ledger_account_numbers.get((r["ledger_account"] or "").lower(), ""),
-                    r["foreign_amount"] or "",
-                    r["notes"] or "",
-                    format_rc_type(r["rc_type"]),
-                    r["vat_input"] if r["vat_input"] else None,
-                    r["vat_output"] if r["vat_output"] else None,
-                    r["vat_rate"] if r["vat_rate"] is not None else None,
-                    r["vat_code"] or "",
-                    *[
-                        (value if index == 1 else float(value)) if value else None
-                        for index, value in enumerate(entertainment_values)
-                    ],
-                ]
-            )
-        wb.save(exp_path)
-        print(f"Exportiert: {exp_path}")
-
-        # Einnahmen
-        inc_path = output_dir / f"EÜR{exp_suffix}_Einnahmen.xlsx"
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "Einnahmen"
-        ws.append(
-            [
-                "Belegname",
-                "Wertstellung",
-                "Rechnungsdatum",
-                "Quelle",
-                "Kategorie",
-                "EUR",
-                "Buchungskonto",
-                "Kontonummer",
-                "Fremdwährung",
-                "Bemerkung",
-                "Umsatzsteuer",
-                "Steuersatz",
-                "Steuerklasse",
-            ]
-        )
-        for r in income:
-            cat = category_label(r["category"], r["eur_key"])
-            ws.append(
-                [
-                    r["receipt_name"] or "",
-                    r["payment_date"] or "",
-                    r["invoice_date"] or "",
-                    r["source"],
-                    cat,
-                    r["amount_eur"],
-                    r["ledger_account"] or "",
-                    ledger_account_numbers.get((r["ledger_account"] or "").lower(), ""),
-                    r["foreign_amount"] or "",
-                    r["notes"] or "",
-                    r["vat_output"] if r["vat_output"] else None,
-                    r["vat_rate"] if r["vat_rate"] is not None else None,
-                    r["vat_code"] or "",
-                ]
-            )
-        wb.save(inc_path)
-        print(f"Exportiert: {inc_path}")
-
-        private_path = output_dir / f"EÜR{exp_suffix}_Privatvorgaenge.xlsx"
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "PrivateTransfers"
-        ws.append(
-            [
-                "ID",
-                "Datum",
-                "Typ",
-                "EUR",
-                "Beschreibung",
-                "Bemerkung",
-                "related_expense_id",
-            ]
-        )
-        for r in private_transfers:
-            ws.append(
-                [
-                    r["id"],
-                    r["date"],
-                    r["type"],
-                    r["amount_eur"],
-                    r["description"],
-                    r["notes"] or "",
-                    r["related_expense_id"] or None,
-                ]
-            )
-
-        ws2 = wb.create_sheet("Sacheinlagen")
-        ws2.append(
-            [
-                "expense_id",
-                "Wertstellung",
-                "Rechnungsdatum",
-                "Lieferant",
-                "Kategorie",
-                "EUR",
-                "Konto",
-                "Klassifikation",
-            ]
-        )
-        for r in sacheinlagen:
-            ws2.append(
-                [
-                    r["id"],
-                    r["payment_date"] or "",
-                    r["invoice_date"] or "",
-                    r["vendor"],
-                    r["category"] or "",
-                    abs(r["amount_eur"]),
-                    r["account"] or "",
-                    r["private_classification"] or "",
-                ]
-            )
-        wb.save(private_path)
-        print(f"Exportiert: {private_path}")
+    finally:
+        for tmp_path, _ in staging_files:
+            if tmp_path.exists():
+                try:
+                    tmp_path.unlink()
+                except OSError:
+                    pass

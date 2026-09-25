@@ -89,7 +89,7 @@ def cmd_incomplete_list(args):
                    e.rc_type, e.vat_input, e.vat_output, e.entertainment_vat_status
             FROM expenses e
             LEFT JOIN categories c ON e.category_id = c.id
-            WHERE 1=1
+            WHERE e.deleted_at IS NULL
         """
         params: list[object] = []
         if args.year:
@@ -124,7 +124,7 @@ def cmd_incomplete_list(args):
                    i.amount_eur, i.receipt_name, i.notes, i.vat_output
             FROM income i
             LEFT JOIN categories c ON i.category_id = c.id
-            WHERE 1=1
+            WHERE i.deleted_at IS NULL
         """
         params = []
         if args.year:

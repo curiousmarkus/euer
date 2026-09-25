@@ -62,13 +62,15 @@ def cmd_list_expenses(args):
     db_path = Path(args.db)
     conn = get_db_connection(db_path)
 
-    year = args.year or datetime.now().year
+    trash = getattr(args, "trash", False)
+    year = args.year if (trash and args.year is None) else (args.year or datetime.now().year)
 
     rows = list_expenses(
         conn,
         year=year,
         month=args.month,
         category_name=args.category,
+        trash_only=trash,
     )
     conn.close()
 
@@ -426,13 +428,15 @@ def cmd_list_income(args):
     db_path = Path(args.db)
     conn = get_db_connection(db_path)
 
-    year = args.year or datetime.now().year
+    trash = getattr(args, "trash", False)
+    year = args.year if (trash and args.year is None) else (args.year or datetime.now().year)
 
     rows = list_income(
         conn,
         year=year,
         month=args.month,
         category_name=args.category,
+        trash_only=trash,
     )
     conn.close()
 

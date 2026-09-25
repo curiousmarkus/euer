@@ -42,6 +42,7 @@ def _row_to_income(row: sqlite3.Row) -> Income:
         vat_rate=get_optional(row, "vat_rate"),
         vat_code=get_optional(row, "vat_code"),
         hash=get_optional(row, "hash"),
+        deleted_at=get_optional(row, "deleted_at"),
     )
 
 
@@ -349,18 +350,26 @@ def list_income(
     year: int | None = None,
     month: int | None = None,
     category_name: str | None = None,
+    include_deleted: bool = False,
+    trash_only: bool = False,
 ) -> list[Income]:
     query = """
         SELECT i.id, i.uuid, i.payment_date, i.invoice_date, i.source, i.category_id,
                c.name as category_name,
                c.eur_key as category_eur_key,
                i.amount_eur, i.ledger_account, i.receipt_name,
-               i.foreign_amount, i.notes, i.vat_output, i.vat_rate, i.vat_code, i.hash
+               i.foreign_amount, i.notes, i.vat_output, i.vat_rate, i.vat_code, i.hash,
+               i.deleted_at
         FROM income i
         LEFT JOIN categories c ON i.category_id = c.id
         WHERE 1=1
     """
     params: list[object] = []
+
+    if trash_only:
+        query += " AND i.deleted_at IS NOT NULL"
+    elif not include_deleted:
+        query += " AND i.deleted_at IS NULL"
 
     if year:
         query += " AND strftime('%Y', COALESCE(i.payment_date, i.invoice_date)) = ?"
@@ -378,18 +387,24 @@ def list_income(
     return [_row_to_income(row) for row in rows]
 
 
-def get_income_detail(conn: sqlite3.Connection, record_id: int) -> Income:
-    row = conn.execute(
-        """SELECT i.id, i.uuid, i.payment_date, i.invoice_date, i.source, i.category_id,
+def get_income_detail(
+    conn: sqlite3.Connection,
+    record_id: int,
+    include_deleted: bool = False,
+) -> Income:
+    query = """SELECT i.id, i.uuid, i.payment_date, i.invoice_date, i.source, i.category_id,
                   c.name as category_name,
                   c.eur_key as category_eur_key,
                   i.amount_eur, i.ledger_account, i.receipt_name,
-                  i.foreign_amount, i.notes, i.vat_output, i.vat_rate, i.vat_code, i.hash
+                  i.foreign_amount, i.notes, i.vat_output, i.vat_rate, i.vat_code, i.hash,
+                  i.deleted_at
            FROM income i
            LEFT JOIN categories c ON i.category_id = c.id
-           WHERE i.id = ?""",
-        (record_id,),
-    ).fetchone()
+           WHERE i.id = ?"""
+    if not include_deleted:
+        query += " AND i.deleted_at IS NULL"
+
+    row = conn.execute(query, (record_id,)).fetchone()
     if not row:
         raise RecordNotFoundError(
             f"Einnahme #{record_id} nicht gefunden.",
@@ -426,7 +441,7 @@ def update_income(
         "SELECT * FROM income WHERE id = ?",
         (record_id,),
     ).fetchone()
-    if not row:
+    if not row or (row["deleted_at"] is not None):
         raise RecordNotFoundError(
             f"Einnahme #{record_id} nicht gefunden.",
             code="income_not_found",
@@ -652,6 +667,7 @@ def delete_income(
     *,
     record_id: int,
     audit_user: str,
+    purge: bool = False,
     auto_commit: bool = True,
 ) -> None:
     row = conn.execute(
@@ -665,19 +681,91 @@ def delete_income(
             details={"id": record_id},
         )
 
+    if not purge and row["deleted_at"] is not None:
+        raise RecordNotFoundError(
+            f"Einnahme #{record_id} ist bereits gelöscht.",
+            code="income_already_deleted",
+            details={"id": record_id},
+        )
+
     old_data = row_to_dict(row)
     record_uuid = row["uuid"]
 
-    conn.execute("DELETE FROM income WHERE id = ?", (record_id,))
+    if purge:
+        conn.execute("DELETE FROM income WHERE id = ?", (record_id,))
+        log_audit(
+            conn,
+            "income",
+            record_id,
+            "DELETE",
+            record_uuid=record_uuid,
+            old_data=old_data,
+            new_data={"purged": True},
+            user=audit_user,
+        )
+    else:
+        conn.execute(
+            "UPDATE income SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (record_id,),
+        )
+        log_audit(
+            conn,
+            "income",
+            record_id,
+            "DELETE",
+            record_uuid=record_uuid,
+            old_data=old_data,
+            new_data={"deleted_at": "CURRENT_TIMESTAMP"},
+            user=audit_user,
+        )
+
+    if auto_commit:
+        conn.commit()
+
+
+def restore_income(
+    conn: sqlite3.Connection,
+    *,
+    record_id: int,
+    audit_user: str,
+    auto_commit: bool = True,
+) -> Income:
+    row = conn.execute(
+        "SELECT * FROM income WHERE id = ?",
+        (record_id,),
+    ).fetchone()
+    if not row:
+        raise RecordNotFoundError(
+            f"Einnahme #{record_id} nicht gefunden.",
+            code="income_not_found",
+            details={"id": record_id},
+        )
+    if row["deleted_at"] is None:
+        raise ValidationError(
+            f"Einnahme #{record_id} ist nicht gelöscht.",
+            code="income_not_deleted",
+            details={"id": record_id},
+        )
+
+    old_data = row_to_dict(row)
+    record_uuid = row["uuid"]
+
+    conn.execute(
+        "UPDATE income SET deleted_at = NULL WHERE id = ?",
+        (record_id,),
+    )
     log_audit(
         conn,
         "income",
         record_id,
-        "DELETE",
+        "UPDATE",
         record_uuid=record_uuid,
         old_data=old_data,
+        new_data={"deleted_at": None},
         user=audit_user,
     )
 
     if auto_commit:
         conn.commit()
+
+    return get_income_detail(conn, record_id)

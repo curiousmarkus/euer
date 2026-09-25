@@ -56,6 +56,7 @@ def cmd_summary(args):
         """SELECT COUNT(*) as cnt FROM expenses
            WHERE payment_date IS NULL
              AND invoice_date IS NOT NULL
+             AND deleted_at IS NULL
              AND strftime('%Y', invoice_date) = ?""",
         (str(year),),
     ).fetchone()["cnt"]
@@ -63,6 +64,7 @@ def cmd_summary(args):
         """SELECT COUNT(*) as cnt FROM income
            WHERE payment_date IS NULL
              AND invoice_date IS NOT NULL
+             AND deleted_at IS NULL
              AND strftime('%Y', invoice_date) = ?""",
         (str(year),),
     ).fetchone()["cnt"]
@@ -81,6 +83,7 @@ def cmd_summary(args):
         """SELECT COUNT(*) as cnt FROM expenses
            WHERE rc_type = 'unclassified'
              AND payment_date IS NOT NULL
+             AND deleted_at IS NULL
              AND strftime('%Y', payment_date) = ?""",
         (str(year),),
     ).fetchone()["cnt"]
@@ -98,6 +101,7 @@ def cmd_summary(args):
            JOIN categories c ON e.category_id = c.id
            WHERE c.eur_key = 'entertainment'
              AND e.payment_date IS NOT NULL
+             AND e.deleted_at IS NULL
              AND strftime('%Y', e.payment_date) = ?
            ORDER BY e.id""",
         (str(year),),
@@ -140,6 +144,7 @@ def cmd_summary(args):
            FROM expenses e
            LEFT JOIN categories c ON e.category_id = c.id
            WHERE e.payment_date IS NOT NULL
+             AND e.deleted_at IS NULL
              AND strftime('%Y', e.payment_date) = ?
            GROUP BY c.id
            ORDER BY c.name""",
@@ -237,6 +242,7 @@ def cmd_summary(args):
         """SELECT SUM(vat_input) as sum_input, SUM(vat_output) as sum_output
            FROM expenses
            WHERE payment_date IS NOT NULL
+             AND deleted_at IS NULL
              AND strftime('%Y', payment_date) = ?""",
         (str(year),),
     ).fetchone()
@@ -246,6 +252,7 @@ def cmd_summary(args):
         """SELECT SUM(vat_output) as sum_output
            FROM income
            WHERE payment_date IS NOT NULL
+             AND deleted_at IS NULL
              AND strftime('%Y', payment_date) = ?""",
         (str(year),),
     ).fetchone()
@@ -279,6 +286,7 @@ def cmd_summary(args):
            FROM income i
            LEFT JOIN categories c ON i.category_id = c.id
            WHERE i.payment_date IS NOT NULL
+             AND i.deleted_at IS NULL
              AND strftime('%Y', i.payment_date) = ?
            GROUP BY c.id
            ORDER BY c.name""",

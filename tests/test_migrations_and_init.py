@@ -88,9 +88,10 @@ class MigrationsAndInitTestCase(unittest.TestCase):
         conn = sqlite3.connect(self.db_path)
         desc, satisfied = detect_legacy_schema_state(conn)
         conn.close()
-        self.assertIn("007_category_eur_key", desc)
+        self.assertIn("008_soft_delete", desc)
         self.assertIn("001_initial_schema", satisfied)
         self.assertIn("007_category_eur_key", satisfied)
+        self.assertIn("008_soft_delete", satisfied)
 
         # Führe init aus -> registriert Legacy-Stempel ohne Fehler
         import io
@@ -107,7 +108,7 @@ class MigrationsAndInitTestCase(unittest.TestCase):
         conn = sqlite3.connect(self.db_path)
         rows = conn.execute("SELECT version, name FROM _schema_migrations").fetchall()
         conn.close()
-        self.assertTrue(len(rows) >= 7)
+        self.assertTrue(len(rows) >= 8)
         self.assertIn("001_initial_schema", [r[0] for r in rows])
 
     def test_entertainment_impact_detection_and_reporting(self):

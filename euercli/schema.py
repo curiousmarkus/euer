@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS expenses (
     private_classification TEXT NOT NULL DEFAULT 'none'
         CHECK(private_classification IN ('none', 'account_rule', 'category_rule', 'manual')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL,
     hash TEXT UNIQUE NOT NULL,
     CHECK(invoice_date IS NOT NULL OR payment_date IS NOT NULL)
 );
@@ -47,6 +48,7 @@ CREATE TABLE IF NOT EXISTS expenses (
 CREATE INDEX IF NOT EXISTS idx_expenses_payment_date ON expenses(payment_date);
 CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses(category_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_vendor ON expenses(vendor);
+CREATE INDEX IF NOT EXISTS idx_expenses_deleted_at ON expenses(deleted_at);
 
 CREATE TABLE IF NOT EXISTS income (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -69,12 +71,14 @@ CREATE TABLE IF NOT EXISTS income (
         'output_tax_free_no_vorsteuer'
     )),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL,
     hash TEXT UNIQUE NOT NULL,
     CHECK(invoice_date IS NOT NULL OR payment_date IS NOT NULL)
 );
 
 CREATE INDEX IF NOT EXISTS idx_income_payment_date ON income(payment_date);
 CREATE INDEX IF NOT EXISTS idx_income_category ON income(category_id);
+CREATE INDEX IF NOT EXISTS idx_income_deleted_at ON income(deleted_at);
 
 CREATE TABLE IF NOT EXISTS private_transfers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -86,12 +90,14 @@ CREATE TABLE IF NOT EXISTS private_transfers (
     notes TEXT,
     related_expense_id INTEGER REFERENCES expenses(id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL,
     hash TEXT UNIQUE NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_private_transfers_date ON private_transfers(date);
 CREATE INDEX IF NOT EXISTS idx_private_transfers_type ON private_transfers(type);
 CREATE INDEX IF NOT EXISTS idx_private_transfers_related_expense ON private_transfers(related_expense_id);
+CREATE INDEX IF NOT EXISTS idx_private_transfers_deleted_at ON private_transfers(deleted_at);
 
 CREATE TABLE IF NOT EXISTS audit_log (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -341,6 +341,7 @@ def _append_missing_payment_diagnostics(
            FROM income
            WHERE payment_date IS NULL
              AND invoice_date BETWEEN ? AND ?
+             AND deleted_at IS NULL
            ORDER BY invoice_date, id""",
         (period.start, period.end),
     ).fetchall()
@@ -360,6 +361,7 @@ def _append_missing_payment_diagnostics(
            FROM expenses
            WHERE payment_date IS NULL
              AND invoice_date BETWEEN ? AND ?
+             AND deleted_at IS NULL
            ORDER BY invoice_date, id""",
         (period.start, period.end),
     ).fetchall()
@@ -385,6 +387,7 @@ def _aggregate_income(
         """SELECT id, payment_date, amount_eur, vat_output, vat_rate, vat_code
            FROM income
            WHERE payment_date BETWEEN ? AND ?
+             AND deleted_at IS NULL
            ORDER BY payment_date, id""",
         (period.start, period.end),
     ).fetchall()
@@ -438,6 +441,7 @@ def _aggregate_expenses(
            FROM expenses e
            LEFT JOIN categories c ON e.category_id = c.id
            WHERE e.payment_date BETWEEN ? AND ?
+             AND e.deleted_at IS NULL
            ORDER BY e.payment_date, e.id""",
         (period.start, period.end),
     ).fetchall()

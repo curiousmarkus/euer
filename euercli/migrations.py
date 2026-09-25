@@ -482,6 +482,47 @@ def _apply_007(conn: sqlite3.Connection) -> None:
             )
 
 
+def _preflight_008(conn: sqlite3.Connection) -> MigrationImpact:
+    tables = _get_tables(conn)
+    exp_cols = _get_table_columns(conn, "expenses") if "expenses" in tables else {}
+    inc_cols = _get_table_columns(conn, "income") if "income" in tables else {}
+    priv_cols = _get_table_columns(conn, "private_transfers") if "private_transfers" in tables else {}
+    needed = (
+        ("expenses" in tables and "deleted_at" not in exp_cols)
+        or ("income" in tables and "deleted_at" not in inc_cols)
+        or ("private_transfers" in tables and "deleted_at" not in priv_cols)
+    )
+    return MigrationImpact(
+        affected_count=1 if needed else 0,
+        description="Fügt deleted_at Spalte zu expenses, income und private_transfers für Soft-Delete hinzu",
+    )
+
+
+def _apply_008(conn: sqlite3.Connection) -> None:
+    tables = _get_tables(conn)
+    if "expenses" in tables:
+        exp_cols = _get_table_columns(conn, "expenses")
+        if "deleted_at" not in exp_cols:
+            conn.execute("ALTER TABLE expenses ADD COLUMN deleted_at TIMESTAMP DEFAULT NULL")
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_expenses_deleted_at ON expenses(deleted_at)"
+            )
+
+    if "income" in tables:
+        inc_cols = _get_table_columns(conn, "income")
+        if "deleted_at" not in inc_cols:
+            conn.execute("ALTER TABLE income ADD COLUMN deleted_at TIMESTAMP DEFAULT NULL")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_income_deleted_at ON income(deleted_at)")
+
+    if "private_transfers" in tables:
+        priv_cols = _get_table_columns(conn, "private_transfers")
+        if "deleted_at" not in priv_cols:
+            conn.execute("ALTER TABLE private_transfers ADD COLUMN deleted_at TIMESTAMP DEFAULT NULL")
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_private_transfers_deleted_at ON private_transfers(deleted_at)"
+            )
+
+
 # Registrierte Migrationen in sequentieller Reihenfolge
 MIGRATIONS: list[Migration] = [
     Migration(
@@ -516,6 +557,12 @@ MIGRATIONS: list[Migration] = [
         "Fachlicher EÜR-Schlüssel für Kategorien (Spec 018)",
         _preflight_007,
         _apply_007,
+    ),
+    Migration(
+        "008_soft_delete",
+        "Soft-Delete Unterstützung für Ausgaben, Einnahmen und Privatvorgänge (Spec 016)",
+        _preflight_008,
+        _apply_008,
     ),
 ]
 
@@ -583,6 +630,8 @@ def detect_legacy_schema_state(conn: sqlite3.Connection) -> tuple[str, list[str]
         satisfied.append("006_entertainment_fields")
     if "eur_key" in cat_cols:
         satisfied.append("007_category_eur_key")
+    if "deleted_at" in exp_cols and "deleted_at" in inc_cols:
+        satisfied.append("008_soft_delete")
 
     current_version = satisfied[-1] if satisfied else "unbekannt"
     return (f"{current_version} (abgeleitet)", satisfied)
