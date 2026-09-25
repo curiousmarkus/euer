@@ -1,4 +1,4 @@
-# Spec 022: Versionierte, sichere Skill-Aktualisierung
+# Spec 022: Versionierte, sichere Skill-Aktualisierung & Skill-as-a-Package Architektur
 
 ## Status
 
@@ -16,21 +16,38 @@ Offen
 > EÜR-Zeilennummern: möglichst nicht dauerhaft in AGENTS.md speichern. Sie hängen vom Formularjahr ab und sind im CLI mit euer list categories --year YYYY abrufbar. In der Lieferantentabelle reicht die fachliche Kategorie; Reverse Charge und Sitz bleiben sinnvoll.
 > Eine kurze Toolchain-Angabe wie „Homebrew ist die Installationsquelle; Updates mit brew upgrade euer“ kann in AGENTS.md stehen, falls sie für die Arbeit im Projekt wichtig ist. Einen festen Binärpfad würde ich nur dort festhalten, wenn der PATH nicht zuverlässig ist.
 
-## Learning
+## Learning & Konzept-Evolution
 
 Paket, kopierter Skill und Mandanten-Dossier haben verschiedene Lebenszyklen.
 Ein `pipx`- oder Brew-Update aktualisiert keine lokale Skill-Kopie. Das
 Mandanten-Dossier ist Nutzerdatenbestand und darf bei Tool-/Skill-Updates nicht
 automatisch ersetzt werden.
 
-Die bisherige Rollen-Vorlage enthielt OpenCode-artiges `mode: primary`-Frontmatter,
-obwohl sie auch für andere Agenten beworben wurde. Der Dateiname
-`accountant-role.md` bezeichnet künftig die gemeinsame Quelle; die installierte
-Agentendatei ist ein eigenes, möglicherweise lokal angepasstes Artefakt.
-Hermes' `SOUL.md` ist eine globale Identität und kein sinnvoller Ort für jeden
-euer-Buchungsworkflow. Claude Code und OpenCode unterstützen dagegen eigene
-Agentendateien und Skills. Ein normales Skill-Update soll deshalb möglichst
-keine globale Agentenidentität ändern.
+**Die Erkenntnis zur Dokumentation:** Bisher vermischte das `USER_GUIDE.md` Installationshilfen für den Menschen, Syntax-Referenzen für die KI und Steuerlogik. Da der KI-Agent der eigentliche Anwender der CLI ist, benötigt er direkten, strukturierten Zugriff auf diese Spezifikationen. Es führt zu Problemen, wenn Mensch und KI unterschiedliche Informationsstände haben.
+
+**Die Lösung: "Skill-as-a-Package"**
+Um sichere Updates und perfekte KI-Ausführung zu vereinen, wird die Dokumentation vollständig in den Skill integriert. Der Ordner `docs/skills/euer-buchhaltung/` wird zur versionierten, monolithischen "Read-Only Firmware" für den Agenten. 
+
+Wir setzen damit eine absolut strikte Trennung um:
+- **Code / Firmware (Darf komplett ersetzt werden):** Der gesamte Skill-Ordner inklusive aller Doku-Referenzen (`SKILL.md` + `references/*.md`).
+- **State / Nutzerdaten (Darf NIE überschrieben werden):** Das persönliche `AGENTS.md` (Mandanten-Dossier).
+
+Ein Update des Skills bedeutet durch diese Architektur automatisch ein Update der Dokumentation (Single Source of Truth). Mensch und KI lesen exakt denselben Wissensstand.
+
+## Die Zielarchitektur
+
+*   **Der Einstieg (Für den Menschen)**
+    *   `README.md`: Der "Showroom". Fokussiert auf Fähigkeiten und bietet den Handoff-Prompt (Kopier-Vorlage für die KI zur Installation & Doku-Lektüre). Verlinkt für alle Doku-Details direkt in den Skill-Ordner.
+    *   `docs/CONCEPTS.md`: Ein konzeptioneller Überblick für den Menschen (Trust-Building, Guardrails, Architektur, Sicherheit), der komplett ohne CLI-Syntax auskommt.
+
+*   **Das Maschinen-Handbuch (Der Skill-Ordner)**
+    *   📁 `docs/skills/euer-buchhaltung/`
+        *   `SKILL.md`: Der Orchestrator. Definiert Rolle, zentrale Abläufe und dient als Index für die Referenzen. Enthält im Header eine klare Versionsnummer.
+        *   📁 `references/`
+            *   `installation_and_setup.md`: Anweisungen für den Agenten zur Systemeinrichtung (`pipx`, `brew`, `euer doctor`).
+            *   `cli_reference.md`: Harte Befehlsspezifikation (Flags, Exklusiv-Regeln, JSON-Outputs).
+            *   `domain_rules.md`: Fachliche Buchhaltungsregeln (Steuersätze, Bewirtungskosten).
+            *   `faq.md`: Für Mensch und Maschine bei Troubleshooting.
 
 ## Upgrade-Vertrag je Release
 
@@ -39,134 +56,66 @@ Jede Release Note enthält nahe bei den DB-Upgrade-Schritten einen Block
 
 | Bereich | Angabe je Release |
 |---|---|
-| Skill | Version vorher/nachher, geänderte Buchungsregeln, Update nötig: ja/nein |
+| Skill-Package | Version vorher/nachher (inkl. Referenz-Dokus), Update nötig: ja/nein |
 | Rolle | Version vorher/nachher, Änderung der gemeinsamen Rolle, Update nötig: ja/nein |
 | Agenten-Adapter | Betroffene Systeme und Dateien; kompatibel/Update empfohlen/Update erforderlich |
-| Mandanten-Dossier | Konkreter Prüfpunkte oder „keine Änderung“; niemals automatisches Ersetzen |
+| Mandanten-Dossier | Konkrete Prüfpunkte oder „keine Änderung“; niemals automatisches Ersetzen |
 
-„Update erforderlich“ wird nur verwendet, wenn sonst eine fachlich falsche
-oder inkompatible Anleitung aktiv bliebe. Eine rein redaktionelle Änderung
-ist „empfohlen“. Der Block nennt die **installierte euer-Version** als Bezug
-und verlinkt unveränderliche Quellen des zugehörigen Release-Tags, nicht `main`.
-Die CI prüft, dass der Block bei Änderungen an Skill, Rolle, Adaptern oder
-Onboarding vorhanden ist. Das bereits publizierte Release wird nicht
-nachträglich ergänzt.
+Die CI prüft, dass der Block bei Änderungen am Skill, den Referenzen, der Rolle oder Adaptern vorhanden ist. Das bereits publizierte Release wird nicht nachträglich ergänzt.
 
-## Ablauf beim Nutzer
+## Ablauf beim Nutzer (Sicheres Skill-Update)
 
 1. **Bestand feststellen:** Aktive euer-Version und Installationskanal prüfen;
    Agentensystem, Profil/Projekt, lokale Skill- und Rollenpfade sowie deren
-   Versionen ermitteln. Nicht gefundene Dateien oder unbekannte Herkunft
-   ausdrücklich melden. Keine beliebigen Verzeichnisse oder Profile ändern.
-2. **Passende Quelle laden:** Release Notes und Agenten-Dateien vom Tag der
-   tatsächlich installierten euer-Version beziehen. Eine Homebrew-Verzögerung
-   darf nicht versehentlich neuere Agenten-Dateien mit einer älteren CLI mischen.
-3. **Vorschau erstellen:** Upstream-Basis, neue Upstream-Datei und lokale Datei
-   vergleichen. Ausgabe: neu/geändert/unverändert, fachliche Änderung, Diff,
-   betroffene Agentendatei und vorgeschlagener nächster Schritt.
-4. **Anwenden:** Unveränderte, eindeutig von euer verwaltete Skill-Dateien
-   dürfen nach Vorschau und Sicherung aktualisiert werden. Lokal bearbeitete
-   Dateien, unbekannte Versionen und Konflikte erhalten einen Patch-Vorschlag;
+   Versionen (Header der `SKILL.md`) ermitteln.
+2. **Passende Quelle laden:** Das gesamte Skill-Package (`euer-buchhaltung/` inkl. `references/`) vom Release-Tag der tatsächlich installierten euer-Version laden.
+3. **Vorschau & Schutz:** 
+   - Das persönliche Mandanten-Dossier (`AGENTS.md`) wird identifiziert und in jedem Fall geschützt.
+   - Upstream-Basis, neues Upstream-Package und lokale Skill-Dateien
+   vergleichen. Ausgabe: fachliche Änderung, Diff, vorgeschlagener Schritt.
+4. **Anwenden:** Da der Skill-Ordner "zustandslos" ist, kann er bei fehlenden lokalen Anpassungen komplett ausgetauscht werden. Lokal bearbeitete
+   Skill-Dateien erhalten einen Patch-Vorschlag;
    ohne Entscheidung des Menschen kein Überschreiben. Persönliche
    `AGENTS.md`/`CLAUDE.md`, globale `SOUL.md`, Config und andere
-   Nutzerdaten werden nie automatisch ersetzt. Eine explizit beauftragte,
-   vom Menschen geprüfte Einzeländerung daran ist möglich.
-5. **Nachprüfung:** Agent in einer neuen Sitzung starten, laden des Skills und
-   der Rolle prüfen, Versions-/Kompatibilitätsstand melden. Ein ausstehender
-   menschlicher Schritt bleibt sichtbar, bis er erledigt oder bewusst
-   verworfen wurde; ein CLI-Upgrade allein gilt nicht als Agenten-Upgrade.
+   Nutzerdaten werden nie automatisch ersetzt. 
+5. **Nachprüfung:** Agent in einer neuen Sitzung starten, Laden des Skills und
+   der Rolle prüfen, Versions-/Kompatibilitätsstand melden. Durch den vollständigen Ordner-Austausch hat der Agent nun sofort die aktuellen `references/` (wie die neue `cli_reference.md`) im Kontext.
 
-Für die erste Umsetzung genügt ein dokumentierter manueller Diff-Ablauf.
 Ein späterer Helfer darf Vorschau und Konflikterkennung automatisieren, muss
-aber dieselben Grenzen einhalten. Lokale Version/Upstream-Basis kann in
-einer kleinen eigenen Installationsmetadatei liegen; sie gehört nicht in die
-persönliche `AGENTS.md`.
+aber dieselben Grenzen einhalten. 
 
 ## Agentenspezifische Einbindung
 
 | Agent | Ziel für euer | Grenze |
 |---|---|---|
-| Claude Code | Skill plus optionaler eigener Subagent in `.claude/agents/` oder Nutzerverzeichnis | Projekt-`CLAUDE.md` nur für lokale Mandantenregeln, nicht als Kopie der Rolle |
-| OpenCode | Skill plus optionaler eigener Agent in `.opencode/agents/` oder Nutzerverzeichnis | Projekt-`AGENTS.md` bleibt Mandanten-Dossier |
-| Hermes | Skill und gegebenenfalls projektbezogene Kontextdatei oder eigenes Buchhaltungsprofil | Globale `SOUL.md` ist Identität; Änderungen daran nur als menschlich geprüfter Vorschlag |
-
-Diese Zuordnung muss bei Implementierung gegen die jeweils aktuellen offiziellen
-Agenten-Dokumentationen geprüft werden. Die gemeinsame Rolle ist Inhalt für
-einen passenden Adapter, keine Datei zum pauschalen Kopieren. Adapter sollen
-so dünn wie möglich bleiben und den aktuellen Skill nutzen, damit Änderungen
-an Buchungslogik überwiegend nur den Skill betreffen.
+| Claude Code | Skill-Package plus optionaler eigener Subagent in `.claude/agents/` | Projekt-`CLAUDE.md` nur für lokale Mandantenregeln (State), nicht als Kopie der Rolle |
+| OpenCode | Skill-Package plus optionaler eigener Agent in `.opencode/agents/` | Projekt-`AGENTS.md` bleibt Mandanten-Dossier (State) |
+| Hermes | Skill-Package und gegebenenfalls projektbezogene Kontextdatei | Globale `SOUL.md` ist Identität; Änderungen daran nur als menschlich geprüfter Vorschlag |
 
 **Zielbild:** Ein lokaler Adapter enthält nur dauerhafte Einstiegspunkte:
 „Für Buchhaltungsaufträge `euer-buchhaltung` laden, persönliches Dossier lesen,
-Release-Stand bei Versionswechsel prüfen.“ Neue CLI- oder Steuerregeln gehen in
-den Skill. Damit erfordert nicht jedes euer-Release eine Änderung an
-`SOUL.md`, `CLAUDE.md` oder einem Agentenprofil. Änderungen der eigentlichen
-Rolle oder eines Adapters bleiben als eigener Release-Posten sichtbar.
-
-## Wo der Hinweis erscheint
-
-- **Verbindlich:** Release Notes direkt bei den Upgrade-Schritten; User Guide
-  erklärt die wiederkehrende Prozedur.
-- **Im Agenten:** Skill und Rollen-Adapter weisen beim Start eines
-  Buchungsauftrags auf eine erkennbare Versions-/Kompatibilitätslücke hin.
-  Eine alte lokale Kopie kann neue Releases nicht selbst kennen; deshalb ist
-  dieser Hinweis nur Ergänzung, nicht alleiniger Meldeweg.
-- **Künftig in der CLI:** `init`-Abschlussbericht und `doctor` können auf
-  Agenten-Änderungen des installierten Releases hinweisen. Ohne bekannte
-  lokale Agentenpfade dürfen sie keinen erfolgreichen Update-Status behaupten.
-  Dafür muss ein kleines Release-/Asset-Manifest im Wheel verfügbar sein;
-  derzeit sind die Dokumente nicht Teil des installierten Python-Pakets.
-- **Bei nötigem Eingriff:** Konkreter Hinweis mit betroffener Datei, Grund,
-  Diff/Patch und Aktion „prüfen und freigeben“; die Buchhaltungsdaten werden
-  dadurch nicht stillschweigend verändert.
-
-Quellen für die Agenten-Zuordnung:
-[Claude Code Subagents](https://code.claude.com/docs/en/sub-agents),
-[Claude Code Skills](https://code.claude.com/docs/en/skills),
-[OpenCode Agents](https://opencode.ai/v2/docs/agents),
-[OpenCode Instructions](https://opencode.ai/v2/docs/instructions),
-[Hermes Dateiscope](https://hermes-agent.nousresearch.com/docs/user-guide/which-file-does-what).
+Release-Stand bei Versionswechsel prüfen.“ Neue CLI- oder Steuerregeln sowie Doku-Updates gehen vollständig in das Skill-Package. Damit erfordert ein normales euer-Release keine Änderung an
+`SOUL.md`, `CLAUDE.md` oder einem Agentenprofil. 
 
 ## Anforderungen
 
-- Separat sichtbare Skill-Version und dokumentierte Kompatibilität zu
-  euer-Releases; Versionsschema und Quelle werden vor Umsetzung festgelegt.
-  Eine Software-PATCH-Version wird nicht automatisch zur Skill-Version.
-- Für unterstützte Agenten Installations- und Updatepfade dokumentieren;
-  vor Austausch die lokal installierte Version und Dateiänderungen anzeigen.
-- Update-Vorschau mit Diff zwischen Upstream-Basis, neuer Upstream-Version
-  und lokalen Anpassungen. Konflikte explizit melden; keine stillen Overrides.
+- Separat sichtbare Skill-Version im `SKILL.md`-Header und dokumentierte Kompatibilität zu euer-Releases.
+- Für unterstützte Agenten Installations- und Updatepfade dokumentieren.
 - Persönliche `AGENTS.md`, Config und andere Mandantendaten nie automatisch
-  überschreiben. Änderungen daran nur als überprüfbare Vorschläge ausgeben.
-- Agenten-/Skill-Kopien und Templates eindeutig von Mandantendaten trennen.
-  Auf Windows, macOS und Linux ohne vorausgesetzten festen Skill-Pfad
-  dokumentieren.
-- `docs/templates/accountant-role.md` ist die gemeinsame Rollen-Vorlage;
-  `accountant-agent.md` bleibt als Verweis für historische Links. Die Rolle
-  darf nicht unverändert als `SOUL.md`, `CLAUDE.md` oder `AGENTS.md` ausgegeben
-  werden. Plattformspezifische Adapter werden gesondert entworfen;
-  allgemeine Buchungsregeln gehören in den gemeinsamen Skill.
+  überschreiben. 
+- Das Skill-Package beinhaltet zwingend das gesamte Dokumentations-Set im `references/`-Ordner. Die traditionelle `USER_GUIDE.md` wird aufgelöst.
 - Ein möglicher `euer skill update`-Befehl ist eine Option, keine bereits
   vorhandene Funktion. Vor Implementierung gegen dokumentierte manuelle
-  Diff-Schritte und die unterschiedlichen Agenten-Skillpfade abwägen.
+  Diff-Schritte abwägen.
 
 ## Akzeptanzfälle
 
 - Nur CLI geändert: kein Agenten-Eingriff nötig.
-- Skill geändert, lokale Kopie unverändert: korrekter Release-Stand wird
-  übernommen und verifiziert.
-- Skill/Agentenrolle lokal angepasst: Diff und Konflikt sichtbar, keine
-  stille Ersetzung.
-- Hermes mit angepasster globaler `SOUL.md`: kein automatischer Schreibzugriff.
+- Skill-Package geändert (z. B. neues CLI-Flag in Doku): korrekter Release-Stand wird übernommen und Agent erhält automatisch das neue Wissen.
+- Skill lokal angepasst: Diff und Konflikt sichtbar, keine stille Ersetzung.
 - Claude Code/OpenCode mit projektbezogenem Agenten und persönlichem Dossier:
-  Adaptervorschlag getrennt von Mandantenregeln.
-- Homebrew meldet noch die ältere Version: keine Agenten-Dateien vom neueren
-  PyPI-Release als kompatibel ausgeben.
-- Alter `accountant-agent.md`-Pfad und unbekannte lokale Version: Migration
-  wird erkannt und zur Prüfung vorgelegt.
+  Adaptervorschlag getrennt von Mandantenregeln (`AGENTS.md` wird ignoriert/geschützt).
 
 ## Dokumentation nach Implementierung
 
-`README.md`, `docs/USER_GUIDE.md`, `docs/USER_JOURNEY.md`,
-`docs/skills/euer-buchhaltung/SKILL.md`, `docs/templates/onboarding-prompt.md`
-und `docs/RELEASE_NOTES.md`.
+`README.md`, `docs/CONCEPTS.md`, `docs/skills/euer-buchhaltung/SKILL.md` und der gesamte `docs/skills/euer-buchhaltung/references/` Ordner. Das alte `docs/USER_GUIDE.md` entfällt ersatzlos in dieser Architektur.
