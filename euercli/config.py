@@ -388,3 +388,15 @@ def warn_missing_receipt(
         print(f"! Beleg '{receipt_name}' nicht gefunden:", file=sys.stderr)
         for p in checked_paths:
             print(f"  - {p}", file=sys.stderr)
+
+
+def get_amount_threshold(config: dict) -> float:
+    """Liefert den Schwellenwert für Betragsprüfungen (Standard: 5000.00 €)."""
+    safety = config.get("safety", {})
+    if isinstance(safety, dict) and "amount_threshold" in safety:
+        try:
+            return float(safety["amount_threshold"])
+        except (ValueError, TypeError):
+            pass
+    return 5000.0
+

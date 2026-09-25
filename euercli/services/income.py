@@ -11,6 +11,13 @@ from .errors import RecordNotFoundError, ValidationError
 from .eur import category_key_for_name, is_small_business_subset
 from .models import Income, LedgerAccount
 from .utils import get_optional, hash_date, resolve_dates
+from .validation import (
+    DEFAULT_AMOUNT_THRESHOLD,
+    check_fuzzy_duplicate,
+    validate_amount_threshold,
+    validate_date_plausibility,
+    validate_vat_math,
+)
 from .vat import (
     INCOME_CODE_BY_RATE,
     INCOME_RATE_BY_CODE,
@@ -206,12 +213,25 @@ def create_income(
     audit_user: str = "default",
     skip_vat_auto: bool = False,
     on_duplicate: DuplicateAction = DuplicateAction.RAISE,
+    force: bool = False,
+    allow_duplicate: bool = False,
+    amount_threshold: float = DEFAULT_AMOUNT_THRESHOLD,
     auto_commit: bool = True,
 ) -> Income | None:
     resolved_payment_date, resolved_invoice_date = resolve_dates(
         payment_date=payment_date,
         invoice_date=invoice_date,
         legacy_date=date,
+    )
+
+    validate_date_plausibility(
+        payment_date=resolved_payment_date,
+        invoice_date=resolved_invoice_date,
+    )
+    validate_amount_threshold(
+        amount_eur=amount_eur,
+        threshold=amount_threshold,
+        force=force,
     )
 
     (
@@ -236,6 +256,19 @@ def create_income(
         tax_free=tax_free,
         skip_vat_auto=skip_vat_auto,
     )
+
+    if (
+        vat_rate is not None
+        and vat_rate in (7.0, 19.0)
+        and (vat is not None or vat_output is not None)
+        and not tax_free
+    ):
+        raw_vat = vat if vat is not None else vat_output
+        validate_vat_math(
+            amount_eur=amount_eur,
+            vat_rate=vat_rate,
+            vat_amount=raw_vat,
+        )
 
     if is_small_business_subset(resolved_category_key):
         if tax_mode != "small_business":
@@ -266,6 +299,17 @@ def create_income(
             f"Duplikat erkannt (ID {existing['id']})",
             code="duplicate",
             details={"existing_id": existing["id"]},
+        )
+
+    if on_duplicate != DuplicateAction.SKIP:
+        check_fuzzy_duplicate(
+            conn,
+            table_name="income",
+            name=source,
+            amount_eur=amount_eur,
+            date_val=resolved_payment_date or resolved_invoice_date,
+            allow_duplicate=allow_duplicate,
+            force=force,
         )
 
     record_uuid = str(uuid.uuid4())
@@ -435,6 +479,9 @@ def update_income(
     tax_free: bool = False,
     tax_mode: str,
     audit_user: str,
+    force: bool = False,
+    allow_duplicate: bool = False,
+    amount_threshold: float = DEFAULT_AMOUNT_THRESHOLD,
     auto_commit: bool = True,
 ) -> Income:
     row = conn.execute(
@@ -461,6 +508,18 @@ def update_income(
         payment_date=new_payment_date,
         invoice_date=new_invoice_date,
     )
+
+    validate_date_plausibility(
+        payment_date=new_payment_date,
+        invoice_date=new_invoice_date,
+    )
+    if amount_eur is not None:
+        validate_amount_threshold(
+            amount_eur=amount_eur,
+            threshold=amount_threshold,
+            force=force,
+        )
+
     new_source = source if source else row["source"]
     new_amount = amount_eur if amount_eur is not None else row["amount_eur"]
     new_foreign = foreign_amount if foreign_amount is not None else row["foreign_amount"]
@@ -499,6 +558,18 @@ def update_income(
             tax_free=tax_free,
             skip_vat_auto=False,
         )
+
+        if (
+            vat_rate is not None
+            and vat_rate in (7.0, 19.0)
+            and vat is not None
+            and not tax_free
+        ):
+            validate_vat_math(
+                amount_eur=new_amount,
+                vat_rate=vat_rate,
+                vat_amount=vat,
+            )
 
     existing_category_name: str | None = None
     existing_category_key: str | None = None
@@ -577,6 +648,23 @@ def update_income(
                 "Das Zeile-13-Unterfeld darf keine Umsatzsteuer enthalten.",
                 code="small_business_subset_vat_conflict",
             )
+
+    if (
+        source is not None
+        or amount_eur is not None
+        or payment_date is not None
+        or invoice_date is not None
+    ):
+        check_fuzzy_duplicate(
+            conn,
+            table_name="income",
+            name=new_source,
+            amount_eur=new_amount,
+            date_val=new_payment_date or new_invoice_date,
+            allow_duplicate=allow_duplicate,
+            force=force,
+            exclude_id=record_id,
+        )
 
     new_hash = compute_hash(
         hash_date(new_payment_date, new_invoice_date),

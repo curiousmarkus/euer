@@ -13,6 +13,13 @@ from .eur import category_key_for_name, is_entertainment_category
 from .models import Expense, LedgerAccount
 from .private_classification import classify_expense_private_paid
 from .utils import get_optional, hash_date, resolve_dates
+from .validation import (
+    DEFAULT_AMOUNT_THRESHOLD,
+    check_fuzzy_duplicate,
+    validate_amount_threshold,
+    validate_date_plausibility,
+    validate_vat_math,
+)
 from .vat import (
     EXPENSE_VAT_CODES,
     INPUT_INVOICE,
@@ -327,12 +334,25 @@ def create_expense(
     audit_user: str = "default",
     skip_vat_auto: bool = False,
     on_duplicate: DuplicateAction = DuplicateAction.RAISE,
+    force: bool = False,
+    allow_duplicate: bool = False,
+    amount_threshold: float = DEFAULT_AMOUNT_THRESHOLD,
     auto_commit: bool = True,
 ) -> Expense | None:
     resolved_payment_date, resolved_invoice_date = resolve_dates(
         payment_date=payment_date,
         invoice_date=invoice_date,
         legacy_date=date,
+    )
+
+    validate_date_plausibility(
+        payment_date=resolved_payment_date,
+        invoice_date=resolved_invoice_date,
+    )
+    validate_amount_threshold(
+        amount_eur=amount_eur,
+        threshold=amount_threshold,
+        force=force,
     )
 
     (
@@ -391,6 +411,19 @@ def create_expense(
             "Trinkgeld und Vorsteuerstatus sind nur für Bewirtungsaufwendungen zulässig.",
             code="entertainment_fields_require_category",
         )
+    else:
+        if (
+            vat_rate is not None
+            and vat_rate in (7.0, 19.0)
+            and (vat is not None or vat_input is not None)
+            and resolved_rc_type == "none"
+        ):
+            raw_vat = vat if vat is not None else vat_input
+            validate_vat_math(
+                amount_eur=amount_eur,
+                vat_rate=vat_rate,
+                vat_amount=raw_vat,
+            )
 
     tx_hash = compute_hash(
         hash_date(resolved_payment_date, resolved_invoice_date),
@@ -409,6 +442,17 @@ def create_expense(
             f"Duplikat erkannt (ID {existing['id']})",
             code="duplicate",
             details={"existing_id": existing["id"]},
+        )
+
+    if on_duplicate != DuplicateAction.SKIP:
+        check_fuzzy_duplicate(
+            conn,
+            table_name="expenses",
+            name=vendor,
+            amount_eur=amount_eur,
+            date_val=resolved_payment_date or resolved_invoice_date,
+            allow_duplicate=allow_duplicate,
+            force=force,
         )
 
     record_uuid = str(uuid.uuid4())
@@ -621,6 +665,9 @@ def update_expense(
     private_accounts: list[str] | None = None,
     tax_mode: str,
     audit_user: str,
+    force: bool = False,
+    allow_duplicate: bool = False,
+    amount_threshold: float = DEFAULT_AMOUNT_THRESHOLD,
     auto_commit: bool = True,
 ) -> Expense:
     row = conn.execute(
@@ -647,6 +694,18 @@ def update_expense(
         payment_date=new_payment_date,
         invoice_date=new_invoice_date,
     )
+
+    validate_date_plausibility(
+        payment_date=new_payment_date,
+        invoice_date=new_invoice_date,
+    )
+    if amount_eur is not None:
+        validate_amount_threshold(
+            amount_eur=amount_eur,
+            threshold=amount_threshold,
+            force=force,
+        )
+
     new_vendor = vendor if vendor else row["vendor"]
     new_amount = amount_eur if amount_eur is not None else row["amount_eur"]
     new_account = account if account is not None else row["account"]
@@ -852,6 +911,34 @@ def update_expense(
     else:
         new_entertainment_tip = None
         new_entertainment_status = None
+        if (
+            vat_rate is not None
+            and vat_rate in (7.0, 19.0)
+            and vat is not None
+            and new_rc_type == "none"
+        ):
+            validate_vat_math(
+                amount_eur=new_amount,
+                vat_rate=vat_rate,
+                vat_amount=vat,
+            )
+
+    if (
+        vendor is not None
+        or amount_eur is not None
+        or payment_date is not None
+        or invoice_date is not None
+    ):
+        check_fuzzy_duplicate(
+            conn,
+            table_name="expenses",
+            name=new_vendor,
+            amount_eur=new_amount,
+            date_val=new_payment_date or new_invoice_date,
+            allow_duplicate=allow_duplicate,
+            force=force,
+            exclude_id=record_id,
+        )
 
     new_hash = compute_hash(
         hash_date(new_payment_date, new_invoice_date),

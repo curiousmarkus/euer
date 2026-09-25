@@ -428,11 +428,11 @@ Offene Change Requests werden innerhalb der jeweiligen Spec dokumentiert.
 | 013 | Belegordner Jahr zuerst | Implementiert |
 | 014 | HTML-Pruefbericht fuer Buchungen | Offen |
 | 015 | Multi-Channel-Distribution (PyPI, GitHub Releases, Homebrew) | Offen |
-| 016 | Agent-Safety & Guardrails (Schutz vor destruktiven Aktionen & Plausibilitaet) | Offen |
+| 016 | Agent-Safety & Guardrails (Schutz vor destruktiven Aktionen & Plausibilitaet) | Implementiert |
 | 017 | Nicht eingebuchte Belege erkennen (`receipt unbooked`) | Offen |
 | 018 | Bewirtungsaufwendungen, Vorsteuer und EÜR-Zuordnung (inkl. Review-Korrekturen) | Implementiert |
 | 019 | `euer doctor` (Umgebungs- und Pre-Flight-Diagnose) | Offen |
-| 020 | Transparente und sichere DB-Migrationen | Offen |
+| 020 | Transparente und sichere DB-Migrationen | Implementiert |
 | 021 | Versionierte Exportläufe mit Manifest | Offen |
 | 022 | Versionierte, sichere Skill-Aktualisierung | Offen |
 

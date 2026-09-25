@@ -203,8 +203,13 @@ den Zahlungseingang später. Eine Rechnung allein belegt noch keinen Zahlungsein
 | Fremdwährung | Tatsächlichen EUR-Zahlbetrag verwenden, Originalbetrag zusätzlich dokumentieren |
 | Teilzahlung, Sammelzahlung, Erstattung oder unklare Zuordnung | Sachverhalt klären und Aufteilung dokumentieren; keinen ungeprüften Standardfall unterstellen |
 
-Korrekturen erfolgen über `euer update`; die CLI protokolliert Änderungen im
-Audit-Log. Wiederkehrende Regeln, die sich aus deinen Korrekturen ergeben, kann der
+Korrekturen erfolgen über `euer update`; versehentliche Änderungen, Neuanlagen oder
+Löschungen können mit `euer undo` atomar zurückgenommen werden. Gelöschte Einträge
+landen im Papierkorb (`euer trash list`) und können mit `euer restore <ID>`
+wiederhergestellt werden. Plausibilitätsprüfungen schützen vor Tippfehlern
+(Beträge über 5.000 € erfordern `--force`), unplausiblen Zukunftszahlungen und
+verdächtigen Duplikaten (gleicher Betrag im Zeitfenster von ±2 Tagen).
+Wiederkehrende Regeln, die sich aus deinen Korrekturen ergeben, kann der
 Agent zur Ergänzung deiner persönlichen `AGENTS.md` vorschlagen.
 
 ### Einen geschäftlichen Bewirtungsbeleg übergeben
@@ -456,21 +461,24 @@ Vorsteuerabzug. Ein späterer Wechsel des globalen Steuermodus entscheidet nicht
 über die Behandlung alter Buchungen. Anschließend erstellt er betroffene Berichte
 und Exporte neu.
 
-Ein automatischer Upgrade-Bericht mit Vorab-IDs, WAL-sicherem Backup und
-Dry-run ist geplant ([Spec 020](../specs/020-transparente-migrationen.md)),
-derzeit aber nicht verfügbar. Bewahre vor `init` eine konsistente Sicherung
-auf und prüfe offene IDs danach mit `euer incomplete list`.
+`euer init` führt anstehende Schema-Migrationen transparent und
+transaktionssicher aus: Vorab wird automatisch eine konsistente WAL-Sicherung
+erstellt (`~/.config/euer/backups/`), anstehende Migrationen und betroffene
+Datensätze werden im Preflight-Report angezeigt (auch via `--dry-run` und
+`--json`).
 
 ## Vorhandene Funktionen und offene Erweiterungen
 
 | Heute nutzbar | Aufgabe des Agenten oder noch offen |
 |---|---|
 | Lokale Buchungen, Updates und Audit-Log | PDF/OCR-Auslesen und fachliche Zuordnung übernimmt der Agent |
+| Soft-Delete, Papierkorb (`trash`) und Undo | `euer undo` nimmt Fehloperationen zurück; versehentliche Löschungen landen im Papierkorb |
+| Plausibilitätsprüfungen & Guardrails | Betragsschwelle (> 5.000 €), unscharfe Duplikaterkennung, USt-Konsistenz |
 | CSV-/JSONL-Import | Bankformate müssen zuerst normalisiert werden; kein automatischer Bankabruf |
 | `incomplete list` und `receipt check` | Erfassen fehlende Felder bzw. fehlende Dateien zu Buchungen; kein vollständiger Kontoabgleich |
 | Belegpfade zu vorhandenen Buchungen prüfen | Nicht eingebuchte Dateien erkennen: [Spec 017](../specs/017-nicht-eingebuchte-belege.md), offen |
-| Terminalauswertungen und CSV-/XLSX-Exporte | HTML-Prüfbericht: [Spec 014](../specs/014-html-pruefbericht.md), offen |
-| Auditierte Änderungen | Automatische Snapshots, Soft-Delete und Undo: [Spec 016](../specs/016-agent-safety-und-guardrails.md), offen |
+| Terminalauswertungen und CSV-/XLSX-Exporte | Kollisionsschutz vor Dateiverlust; HTML-Prüfbericht: [Spec 014](../specs/014-html-pruefbericht.md), offen |
+| Sichere Migrationen mit SQLite-Backup | Automatisches Online-Backup und Preflight-Reporting in `euer init` |
 | UStVA-Arbeitsbericht und EÜR-Zusammenfassung | Fachliche Abschlussprüfung, Fristenorganisation und ELSTER-Abgabe erfolgen außerhalb der CLI |
 
 ## Grundlage dieser Journey

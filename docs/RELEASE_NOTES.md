@@ -40,7 +40,7 @@ Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
 
 | Bereich | Änderung | Aktion nach diesem Release |
 |---|---|---|
-| Skill | Regeln zur Trennung von Skill und Mandanten-Dossier ergänzt | Lokale Kopie mit `docs/skills/euer-buchhaltung/` des Release-Tags vergleichen |
+| Skill | Sicherheits-Guardrails (> 5.000 €, Duplikaterkennung, USt-Prüfung), Undo/Restore und Migrationshinweise ergänzt | Lokale Kopie mit `docs/skills/euer-buchhaltung/` des Release-Tags vergleichen |
 | Rolle | `accountant-agent.md` heißt jetzt `accountant-role.md`; Privatvorgänge präzisiert | Lokale Agentendatei nach Diff gezielt anpassen; nicht durch die neue Vorlage ersetzen |
 | Agenten-Adapter | Noch keine plattformspezifischen Dateien im Release | Keine automatische Änderung an `SOUL.md`, `CLAUDE.md` oder `AGENTS.md` |
 | Mandanten-Dossier | Keine automatische Migration; keine festen EÜR-Zeilennummern in Lieferantenregeln | Bestehende Regeln prüfen und Änderungen nur als Vorschlag übernehmen |
@@ -52,13 +52,24 @@ Veröffentlichung vom passenden Release-Tag übernehmen.
 
 ### Weitere Änderungen
 
+- **Transparente und sichere DB-Migrationen (Spec 020, Spec 016 §1.1/§2.4):**
+  - Automatisches WAL-sicheres Online-Backup via SQLite-Backup-API nach `~/.config/euer/backups/euer_YYYY-MM-DD_HHMMSS.db` vor Schema-Migrationen.
+  - Transaktionales Schema-Versionstracking (`_schema_migrations`) mit automatischem Rollback im Fehlerfall.
+  - Preflight-Bericht in `euer init`: Pfadanzeige, Schemaversion, anstehende Migrationen und Auswirkungsanalyse (`incomplete_impact`).
+  - Neue Flags für `euer init`: `--dry-run` zur gefahrlosen Simulation, `--json` für maschinenlesbare Ausgaben, Pflichtflag `--create` zur Neuanlage einer Datenbank.
+- **Agent-Safety & Guardrails (Spec 016):**
+  - Soft-Delete by default für `expenses`, `income` und `private_transfers` via `deleted_at`.
+  - Physisches Löschen nur noch mit explizitem `--purge`.
+  - Neuer Papierkorb-Befehl: `euer trash list` und `euer trash empty [--force]`.
+  - Wiederherstellung: `euer restore <id> [--table ...]`.
+  - Atomares Undo: `euer undo [--force]` rollt die jeweils letzte Mutation (INSERT, UPDATE, DELETE) basierend auf dem Audit-Log zurück.
+  - Export-Überschreibschutz: `euer export` blockiert Überschreiben im Zielordner ohne `--force` und schreibt atomar via Staging-Verzeichnis.
+  - Validierungs-Guardrails: Mathematische Brutto-USt-Prüfung (Toleranz 0,02 €), strikte Ablehnung von Zukunftszahlungen, Betragsschwelle > 5.000 € (`--force`), unscharfe Duplikaterkennung im Zeitfenster von ±2 Tagen (`--allow-duplicate`).
 - Upgrade-Dokumentation für den Wechsel von pipx/`euercli` zu Homebrew,
   PATH-Prüfung und zeitversetzte Tap-Aktualisierung ergänzt.
 - Agenten-Dokumentation trennt allgemeine Skill-Regeln von persönlichen
   Mandantenregeln und empfiehlt jahresbezogene EÜR-Zeilenabfragen.
-- Geplant, noch nicht implementiert: automatisches Migrationsbackup,
-  Migrationsvorschau und -bericht, `euer doctor`, Export-Überschreibschutz,
-  versionierte Exportläufe und sicherer Skill-Updateweg (Specs 016, 019–022).
+- Geplant, noch nicht implementiert: `euer doctor` (Spec 019), versionierte Exportläufe mit Manifest (Spec 021) und sicherer Skill-Updateweg (Spec 022).
 - Export-Spec und User Guide grenzen den geplanten Manifestmodus ausdrücklich
   von GoBD-Konformität und rechtlich revisionssicherer Archivierung ab.
 - Das Accountant-Template beschreibt die Unterscheidung zwischen privat

@@ -2,6 +2,7 @@ import sys
 from pathlib import Path
 
 from ..config import (
+    get_amount_threshold,
     get_audit_user,
     get_ledger_accounts,
     get_private_accounts,
@@ -16,6 +17,7 @@ from ..services.eur import is_entertainment_category
 from ..services.expenses import update_expense
 from ..services.income import update_income
 from ..services.private_transfers import UNSET, update_private_transfer
+from ..services.validation import validate_date_plausibility
 from ..utils import normalize_cli_rc_type
 from .helpers import warn_unusual_date_order
 
@@ -58,6 +60,7 @@ def cmd_update_expense(args):
             receipt_name=args.receipt,
             notes=args.notes,
             vat=args.vat,
+            vat_rate=getattr(args, "vat_rate", None),
             entertainment_tip_eur=args.entertainment_tip_eur,
             entertainment_vat_status=args.entertainment_vat_status,
             rc_type=rc_type,
@@ -65,6 +68,9 @@ def cmd_update_expense(args):
             private_accounts=private_accounts,
             tax_mode=tax_mode,
             audit_user=audit_user,
+            force=getattr(args, "force", False),
+            allow_duplicate=getattr(args, "allow_duplicate", False),
+            amount_threshold=get_amount_threshold(config),
         )
     except RecordNotFoundError:
         print(f"Fehler: Ausgabe #{args.id} nicht gefunden.", file=sys.stderr)
@@ -81,6 +87,11 @@ def cmd_update_expense(args):
 
     conn.close()
     warn_unusual_date_order(expense.payment_date, expense.invoice_date)
+    for w in validate_date_plausibility(
+        payment_date=expense.payment_date,
+        invoice_date=expense.invoice_date,
+    ):
+        print(f"Warnung: {w}", file=sys.stderr)
 
     print(f"Ausgabe #{args.id} aktualisiert.")
 
@@ -146,6 +157,9 @@ def cmd_update_income(args):
             tax_free=bool(args.tax_free),
             tax_mode=tax_mode,
             audit_user=audit_user,
+            force=getattr(args, "force", False),
+            allow_duplicate=getattr(args, "allow_duplicate", False),
+            amount_threshold=get_amount_threshold(config),
         )
     except RecordNotFoundError:
         print(f"Fehler: Einnahme #{args.id} nicht gefunden.", file=sys.stderr)
@@ -162,6 +176,11 @@ def cmd_update_income(args):
 
     conn.close()
     warn_unusual_date_order(income.payment_date, income.invoice_date)
+    for w in validate_date_plausibility(
+        payment_date=income.payment_date,
+        invoice_date=income.invoice_date,
+    ):
+        print(f"Warnung: {w}", file=sys.stderr)
 
     print(f"Einnahme #{args.id} aktualisiert.")
 

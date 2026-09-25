@@ -80,37 +80,56 @@ von `pipx` ändert keine Homebrew-Installation und umgekehrt.
 ### Bestehende Installation aktualisieren
 
 Wenn du bereits eine lokale `euer.db` nutzt, aktualisiere nicht nur das CLI,
-sondern auch die Datenbankstruktur. `euer init` ist dafür bewusst idempotent:
-Es kann gefahrlos erneut im Buchhaltungsordner ausgeführt werden und ergänzt
-fehlende Tabellen oder Spalten.
+sondern auch die Datenbankstruktur. `euer init` ist dafür bewusst idempotent
+und transaktionssicher: Es führt anstehende Schema-Migrationen kontrolliert aus
+und ergänzt fehlende Tabellen oder Spalten.
+
+Vor jeder Migration erstellt `euer` automatisch eine konsistente, WAL-sichere
+Datenbanksicherung über die SQLite-Online-Backup-API im Verzeichnis
+`~/.config/euer/backups/euer_YYYY-MM-DD_HHMMSS.db`.
 
 Empfohlener Ablauf nach jedem Update:
 
 ```bash
 cd /pfad/zu/deinem/buchhaltungsordner
 
-# Backup vor Schema-Migration; bei aktivem WAL nur ohne laufende Schreibzugriffe
-cp euer.db euer.backup.db
-
 # CLI aktualisieren
 pipx upgrade euer
 
-# lokale Datenbank migrieren
+# Lokale Datenbank migrieren (zeigt Status, Vorab-Prüfung und Backup-Pfad)
 euer init
 
-# offene Nacharbeiten prüfen
+# Offene Nacharbeiten prüfen
 euer incomplete list
 euer summary --year 2026
 ```
 
-Eine einfache Dateikopie ist nur bei geschlossener, konsistenter Datenbank
-geeignet. Bei laufendem Zugriff nutze eine konsistente SQLite-Sicherung.
-Automatisches WAL-sicheres Backup, Migrationsvorschau, Dry-run und
-Upgrade-Bericht sind in [Spec 016](../specs/016-agent-safety-und-guardrails.md)
-und [Spec 020](../specs/020-transparente-migrationen.md) geplant; das aktuelle
-`euer init` bietet diese Zusagen noch nicht. Nach Migrationen mit Bewirtungen
-`euer incomplete list` prüfen und offene Altbuchungen anhand ihrer Belege
-nachpflegen, ohne Vorsteuer zu schätzen.
+#### Transparente Migrationen & Diagnose
+
+`euer init` bietet umfassende Transparenz vor und nach Änderungen:
+
+- **Preflight-Prüfung:** Zeigt den DB-Pfad, die erkannte Schemaversion sowie alle
+  anstehenden Migrationen mit Beschreibung an.
+- **Auswirkungsanalyse (Preflight Impact):** Berechnet vorab, wie viele und welche
+  bestehenden Buchungen durch die Migration unvollständig werden (z. B. neue
+  Pflichtfelder oder Prüfbedarfe bei Bewirtungen).
+- **Automatisches Rollback:** Schlägt ein Migrationsschritt fehl, wird die gesamte
+  Transaktion rückabgewickelt.
+- **Abschlussbericht:** Nennt den Sicherungspfad, den neuen Schemastand und
+  konkrete nächste Prüfschritte (`euer incomplete list`).
+
+Zusätzliche Flags für `euer init`:
+
+```bash
+# Migration nur simulieren (keine Schreibzugriffe, kein Backup)
+euer init --dry-run
+
+# Maschinenlesbarer Preflight- und Abschlussbericht für Agenten/Skripte
+euer init --json
+
+# Vollständig neue Datenbank anlegen (Pflichtflag zur Vermeidung von Fehlplatzierungen)
+euer init --create
+```
 
 Wenn du mehrere Buchhaltungsordner oder Datenbanken hast, führe `euer init` für
 jede Datenbank aus. Alternativ kannst du die Datenbank explizit angeben:
@@ -350,7 +369,7 @@ euer add expense --payment-date 2026-01-10 --vendor "Adobe" \
   --category "Laufende EDV-Kosten" --amount -22.99 --private-paid
 ```
 
-### Korrigieren & Löschen
+### Korrigieren, Löschen, Papierkorb & Undo
 
 ```bash
 # Ausgabe korrigieren
@@ -370,14 +389,54 @@ euer update income 17 --tax-free
 euer update private-transfer 7 --amount 600 --description "Korrektur"
 euer update private-transfer 7 --clear-related-expense
 
-# Löschen
+# Löschen (Standard: Soft-Delete in den Papierkorb)
 euer delete expense 42
 euer delete expense 42 --force
-euer delete private-transfer 7 --force
+
+# Dauerhaftes physisches Löschen (ohne Papierkorb)
+euer delete expense 42 --purge --force
+
+# Papierkorb verwalten
+euer trash list
+euer trash empty
+euer trash empty --force
+
+# Wiederherstellung aus dem Papierkorb
+euer restore 42
+euer restore 42 --table expenses
+
+# Letzte schreibende Aktion rückgängig machen (Undo)
+euer undo
+euer undo --force
 
 # Änderungshistorie
 euer audit 42 --table expenses
 ```
+
+#### Papierkorb (Soft-Delete) & Wiederherstellung
+
+Um versehentlichen Datenverlust durch Agenten oder Tippfehler zu verhindern, löscht
+`euer delete` Einträge standardmäßig nicht physisch, sondern markiert sie mit einem
+Zeitstempel (`deleted_at`).
+- **Unsichtbar im Normalbetrieb:** Gelöschte Einträge erscheinen nicht in Listen,
+  Berichten (`summary`, `vat-report`), EÜR-Ergebnissen oder Exporten.
+- **Wiederherstellbar:** Mit `euer restore <ID>` wird die Buchung sofort wieder
+  in den aktiven Bestand übernommen.
+- **Papierkorb prüfen & leeren:** `euer trash list` zeigt alle gelöschten Datensätze;
+  `euer trash empty` entfernt sie nach Bestätigung (oder mit `--force`) endgültig.
+- **Physisches Löschen:** Nur mit dem Flag `--purge` wird ein Eintrag sofort
+  dauerhaft gelöscht.
+
+#### Undo-Mechanismus
+
+Mit `euer undo` lässt sich die jeweils letzte schreibende Mutation (INSERT, UPDATE
+oder DELETE) atomar zurückrollen:
+- **INSERT rückgängig machen:** Der neu angelegte Datensatz wird soft-gelöscht.
+- **UPDATE rückgängig machen:** Alle geänderten Spalten werden auf ihren vorherigen
+  Zustand aus dem Audit-Log zurückgesetzt.
+- **DELETE rückgängig machen:** Die gelöschte Zeile wird wiederhergestellt.
+Ohne `--force` zeigt `euer undo` eine genaue Vorschau der rückgängig zu machenden
+Änderung und fordert eine interaktive Bestätigung an.
 
 ### Zusammenfassung & Export
 
@@ -396,6 +455,8 @@ euer export
 euer export --year 2026
 # XLSX benötigt openpyxl:
 euer export --year 2026 --format xlsx
+# Überschreiben vorhandener Exportdateien erzwingen:
+euer export --year 2026 --force
 ```
 
 Hinweis: `export` schreibt Dateien ins Export-Verzeichnis:
@@ -404,14 +465,20 @@ Hinweis: `export` schreibt Dateien ins Export-Verzeichnis:
 - `PrivateTransfers` (direkte Privatvorgänge)
 - `Sacheinlagen` (aus `expenses.is_private_paid` abgeleitet)
 
-Der aktuelle Export kann Dateien gleichen Namens im Ziel überschreiben.
-Wähle für geprüfte oder weitergegebene Stände einen neuen Zielordner und
-kontrolliere ihn vor dem Export. Ein standardmäßiger Überschreibschutz und
-ein versionierter Exportmodus sind in [Spec 016](../specs/016-agent-safety-und-guardrails.md)
-und [Spec 021](../specs/021-versionierte-exporte.md) geplant.
-Auch ein versionierter Export mit Manifest wäre nur eine Hilfe zum Vergleichen
-lokaler Dateistände. `euer` beansprucht keine GoBD-Konformität und bietet
-damit keine rechtlich revisionssichere Archivierung.
+#### Export-Schutz vor Überschreiben & atomares Schreiben
+
+- **Kollisionsprüfung:** Wenn im Zielordner bereits Exportdateien existieren, bricht
+  `euer export` mit einem Fehler ab und nennt die betroffenen Dateipfade. Um bestehende
+  Exporte bewusst zu überschreiben, muss `--force` übergeben werden.
+- **Atomares Staging:** Exporte werden zuerst in ein temporäres Unterverzeichnis
+  geschrieben und erst bei fehlerfreiem Abschluss atomar an ihren Zielort verschoben.
+  Abbrüche hinterlassen keine unvollständigen oder korrupten Dateien.
+- Gelöschte Buchungen (`deleted_at`) werden vom Export vollständig ausgeschlossen.
+
+Auch ein Export schützt nur lokale Dateistände: `euer` beansprucht keine
+GoBD-Konformität und bietet damit keine rechtlich revisionssichere Archivierung.
+Ein versionierter Exportmodus mit Manifest ist in [Spec 021](../specs/021-versionierte-exporte.md)
+geplant.
 
 `exports.directory` ist ein konkreter Ordner und unterstützt keinen
 `{year}`-Platzhalter. Für jahresweise Ablage nutze entweder `--output` mit einem
@@ -420,6 +487,39 @@ konkreten Jahresordner oder setze die Config entsprechend um:
 ```bash
 euer export --year 2026 --output "/pfad/zu/Buchhaltung/2026/Exporte"
 ```
+
+### Plausibilitätsprüfungen & Validierungs-Guardrails
+
+Um Fehleingaben und Missverständnisse durch automatisierte Agenten zu verhindern,
+verfügt `euer` über integrierte Plausibilitätsprüfungen:
+
+1. **Umsatzsteuer-Konsistenz (Gross-VAT):**
+   Wird bei einer Ausgabe oder Einnahme sowohl ein Steuersatz (`--vat-rate 19` oder `7`)
+   als auch ein absoluter Steuerbetrag (`--vat`) übergeben, prüft `euer`, ob der
+   Steuerbetrag rechnerisch zum Bruttobetrag passt:
+   $$\text{USt} = \text{Brutto} - \frac{\text{Brutto}}{1 + \text{Satz}}$$
+   Weicht der angegebene Betrag um mehr als 0,02 € (Rundungstoleranz) ab, wird die
+   Buchung mit einem Fehler abgelehnt.
+2. **Datumsplausibilität:**
+   - **Keine Zukunftszahlungen:** Ein Wertstellungs-/Zahlungsdatum (`--payment-date`)
+     in der Zukunft wird abgelehnt, da in der EÜR das Zufluss-/Abflussprinzip gilt
+     (Geld kann erst nach tatsächlichem Fluss gebucht werden).
+   - **Zukunftsrechnungen:** Ein Rechnungsdatum (`--invoice-date`) in der Zukunft ist
+     nur zulässig, wenn die Rechnung noch unbezahlt ist (kein `payment_date`).
+   - **Historien-Warnung:** Liegt ein Datum mehr als 2 Jahre in der Vergangenheit,
+     weist `euer` mit einer Warnung darauf hin.
+3. **Betragsschwelle (Großbeträge > 5.000 €):**
+   Buchungen mit einem Betrag von über 5.000,00 € (absolut) werden abgewiesen,
+   um Tippfehler (z. B. versehentlich weggelassenes Komma `500000`) zu verhindern.
+   Soll die Buchung tatsächlich getätigt werden, muss `--force` angegeben werden.
+   Der Schwellenwert kann in der Config unter `[safety].amount_threshold` angepasst werden.
+4. **Unscharfe Duplikaterkennung (Fuzzy Match):**
+   Wird eine Ausgabe oder Einnahme erfasst, für die bereits eine Buchung mit exakt
+   demselben Betrag im Zeitfenster von $\pm 2$ Tagen und ähnlichem Namen (Empfänger/Kunde)
+   existiert, wird die Buchung als verdächtiges Duplikat abgelehnt.
+   - Handelt es sich um eine berechtigte Mehrfachbuchung (z. B. zwei gleich hohe
+     Lizenzgebühren), kann die Buchung mit `--allow-duplicate` (oder `--force`)
+     erzwungen werden.
 
 Hinweis: Jahres-Exporte für Ausgaben und Einnahmen enthalten zusätzlich die
 Spalten `Buchungskonto`, `Kontonummer`, `Steuersatz` und `Steuerklasse`.

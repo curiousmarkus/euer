@@ -172,6 +172,12 @@ def main(argv: list[str] | None = None) -> None:
         help="Belegter abziehbarer Vorsteuerbetrag in EUR (bei Bewirtung ausdrücklich geprüft)",
     )
     add_expense_parser.add_argument(
+        "--vat-rate",
+        type=float,
+        choices=[0.0, 7.0, 19.0],
+        help="Vorsteuer-Steuersatz (0, 7, 19)",
+    )
+    add_expense_parser.add_argument(
         "--tip",
         dest="entertainment_tip_eur",
         type=float,
@@ -192,6 +198,16 @@ def main(argv: list[str] | None = None) -> None:
         choices=["eu", "third-country"],
         metavar="{eu,third-country}",
         help="Reverse-Charge mit Jurisdiktion: eu oder third-country",
+    )
+    add_expense_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Erzwingt Buchung trotz Schwellenwert-Überschreitung oder möglicher Duplikate",
+    )
+    add_expense_parser.add_argument(
+        "--allow-duplicate",
+        action="store_true",
+        help="Erlaubt mögliches Duplikat trotz Ähnlichkeit",
     )
     add_expense_parser.set_defaults(func=cmd_add_expense)
 
@@ -228,6 +244,16 @@ def main(argv: list[str] | None = None) -> None:
         "--tax-free",
         action="store_true",
         help="Steuerfreie Einnahme ohne Vorsteuerabzug (§19/steuerfrei)",
+    )
+    add_income_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Erzwingt Buchung trotz Schwellenwert-Überschreitung oder möglicher Duplikate",
+    )
+    add_income_parser.add_argument(
+        "--allow-duplicate",
+        action="store_true",
+        help="Erlaubt mögliches Duplikat trotz Ähnlichkeit",
     )
     add_income_parser.set_defaults(func=cmd_add_income)
 
@@ -384,6 +410,12 @@ def main(argv: list[str] | None = None) -> None:
         help="Belegter abziehbarer Vorsteuerbetrag in EUR",
     )
     upd_exp_parser.add_argument(
+        "--vat-rate",
+        type=float,
+        choices=[0.0, 7.0, 19.0],
+        help="Neuer Vorsteuer-Steuersatz (0, 7, 19)",
+    )
+    upd_exp_parser.add_argument(
         "--tip",
         dest="entertainment_tip_eur",
         type=float,
@@ -422,6 +454,16 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help="Entfernt Reverse-Charge und Jurisdiktion",
     )
+    upd_exp_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Erzwingt Änderung trotz Schwellenwert-Überschreitung oder möglicher Duplikate",
+    )
+    upd_exp_parser.add_argument(
+        "--allow-duplicate",
+        action="store_true",
+        help="Erlaubt mögliches Duplikat trotz Ähnlichkeit",
+    )
     upd_exp_parser.set_defaults(func=cmd_update_expense)
 
     # update income
@@ -455,6 +497,16 @@ def main(argv: list[str] | None = None) -> None:
         "--tax-free",
         action="store_true",
         help="Setzt die Einnahme auf steuerfrei ohne Vorsteuerabzug",
+    )
+    upd_inc_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Erzwingt Änderung trotz Schwellenwert-Überschreitung oder möglicher Duplikate",
+    )
+    upd_inc_parser.add_argument(
+        "--allow-duplicate",
+        action="store_true",
+        help="Erlaubt mögliches Duplikat trotz Ähnlichkeit",
     )
     upd_inc_parser.set_defaults(func=cmd_update_income)
 

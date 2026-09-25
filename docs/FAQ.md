@@ -205,3 +205,57 @@ Buche die Gutschrift mit `euer add income`:
 
 * **Privatkonten:** Cashback auf privaten Girokonten oder Kreditkarten (z. B. privates N26-Konto oder Trade Republic Saveback) gehört in die Privatsphäre und wird in `euer` **nicht** erfasst.
 
+---
+
+## 8. Was passiert beim Löschen? Kann ich gelöschte Buchungen wiederherstellen?
+
+### Frage
+Ich oder mein KI-Agent hat versehentlich eine Buchung gelöscht oder geändert. Sind die Daten unwiderruflich verloren?
+
+### Antwort
+**Nein.**
+1. **Papierkorb (Soft-Delete):** `euer delete` löscht Datensätze standardmäßig nicht physisch aus der Datenbank, sondern versieht sie mit einem Löschzeitstempel (`deleted_at`). Sie tauchen in normalen Listen und Auswertungen nicht mehr auf, können aber jederzeit wiederhergestellt werden:
+   - `euer trash list` zeigt alle gelöschten Buchungen an.
+   - `euer restore <ID>` holt den Datensatz sofort aus dem Papierkorb zurück.
+   - Nur mit `euer delete <ID> --purge` oder `euer trash empty` werden Daten physisch entfernt.
+2. **Undo-Funktion:** Wurde gerade ein falscher Befehl abgesetzt (z. B. fehlerhaftes `update`, versehentliches `add` oder `delete`), macht `euer undo` die letzte Mutation im Audit-Log rückgängig (mit Vorschau und Bestätigung bzw. per `euer undo --force`).
+
+---
+
+## 9. Warum bricht `euer export` mit einem Fehler ab, dass Dateien bereits existieren?
+
+### Frage
+Beim Ausführen von `euer export --year 2026` erhalte ich die Fehlermeldung:  
+`Fehler: Exportdateien existieren bereits im Zielordner: [...] Nutze --force zum Überschreiben.`
+
+### Antwort
+`euer` verfügt über einen Kollisionsschutz (Guardrail), um zu verhindern, dass fertig geprüfte Jahresabschlüsse oder externe Exportdateien versehentlich überschrieben werden.
+- Wenn du die Exporte bewusst neu generieren möchtest, hänge `--force` an den Befehl an: `euer export --year 2026 --force`.
+- Alternativ kannst du mit `--output <verzeichnis>` einen separaten Zielordner angeben.
+- Das Schreiben erfolgt atomar über ein Staging-Verzeichnis, sodass bei Fehlern keine unvollständigen Exportdateien zurückbleiben.
+
+---
+
+## 10. Was mache ich bei der Fehlermeldung "suspicious_duplicate" (unscharfes Duplikat)?
+
+### Frage
+Beim Hinzufügen einer Ausgabe bricht `euer` mit `suspicious_duplicate` ab:  
+`Verdächtiges Duplikat erkannt: [...] Nutze --allow-duplicate zum Erzwingen.`
+
+### Antwort
+Die CLI prüft Buchungen auf Ähnlichkeit: Liegt innerhalb eines Fensters von $\pm 2$ Tagen bereits eine Buchung mit **exakt demselben Betrag** und einem **ähnlichen Empfänger-/Kundennamen** vor, schlägt die Duplikaterkennung an, um doppelte Erfassungen durch Agenten zu verhindern.
+- Handelt es sich um zwei getrennte, berechtigte Transaktionen (z. B. zwei Monatsabos oder separate Einkäufe am selben Wochenende), setze das Flag `--allow-duplicate`:  
+  `euer add expense ... --allow-duplicate` (oder `--force`).
+
+---
+
+## 11. Warum verlangt `euer init` das Flag `--create` bei einer neuen Datenbank?
+
+### Frage
+Beim Aufruf von `euer init` in einem neuen Verzeichnis erhalte ich den Hinweis:  
+`Fehler: Datenbank existiert nicht: ... Nutze --create zur Neuanlage.`
+
+### Antwort
+Dies ist eine Schutzmaßnahme gegen Fehlbedienung. Wenn du dich versehentlich im falschen Terminal-Ordner befindest und `euer init` aufrufst, würde ohne dieses Flag stillschweigend eine neue, leere Datenbank an der falschen Stelle initialisiert.
+- Um bewusst eine neue `euer.db` im aktuellen Ordner anzulegen, führe `euer init --create` aus.
+

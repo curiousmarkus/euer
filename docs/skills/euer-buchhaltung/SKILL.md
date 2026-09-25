@@ -17,10 +17,10 @@ nicht dauerhaft in Lieferantenregeln. Ermittle die Zuordnung für das konkrete
 Formularjahr mit `euer list categories --year YYYY`. Bei Tool- oder
 Skill-Updates persönliche `AGENTS.md` niemals automatisch überschreiben;
 Upstream-Dateien und lokale Anpassungen zuerst vergleichen.
-Vor `euer init` auf einer bestehenden Datenbank eine konsistente Sicherung
-erstellen und danach `euer incomplete list` prüfen. Der aktuelle
-`euer export` kann Dateien gleichen Namens überschreiben; für abgeschlossene
-Stände einen neuen Zielordner wählen.
+`euer init` erstellt vor Schema-Migrationen automatisch eine konsistente Sicherung
+unter `~/.config/euer/backups/`. Danach `euer incomplete list` prüfen.
+`euer export` verhindert versehentliches Überschreiben vorhandener Dateien im
+Zielordner (kann mit `--force` überschrieben werden).
 Wenn sich die installierte euer-Version seit dem letzten Auftrag geändert
 hat, vor weiteren Buchungen die Release Notes dieses Releases auf Änderungen
 an Skill, Rolle und Mandanten-Dossier prüfen. Bei lokal angepassten Dateien
@@ -508,11 +508,28 @@ Hinweis: Fehlt die Dateiendung, prüft `euer receipt check` automatisch
 3. Export erstellen: `euer export --year 2026 --format xlsx`
 4. Beleg-Vollständigkeit prüfen: `euer receipt check --year 2026`
 
-### Korrektur
+### Korrektur & Undo
 
 1. Eintrag finden: `euer list expenses --year 2026`
 2. Aktualisieren: `euer update expense <ID> --amount -XX.XX`
 3. Historie prüfen: `euer audit <ID>`
+4. Letzte Aktion rückgängig machen: `euer undo --force`
+5. Gelöschte Buchung wiederherstellen: `euer trash list` und `euer restore <ID>`
+
+### Sicherheitsregeln für Agenten (Guardrails)
+
+- **Betragsschwelle (> 5.000 €):** Bei Beträgen über 5.000,00 € verlangt die CLI
+  `--force`. Agenten müssen den Betrag am Beleg doppelt verifizieren, bevor sie `--force` setzen.
+- **Duplikaterkennung:** Schlägt `suspicious_duplicate` fehl, existiert im Fenster von ±2 Tagen
+  bereits eine Buchung mit gleichem Betrag und ähnlichem Namen. Nur nach Prüfung auf berechtigte
+  Mehrfachbuchung `--allow-duplicate` übergeben.
+- **Umsatzsteuer-Mathematik:** Wenn `--vat` und `--vat-rate` (19 oder 7) übergeben werden,
+  muss der Steuerbetrag rechnerisch zum Bruttobetrag passen (Toleranz: max. 0,02 €).
+- **Zukunftszahlungen:** Zahlungsdaten (`payment_date`) in der Zukunft werden strikt abgelehnt.
+- **Löschen:** `euer delete` verschiebt standardmäßig in den Papierkorb (Soft-Delete).
+  Verwende niemals `--purge`, es sei denn, der Nutzer verlangt dies ausdrücklich.
+- **Export:** `euer export` blockiert Überschreiben im Zielordner ohne `--force`.
+- **Datenbank-Neuanlage:** `euer init` erfordert bei nicht existierender DB zwingend `--create`.
 
 ## Beispiele
 
