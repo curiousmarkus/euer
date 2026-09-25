@@ -5,6 +5,19 @@ from tests.cli_test_base import BaseCLITestCase
 
 
 class ValidationGuardrailsTestCase(BaseCLITestCase):
+    def test_invalid_configured_amount_threshold_fails_instead_of_falling_back(self):
+        for value in ("-1", '"not-a-number"', '"nan"'):
+            with self.subTest(value=value):
+                self.write_config(f"[safety]\namount_threshold = {value}\n")
+                result = self.add_expense(vendor="Configured threshold", amount="-10.00")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("safety.amount_threshold", result.stderr)
+
+    def test_setup_rejects_invalid_amount_threshold(self):
+        result = self.run_cli(["setup", "--set", "safety.amount_threshold", "nan"])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("safety.amount_threshold", result.stderr)
+
     def test_vat_math_mismatch_rejected(self):
         # 119,00 € mit 7% USt, aber explizit 19,00 € USt angegeben -> Fehler
         res_exp = self.run_cli(

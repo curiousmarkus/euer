@@ -1,3 +1,4 @@
+import sqlite3
 import unittest
 
 from tests.cli_test_base import BaseCLITestCase
@@ -74,7 +75,9 @@ class SoftDeleteAndUndoTestCase(BaseCLITestCase):
         self.assertNotIn("Purge Vendor", self.run_cli(["trash", "list"]).stdout)
 
         # Physikalisch aus DB entfernt
-        q_res = self.run_cli(["query", "SELECT", "COUNT(*)", "FROM", "expenses", "WHERE", "id=1"], check=True)
+        q_res = self.run_cli(
+            ["query", "SELECT", "COUNT(*)", "FROM", "expenses", "WHERE", "id=1"], check=True
+        )
         rows = self.parse_csv(q_res.stdout)
         self.assertEqual(rows[1][0], "0")
 
@@ -138,6 +141,22 @@ class SoftDeleteAndUndoTestCase(BaseCLITestCase):
         list_out = self.run_cli(["list", "expenses"]).stdout
         self.assertIn("Original Vendor AG", list_out)
         self.assertNotIn("Modified Vendor GmbH", list_out)
+
+    def test_undo_rejects_stale_audit_entry(self):
+        self.add_expense(vendor="Initial Vendor", amount="-99.00")
+        self.run_cli(["update", "expense", "1", "--vendor", "First Change"], check=True)
+        conn = sqlite3.connect(self.db_path)
+        old_update_id = conn.execute(
+            "SELECT id FROM audit_log WHERE table_name='expenses' AND action='UPDATE' "
+            "ORDER BY id DESC LIMIT 1"
+        ).fetchone()[0]
+        conn.close()
+        self.run_cli(["update", "expense", "1", "--vendor", "Second Change"], check=True)
+
+        result = self.run_cli(["undo", "--id", str(old_update_id), "--force"])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("nicht mehr der letzte Stand", result.stderr)
+        self.assertIn("Second Change", self.run_cli(["list", "expenses"]).stdout)
 
     def test_restore_ambiguity_handling(self):
         self.add_expense(vendor="Ambiguous Exp", amount="-50.00")

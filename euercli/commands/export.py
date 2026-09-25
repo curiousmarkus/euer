@@ -80,13 +80,9 @@ def cmd_export(args):
         sys.exit(1)
 
     if year is not None:
-        year_filter = (
-            "WHERE e.deleted_at IS NULL AND strftime('%Y', COALESCE(e.payment_date, e.invoice_date)) = ?"
-        )
+        year_filter = "WHERE e.deleted_at IS NULL AND strftime('%Y', COALESCE(e.payment_date, e.invoice_date)) = ?"
         year_params = (str(year),)
-        income_filter = (
-            "WHERE i.deleted_at IS NULL AND strftime('%Y', COALESCE(i.payment_date, i.invoice_date)) = ?"
-        )
+        income_filter = "WHERE i.deleted_at IS NULL AND strftime('%Y', COALESCE(i.payment_date, i.invoice_date)) = ?"
         income_params = (str(year),)
         private_filter = "WHERE p.deleted_at IS NULL AND strftime('%Y', p.date) = ?"
         private_params = (str(year),)
@@ -543,9 +539,29 @@ def cmd_export(args):
                 )
             wb.save(private_tmp)
 
-        # Atomares Ersetzen aller Zieldateien
-        for tmp_path, final_path in staging_files:
-            os.replace(tmp_path, final_path)
+        # Individual renames are atomic; restore earlier files if a later rename fails.
+        previous: list[tuple[Path, Path | None]] = []
+        try:
+            for tmp_path, final_path in staging_files:
+                if final_path.exists() and not getattr(args, "force", False):
+                    raise FileExistsError(f"Zieldatei existiert bereits: {final_path}")
+                saved = None
+                if final_path.exists():
+                    saved = final_path.with_name(f".{final_path.name}.old.{uuid.uuid4().hex}")
+                    os.replace(final_path, saved)
+                previous.append((final_path, saved))
+                os.replace(tmp_path, final_path)
+        except Exception:
+            for final_path, saved in reversed(previous):
+                if saved is None:
+                    final_path.unlink(missing_ok=True)
+                else:
+                    os.replace(saved, final_path)
+            raise
+        for _, saved in previous:
+            if saved is not None:
+                saved.unlink()
+        for _, final_path in staging_files:
             print(f"Exportiert: {final_path}")
 
     finally:

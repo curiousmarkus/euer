@@ -2,6 +2,7 @@ import sys
 from pathlib import Path
 
 from ..config import (
+    get_amount_threshold,
     get_audit_user,
     get_export_dir,
     get_ledger_accounts,
@@ -109,6 +110,8 @@ def _normalize_setup_set_value(key: str, value: str):
         return normalize_config_text(value)
     if key == "exports.directory":
         return normalize_export_path(value)
+    if key == "safety.amount_threshold":
+        return get_amount_threshold({"safety": {"amount_threshold": value}})
     if key == "accounts.private":
         accounts = [item.strip() for item in value.split(",") if item.strip()]
         if not accounts:
@@ -127,7 +130,10 @@ def cmd_setup_set(key: str, value: str) -> None:
         raise ValueError("Ungültiger Key. Verwende das Format section.key.")
 
     config = load_config()
-    section_config = dict(config.get(section, {}))
+    existing_section = config.get(section, {})
+    if not isinstance(existing_section, dict):
+        raise ValueError(f"Ungültige Config: [{section}] muss ein Abschnitt sein.")
+    section_config = dict(existing_section)
     section_config[config_key] = _normalize_setup_set_value(key, value)
     config[section] = section_config
 

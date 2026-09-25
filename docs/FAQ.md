@@ -232,7 +232,7 @@ Beim Ausführen von `euer export --year 2026` erhalte ich die Fehlermeldung:
 `euer` verfügt über einen Kollisionsschutz (Guardrail), um zu verhindern, dass fertig geprüfte Jahresabschlüsse oder externe Exportdateien versehentlich überschrieben werden.
 - Wenn du die Exporte bewusst neu generieren möchtest, hänge `--force` an den Befehl an: `euer export --year 2026 --force`.
 - Alternativ kannst du mit `--output <verzeichnis>` einen separaten Zielordner angeben.
-- Das Schreiben erfolgt atomar über ein Staging-Verzeichnis, sodass bei Fehlern keine unvollständigen Exportdateien zurückbleiben.
+- Exportdateien werden zunächst temporär im Zielordner geschrieben. Bei einem Fehler während des Austauschs setzt `euer` bereits ersetzte Dateien nach Möglichkeit zurück; der gesamte Dateisatz ist nicht atomar.
 
 ---
 
@@ -252,10 +252,14 @@ Die CLI prüft Buchungen auf Ähnlichkeit: Liegt innerhalb eines Fensters von $\
 ## 11. Warum verlangt `euer init` das Flag `--create` bei einer neuen Datenbank?
 
 ### Frage
-Beim Aufruf von `euer init` in einem neuen Verzeichnis erhalte ich den Hinweis:  
-`Fehler: Datenbank existiert nicht: ... Nutze --create zur Neuanlage.`
+Beim Aufruf von `euer init` in einem neuen Verzeichnis erhalte ich den Hinweis,
+eine vorhandene DB zu verbinden oder mit `euer init --create` neu anzulegen.
 
 ### Antwort
 Dies ist eine Schutzmaßnahme gegen Fehlbedienung. Wenn du dich versehentlich im falschen Terminal-Ordner befindest und `euer init` aufrufst, würde ohne dieses Flag stillschweigend eine neue, leere Datenbank an der falschen Stelle initialisiert.
 - Um bewusst eine neue `euer.db` im aktuellen Ordner anzulegen, führe `euer init --create` aus.
-
+- Wenn die DB bereits existiert, starte `euer init` in ihrem Projektordner. Es
+  trägt `./euer.db` in `.euer/config.toml` ein. Für eine DB an anderem Ort nutze
+  `euer --db /pfad/zur/euer.db init --save-db-path`.
+- Ist eine bisher konfigurierte DB verschoben worden, stoppt euer mit ihrem
+  erwarteten Pfad. Verbinde die vorhandene Datei neu, bevor du weiter buchst.

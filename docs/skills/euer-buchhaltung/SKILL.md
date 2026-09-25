@@ -65,7 +65,11 @@ python -m euercli <command>
 
 ### Datenbank & Config
 
-- Standard‑DB: `euer.db` im aktuellen Arbeitsordner (oder via `euer --db PFAD ...`).
+- Standard‑DB: `euer.db` im aktuellen Arbeitsordner. `.euer/config.toml` bindet
+  pro Buchhaltungsordner einen DB-Pfad; `euer --db PFAD ...` gilt nur für einen
+  Aufruf. Eine vorhandene externe DB mit `euer --db PFAD init --save-db-path`
+  dauerhaft verbinden. Fehlt die gewählte DB, vor Buchungen ihren Pfad klären;
+  nur bei ausdrücklicher Neuanlage `euer init --create` verwenden.
 - Config: unter macOS/Linux `~/.config/euer/config.toml`, unter Windows `%APPDATA%\euer\config.toml` (Beleg‑Pfade, Export‑Verzeichnis, Steuer‑Modus, private Konten, optionaler Kontenrahmen via `[[ledger_accounts]]`). Die Config gilt über Arbeitsordner hinweg.
 - Non-interaktiv setzen: `euer setup --set <section.key> <value>` (z.B. `tax.mode`, `accounts.private`).
 - Direkter sqlite3‑Zugriff ist **verboten**, da sonst Inkonsistenzen auftreten können und das Audit-Log umgangen wird.

@@ -74,10 +74,32 @@ def undo_mutation(
             details={"table_name": table_name},
         )
 
+    # An older audit entry must not overwrite changes made to the same record later.
+    later_entry = conn.execute(
+        """SELECT id FROM audit_log
+           WHERE id > ? AND table_name = ? AND record_id = ?
+             AND action IN ('INSERT', 'UPDATE', 'DELETE', 'MIGRATE')
+           ORDER BY id LIMIT 1""",
+        (audit_entry_id, table_name, record_id),
+    ).fetchone()
+    if later_entry:
+        raise ValidationError(
+            f"Audit-Eintrag #{audit_entry_id} ist nicht mehr der letzte Stand von "
+            f"{table_name} #{record_id} (späterer Eintrag #{later_entry['id']}).",
+            code="stale_undo",
+            details={"audit_id": audit_entry_id, "later_audit_id": later_entry["id"]},
+        )
+
     current_row = conn.execute(
         f"SELECT * FROM {table_name} WHERE id = ?",
         (record_id,),
     ).fetchone()
+    if current_row and record_uuid and current_row["uuid"] != record_uuid:
+        raise ValidationError(
+            f"Datensatz #{record_id} in {table_name} hat eine andere UUID als der Audit-Eintrag.",
+            code="stale_undo",
+            details={"audit_id": audit_entry_id, "record_id": record_id},
+        )
 
     summary = ""
 
@@ -167,7 +189,9 @@ def undo_mutation(
                 new_data={"undo_of_audit_id": audit_entry_id, **old_data},
                 user=audit_user,
             )
-            summary = f"{table_name} #{record_id} aus Audit-Historie neu angelegt (wiederhergestellt)."
+            summary = (
+                f"{table_name} #{record_id} aus Audit-Historie neu angelegt (wiederhergestellt)."
+            )
 
     elif action == "UPDATE":
         # UPDATE rückgängig machen -> old_data wieder einspielen
@@ -205,7 +229,9 @@ def undo_mutation(
             new_data={"undo_of_audit_id": audit_entry_id, **old_data},
             user=audit_user,
         )
-        summary = f"{table_name} #{record_id} auf den Stand vor Audit #{audit_entry_id} zurückgesetzt."
+        summary = (
+            f"{table_name} #{record_id} auf den Stand vor Audit #{audit_entry_id} zurückgesetzt."
+        )
 
     else:
         raise ValidationError(

@@ -124,7 +124,7 @@ persönliches Mandanten-Dossier geprüft werden müssen. Agentendateien und
 Falls noch nicht durch den Agenten erledigt: Wechsle in deinen Buchhaltungsordner
 und initialisiere Datenbank und Konfiguration:
 ```bash
-euer init
+euer init --create
 euer setup
 ```
 

@@ -40,7 +40,7 @@ Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
 
 | Bereich | Änderung | Aktion nach diesem Release |
 |---|---|---|
-| Skill | Sicherheits-Guardrails (> 5.000 €, Duplikaterkennung, USt-Prüfung), Undo/Restore und Migrationshinweise ergänzt | Lokale Kopie mit `docs/skills/euer-buchhaltung/` des Release-Tags vergleichen |
+| Skill | Sicherheits-Guardrails (> 5.000 €, Duplikaterkennung, USt-Prüfung), Undo/Restore, Migrationshinweise und Projekt-DB-Pfad ergänzt | Lokale Kopie mit `docs/skills/euer-buchhaltung/` des Release-Tags vergleichen |
 | Rolle | `accountant-agent.md` heißt jetzt `accountant-role.md`; Privatvorgänge präzisiert | Lokale Agentendatei nach Diff gezielt anpassen; nicht durch die neue Vorlage ersetzen |
 | Agenten-Adapter | Noch keine plattformspezifischen Dateien im Release | Keine automatische Änderung an `SOUL.md`, `CLAUDE.md` oder `AGENTS.md` |
 | Mandanten-Dossier | Keine automatische Migration; keine festen EÜR-Zeilennummern in Lieferantenregeln | Bestehende Regeln prüfen und Änderungen nur als Vorschlag übernehmen |
@@ -54,17 +54,20 @@ Veröffentlichung vom passenden Release-Tag übernehmen.
 
 - **Transparente und sichere DB-Migrationen (Spec 020, Spec 016 §1.1/§2.4):**
   - Automatisches WAL-sicheres Online-Backup via SQLite-Backup-API nach `~/.config/euer/backups/euer_YYYY-MM-DD_HHMMSS.db` vor Schema-Migrationen.
+  - Vor dem ersten schreibenden CLI-Befehl pro Datenbank und Tag wird ein zusätzlicher Snapshot mit Datenbankkennung im Dateinamen erstellt.
   - Transaktionales Schema-Versionstracking (`_schema_migrations`) mit automatischem Rollback im Fehlerfall.
   - Preflight-Bericht in `euer init`: Pfadanzeige, Schemaversion, anstehende Migrationen und Auswirkungsanalyse (`incomplete_impact`).
   - Neue Flags für `euer init`: `--dry-run` zur gefahrlosen Simulation, `--json` für maschinenlesbare Ausgaben, Pflichtflag `--create` zur Neuanlage einer Datenbank.
+  - `.euer/config.toml` bindet den DB-Pfad an den Buchhaltungsordner. `euer init` registriert eine vorhandene `./euer.db`; `euer init --create` registriert eine neue. Eine DB an anderem Ort mit `euer --db PFAD init --save-db-path` verbinden. `--db` allein gilt nur für einen Aufruf. Bei fehlender konfigurierter DB stoppen Buchungsbefehle, ohne eine leere DB anzulegen.
 - **Agent-Safety & Guardrails (Spec 016):**
   - Soft-Delete by default für `expenses`, `income` und `private_transfers` via `deleted_at`.
   - Physisches Löschen nur noch mit explizitem `--purge`.
   - Neuer Papierkorb-Befehl: `euer trash list` und `euer trash empty [--force]`.
   - Wiederherstellung: `euer restore <id> [--table ...]`.
   - Atomares Undo: `euer undo [--force]` rollt die jeweils letzte Mutation (INSERT, UPDATE, DELETE) basierend auf dem Audit-Log zurück.
-  - Export-Überschreibschutz: `euer export` blockiert Überschreiben im Zielordner ohne `--force` und schreibt atomar via Staging-Verzeichnis.
+  - Export-Überschreibschutz: `euer export` blockiert Überschreiben im Zielordner ohne `--force`, schreibt zuerst temporäre Dateien und setzt bei Austauschfehlern bereits ersetzte Dateien nach Möglichkeit zurück.
   - Validierungs-Guardrails: Mathematische Brutto-USt-Prüfung (Toleranz 0,02 €), strikte Ablehnung von Zukunftszahlungen, Betragsschwelle > 5.000 € (`--force`), unscharfe Duplikaterkennung im Zeitfenster von ±2 Tagen (`--allow-duplicate`).
+  - Ungültige Werte für `[safety].amount_threshold` stoppen betroffene Buchungen jetzt mit einer klaren Fehlermeldung; bisher wurde still 5.000 € verwendet.
 - Upgrade-Dokumentation für den Wechsel von pipx/`euercli` zu Homebrew,
   PATH-Prüfung und zeitversetzte Tap-Aktualisierung ergänzt.
 - Agenten-Dokumentation trennt allgemeine Skill-Regeln von persönlichen

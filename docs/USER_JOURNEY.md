@@ -59,7 +59,8 @@ Für Excel-Exporte gibt es bei pipx das Extra `pipx install "euer[xlsx]"`.
 Prüfe die Installation mit `euer --version` und `euer --help`.
 
 Lege einen eigenen Buchhaltungsordner fest. Hier liegen später deine persönliche
-`AGENTS.md` und standardmäßig die Datenbank `euer.db`. Das ist dein Arbeitsordner,
+`AGENTS.md`, die Projekt-Config `.euer/config.toml` und standardmäßig die Datenbank
+`euer.db`. Das ist dein Arbeitsordner,
 unabhängig vom Quellcode-Repository und dessen Entwickler-`AGENTS.md`.
 
 Du brauchst außerdem eine KI-Anwendung mit Terminal- und Dateizugriff. Ein normaler
@@ -119,7 +120,8 @@ Bei einer Ersteinrichtung entsteht das Dossier erst im Interview. Für Rechnunge
 braucht er zusätzlich PDF-Textextraktion, etwa `markitdown`, und bei Scans eine
 OCR- oder Bildlesefunktion. Diese Verarbeitung übernimmt der Agent außerhalb von `euer`.
 
-Falls noch nicht vom Agenten erledigt, führe im Buchhaltungsordner `euer init`
+Falls noch nicht vom Agenten erledigt, führe im Buchhaltungsordner bei einer neuen DB
+`euer init --create`, bei einer vorhandenen DB `euer init`
 und die Setup-Befehle aus dem Interview aus; alternativ führt `euer setup`
 interaktiv durch die Konfiguration. Danach prüft
 der Agent:
@@ -133,9 +135,13 @@ euer incomplete list
 
 Die Config liegt unter macOS/Linux in `~/.config/euer/config.toml`, unter Windows
 in `%APPDATA%\euer\config.toml`. Sie ist nicht automatisch auf den Arbeitsordner
-beschränkt. Die Datenbank wird dagegen standardmäßig im aktuellen Arbeitsordner
-gesucht. Bei Bedarf wählt der Agent sie explizit mit
-`euer --db "/pfad/zur/euer.db" …` aus.
+beschränkt. Der DB-Pfad steht zusätzlich pro Buchhaltungsordner in
+`.euer/config.toml`; ohne diese Datei gilt `./euer.db`. Bei einer DB außerhalb des
+Ordners verbindet der Agent sie mit
+`euer --db "/pfad/zur/euer.db" init --save-db-path` dauerhaft. Ein bloßes `--db`
+gilt nur für den aktuellen Aufruf. Ist eine konfigurierte DB verschwunden, darf
+der Agent nicht stillschweigend eine neue anlegen; er klärt den neuen Pfad oder
+einen ausdrücklichen Neuanlageauftrag.
 
 **Erster Auftrag:**
 
@@ -145,7 +151,8 @@ gesucht. Bei Bedarf wählt der Agent sie explizit mit
 
 Bei einem Einstieg mitten im Jahr gehört dazu der Abgleich mit den bisherigen
 Buchungen. Schon erfasste Belege und Zahlungen dürfen nicht erneut angelegt werden.
-Vereinbare außerdem eine Sicherung von Datenbank, Config, Dossier und Belegdateien.
+Vereinbare außerdem eine Sicherung von Datenbank, globaler und Projekt-Config,
+Dossier und Belegdateien.
 
 ## 4. Die erste Rechnung übergeben
 

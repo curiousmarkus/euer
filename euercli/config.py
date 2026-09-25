@@ -1,3 +1,4 @@
+import math
 import sys
 import tomllib
 from dataclasses import dataclass
@@ -393,10 +394,22 @@ def warn_missing_receipt(
 def get_amount_threshold(config: dict) -> float:
     """Liefert den Schwellenwert für Betragsprüfungen (Standard: 5000.00 €)."""
     safety = config.get("safety", {})
-    if isinstance(safety, dict) and "amount_threshold" in safety:
-        try:
-            return float(safety["amount_threshold"])
-        except (ValueError, TypeError):
-            pass
-    return 5000.0
-
+    if not isinstance(safety, dict):
+        raise ValidationError(
+            "Ungültige Config: [safety] muss ein Abschnitt sein.",
+            code="invalid_amount_threshold",
+        )
+    if "amount_threshold" not in safety:
+        return 5000.0
+    value = safety["amount_threshold"]
+    try:
+        threshold = float(value) if not isinstance(value, bool) else float("nan")
+    except (ValueError, TypeError):
+        threshold = float("nan")
+    if not math.isfinite(threshold) or threshold <= 0:
+        raise ValidationError(
+            "Ungültige Config: safety.amount_threshold muss eine endliche, positive Zahl sein.",
+            code="invalid_amount_threshold",
+            details={"value": str(value)},
+        )
+    return threshold

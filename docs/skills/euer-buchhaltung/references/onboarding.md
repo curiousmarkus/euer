@@ -7,7 +7,8 @@ eine dazu passende euer-Konfiguration und ein klarer nächster Arbeitsauftrag.
 ## 1. Vorhandenen Stand übernehmen
 
 Bei lokalem Zugriff zuerst Arbeitsordner, vorhandenes Dossier, CLI-Verfügbarkeit,
-Existenz der vorgesehenen Datenbank und vorhandene Config prüfen. `euer --version`
+Existenz der vorgesehenen Datenbank, `.euer/config.toml` im Arbeitsordner und die
+globale Config prüfen. `euer --version`
 und `euer config show` helfen dabei. Die Config-Datei selbst enthält zusätzlich
 private Konten und optionale Buchungskonten, die `config show` nicht vollständig zeigt.
 Unter macOS/Linux liegt sie in `~/.config/euer/config.toml`, unter Windows in
@@ -146,13 +147,21 @@ weiterhin `SKILL.md`. Bewahre bereits vorhandene individuelle Regeln.
 Bei einem lokalen Einrichtungsauftrag die vereinbarten Dateien und Einstellungen
 anlegen bzw. gezielt ergänzen. Existierende Datenbanken nicht ersetzen und bestehende
 Buchungen nicht automatisch reklassifizieren. Vor Änderungen an einem bestehenden
-Bestand eine konsistente Sicherung vorsehen. Die Config gilt über Arbeitsordner
-hinweg: Bei einem weiteren Mandanten erst die gemeinsame Config-Nutzung klären.
+Bestand eine konsistente Sicherung vorsehen. Die globale Config gilt über
+Arbeitsordner hinweg; der DB-Pfad in `.euer/config.toml` gilt nur für diesen
+Buchhaltungsordner. Bei einem weiteren Mandanten die gemeinsame globale
+Config-Nutzung klären.
 
 - Falls die CLI fehlt, passend zur Umgebung installieren bzw. den nötigen
   Installationsschritt benennen. Ein reiner Interviewauftrag umfasst keine Installation.
-- `euer --db "/vereinbarter/pfad/euer.db" init` initialisiert die ausgewählte DB;
-  bei vorhandenen DBs kann es Migrationen anwenden.
+- Eine vorhandene `./euer.db` mit `euer init` prüfen und in der Projekt-Config
+  registrieren. Eine DB an anderem Ort mit
+  `euer --db "/vereinbarter/pfad/euer.db" init --save-db-path` verbinden;
+  dabei können Migrationen anfallen. Nur bei bestätigter Neuanlage
+  `euer init --create` ausführen. `--db` allein ist keine dauerhafte Bindung.
+- Meldet euer einen fehlenden konfigurierten DB-Pfad, nach der vorhandenen Datei
+  suchen und den richtigen Pfad klären. Keinen neuen leeren Bestand anlegen, um
+  eine Buchung trotz fehlender DB fortzusetzen.
 - Mit `euer setup --set <section.key> <value>` nur die benötigten Werte setzen:
   `tax.mode`, `receipts.root`, `receipts.year_dir`, `receipts.expenses_dir`,
   `receipts.income_dir`, `exports.directory`, `user.name`, `accounts.private`.

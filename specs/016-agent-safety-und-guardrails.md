@@ -49,9 +49,10 @@ strukturierten CLI-Tools, weisen jedoch spezifische Fehlermuster auf:
   aus einem aktiven WAL. Keine bloße Dateikopie einer geöffneten DB verwenden.
 - **Wiederherstellung:** Backup-Datei und Zeitpunkt im Abschlussbericht nennen;
   die Rücksicherung wird dokumentiert und nicht automatisch ausgeführt.
-- **Speicherort:** `~/.config/euer/backups/euer_YYYY-MM-DD_HHMMSS.db`
-- **Rotation:** Standardmäßig werden die letzten 10 Snapshots aufbewahrt; ältere werden
-  automatisch bereinigt.
+- **Speicherort:** Migrationsbackups: `~/.config/euer/backups/euer_YYYY-MM-DD_HHMMSS.db`;
+  Tagesbackups: gleicher Ordner, Präfix `euer_daily_<DB-Kennung>_`.
+- **Rotation:** Standardmäßig werden die letzten 10 Snapshots je Präfix aufbewahrt;
+  ältere werden automatisch bereinigt.
 - **Overhead:** Sicherungen können je nach DB-Größe und Schreiblast dauern;
   Laufzeit nicht pauschal als wenige Millisekunden zusagen.
 
@@ -125,6 +126,8 @@ strukturierten CLI-Tools, weisen jedoch spezifische Fehlermuster auf:
   - Beträge über einem konfigurierbaren Schwellenwert (Standard: 5.000 €) erfordern
     eine explizite Bestätigung oder das Flag `--force`, um Tipp- oder Kommafehler des
     Agenten (z. B. `12000` statt `120.00`) abzufangen.
+  - `[safety].amount_threshold` akzeptiert nur endliche positive Zahlen. Ungültige
+    Werte führen zu einem Config-Fehler statt zu einem stillen Rückfall auf 5.000 €.
 
 ### 2.3 Erweiterte Duplikatserkennung (Fuzzy Duplicate Detection)
 - **Bestehendes Verhalten:**
@@ -145,11 +148,19 @@ strukturierten CLI-Tools, weisen jedoch spezifische Fehlermuster auf:
 **Feedback (wörtlich):** „Für falsche oder nicht existierende DB-Pfade sollte init klar unterscheiden zwischen „bestehende DB migrieren“ und „neue DB anlegen“.“
 
 - `init` meldet den aufgelösten absoluten DB-Pfad und die Aktion vor Schreibzugriff.
-- Bei einem explizit angegebenen, nicht existierenden `--db`-Pfad bricht `init`
-  standardmäßig ab; eine Neuanlage erfordert `--create`.
-- Beim Standardpfad bleibt das dokumentierte Erst-Onboarding möglich. `init`
-  benennt die Neuanlage ausdrücklich und prüft, ob ein bestehendes Dossier oder
-  eine Config auf einen anderen DB-Pfad verweist. Bei Widerspruch abbrechen.
+- Die DB-Wahl folgt `--db PFAD` (nur dieser Aufruf), dann
+  `.euer/config.toml` im aktuellen Projektordner (`[database].path`), dann
+  `./euer.db`. Relative Projektpfade beziehen sich auf den Projektordner.
+- `init` übernimmt eine vorhandene `./euer.db` nach erfolgreicher Prüfung in die
+  Projekt-Config. Bei Neuanlage mit `init --create` wird `euer.db` dort ebenfalls
+  eingetragen. Ein expliziter abweichender Pfad wird nur mit
+  `euer --db PFAD init --save-db-path` dauerhaft gespeichert.
+- Fehlt die gewählte DB, bricht ein Buchungs- oder Lesebefehl ab, ohne eine leere
+  Datei anzulegen. `init` verlangt für jede Neuanlage `--create` und nennt daneben
+  den Befehl zum Verbinden einer vorhandenen DB. Eine vorhandene Projektbindung
+  wird nicht stillschweigend durch `./euer.db` ersetzt.
+- `init --dry-run` verändert auch die Projekt-Config nicht. Eine fehlgeschlagene
+  Migration speichert keine neue Bindung.
 - Weitere Preflight- und Migrationsregeln stehen in [Spec 020](020-transparente-migrationen.md).
 
 ---

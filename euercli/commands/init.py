@@ -1,6 +1,7 @@
 """Command init: Datenbank initialisieren oder transparent migrieren (Spec 020)."""
 
 import json
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -9,22 +10,59 @@ from ..config import get_export_dir, load_config
 from ..constants import DEFAULT_EXPORT_DIR
 from ..db import get_db_connection
 from ..migrations import MIGRATIONS, get_migration_plan, init_migration_table
+from ..project_config import project_config_path, save_project_db_path
+
+
+def _should_save_project_binding(args) -> bool:
+    return getattr(args, "save_db_path", False) or (
+        not getattr(args, "is_explicit_db", False)
+        and not getattr(args, "db_from_project_config", False)
+    )
+
+
+def _save_project_binding(args, db_path: Path, is_json: bool) -> Path | None:
+    """Persistiert den Default-Pfad oder einen explizit freigegebenen --db-Pfad."""
+    if not _should_save_project_binding(args):
+        return None
+    try:
+        return save_project_db_path(args.project_root, db_path)
+    except (OSError, ValueError) as exc:
+        msg = (
+            f"Datenbank unter {db_path.resolve()} ist bereit, aber der Pfad konnte nicht "
+            f"in der Projekt-Config gespeichert werden: {exc}"
+        )
+        if is_json:
+            print(
+                json.dumps(
+                    {"status": "error", "database_status": "ready", "error": msg},
+                    ensure_ascii=False,
+                )
+            )
+        else:
+            print(f"Fehler: {msg}", file=sys.stderr)
+        sys.exit(1)
 
 
 def cmd_init(args) -> None:
     """Initialisiert oder aktualisiert die Datenbank."""
     db_path = Path(args.db)
-    is_explicit = getattr(args, "is_explicit_db", False)
     allow_create = getattr(args, "create", False)
     is_dry_run = getattr(args, "dry_run", False)
     is_json = getattr(args, "json", False)
+    planned_binding = (
+        str(project_config_path(args.project_root)) if _should_save_project_binding(args) else None
+    )
 
     db_exists = db_path.exists()
 
     # 1. Pfad-Guardrail (Spec 016 §2.4, Spec 020 §7):
-    # Expliziter Pfad existiert nicht und kein --create übergeben
-    if is_explicit and not db_exists and not allow_create:
-        msg = f"Datenbank existiert nicht: {db_path}. Nutze --create zur Neuanlage."
+    # A missing configured or default DB must never be created by accident.
+    if not db_exists and not allow_create:
+        msg = (
+            f"Datenbank existiert nicht: {db_path.resolve()}. "
+            "Vorhandene DB mit 'euer --db PFAD init --save-db-path' verbinden "
+            "oder mit 'euer init --create' eine neue DB anlegen."
+        )
         if is_json:
             print(json.dumps({"status": "error", "error": msg}, ensure_ascii=False))
         else:
@@ -42,6 +80,7 @@ def cmd_init(args) -> None:
                     "db_path": str(db_path.resolve()),
                     "exists": False,
                     "target_schema": target_schema,
+                    "project_config_to_write": planned_binding,
                     "pending_migrations": [
                         {
                             "id": m.id,
@@ -61,6 +100,8 @@ def cmd_init(args) -> None:
                 print(f"Datenbank: {db_path.resolve()}")
                 print("Status: Datei existiert noch nicht (Neuanlage geplant).")
                 print(f"Ziel-Schemastand: {target_schema}")
+                if planned_binding:
+                    print(f"Projekt-Config würde gespeichert: {planned_binding}")
                 print(f"\nAnstehende Migrationen ({len(MIGRATIONS)}):")
                 for i, m in enumerate(MIGRATIONS, 1):
                     print(f"  {i}. [{m.id}] {m.name}")
@@ -70,17 +111,20 @@ def cmd_init(args) -> None:
         # Echte Neuanlage
         db_path.parent.mkdir(parents=True, exist_ok=True)
         conn = get_db_connection(db_path)
-        init_migration_table(conn)
-
+        conn.isolation_level = None
         try:
-            with conn:
-                for m in MIGRATIONS:
-                    m.apply(conn)
-                    conn.execute(
-                        "INSERT INTO _schema_migrations (version, name) VALUES (?, ?)",
-                        (m.id, m.name),
-                    )
+            conn.execute("BEGIN IMMEDIATE")
+            init_migration_table(conn)
+            for m in MIGRATIONS:
+                m.apply(conn)
+                conn.execute(
+                    "INSERT INTO _schema_migrations (version, name) VALUES (?, ?)",
+                    (m.id, m.name),
+                )
+            conn.execute("COMMIT")
         except Exception as exc:
+            if conn.in_transaction:
+                conn.execute("ROLLBACK")
             print(f"Fehler bei Neuanlage der Datenbank: {exc}", file=sys.stderr)
             conn.close()
             try:
@@ -90,6 +134,7 @@ def cmd_init(args) -> None:
             sys.exit(1)
 
         conn.close()
+        binding_path = _save_project_binding(args, db_path, is_json)
 
         config = load_config()
         export_dir = get_export_dir(config)
@@ -104,6 +149,7 @@ def cmd_init(args) -> None:
                 "new_schema": target_schema,
                 "applied_migrations": [m.id for m in MIGRATIONS],
                 "export_dir": str(export_path.resolve()),
+                "project_config_path": str(binding_path) if binding_path else None,
                 "affected_records": {"count": 0, "ids": [], "details": []},
                 "next_steps": [],
             }
@@ -113,12 +159,23 @@ def cmd_init(args) -> None:
             print(f"Datenbank neu angelegt: {db_path.resolve()}")
             print(f"Schemastand: {target_schema}")
             print(f"Export-Verzeichnis: {export_path.resolve()}")
+            if binding_path:
+                print(f"Projekt-Config: {binding_path}")
             print("Status: Erfolgreich initialisiert.")
         return
 
     # 3. Bestehende Datenbank: Pre-Flight & Migration
     conn = get_db_connection(db_path)
-    current_schema, target_schema, pending, legacy_stamps = get_migration_plan(conn)
+    try:
+        current_schema, target_schema, pending, legacy_stamps = get_migration_plan(conn)
+    except (ValueError, sqlite3.DatabaseError) as exc:
+        conn.close()
+        msg = f"Migrationsplan nicht ermittelbar: {exc}"
+        if is_json:
+            print(json.dumps({"status": "error", "error": msg}, ensure_ascii=False))
+        else:
+            print(f"Fehler: {msg}", file=sys.stderr)
+        sys.exit(1)
 
     # 3a. Dry-Run auf bestehender DB
     if is_dry_run:
@@ -126,11 +183,12 @@ def cmd_init(args) -> None:
         if is_json:
             data = {
                 "status": "dry_run",
-                "action": "upgrade" if pending else "none",
+                "action": "upgrade" if pending or legacy_stamps else "none",
                 "db_path": str(db_path.resolve()),
                 "exists": True,
                 "current_schema": current_schema,
                 "target_schema": target_schema,
+                "project_config_to_write": planned_binding,
                 "pending_migrations": [
                     {
                         "id": m.id,
@@ -150,6 +208,8 @@ def cmd_init(args) -> None:
             print(f"Datenbank: {db_path.resolve()}")
             print(f"Aktueller Schemastand: {current_schema}")
             print(f"Ziel-Schemastand: {target_schema}")
+            if planned_binding:
+                print(f"Projekt-Config würde gespeichert: {planned_binding}")
 
             if not pending:
                 print("\nKeine anstehenden Migrationen. Datenbank ist bereits aktuell.")
@@ -172,19 +232,9 @@ def cmd_init(args) -> None:
         return
 
     # 3b. Keine anstehenden Migrationen
-    if not pending:
-        if legacy_stamps:
-            # Bestehende Legacy-DB ohne Marker: Stempel eintragen
-            with conn:
-                for m_id in legacy_stamps:
-                    m_obj = next((m for m in MIGRATIONS if m.id == m_id), None)
-                    name = m_obj.name if m_obj else "Legacy Schema"
-                    conn.execute(
-                        "INSERT OR IGNORE INTO _schema_migrations (version, name) VALUES (?, ?)",
-                        (m_id, f"{name} (abgeleitet)"),
-                    )
-
+    if not pending and not legacy_stamps:
         conn.close()
+        binding_path = _save_project_binding(args, db_path, is_json)
         if is_json:
             data = {
                 "status": "success",
@@ -194,11 +244,14 @@ def cmd_init(args) -> None:
                 "applied_migrations": [],
                 "affected_records": {"count": 0, "ids": []},
                 "next_steps": [],
+                "project_config_path": str(binding_path) if binding_path else None,
             }
             print(json.dumps(data, indent=2, ensure_ascii=False))
         else:
             print(f"Datenbank ist bereits auf dem aktuellen Schemastand: {current_schema}.")
             print("Keine Migrationen erforderlich.")
+            if binding_path:
+                print(f"DB-Pfad in Projekt-Config gespeichert: {binding_path}")
         return
 
     # 3c. Echte Migration mit Pre-Flight, Backup und Transaktion
@@ -242,8 +295,15 @@ def cmd_init(args) -> None:
                     all_next_steps.append(step)
 
     conn.isolation_level = None
-    conn.execute("BEGIN IMMEDIATE")
+    rebuild_legacy_tables = any(m.id == "002_payment_invoice_dates" for m, _ in pending)
+    if rebuild_legacy_tables:
+        # RENAME must not rewrite private_transfers' FK target to expenses_old.
+        # SQLite ignores foreign_keys changes after BEGIN, so configure first.
+        conn.execute("PRAGMA foreign_keys = OFF")
+        conn.execute("PRAGMA legacy_alter_table = ON")
     try:
+        conn.execute("BEGIN IMMEDIATE")
+        init_migration_table(conn)
         for m_id in legacy_stamps:
             conn.execute(
                 "INSERT OR IGNORE INTO _schema_migrations (version, name) VALUES (?, ?)",
@@ -256,12 +316,19 @@ def cmd_init(args) -> None:
                 (m.id, m.name),
             )
             applied_ids.append(m.id)
+        invalid_references = conn.execute("PRAGMA foreign_key_check").fetchall()
+        if invalid_references:
+            raise RuntimeError("Fremdschlüsselprüfung nach Migration fehlgeschlagen")
         conn.execute("COMMIT")
     except Exception as exc:
         try:
-            conn.execute("ROLLBACK")
+            if conn.in_transaction:
+                conn.execute("ROLLBACK")
         except Exception:
             pass
+        if rebuild_legacy_tables:
+            conn.execute("PRAGMA legacy_alter_table = OFF")
+            conn.execute("PRAGMA foreign_keys = ON")
         conn.close()
         err_msg = (
             f"FEHLER bei Migration: {exc}\n"
@@ -284,7 +351,12 @@ def cmd_init(args) -> None:
             print(err_msg, file=sys.stderr)
         sys.exit(1)
 
+    if rebuild_legacy_tables:
+        conn.execute("PRAGMA legacy_alter_table = OFF")
+        conn.execute("PRAGMA foreign_keys = ON")
+
     conn.close()
+    binding_path = _save_project_binding(args, db_path, is_json)
 
     config = load_config()
     export_dir = get_export_dir(config)
@@ -306,6 +378,7 @@ def cmd_init(args) -> None:
                 "ids": all_affected_ids,
             },
             "next_steps": all_next_steps,
+            "project_config_path": str(binding_path) if binding_path else None,
         }
         print(json.dumps(data, indent=2, ensure_ascii=False))
     else:
@@ -313,6 +386,8 @@ def cmd_init(args) -> None:
         print(f"Datenbank: {db_path.resolve()}")
         print(f"Backup: {backup_path}")
         print(f"Schemastand: {current_schema} -> {target_schema}")
+        if binding_path:
+            print(f"DB-Pfad in Projekt-Config gespeichert: {binding_path}")
         print(f"Angewendete Migrationen ({len(applied_ids)}): {', '.join(applied_ids)}")
         if all_affected_ids:
             print(

@@ -49,7 +49,7 @@ class MigrationsAndInitTestCase(unittest.TestCase):
         self.assertEqual(cm.exception.code, 1)
         data = json.loads(f.getvalue())
         self.assertEqual(data["status"], "error")
-        self.assertIn("Nutze --create", data["error"])
+        self.assertIn("--create", data["error"])
 
     def test_explicit_nonexistent_db_succeeds_with_create(self):
         import io
@@ -102,7 +102,8 @@ class MigrationsAndInitTestCase(unittest.TestCase):
             main(["--db", str(self.db_path), "init", "--json"])
         data = json.loads(f.getvalue())
         self.assertEqual(data["status"], "success")
-        self.assertEqual(data["action"], "none")
+        self.assertEqual(data["action"], "upgrade")
+        self.assertTrue(Path(data["backup_path"]).exists())
 
         # Prüfe, dass _schema_migrations existiert und gefüllt ist
         conn = sqlite3.connect(self.db_path)
@@ -110,6 +111,133 @@ class MigrationsAndInitTestCase(unittest.TestCase):
         conn.close()
         self.assertTrue(len(rows) >= 8)
         self.assertIn("001_initial_schema", [r[0] for r in rows])
+
+    def test_existing_db_dry_run_does_not_create_migration_table(self):
+        import io
+        from contextlib import redirect_stdout
+
+        from euercli.schema import SCHEMA
+
+        conn = sqlite3.connect(self.db_path)
+        conn.executescript(SCHEMA)
+        conn.close()
+
+        with redirect_stdout(io.StringIO()):
+            main(["--db", str(self.db_path), "init", "--dry-run", "--json"])
+
+        conn = sqlite3.connect(self.db_path)
+        marker = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = '_schema_migrations'"
+        ).fetchone()
+        conn.close()
+        self.assertIsNone(marker)
+
+    def test_initial_schema_rolls_back_if_later_migration_fails(self):
+        import io
+        from contextlib import redirect_stdout
+
+        # Existing empty DB exercises _apply_001 inside the upgrade transaction.
+        sqlite3.connect(self.db_path).close()
+
+        def failing_apply(conn):
+            raise RuntimeError("Injected failure after base schema")
+
+        fake_migration = Migration(
+            id="001z_failure",
+            name="Injected failure",
+            preflight=lambda conn: MigrationImpact(),
+            apply=failing_apply,
+        )
+        migrations = [MIGRATIONS[0], fake_migration, *MIGRATIONS[1:]]
+        with (
+            patch("euercli.migrations.MIGRATIONS", migrations),
+            patch("euercli.commands.init.MIGRATIONS", migrations),
+            redirect_stdout(io.StringIO()),
+            self.assertRaises(SystemExit),
+        ):
+            main(["--db", str(self.db_path), "init", "--json"])
+
+        conn = sqlite3.connect(self.db_path)
+        tables = {
+            row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        }
+        conn.close()
+        self.assertNotIn("categories", tables)
+        self.assertNotIn("_schema_migrations", tables)
+
+    def test_rebuild_keeps_private_transfer_expense_reference(self):
+        import io
+        from contextlib import redirect_stdout
+
+        from euercli.schema import SCHEMA
+
+        conn = sqlite3.connect(self.db_path)
+        conn.executescript(SCHEMA)
+        conn.execute("ALTER TABLE expenses ADD COLUMN is_rc INTEGER DEFAULT 0")
+        conn.execute("ALTER TABLE income ADD COLUMN date DATE")
+        conn.execute(
+            "INSERT INTO expenses (id, uuid, payment_date, vendor, amount_eur, "
+            "entertainment_tip_eur, entertainment_vat_status, deleted_at, hash) "
+            "VALUES (1, 'e1', '2026-01-01', 'Vendor', -10, 1.5, 'deductible', "
+            "'2026-02-01', 'h1')"
+        )
+        conn.execute(
+            "INSERT INTO income (id, uuid, payment_date, source, amount_eur, deleted_at, hash) "
+            "VALUES (1, 'i1', '2026-01-01', 'Source', 10, '2026-02-02', 'h3')"
+        )
+        conn.execute(
+            "INSERT INTO private_transfers "
+            "(id, uuid, date, type, amount_eur, description, related_expense_id, hash) "
+            "VALUES (1, 'p1', '2026-01-01', 'deposit', 10, 'Deposit', 1, 'h2')"
+        )
+        conn.execute(
+            "CREATE TABLE _schema_migrations (version TEXT PRIMARY KEY, name TEXT NOT NULL)"
+        )
+        conn.execute(
+            "INSERT INTO _schema_migrations (version, name) VALUES ('001_initial_schema', 'Initial')"
+        )
+        conn.commit()
+        conn.close()
+
+        with redirect_stdout(io.StringIO()):
+            main(["--db", str(self.db_path), "init", "--json"])
+
+        conn = sqlite3.connect(self.db_path)
+        self.assertEqual(
+            conn.execute(
+                "SELECT related_expense_id FROM private_transfers WHERE id = 1"
+            ).fetchone()[0],
+            1,
+        )
+        self.assertEqual(conn.execute("PRAGMA foreign_key_check").fetchall(), [])
+        self.assertEqual(
+            conn.execute(
+                "SELECT entertainment_tip_eur, entertainment_vat_status, deleted_at "
+                "FROM expenses WHERE id = 1"
+            ).fetchone(),
+            (1.5, "deductible", "2026-02-01"),
+        )
+        self.assertEqual(
+            conn.execute("SELECT deleted_at FROM income WHERE id = 1").fetchone()[0],
+            "2026-02-02",
+        )
+        conn.close()
+
+    def test_legacy_detection_does_not_stamp_partial_soft_delete(self):
+        from euercli.schema import SCHEMA
+
+        conn = sqlite3.connect(self.db_path)
+        conn.executescript(SCHEMA)
+        conn.execute("ALTER TABLE private_transfers RENAME TO private_transfers_old")
+        conn.execute(
+            "CREATE TABLE private_transfers AS SELECT id, uuid, date, type, amount_eur, "
+            "description, notes, related_expense_id, created_at, hash "
+            "FROM private_transfers_old"
+        )
+        conn.execute("DROP TABLE private_transfers_old")
+        _, satisfied = detect_legacy_schema_state(conn)
+        self.assertNotIn("008_soft_delete", satisfied)
+        conn.close()
 
     def test_entertainment_impact_detection_and_reporting(self):
         # Erstelle DB im Stand v0.9 (ohne Bewirtungsspalten)

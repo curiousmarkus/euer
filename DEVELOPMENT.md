@@ -11,7 +11,7 @@ Architektur und Entwicklungs‑Workflows.
 make install
 
 # Datenbank lokal anlegen
-.venv/bin/euer init
+.venv/bin/euer init --create
 ```
 
 Die Entwicklungsumgebung enthält Ruff, Coverage, das Build-Werkzeug und die optionale
@@ -28,7 +28,7 @@ python3 -m euercli <command>
 py -3 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -e ".[dev,xlsx]"
-python -m euercli init
+python -m euercli init --create
 ```
 
 ## Projektstruktur (Kurzüberblick)
@@ -43,7 +43,8 @@ euer/
 │   ├── db.py                # DB Helpers
 │   ├── schema.py            # DB Schema + Seeds
 │   ├── importers.py         # Import Normalisierung
-│   └── config.py            # Config Laden/Speichern
+│   ├── config.py            # Globale Einstellungen laden/speichern
+│   └── project_config.py    # DB-Pfad pro Buchhaltungsordner
 ├── tests/                   # CLI Integrationstests (unittest)
 ├── specs/                   # Historische Anforderungen + Backlog Items
 ├── docs/
@@ -88,7 +89,10 @@ technische Sperre in der CLI. Änderungen daran gehören in die Release Notes.
 - **Service Layer**: `euercli/services/` als stabile API (keine Prints, keine argparse-Abhängigkeit).
 - **DB Zugriff**: zentral in `euercli/db.py` und `get_db_connection()`.
 - **Schema/Seeds**: `euercli/schema.py`.
-- **Config**: `euercli/config.py` (`~/.config/euer/config.toml`).
+- **Config**: `euercli/config.py` (`~/.config/euer/config.toml`) für allgemeine
+  Einstellungen; `euercli/project_config.py` (`.euer/config.toml`) für den
+  projektbezogenen DB-Pfad. `--db` hat Vorrang und bleibt ohne `--save-db-path`
+  auf einen Aufruf beschränkt.
 - **Import**: `euercli/importers.py` (CSV/JSONL Normalisierung).
 - **Plugins**: CLI lädt Entry Points `euer.commands` und ruft `setup(subparsers)`.
 

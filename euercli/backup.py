@@ -1,6 +1,9 @@
 """Automatischer Backup-Service für SQLite-Datenbanken (Spec 016 §1.1, Spec 020 §4)."""
 
+import hashlib
+import os
 import sqlite3
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -82,14 +85,42 @@ def create_database_backup(
     else:
         raise TypeError("db_source muss ein Path oder sqlite3.Connection sein")
 
-    dest_conn = sqlite3.connect(backup_path)
+    # Keep an incomplete backup hidden until the SQLite backup has completed.
+    temporary_path = target_dir / f".{backup_filename}.partial.{uuid.uuid4().hex}"
     try:
-        with dest_conn:
-            src_conn.backup(dest_conn)
+        fd = os.open(temporary_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        os.close(fd)
+        dest_conn = sqlite3.connect(temporary_path)
+        try:
+            with dest_conn:
+                src_conn.backup(dest_conn)
+        finally:
+            dest_conn.close()
+        while True:
+            try:
+                os.link(temporary_path, backup_path)
+                break
+            except FileExistsError:
+                backup_path = target_dir / f"{prefix}_{timestamp}_{counter}.db"
+                counter += 1
     finally:
-        dest_conn.close()
+        temporary_path.unlink(missing_ok=True)
         if close_source:
             src_conn.close()
 
     rotate_backups(target_dir, max_keep=max_keep, prefix=prefix)
     return backup_path.resolve()
+
+
+def ensure_daily_backup(db_path: Path) -> Path | None:
+    """Create one pre-mutation snapshot per database and calendar day."""
+    if not db_path.is_file():
+        return None
+    backup_dir = get_backup_dir()
+    db_key = hashlib.sha256(str(db_path.resolve()).encode()).hexdigest()[:12]
+    prefix = f"euer_daily_{db_key}"
+    today = datetime.now().strftime("%Y-%m-%d")
+    existing = sorted(backup_dir.glob(f"{prefix}_{today}_*.db"))
+    if existing:
+        return existing[-1]
+    return create_database_backup(db_path, backup_dir=backup_dir, prefix=prefix)

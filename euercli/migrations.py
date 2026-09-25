@@ -67,7 +67,16 @@ def _preflight_001(conn: sqlite3.Connection) -> MigrationImpact:
 
 
 def _apply_001(conn: sqlite3.Connection) -> None:
-    conn.executescript(SCHEMA)
+    # executescript() commits a pending transaction before running the script.
+    # Execute statements individually so the surrounding migration can roll back.
+    statement = ""
+    for line in SCHEMA.splitlines(keepends=True):
+        statement += line
+        if sqlite3.complete_statement(statement):
+            conn.execute(statement)
+            statement = ""
+    if statement.strip():
+        raise ValueError("Unvollständiges Basisschema")
     for name, eur_line, cat_type in SEED_CATEGORIES:
         eur_key = category_key_for_name(name, cat_type)
         exists = conn.execute(
@@ -119,43 +128,40 @@ def _apply_002(conn: sqlite3.Connection) -> None:
         or income_columns.get("payment_date", {}).get("notnull") == 1
     )
 
-    conn.execute("PRAGMA foreign_keys = OFF")
-    try:
-        if migrate_expenses:
-            payment_expr = "payment_date" if "payment_date" in expense_columns else "date"
-            invoice_expr = "invoice_date" if "invoice_date" in expense_columns else "NULL"
-            is_private_paid_expr = (
-                "is_private_paid" if "is_private_paid" in expense_columns else "0"
+    if migrate_expenses:
+        payment_expr = "payment_date" if "payment_date" in expense_columns else "date"
+        invoice_expr = "invoice_date" if "invoice_date" in expense_columns else "NULL"
+        is_private_paid_expr = "is_private_paid" if "is_private_paid" in expense_columns else "0"
+        ledger_account_expr = "ledger_account" if "ledger_account" in expense_columns else "NULL"
+        vat_rate_expr = "vat_rate" if "vat_rate" in expense_columns else "NULL"
+        vat_code_expr = "vat_code" if "vat_code" in expense_columns else "NULL"
+        if "rc_type" in expense_columns:
+            rc_type_expr = "rc_type"
+        elif "is_rc" in expense_columns:
+            rc_jurisdiction_expr = (
+                "rc_jurisdiction" if "rc_jurisdiction" in expense_columns else "NULL"
             )
-            ledger_account_expr = (
-                "ledger_account" if "ledger_account" in expense_columns else "NULL"
+            rc_type_expr = (
+                "CASE "
+                "WHEN COALESCE(is_rc, 0) = 0 THEN 'none' "
+                f"WHEN {rc_jurisdiction_expr} IN ('eu', 'third_country') "
+                f"THEN {rc_jurisdiction_expr} "
+                "ELSE 'unclassified' END"
             )
-            vat_rate_expr = "vat_rate" if "vat_rate" in expense_columns else "NULL"
-            vat_code_expr = "vat_code" if "vat_code" in expense_columns else "NULL"
-            if "rc_type" in expense_columns:
-                rc_type_expr = "rc_type"
-            elif "is_rc" in expense_columns:
-                rc_jurisdiction_expr = (
-                    "rc_jurisdiction" if "rc_jurisdiction" in expense_columns else "NULL"
-                )
-                rc_type_expr = (
-                    "CASE "
-                    "WHEN COALESCE(is_rc, 0) = 0 THEN 'none' "
-                    f"WHEN {rc_jurisdiction_expr} IN ('eu', 'third_country') "
-                    f"THEN {rc_jurisdiction_expr} "
-                    "ELSE 'unclassified' END"
-                )
-            else:
-                rc_type_expr = "'none'"
-            private_classification_expr = (
-                "private_classification"
-                if "private_classification" in expense_columns
-                else "'none'"
-            )
+        else:
+            rc_type_expr = "'none'"
+        private_classification_expr = (
+            "private_classification" if "private_classification" in expense_columns else "'none'"
+        )
+        tip_expr = "entertainment_tip_eur" if "entertainment_tip_eur" in expense_columns else "NULL"
+        vat_status_expr = (
+            "entertainment_vat_status" if "entertainment_vat_status" in expense_columns else "NULL"
+        )
+        deleted_expr = "deleted_at" if "deleted_at" in expense_columns else "NULL"
 
-            conn.execute("ALTER TABLE expenses RENAME TO expenses_old")
-            conn.execute(
-                """
+        conn.execute("ALTER TABLE expenses RENAME TO expenses_old")
+        conn.execute(
+            """
                 CREATE TABLE expenses (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     uuid TEXT UNIQUE NOT NULL,
@@ -184,47 +190,52 @@ def _apply_002(conn: sqlite3.Connection) -> None:
                         CHECK(private_classification IN (
                             'none', 'account_rule', 'category_rule', 'manual'
                         )),
+                    entertainment_tip_eur REAL CHECK(entertainment_tip_eur IS NULL OR entertainment_tip_eur >= 0),
+                    entertainment_vat_status TEXT CHECK(entertainment_vat_status IS NULL OR entertainment_vat_status IN ('deductible', 'no_deduction', 'needs_review')),
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    deleted_at TIMESTAMP DEFAULT NULL,
                     hash TEXT UNIQUE NOT NULL,
                     CHECK(invoice_date IS NOT NULL OR payment_date IS NOT NULL)
                 )
                 """
-            )
-            conn.execute(
-                f"""
+        )
+        conn.execute(
+            f"""
                 INSERT INTO expenses (
                     id, uuid, receipt_name, payment_date, invoice_date, vendor, category_id,
                     amount_eur, account, ledger_account, foreign_amount, notes, rc_type,
                     vat_input, vat_output, vat_rate, vat_code,
-                    is_private_paid, private_classification, created_at, hash
+                    is_private_paid, private_classification, entertainment_tip_eur,
+                    entertainment_vat_status, created_at, deleted_at, hash
                 )
                 SELECT
                     id, uuid, receipt_name, {payment_expr}, {invoice_expr}, vendor, category_id,
                     amount_eur, account, {ledger_account_expr}, foreign_amount, notes,
                     {rc_type_expr}, vat_input, vat_output, {vat_rate_expr}, {vat_code_expr},
-                    {is_private_paid_expr}, {private_classification_expr}, created_at, hash
+                    {is_private_paid_expr}, {private_classification_expr}, {tip_expr},
+                    {vat_status_expr}, created_at, {deleted_expr}, hash
                 FROM expenses_old
                 """
-            )
-            conn.execute("DROP TABLE expenses_old")
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_expenses_payment_date ON expenses(payment_date)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses(category_id)"
-            )
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_expenses_vendor ON expenses(vendor)")
+        )
+        conn.execute("DROP TABLE expenses_old")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_expenses_payment_date ON expenses(payment_date)"
+        )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses(category_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_expenses_vendor ON expenses(vendor)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_expenses_deleted_at ON expenses(deleted_at)")
 
-        if migrate_income:
-            payment_expr = "payment_date" if "payment_date" in income_columns else "date"
-            invoice_expr = "invoice_date" if "invoice_date" in income_columns else "NULL"
-            ledger_account_expr = "ledger_account" if "ledger_account" in income_columns else "NULL"
-            vat_rate_expr = "vat_rate" if "vat_rate" in income_columns else "NULL"
-            vat_code_expr = "vat_code" if "vat_code" in income_columns else "NULL"
+    if migrate_income:
+        payment_expr = "payment_date" if "payment_date" in income_columns else "date"
+        invoice_expr = "invoice_date" if "invoice_date" in income_columns else "NULL"
+        ledger_account_expr = "ledger_account" if "ledger_account" in income_columns else "NULL"
+        vat_rate_expr = "vat_rate" if "vat_rate" in income_columns else "NULL"
+        vat_code_expr = "vat_code" if "vat_code" in income_columns else "NULL"
+        deleted_expr = "deleted_at" if "deleted_at" in income_columns else "NULL"
 
-            conn.execute("ALTER TABLE income RENAME TO income_old")
-            conn.execute(
-                """
+        conn.execute("ALTER TABLE income RENAME TO income_old")
+        conn.execute(
+            """
                 CREATE TABLE income (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     uuid TEXT UNIQUE NOT NULL,
@@ -246,33 +257,30 @@ def _apply_002(conn: sqlite3.Connection) -> None:
                         'output_tax_free_no_vorsteuer'
                     )),
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    deleted_at TIMESTAMP DEFAULT NULL,
                     hash TEXT UNIQUE NOT NULL,
                     CHECK(invoice_date IS NOT NULL OR payment_date IS NOT NULL)
                 )
                 """
-            )
-            conn.execute(
-                f"""
+        )
+        conn.execute(
+            f"""
                 INSERT INTO income (
                     id, uuid, receipt_name, payment_date, invoice_date, source, category_id,
                     amount_eur, ledger_account, foreign_amount, notes,
-                    vat_output, vat_rate, vat_code, created_at, hash
+                    vat_output, vat_rate, vat_code, created_at, deleted_at, hash
                 )
                 SELECT
                     id, uuid, receipt_name, {payment_expr}, {invoice_expr}, source, category_id,
                     amount_eur, {ledger_account_expr}, foreign_amount, notes,
-                    vat_output, {vat_rate_expr}, {vat_code_expr}, created_at, hash
+                    vat_output, {vat_rate_expr}, {vat_code_expr}, created_at, {deleted_expr}, hash
                 FROM income_old
                 """
-            )
-            conn.execute("DROP TABLE income_old")
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_income_payment_date ON income(payment_date)"
-            )
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_income_category ON income(category_id)")
-    finally:
-        conn.execute("PRAGMA foreign_keys = ON")
-
+        )
+        conn.execute("DROP TABLE income_old")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_income_payment_date ON income(payment_date)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_income_category ON income(category_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_income_deleted_at ON income(deleted_at)")
     conn.execute("DROP INDEX IF EXISTS idx_expenses_date")
     conn.execute("DROP INDEX IF EXISTS idx_income_date")
 
@@ -486,7 +494,9 @@ def _preflight_008(conn: sqlite3.Connection) -> MigrationImpact:
     tables = _get_tables(conn)
     exp_cols = _get_table_columns(conn, "expenses") if "expenses" in tables else {}
     inc_cols = _get_table_columns(conn, "income") if "income" in tables else {}
-    priv_cols = _get_table_columns(conn, "private_transfers") if "private_transfers" in tables else {}
+    priv_cols = (
+        _get_table_columns(conn, "private_transfers") if "private_transfers" in tables else {}
+    )
     needed = (
         ("expenses" in tables and "deleted_at" not in exp_cols)
         or ("income" in tables and "deleted_at" not in inc_cols)
@@ -517,7 +527,9 @@ def _apply_008(conn: sqlite3.Connection) -> None:
     if "private_transfers" in tables:
         priv_cols = _get_table_columns(conn, "private_transfers")
         if "deleted_at" not in priv_cols:
-            conn.execute("ALTER TABLE private_transfers ADD COLUMN deleted_at TIMESTAMP DEFAULT NULL")
+            conn.execute(
+                "ALTER TABLE private_transfers ADD COLUMN deleted_at TIMESTAMP DEFAULT NULL"
+            )
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_private_transfers_deleted_at ON private_transfers(deleted_at)"
             )
@@ -596,8 +608,10 @@ def detect_legacy_schema_state(conn: sqlite3.Connection) -> tuple[str, list[str]
         (status_text, list_of_satisfied_migration_ids)
     """
     tables = _get_tables(conn)
-    if not tables or "categories" not in tables or "expenses" not in tables:
+    if not tables:
         return ("uninitialisiert", [])
+    if not {"categories", "expenses", "income"}.issubset(tables):
+        raise ValueError("Unvollständiges Legacy-Schema: Basistabellen fehlen.")
 
     exp_cols = _get_table_columns(conn, "expenses")
     inc_cols = _get_table_columns(conn, "income")
@@ -607,6 +621,7 @@ def detect_legacy_schema_state(conn: sqlite3.Connection) -> tuple[str, list[str]
 
     exp_002 = (
         "payment_date" in exp_cols
+        and "invoice_date" in exp_cols
         and "date" not in exp_cols
         and "rc_type" in exp_cols
         and "is_rc" not in exp_cols
@@ -620,17 +635,24 @@ def detect_legacy_schema_state(conn: sqlite3.Connection) -> tuple[str, list[str]
     )
     if exp_002 and inc_002:
         satisfied.append("002_payment_invoice_dates")
-    if "is_private_paid" in exp_cols:
+    if "is_private_paid" in exp_cols and "private_classification" in exp_cols:
         satisfied.append("003_private_columns")
-    if "ledger_account" in exp_cols:
+    if "ledger_account" in exp_cols and "ledger_account" in inc_cols:
         satisfied.append("004_ledger_accounts")
-    if "vat_rate" in exp_cols and "vat_code" in exp_cols:
+    if {"vat_rate", "vat_code"}.issubset(exp_cols) and {"vat_rate", "vat_code"}.issubset(inc_cols):
         satisfied.append("005_vat_classifications")
-    if "entertainment_vat_status" in exp_cols:
+    if {"entertainment_tip_eur", "entertainment_vat_status"}.issubset(exp_cols):
         satisfied.append("006_entertainment_fields")
     if "eur_key" in cat_cols:
         satisfied.append("007_category_eur_key")
-    if "deleted_at" in exp_cols and "deleted_at" in inc_cols:
+    private_cols = (
+        _get_table_columns(conn, "private_transfers") if "private_transfers" in tables else {}
+    )
+    if (
+        "deleted_at" in exp_cols
+        and "deleted_at" in inc_cols
+        and ("private_transfers" not in tables or "deleted_at" in private_cols)
+    ):
         satisfied.append("008_soft_delete")
 
     current_version = satisfied[-1] if satisfied else "unbekannt"
@@ -645,8 +667,15 @@ def get_migration_plan(
     Returns:
         (current_schema, target_schema, pending_migrations_with_impact, legacy_stamps)
     """
-    init_migration_table(conn)
     applied = get_applied_migrations(conn)
+    known_ids = [migration.id for migration in MIGRATIONS]
+    unknown = applied - set(known_ids)
+    if unknown:
+        raise ValueError(
+            "Unbekannte oder neuere Datenbankmigrationen: " + ", ".join(sorted(unknown))
+        )
+    if applied and applied != set(known_ids[: len(applied)]):
+        raise ValueError("Die Datenbank enthält eine lückenhafte Migrationshistorie.")
 
     legacy_stamps: list[str] = []
     if not applied:
@@ -666,6 +695,6 @@ def get_migration_plan(
 
     target_schema = MIGRATIONS[-1].id if MIGRATIONS else current_schema
     if not pending:
-        target_schema = current_schema
+        target_schema = legacy_stamps[-1] if legacy_stamps else current_schema
 
     return (current_schema, target_schema, pending, legacy_stamps)

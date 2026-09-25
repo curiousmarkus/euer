@@ -1,9 +1,41 @@
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 
+from euercli.commands.export import cmd_export
 from tests.cli_test_base import BaseCLITestCase
 
 
 class ExportGuardrailsTestCase(BaseCLITestCase):
+    def test_failed_replace_restores_previous_export_files(self):
+        export_dir = self.root / "exports_rollback"
+        export_dir.mkdir()
+        self.add_expense(vendor="Before", amount="-10.00")
+        self.run_cli(["export", "--format", "csv", "--output", str(export_dir)], check=True)
+        before = {p.name: p.read_bytes() for p in export_dir.iterdir()}
+        self.add_expense(vendor="After", amount="-20.00")
+
+        import os
+
+        real_replace = os.replace
+        replacements = 0
+
+        def fail_second_install(src, dst):
+            nonlocal replacements
+            if ".tmp." in str(src):
+                replacements += 1
+                if replacements == 2:
+                    raise OSError("simulierter Schreibfehler")
+            return real_replace(src, dst)
+
+        args = SimpleNamespace(
+            db=str(self.db_path), output=str(export_dir), year=None, format="csv", force=True
+        )
+        with patch("euercli.commands.export.os.replace", side_effect=fail_second_install):
+            with self.assertRaises(OSError):
+                cmd_export(args)
+        self.assertEqual(before, {p.name: p.read_bytes() for p in export_dir.iterdir()})
+
     def test_export_aborts_when_files_exist_without_force(self):
         export_dir = self.root / "exports"
         export_dir.mkdir()

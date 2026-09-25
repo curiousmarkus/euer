@@ -52,15 +52,20 @@ erst nach Umbau zuverlässig bieten. Eine Paketversion ist keine Schemaversion.
    angewendete Migrationen, betroffene IDs und konkrete Prüfaktionen nennen.
    Bei Bewirtungen auf `euer incomplete list` und Belegprüfung verweisen.
    Kein Erfolgstext, bevor Commit abgeschlossen ist.
-7. **Neuanlage:** Expliziter fehlender `--db`-Pfad benötigt `--create`; Verhalten
-   des Standardpfads siehe Spec 016. Neuaufbau und Upgrade in Ausgaben und
-   Exit-Codes unterscheiden.
+7. **Neuanlage und Projektbindung:** Jeder fehlende DB-Pfad benötigt `--create`.
+   Eine vorhandene Standard-DB wird bei erfolgreichem `init` in
+   `.euer/config.toml` des Projektordners registriert; eine neue Standard-DB nach
+   erfolgreicher Neuanlage ebenfalls. Ein abweichender `--db`-Pfad wird nur mit
+   `--save-db-path` dauerhaft gespeichert. Binding-Änderungen erfolgen erst nach
+   erfolgreicher DB-Operation; Dry-run und fehlgeschlagene Migration ändern die
+   Projekt-Config nicht. Neuaufbau und Upgrade in Ausgaben und Exit-Codes unterscheiden.
 
 ## Akzeptanzfälle
 
 - Legacy-DB ohne Marker, aktuelle DB, zwei betroffene Bewirtungen, aktive WAL-DB,
   Dry-run, fehlerhafte Migration mit Rollback, Backup-Fehler, falscher DB-Pfad,
-  parallele Änderung zwischen Preflight und Ausführung.
+  parallele Änderung zwischen Preflight und Ausführung, verschobene konfigurierte DB,
+  Übernahme einer vorhandenen `./euer.db` und explizites Neuverbinden.
 
 ## Dokumentation nach Implementierung
 

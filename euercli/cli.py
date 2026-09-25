@@ -1,10 +1,12 @@
 import argparse
 import importlib.metadata
 import sys
+from pathlib import Path
 
 # Copyright (C) 2026 EÜR Contributors
 # Licensed under GNU AGPLv3
 from . import VERSION
+from .backup import ensure_daily_backup
 from .commands import (
     cmd_add_expense,
     cmd_add_income,
@@ -43,6 +45,7 @@ from .commands import (
     cmd_vat_report,
 )
 from .constants import DEFAULT_DB_PATH, DEFAULT_EXPORT_DIR
+from .project_config import get_project_db_path, project_config_path
 
 
 def load_plugins(subparsers: argparse._SubParsersAction) -> None:
@@ -102,6 +105,11 @@ def main(argv: list[str] | None = None) -> None:
         "--json",
         action="store_true",
         help="Gibt den Migrationsbericht oder Dry-Run als JSON aus",
+    )
+    init_parser.add_argument(
+        "--save-db-path",
+        action="store_true",
+        help="Speichert den mit --db gewählten Pfad dauerhaft in der Projekt-Config",
     )
     init_parser.set_defaults(func=cmd_init)
 
@@ -293,12 +301,16 @@ def main(argv: list[str] | None = None) -> None:
 
     # --- list ---
     list_parser = subparsers.add_parser("list", help="Listet Daten")
-    list_parser.add_argument("--trash", action="store_true", help="Gelöschte Einträge (Papierkorb) anzeigen")
+    list_parser.add_argument(
+        "--trash", action="store_true", help="Gelöschte Einträge (Papierkorb) anzeigen"
+    )
     list_subparsers = list_parser.add_subparsers(dest="type", required=False)
     list_parser.set_defaults(
-        func=lambda args: cmd_trash_list(args)
-        if getattr(args, "trash", False)
-        else (list_parser.print_help(), sys.exit(1))
+        func=lambda args: (
+            cmd_trash_list(args)
+            if getattr(args, "trash", False)
+            else (list_parser.print_help(), sys.exit(1))
+        )
     )
 
     # list expenses
@@ -595,9 +607,7 @@ def main(argv: list[str] | None = None) -> None:
     trash_empty_parser.add_argument("--force", action="store_true", help="Keine Rückfrage")
     trash_empty_parser.set_defaults(func=cmd_trash_empty)
     trash_parser.set_defaults(
-        func=lambda args: cmd_trash_list(args)
-        if getattr(args, "action", None) is None
-        else None
+        func=lambda args: cmd_trash_list(args) if getattr(args, "action", None) is None else None
     )
 
     # --- export ---
@@ -759,8 +769,45 @@ def main(argv: list[str] | None = None) -> None:
     load_plugins(subparsers)
     args = parser.parse_args(argv)
     args.is_explicit_db = args.db is not None
-    if not args.db:
-        args.db = str(DEFAULT_DB_PATH)
+    args.project_root = Path.cwd()
+    if getattr(args, "save_db_path", False) and not args.is_explicit_db:
+        parser.error("--save-db-path erfordert --db PFAD")
+    if not args.is_explicit_db:
+        try:
+            project_db = get_project_db_path(args.project_root)
+        except (ValueError, OSError) as exc:
+            message = f"Ungültige Projekt-Config {project_config_path(args.project_root)}: {exc}"
+            if args.command == "init" and getattr(args, "json", False):
+                import json
+
+                print(json.dumps({"status": "error", "error": message}, ensure_ascii=False))
+                parser.exit(1)
+            parser.exit(1, f"Fehler: {message}\n")
+        args.db = str(project_db or args.project_root / "euer.db")
+        args.db_from_project_config = project_db is not None
+    else:
+        args.db_from_project_config = False
+    db_independent = (
+        args.command in {"init", "config"}
+        or (args.command == "setup" and args.set is not None)
+        or (args.command == "import" and args.schema)
+    )
+    if not db_independent and not Path(args.db).is_file():
+        parser.exit(
+            1,
+            f"Fehler: Datenbank nicht gefunden: {Path(args.db).resolve()}. "
+            "Vorhandene DB mit 'euer --db PFAD init --save-db-path' verbinden "
+            "oder mit 'euer init --create' eine neue DB anlegen.\n",
+        )
+    mutating_commands = {"add", "update", "delete", "restore", "undo", "import", "reconcile"}
+    needs_backup = args.command in mutating_commands or (
+        args.command == "trash" and args.action == "empty"
+    )
+    if needs_backup and not getattr(args, "dry_run", False) and not getattr(args, "schema", False):
+        try:
+            ensure_daily_backup(Path(args.db))
+        except Exception as exc:
+            parser.exit(1, f"Fehler: Sicherheits-Backup fehlgeschlagen: {exc}\n")
     args.func(args)
 
 

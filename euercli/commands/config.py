@@ -1,5 +1,8 @@
+from pathlib import Path
+
 from ..config import get_audit_user, get_export_dir, get_receipt_config, load_config
 from ..constants import CONFIG_PATH
+from ..project_config import project_config_path
 from ..services.errors import ValidationError
 
 
@@ -7,6 +10,18 @@ def cmd_config_show(args):
     """Zeigt aktuelle Konfiguration."""
     print("EÜR Konfiguration")
     print("=================")
+    print()
+    project_path = project_config_path(args.project_root)
+    db_path = Path(args.db).resolve()
+    source = (
+        "--db"
+        if args.is_explicit_db
+        else "Projekt-Config"
+        if args.db_from_project_config
+        else "Standard"
+    )
+    print(f"Projekt-Config: {project_path}")
+    print(f"Datenbank: {db_path} ({source}; {'vorhanden' if db_path.is_file() else 'fehlt'})")
     print()
     print(f"Config-Datei: {CONFIG_PATH}", end="")
 

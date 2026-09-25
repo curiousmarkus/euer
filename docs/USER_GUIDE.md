@@ -87,6 +87,10 @@ und ergänzt fehlende Tabellen oder Spalten.
 Vor jeder Migration erstellt `euer` automatisch eine konsistente, WAL-sichere
 Datenbanksicherung über die SQLite-Online-Backup-API im Verzeichnis
 `~/.config/euer/backups/euer_YYYY-MM-DD_HHMMSS.db`.
+Vor dem ersten schreibenden CLI-Befehl pro Datenbank und Kalendertag erstellt
+`euer` dort zusätzlich einen Snapshot mit Datenbankkennung im Dateinamen.
+Die täglichen Sicherungen ersetzen keine regelmäßige externe Sicherung der
+Datenbank, der globalen und projektbezogenen Konfiguration sowie der Belege.
 
 Empfohlener Ablauf nach jedem Update:
 
@@ -131,12 +135,23 @@ euer init --json
 euer init --create
 ```
 
-Wenn du mehrere Buchhaltungsordner oder Datenbanken hast, führe `euer init` für
-jede Datenbank aus. Alternativ kannst du die Datenbank explizit angeben:
+`euer` speichert den DB-Pfad pro Buchhaltungsordner in `.euer/config.toml`.
+Eine vorhandene `./euer.db` wird beim nächsten erfolgreichen `euer init` dort
+eingetragen; `euer init --create` legt sie neu an und trägt sie ebenfalls ein.
+Die Pfadwahl ist: `--db PFAD` für den einzelnen Aufruf, dann die Projekt-Config,
+danach `./euer.db`. Ein relativer Config-Pfad bezieht sich auf den Projektordner.
+Für eine DB an einem anderen Ort verbinde sie nach Prüfung dauerhaft mit:
 
 ```bash
-euer --db /pfad/zu/euer.db init
+euer --db /pfad/zu/euer.db init --save-db-path
 ```
+
+Ohne `--save-db-path` gilt `--db` nur für diesen Aufruf. Ist eine konfigurierte DB
+verschoben worden, bricht `euer` mit dem erwarteten Pfad ab. Verbinde die
+vorhandene Datei mit dem obigen Befehl neu; `euer init --create` ist nur für eine
+bewusst neue, leere Datenbank gedacht. Ein Buchungsbefehl legt niemals selbst
+eine fehlende DB an. `euer config show` zeigt gewählten Pfad, Quelle und
+Dateiexistenz. `init --dry-run` ändert auch die Projekt-Config nicht.
 
 ### Agenten-Dateien aktualisieren
 
@@ -260,8 +275,8 @@ Wechsle in deinen **Buchhaltungs-Arbeitsordner**, z.B.:
 mkdir -p ~/Documents/Buchhaltung
 cd ~/Documents/Buchhaltung
 
-# Datenbank anlegen (erstellt euer.db + exports/ hier)
-euer init
+# Datenbank anlegen (erstellt euer.db, .euer/config.toml und exports/ hier)
+euer init --create
 
 # Beleg-/Export-Pfade und Steuermodus konfigurieren (empfohlen)
 euer setup
@@ -275,8 +290,9 @@ euer add expense --payment-date 2026-02-02 --vendor "Test" --category "Laufende 
 
 ### Wo liegen meine Daten?
 
-- **Datenbank:** `euer.db` im aktuellen Verzeichnis (wo du `euer init` ausgeführt hast)
-- **Konfiguration:** `~/.config/euer/config.toml` (systemweit)
+- **Datenbank:** Standard `euer.db` im aktuellen Projektordner; der tatsächliche
+  Pfad steht in `.euer/config.toml`.
+- **Allgemeine Konfiguration:** `~/.config/euer/config.toml` (nutzerweit)
 - **Belege:** Pfade in der Konfiguration festgelegt
 - **Exports:** `exports/` im aktuellen Verzeichnis oder als konkreter Pfad in der Config
   festgelegt. `exports.directory` unterstützt keinen `{year}`-Platzhalter.
@@ -292,9 +308,11 @@ euer add expense --payment-date 2026-02-02 --vendor "Test" --category "Laufende 
 - **Datumsfelder**: `payment_date` (Wertstellung, EÜR-relevant) und `invoice_date` (Rechnungsdatum).
   Mindestens eines der beiden muss gesetzt sein.
 - **Belege** können geprüft und geöffnet werden, wenn Pfade konfiguriert sind.
-- **Datenbank**: Standard `euer.db` im **aktuellen Verzeichnis**; alternativ via `--db PFAD`.
-- **Arbeitsverzeichnis**: Das Tool sucht nach `euer.db` dort, wo du es aufrufst. 
-  Wechsle vor dem Arbeiten in deinen Buchhaltungsordner!
+- **Datenbank**: Standard `euer.db` im **aktuellen Verzeichnis**; `.euer/config.toml`
+  kann pro Projekt einen anderen Pfad speichern. `--db PFAD` gilt für einen Aufruf.
+- **Arbeitsverzeichnis**: Das Tool liest dort die Projekt-Config und verwendet
+  ohne gespeicherten Pfad `./euer.db`. Wechsle vor dem Arbeiten in deinen
+  Buchhaltungsordner!
 
 ## Typische Befehle
 
@@ -465,14 +483,15 @@ Hinweis: `export` schreibt Dateien ins Export-Verzeichnis:
 - `PrivateTransfers` (direkte Privatvorgänge)
 - `Sacheinlagen` (aus `expenses.is_private_paid` abgeleitet)
 
-#### Export-Schutz vor Überschreiben & atomares Schreiben
+#### Export-Schutz vor Überschreiben
 
 - **Kollisionsprüfung:** Wenn im Zielordner bereits Exportdateien existieren, bricht
   `euer export` mit einem Fehler ab und nennt die betroffenen Dateipfade. Um bestehende
   Exporte bewusst zu überschreiben, muss `--force` übergeben werden.
-- **Atomares Staging:** Exporte werden zuerst in ein temporäres Unterverzeichnis
-  geschrieben und erst bei fehlerfreiem Abschluss atomar an ihren Zielort verschoben.
-  Abbrüche hinterlassen keine unvollständigen oder korrupten Dateien.
+- **Staging und Rückabwicklung:** Jede Exportdatei wird zunächst als temporäre Datei
+  im Zielverzeichnis geschrieben. Wenn beim anschließenden Austausch einer Datei ein
+  Fehler auftritt, werden bereits ersetzte Dateien nach Möglichkeit zurückgesetzt.
+  Ein Dateisatz lässt sich auf Dateisystemebene nicht als Ganzes atomar austauschen.
 - Gelöschte Buchungen (`deleted_at`) werden vom Export vollständig ausgeschlossen.
 
 Auch ein Export schützt nur lokale Dateistände: `euer` beansprucht keine
@@ -513,6 +532,8 @@ verfügt `euer` über integrierte Plausibilitätsprüfungen:
    um Tippfehler (z. B. versehentlich weggelassenes Komma `500000`) zu verhindern.
    Soll die Buchung tatsächlich getätigt werden, muss `--force` angegeben werden.
    Der Schwellenwert kann in der Config unter `[safety].amount_threshold` angepasst werden.
+   Der Wert muss endlich und größer als null sein. Bei einem ungültigen Wert bricht
+   die Buchung mit einem Config-Fehler ab; `euer` verwendet dann keinen stillen Ersatzwert.
 4. **Unscharfe Duplikaterkennung (Fuzzy Match):**
    Wird eine Ausgabe oder Einnahme erfasst, für die bereits eine Buchung mit exakt
    demselben Betrag im Zeitfenster von $\pm 2$ Tagen und ähnlichem Namen (Empfänger/Kunde)
