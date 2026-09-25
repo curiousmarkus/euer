@@ -52,7 +52,7 @@ def _normalize_sql(raw_sql: str) -> str:
 
 
 def _get_readonly_connection(db_path: Path) -> sqlite3.Connection:
-    conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    conn = sqlite3.connect(f"{db_path.resolve().as_uri()}?mode=ro", uri=True)
     conn.row_factory = sqlite3.Row
     return conn
 

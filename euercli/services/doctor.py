@@ -127,7 +127,7 @@ def diagnose_database(db_path: Path, source: str) -> dict:
         }
 
     # Nur lesende Verbindung öffnen (kein WAL-Write, keine Dateierzeugung)
-    uri = f"file:{db_path.resolve().as_posix()}?mode=ro"
+    uri = f"{db_path.resolve().as_uri()}?mode=ro"
     try:
         conn = sqlite3.connect(uri, uri=True, timeout=5.0)
         conn.row_factory = sqlite3.Row
