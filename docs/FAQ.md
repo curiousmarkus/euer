@@ -156,3 +156,52 @@ Solange Bewirtungen ungeprüft sind, bleibt die EÜR-Auswertung unvollständig.
 Bereits vorhandene Vorsteuerwerte können in Berichten vorläufig berücksichtigt
 sein; Hinweise und UStVA-Diagnosen müssen vor der Übernahme nach ELSTER geklärt
 werden. Ein technisch gesetzter Status ersetzt keine vollständigen Belege.
+
+---
+
+## 7. Wie buche ich Cashback von meinem Geschäftskonto (z. B. bei N26)?
+
+### Frage
+Mein Geschäftskonto (z. B. N26 Business oder Finom) vergütet monatlich Cashback auf Kartenzahlungen (z. B. 0,1 % oder 0,5 %). Am Monatsanfang erhalte ich eine gesammelte Gutschrift auf dem Konto (z. B. 1,42 €). Wie erfasse ich das steuerlich sauber in `euer`?
+
+---
+
+### Steuerlicher Hintergrund
+
+1. **Betriebliche Einnahme (§ 4 Abs. 3 EStG):**  
+   Cashback auf geschäftliche Kartenausgaben ist betrieblich veranlasst und gehört in die EÜR. Da die Bank (Zahlungsdienstleister) das Cashback als Treue-/Marketing-Incentive aus eigener Marge zahlt und nicht der jeweilige Händler, handelt es sich nicht um einen nachträglichen Lieferantenrabatt, sondern um einen sonstigen betrieblichen Ertrag (SKR03: 2700 / 8605; SKR04: 4830).
+2. **Keine Umsatzsteuer / Keine Vorsteuerkorrektur:**  
+   Du erbringst für die Bank keine Gegenleistung (§ 1 Abs. 1 UStG); die Gutschrift ist nicht umsatzsteuerbar (0 % USt). Eine Vorsteuerberichtigung nach § 17 UStG entfällt, da die Bank nicht Teil der warenwirtschaftlichen Leistungskette ist (vgl. BFH V R 42/17) und eine cent-genaue Zerlegung eines monatlichen Sammelbetrags auf Vorsteuerklassen (19 %, 7 %, Reverse Charge EU/Drittland, steuerfrei) unverhältnismäßig und unpraktikabel wäre.
+3. **Beleg:**  
+   Banken stellen für Cashback keine gesonderte Rechnung aus. Als Nachweis für das Finanzamt dient der monatliche PDF-Kontoauszug, auf dem der Betrag und der Buchungstext ausgewiesen sind.
+
+---
+
+### Empfohlener Workflow in `euer`
+
+Buche die Gutschrift mit `euer add income`:
+
+* **Bei Regelbesteuerung:**
+  ```bash
+  euer add income \
+    --payment-date 2026-09-01 \
+    --source "N26 Bank AG" \
+    --category "Umsatzsteuerfreie, nicht umsatzsteuerbare Betriebseinnahmen" \
+    --amount 1.42 \
+    --tax-free \
+    --receipt "2026-08_n26-kontoauszug.pdf" \
+    --notes "N26 Business Cashback August 2026"
+  ```
+* **Als Kleinunternehmer (§ 19 UStG):**
+  ```bash
+  euer add income \
+    --payment-date 2026-09-01 \
+    --source "N26 Bank AG" \
+    --category "Betriebseinnahmen als Kleinunternehmer" \
+    --amount 1.42 \
+    --receipt "2026-08_n26-kontoauszug.pdf" \
+    --notes "N26 Business Cashback August 2026"
+  ```
+
+* **Privatkonten:** Cashback auf privaten Girokonten oder Kreditkarten (z. B. privates N26-Konto oder Trade Republic Saveback) gehört in die Privatsphäre und wird in `euer` **nicht** erfasst.
+
