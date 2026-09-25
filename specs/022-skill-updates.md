@@ -44,13 +44,17 @@ Da `euer` ausschließlich von KIs bedient wird, blockiert die CLI gnadenlos jede
 
 **Der Prozess:**
 1. **Das CLI-Update (Mensch):** Der Mensch aktualisiert die CLI (`pipx upgrade euer`). Die CLI ist nun z. B. `v1.3.0` und bringt den passenden Skill `v1.3.0` im Installationspfad (z. B. `~/.local/share/pipx/.../euercli/assets/skill/`) mit.
-2. **Die Versionsprüfung (CLI):** Bei jedem CLI-Aufruf prüft `euer`, ob der in der Config hinterlegte Skill-Stand (`~/.config/euer/config.toml` unter `[skill] version`) mindestens der internen `MIN_SKILL_VERSION` entspricht.
-3. **Die harte Blockade:** Da der Agent noch die alte Config (z. B. `1.2.0`) hat, bricht die CLI den Befehl ab:
-   > `[✗] FEHLER: Dein registrierter Skill (v1.2.0) ist veraltet. Diese CLI erfordert mindestens v1.3.0.`
-   > `Kopiere das neue Skill-Paket von /absoluter/pfad/zu/euercli/assets/skill/ in deinen lokalen Workspace und überschreibe deinen aktuellen Skill.`
-   > `Bestätige das Update danach mit dem Befehl: euer setup --set skill.version "1.3.0"`
-4. **Die Selbstheilung (Agent):** Der Agent liest diesen Fehler und führt die Anweisungen mittels seiner Terminal-Werkzeuge aus:
-   - Er kopiert (`cp -r`) die Dateien aus dem lokalen Installationspfad in seinen Arbeitsordner und aktualisiert so sein eigenes "Gehirn" (`references/` und `SKILL.md`). Das private `AGENTS.md` bleibt unangetastet.
+2. **Die Versionsprüfung (CLI):** Bei jedem CLI-Aufruf prüft `euer`, ob der in der Config hinterlegte Skill-Stand (`~/.config/euer/config.toml` unter `[skill] version`) kompatibel mit der internen `MIN_SKILL_VERSION` ist. 
+3. **Die harte Blockade (Zwei Fälle):**
+   - **Fall A (Skill veraltet):** Ist die CLI neuer als der Skill, bricht sie ab:
+     > `[✗] FEHLER: Dein registrierter Skill (v1.2.0) ist veraltet. Diese CLI erfordert v1.3.0.`
+     > `Bitte überschreibe deinen aktiven euer-buchhaltung Skill-Ordner vollständig mit den Inhalten aus: /absoluter/pfad/zu/euercli/assets/skill/`
+     > `Bestätige das Update danach mit dem Befehl: euer setup --set skill.version "1.3.0"`
+   - **Fall B (CLI veraltet):** Ist der registrierte Skill (z.B. v1.4.0) neuer als die CLI (z.B. v1.3.0), blockiert die CLI ebenfalls, da der Agent neue Flags nutzen könnte, die der Code noch nicht versteht:
+     > `[✗] FEHLER: Dein Skill-Package (v1.4.0) ist neuer als diese CLI (v1.3.0).`
+     > `Bitte führe 'pipx upgrade euer' oder 'brew upgrade euer' aus, um die CLI zu aktualisieren.`
+4. **Die Selbstheilung (Agent im Fall A):** Der Agent liest den Fehler und führt die Anweisungen mittels seiner Terminal-Werkzeuge aus:
+   - Er kopiert (`cp -r`) die Dateien aus dem lokalen Installationspfad über seinen eigenen aktiven Skill-Ordner und aktualisiert so sein "Gehirn" (`references/` und `SKILL.md`). Das private `AGENTS.md` bleibt unangetastet.
    - Er führt `euer setup --set skill.version "1.3.0"` aus.
 5. **Freigabe:** Die CLI erkennt die aktualisierte Config. Der Agent kann seine ursprüngliche Aufgabe fortsetzen, nun aber mit exakt auf die CLI-Version abgestimmtem Kontext.
 
@@ -81,7 +85,7 @@ Das bereits publizierte Release wird nicht nachträglich ergänzt.
 ## Anforderungen zur Implementierung
 
 - Einbau der `MIN_SKILL_VERSION` Konstante und Blockade-Logik in die CLI (`cli.py` / Middleware).
-- Bundling des `docs/skills/euer-buchhaltung/` Ordners in der `pyproject.toml` (`package_data`), sodass dieser Teil des Python-Wheels wird.
+- Das finale Python-Wheel muss den Ordner `docs/skills/euer-buchhaltung/` als Package Data unter `euercli/assets/skill/` physisch enthalten (dies dient als Acceptance Criteria; Implementierungsdetails sind dem Entwickler überlassen).
 - Auflösung der traditionellen `USER_GUIDE.md` in die neue Struktur (`CONCEPTS.md` und `references/*.md`).
 - Auflösung der bisherigen `FAQ.md` (ersatzlos). Ihre fachlichen Sonderfälle (Prepaid, Cashback etc.) wandern als Wenn-Dann-Regeln (inklusive Begründung) in die `domain_rules.md`. CLI-Probleme und Eigenheiten wandern in die `cli_reference.md` oder werden direkt durch Self-Describing Errors in der CLI (`stderr`) gelöst.
 - **Doc-Coverage-Test:** Implementierung eines CI-Tests (`test_docs_coverage.py`), der den `argparse`-Baum ausliest und sicherstellt, dass jeder Befehl und jedes Flag zwingend im Text der `cli_reference.md` erwähnt wird (Verhindert "Wissens-Drift" zwischen Code und Agent).
