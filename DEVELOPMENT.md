@@ -431,3 +431,22 @@ Offene Change Requests werden innerhalb der jeweiligen Spec dokumentiert.
 | 016 | Agent-Safety & Guardrails (Schutz vor destruktiven Aktionen & Plausibilitaet) | Offen |
 | 017 | Nicht eingebuchte Belege erkennen (`receipt unbooked`) | Offen |
 | 018 | Bewirtungsaufwendungen, Vorsteuer und EÜR-Zuordnung (inkl. Review-Korrekturen) | Implementiert |
+| 019 | `euer doctor` für Installation und Datenbank | Offen |
+| 020 | Transparente und sichere DB-Migrationen | Offen |
+| 021 | Versionierte Exportläufe mit Manifest | Offen |
+| 022 | Versionierte, sichere Skill-Aktualisierung | Offen |
+
+### Agenten-Dateien und Mandantendaten
+
+Der Buchhaltungs-Skill beschreibt allgemeine euer-Bedienung, Prüfabläufe und
+Onboarding. Die persönliche `AGENTS.md` im Buchhaltungsordner enthält ausschließlich
+mandantenspezifische Angaben wie Steuerstatus, Konten, Pfade, Lieferantenregeln und
+Sonderfälle. Die Repository-`AGENTS.md` bleibt eine Entwickleranweisung.
+Skill- oder Paketupdates dürfen das persönliche Dossier nicht automatisch ersetzen.
+EÜR-Zeilennummern sind jahrabhängige Formularmetadaten und werden für ein
+konkretes Jahr mit `euer list categories --year YYYY` abgefragt, nicht als
+dauerhafte Lieferantenregel gespeichert.
+Die gemeinsame Rollen-Vorlage heißt `docs/templates/accountant-role.md`.
+Ändern sich Skill, Rolle, Agenten-Adapter oder Onboarding, erhält der nächste
+unveröffentlichte Versionsabschnitt in `docs/RELEASE_NOTES.md` einen Block
+„Agenten-Dateien“ mit konkretem Update- und Prüfbedarf pro Bereich.

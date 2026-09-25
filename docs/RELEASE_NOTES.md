@@ -11,18 +11,61 @@ euer summary --year 2026
 ```
 
 Bei einer bestehenden `euercli`-Installation zuerst die einmalige Migration im
-Abschnitt `0.8.1` ausführen. Die historischen Abschnitte darunter behalten bewusst
-ihre ursprünglichen Upgrade-Befehle.
+Abschnitt `0.8.1` ausführen. Beim Wechsel von pipx zu Homebrew zuerst den
+[Upgrade-Leitfaden](USER_GUIDE.md#von-pipx-zu-homebrew-wechseln) lesen. Der
+Homebrew-Tap übernimmt PyPI-Releases zeitversetzt (geplant spätestens innerhalb
+von sechs Stunden). `brew info euer` zeigt die Tap-Version; `euer --version`
+zeigt die tatsächlich gestartete Installation. Die historischen Abschnitte
+darunter behalten bewusst ihre ursprünglichen Upgrade-Befehle.
 
 Bei Releases mit Agenten-Änderungen müssen lokal kopierte Agenten-Dateien
 zusätzlich aktualisiert werden. Das betrifft insbesondere:
 
 - `docs/skills/euer-buchhaltung/SKILL.md`
-- `docs/templates/accountant-agent.md`
-- die persönliche `AGENTS.md`, falls in der jeweiligen Release Note ausdrücklich genannt
+- `docs/templates/accountant-role.md` (früher `accountant-agent.md`)
+- gezielte Änderungen am persönlichen Mandanten-Dossier, falls in der jeweiligen
+  Release Note ausdrücklich genannt
 
-Die persönliche `AGENTS.md` sollte nie blind ersetzt werden, weil sie individuelle
+Skill- und Agenten-Vorlagen vor einem Austausch mit lokalen Kopien vergleichen.
+Die persönliche `AGENTS.md` darf nie automatisch ersetzt werden, weil sie individuelle
 Pfade, Konten, Lieferanten-Mappings und steuerliche Stammdaten enthält.
+Bei jedem neuen Release steht der konkrete Handlungsbedarf für Skill, Rolle,
+Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
+„Agenten-Dateien“. Die wiederkehrende Prozedur beschreibt der
+[User Guide](USER_GUIDE.md#agenten-dateien-aktualisieren).
+
+## Unveröffentlicht
+
+### Agenten-Dateien
+
+| Bereich | Änderung | Aktion nach diesem Release |
+|---|---|---|
+| Skill | Regeln zur Trennung von Skill und Mandanten-Dossier ergänzt | Lokale Kopie mit `docs/skills/euer-buchhaltung/` des Release-Tags vergleichen |
+| Rolle | `accountant-agent.md` heißt jetzt `accountant-role.md`; Privatvorgänge präzisiert | Lokale Agentendatei nach Diff gezielt anpassen; nicht durch die neue Vorlage ersetzen |
+| Agenten-Adapter | Noch keine plattformspezifischen Dateien im Release | Keine automatische Änderung an `SOUL.md`, `CLAUDE.md` oder `AGENTS.md` |
+| Mandanten-Dossier | Keine automatische Migration; keine festen EÜR-Zeilennummern in Lieferantenregeln | Bestehende Regeln prüfen und Änderungen nur als Vorschlag übernehmen |
+
+Die Skill- und Rollen-Versionierung sowie eine automatische Diff-Vorschau
+sind in [Spec 022](../specs/022-skill-updates.md) geplant und hier noch
+nicht verfügbar. Quellen für dieses unveröffentlichte Update erst nach
+Veröffentlichung vom passenden Release-Tag übernehmen.
+
+### Weitere Änderungen
+
+- Upgrade-Dokumentation für den Wechsel von pipx/`euercli` zu Homebrew,
+  PATH-Prüfung und zeitversetzte Tap-Aktualisierung ergänzt.
+- Agenten-Dokumentation trennt allgemeine Skill-Regeln von persönlichen
+  Mandantenregeln und empfiehlt jahresbezogene EÜR-Zeilenabfragen.
+- Geplant, noch nicht implementiert: automatisches Migrationsbackup,
+  Migrationsvorschau und -bericht, `euer doctor`, Export-Überschreibschutz,
+  versionierte Exportläufe und sicherer Skill-Updateweg (Specs 016, 019–022).
+- Export-Spec und User Guide grenzen den geplanten Manifestmodus ausdrücklich
+  von GoBD-Konformität und rechtlich revisionssicherer Archivierung ab.
+- Das Accountant-Template beschreibt die Unterscheidung zwischen privat
+  bezahlter Betriebsausgabe, Ausgleich und reiner Kapitalbewegung genauer.
+- Die gemeinsame Rollen-Vorlage heißt nun `accountant-role.md`. Bestehende
+  Agentendateien bleiben bestehen; neue Rollenregeln nach Diff gezielt
+  übernehmen. `accountant-agent.md` bleibt als Verweis für ältere Links.
 
 ## 0.10.2
 

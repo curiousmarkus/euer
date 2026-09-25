@@ -2,6 +2,24 @@
 
 Praktische Antworten und Workflows für Sonderfälle in `euer`.
 
+## Installation und Updates
+
+**Warum zeigt `euer --version` nach `brew upgrade euer` noch eine alte Version?**
+Prüfe mit `brew info euer`, welche Version der Tap anbietet, und mit
+`command -v euer` sowie `type -a euer`, welche Installation dein Terminal
+findet. Der Tap folgt PyPI zeitversetzt (geplant spätestens innerhalb von
+sechs Stunden). Ein früherer pipx-Entry-Point kann Homebrew im PATH verdecken.
+Der [Upgrade-Leitfaden](USER_GUIDE.md#von-pipx-zu-homebrew-wechseln) beschreibt
+den Wechsel. `euer doctor` ist erst in [Spec 019](../specs/019-doctor.md)
+geplant.
+
+**Darf ich nach einem Update meine `AGENTS.md` durch die neue Vorlage ersetzen?**
+Nein. Sie enthält deine persönlichen Steuer-, Konto- und Lieferantenregeln.
+Vergleiche neue Skill- und Template-Dateien mit den lokalen Kopien und übernimm
+nötige Änderungen gezielt. EÜR-Zeilennummern für ein Formularjahr liefert
+`euer list categories --year YYYY`; sie gehören nicht als dauerhafte Regel
+ins Lieferanten-Mapping.
+
 ---
 
 ## 1. Prepaid-Guthaben & Vorauszahlungen (z. B. Google AI Studio, OpenAI)

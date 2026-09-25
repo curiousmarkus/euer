@@ -87,6 +87,12 @@ Bei einer Homebrew-Installation aktualisierst du mit:
 brew upgrade euer
 ```
 
+Der Homebrew-Tap übernimmt PyPI-Releases zeitversetzt (geplant spätestens
+innerhalb von sechs Stunden). Prüfe mit `brew info euer` und `euer --version`,
+welche Version verfügbar ist und welche dein Terminal startet. Für den Wechsel
+von einer alten `pipx`-/`euercli`-Installation zu Homebrew siehe den
+[Upgrade-Leitfaden](docs/USER_GUIDE.md#von-pipx-zu-homebrew-wechseln).
+
 **Entwicklungsinstallation unter Windows (PowerShell):**
 
 ```powershell
@@ -108,6 +114,11 @@ legt dein persönliches Mandanten-Dossier (`AGENTS.md`) sowie die Konfiguration 
 
 Alternativ kannst du den [Onboarding-Prompt](docs/templates/onboarding-prompt.md)
 in einem separaten LLM-Chat verwenden.
+Die gemeinsame [Buchhalter-Rolle](docs/templates/accountant-role.md) ist eine
+Vorlage für den gewählten Agenten. Bei Updates zeigen die
+[Release Notes](docs/RELEASE_NOTES.md) getrennt an, ob Skill, Rolle oder
+persönliches Mandanten-Dossier geprüft werden müssen. Agentendateien und
+`AGENTS.md` werden durch `brew upgrade` oder `pipx upgrade` nicht ersetzt.
 
 ### 3. Initialisierung
 Falls noch nicht durch den Agenten erledigt: Wechsle in deinen Buchhaltungsordner

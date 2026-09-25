@@ -109,7 +109,7 @@ Richte in deiner KI-Anwendung die drei Bestandteile ein:
 | Bestandteil | Aufgabe |
 |---|---|
 | Persönliche `AGENTS.md` | Deine Konten, Pfade, steuerlichen Stammdaten und individuellen Regeln |
-| [accountant-agent.md](templates/accountant-agent.md) | Rolle und Arbeitsablauf des KI-Buchhalters |
+| [accountant-role.md](templates/accountant-role.md) | Rolle und Arbeitsablauf des KI-Buchhalters |
 | [Skill euer-buchhaltung](skills/euer-buchhaltung/SKILL.md) inklusive `references/` | Einrichtung, CLI-Bedienung und Buchungsregeln |
 
 Die Art der Einbindung hängt von deiner KI-Anwendung ab. Die Installation des
@@ -437,8 +437,17 @@ SQLite-Sicherung erforderlich. CSV-/XLSX-Exporte ersetzen kein vollständiges Ba
 Vor Updates liest du die [Release Notes](RELEASE_NOTES.md). Nach dem Paketupdate
 führst du im richtigen Buchhaltungsordner `euer init` für eventuelle Migrationen
 und anschließend die dort beschriebenen Prüfungen aus. Lokal kopierte Skills und
-Agenten-Vorlagen müssen gegebenenfalls separat aktualisiert werden. Dein
-persönliches Dossier bleibt erhalten und wird gezielt angepasst.
+Agenten-Vorlagen müssen gegebenenfalls separat aktualisiert werden: lokale
+Änderungen zuerst mit der neuen Vorlage vergleichen. Dein persönliches
+Mandanten-Dossier wird bei Tool- oder Skill-Updates niemals automatisch ersetzt.
+Der Block „Agenten-Dateien“ in den Release Notes nennt pro Release den
+Handlungsbedarf für Skill, Rolle, Agentenkonfiguration und Dossier. Der
+[Upgrade-Ablauf](USER_GUIDE.md#agenten-dateien-aktualisieren) beschreibt die
+Diff-Prüfung und die Fälle, die du selbst freigeben musst.
+Bei Homebrew kann der Tap dem PyPI-Release zeitversetzt folgen (geplant innerhalb
+von sechs Stunden); `brew info euer` und `euer --version` zeigen angebotene und
+gestartete Version. Für den Wechsel von pipx/`euercli` zu Homebrew siehe den
+[Upgrade-Leitfaden](USER_GUIDE.md#von-pipx-zu-homebrew-wechseln).
 
 Beim Bewirtungs-Upgrade bleiben historische Beträge und Vorsteuerwerte erhalten;
 `euer init` markiert bisherige Bewirtungen ohne Einzelstatus als `needs_review`.
@@ -446,6 +455,11 @@ Der Agent prüft diese am jeweiligen Beleg und berücksichtigt den damaligen
 Vorsteuerabzug. Ein späterer Wechsel des globalen Steuermodus entscheidet nicht
 über die Behandlung alter Buchungen. Anschließend erstellt er betroffene Berichte
 und Exporte neu.
+
+Ein automatischer Upgrade-Bericht mit Vorab-IDs, WAL-sicherem Backup und
+Dry-run ist geplant ([Spec 020](../specs/020-transparente-migrationen.md)),
+derzeit aber nicht verfügbar. Bewahre vor `init` eine konsistente Sicherung
+auf und prüfe offene IDs danach mit `euer incomplete list`.
 
 ## Vorhandene Funktionen und offene Erweiterungen
 
@@ -462,7 +476,7 @@ und Exporte neu.
 ## Grundlage dieser Journey
 
 Der Ablauf wurde mit dem [Onboarding-Prompt](templates/onboarding-prompt.md),
-dem [Agenten-Template](templates/accountant-agent.md), dem
+dem [Agenten-Template](templates/accountant-role.md), dem
 [Buchhaltungs-Skill](skills/euer-buchhaltung/SKILL.md) und dem
 [User Guide](USER_GUIDE.md) abgeglichen. Die technischen Grenzen wurden im
 [CLI-Parser](../euercli/cli.py), in der

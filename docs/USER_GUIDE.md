@@ -54,6 +54,29 @@ Bei einer Homebrew-Installation verwendest du `brew upgrade euer`. Die Basisinst
 enthält kein `openpyxl`; für XLSX muss das Extra installiert sein oder Homebrew verwendet
 werden.
 
+Der Homebrew-Tap übernimmt neue PyPI-Releases zeitversetzt, laut Release-Prozess
+geplant spätestens innerhalb von sechs Stunden. `brew info euer` zeigt die im
+Tap angebotene Version, `euer --version` die tatsächlich gestartete. Ein Update
+von `pipx` ändert keine Homebrew-Installation und umgekehrt.
+
+### Von pipx zu Homebrew wechseln
+
+1. Notiere mit `euer --version`, `command -v euer` und `pipx list` die aktive
+   Installation. Sichere den Pfad zur bestehenden `euer.db` und die Config.
+2. Installiere Homebrew mit dem kanonischen Befehl
+   `brew install curiousmarkus/euer/euer`. Prüfe `brew info euer`.
+3. Entferne nach erfolgreicher Installation die tatsächlich vorhandenen alten
+   `pipx`-Pakete: `pipx uninstall euercli` und/oder `pipx uninstall euer`.
+   Ein nicht installiertes Paket braucht keinen Uninstall-Aufruf.
+4. Leere gegebenenfalls den Shell-Command-Cache (`rehash` in zsh,
+   `hash -r` in bash), öffne ein neues Terminal und prüfe mit
+   `command -v euer`, `type -a euer` und `euer --version` den aktiven Aufruf.
+5. Wechsle in den richtigen Buchhaltungsordner und führe erst dann den
+   unten beschriebenen DB-Upgrade-Ablauf aus.
+
+`euer doctor` als automatischer Installationscheck ist in
+[Spec 019](../specs/019-doctor.md) geplant und noch kein CLI-Befehl.
+
 ### Bestehende Installation aktualisieren
 
 Wenn du bereits eine lokale `euer.db` nutzt, aktualisiere nicht nur das CLI,
@@ -66,7 +89,7 @@ Empfohlener Ablauf nach jedem Update:
 ```bash
 cd /pfad/zu/deinem/buchhaltungsordner
 
-# Backup vor Schema-Migration
+# Backup vor Schema-Migration; bei aktivem WAL nur ohne laufende Schreibzugriffe
 cp euer.db euer.backup.db
 
 # CLI aktualisieren
@@ -80,6 +103,15 @@ euer incomplete list
 euer summary --year 2026
 ```
 
+Eine einfache Dateikopie ist nur bei geschlossener, konsistenter Datenbank
+geeignet. Bei laufendem Zugriff nutze eine konsistente SQLite-Sicherung.
+Automatisches WAL-sicheres Backup, Migrationsvorschau, Dry-run und
+Upgrade-Bericht sind in [Spec 016](../specs/016-agent-safety-und-guardrails.md)
+und [Spec 020](../specs/020-transparente-migrationen.md) geplant; das aktuelle
+`euer init` bietet diese Zusagen noch nicht. Nach Migrationen mit Bewirtungen
+`euer incomplete list` prüfen und offene Altbuchungen anhand ihrer Belege
+nachpflegen, ohne Vorsteuer zu schätzen.
+
 Wenn du mehrere Buchhaltungsordner oder Datenbanken hast, führe `euer init` für
 jede Datenbank aus. Alternativ kannst du die Datenbank explizit angeben:
 
@@ -87,26 +119,74 @@ jede Datenbank aus. Alternativ kannst du die Datenbank explizit angeben:
 euer --db /pfad/zu/euer.db init
 ```
 
-Prüfe danach die [Release Notes](RELEASE_NOTES.md). `pipx upgrade` aktualisiert
-nicht automatisch Dateien, die du bereits in deine KI-Anwendung kopiert hast.
-Bei Releases mit geänderter Agenten-Logik musst du diese lokalen Kopien
-zusätzlich aus dem aktuellen Release/Repo aktualisieren:
+### Agenten-Dateien aktualisieren
 
-- Den vollständigen Ordner `docs/skills/euer-buchhaltung/` inklusive `references/`
-  in den Skill-Ordner deiner lokalen KI-Anwendung kopieren.
-- `docs/templates/accountant-agent.md` in deiner lokalen Agenten-Konfiguration ersetzen.
-- `docs/templates/onboarding-prompt.md` erneut nutzen, wenn die Release Notes eine
-  Änderung an deiner persönlichen `AGENTS.md` verlangen.
+Prüfe **vor dem Paketupdate** die [Release Notes](RELEASE_NOTES.md), insbesondere
+den Abschnitt „Agenten-Dateien“ des Ziel-Releases. Das CLI-Update durch pipx
+oder Homebrew aktualisiert lokal kopierte Skills und Agentendateien nicht.
+Die Agenten-Dateien des zu installierenden Releases gehören zum gleichen
+Versionstag wie das Paket. Nutze dafür die Dateien aus dem GitHub-Release-Tag
+`v<euer-Version>`; `main` kann bereits neuere, zur installierten CLI nicht
+passende Anweisungen enthalten. Bei Homebrew erst die tatsächlich verfügbare
+Version mit `brew info euer` prüfen.
 
-Die persönliche `AGENTS.md` enthält deine individuellen Pfade, Konten und Regeln.
-Überschreibe sie deshalb nicht blind. Wenn eine Release Note eine Anpassung verlangt,
-kannst du deinen KI-Agenten gezielt damit beauftragen:
+Der aktuelle manuelle Ablauf:
+
+1. Notiere pro genutztem Agenten den Pfad seiner lokalen Skill-Kopie und
+   Agenten-/Rollen-Datei. Eine Installation kann mehrere Profile oder Projekte
+   haben. Prüfe die Release Notes auf Skill-, Rollen- und Dossier-Änderungen.
+2. Vergleiche `docs/skills/euer-buchhaltung/` inklusive `references/` und
+   [accountant-role.md](templates/accountant-role.md) aus dem passenden
+   Release-Tag mit den lokalen Dateien. Sichere die lokalen Dateien und zeige
+   dem Menschen die fachlichen Änderungen und eventuelle lokale Anpassungen.
+3. Übernimm Änderungen in die Agentenkonfiguration. Ersetze lokal angepasste
+   Dateien nie stillschweigend. Bei Konflikten oder Änderungen an globaler
+   Identität und persönlichen Regeln muss der Mensch den konkreten Patch
+   prüfen. Starte den Agenten danach neu und kontrolliere, dass der Skill
+   geladen wird.
+4. Die persönliche `AGENTS.md` enthält deine individuellen Pfade, Konten und
+   Regeln. Sie wird bei Tool-, Skill- und Rollen-Updates niemals automatisch
+   ersetzt. Die Release Notes nennen bei Bedarf einzelne neue Prüfpunkte.
+
+Für die Agenten gilt derzeit:
+
+| Agent | Lokale Einbindung | Beim Upgrade |
+|---|---|---|
+| Claude Code | Skill und optional eigene Datei unter `.claude/agents/` | Skill vergleichen; nur die betroffene Agentendatei nach Diff anpassen |
+| OpenCode | Skill und optional eigene Datei unter `.opencode/agents/` | Skill vergleichen; projektbezogenes `AGENTS.md` als Mandanten-Dossier erhalten |
+| Hermes | Skill und gegebenenfalls eigenes Buchhaltungsprofil oder Projektkontext | Globale `SOUL.md` nicht mit der euer-Rolle überschreiben; Änderungen nur als Vorschlag prüfen |
+
+Diese Pfade sind Beispiele für Projektinstallationen; persönliche und
+profilbezogene Pfade können abweichen. Siehe die offiziellen Anleitungen für
+[Claude Code](https://code.claude.com/docs/en/sub-agents),
+[OpenCode](https://opencode.ai/v2/docs/agents) und
+[Hermes](https://hermes-agent.nousresearch.com/docs/user-guide/which-file-does-what).
+`accountant-role.md` ist eine gemeinsame Textvorlage und keine direkt zu
+installierende `SOUL.md` oder `AGENTS.md`.
+Langfristig soll die lokale Agentendatei nur den stabilen Einstieg enthalten:
+Skill `euer-buchhaltung` laden, persönliches Dossier lesen und bei einem
+Versionswechsel die Release Notes prüfen. Neue Buchungsregeln liegen dann im
+Skill; dadurch braucht ein normales euer-Update keine Änderung an der
+globalen Agentenidentität. Diese Vereinfachung ist Teil von
+[Spec 022](../specs/022-skill-updates.md) und noch kein automatischer Updateweg.
+
+Wenn eine Release Note eine Anpassung des Mandanten-Dossiers verlangt,
+kannst du deinen KI-Agenten gezielt mit einem überprüfbaren Vorschlag beauftragen:
 
 ```text
-Lies docs/RELEASE_NOTES.md und prüfe nur die Hinweise für meine installierte Version.
-Aktualisiere meine lokale AGENTS.md entsprechend, erhalte aber alle persönlichen
-Pfade, Konten, Lieferanten-Mappings und Steuerdaten.
+Lies die Release Notes des Ziel-Releases und vergleiche sie mit meiner lokalen
+AGENTS.md. Schlage nur die konkret nötigen Änderungen als Diff vor. Erhalte
+alle persönlichen Pfade, Konten, Lieferanten-Mappings und Steuerdaten.
 ```
+
+Der allgemeine Skill enthält CLI-Regeln. In der persönlichen `AGENTS.md` stehen
+Steuerstatus, Konten, Belegablage, Lieferanten-/Kategorie- und Reverse-Charge-Regeln,
+gemischte Nutzung und Sonderfälle. EÜR-Zeilennummern gehören nicht dauerhaft in
+Lieferanten-Mappings: frage sie für das Formularjahr mit
+`euer list categories --year YYYY` ab. Eine kurze Angabe zum Installationsweg
+ist sinnvoll; einen festen Binärpfad nur bei tatsächlich unzuverlässigem PATH
+festhalten. Ein eigener versionierter Skill-Updateweg ist in
+[Spec 022](../specs/022-skill-updates.md) geplant.
 
 ## KI-Agenten Konfiguration
 
@@ -117,7 +197,7 @@ Im Ordner `docs/templates/` findest du Vorlagen für die Agent-Konfiguration.
 
 | Datei | Beschreibung |
 |-------|--------------|
-| `accountant-agent.md` | Agent-Definition für KI-Buchhalter (Regeln, Workflows, Steuerlogik) |
+| `accountant-role.md` | Gemeinsame Rollen-Vorlage für KI-Buchhalter; vor Verwendung an den Agenten anpassen |
 | `Agents-Template.md` | Template für persönliche Buchhaltungsdaten (kann geführt mit dem Onboarding-Prompt erstellt werden) |
 | `onboarding-prompt.md` | Interview-Prompt zur Erstellung einer personalisierten `AGENTS.md` |
 
@@ -126,7 +206,7 @@ Im Ordner `docs/templates/` findest du Vorlagen für die Agent-Konfiguration.
 1. **Agent konfigurieren:**
    - Kopiere den vollständigen Ordner `docs/skills/euer-buchhaltung/` einschließlich
      `references/` in den Skill-Pfad deiner KI-Anwendung.
-   - Füge bei Bedarf `accountant-agent.md` als Agent-Definition hinzu.
+   - Übertrage bei Bedarf `accountant-role.md` in die Agenten-Konfiguration.
    - Starte den Agenten in deinem Buchhaltungsordner.
 
 2. **Einrichtung beauftragen:**
@@ -323,6 +403,15 @@ Hinweis: `export` schreibt Dateien ins Export-Verzeichnis:
 - Einnahmen
 - `PrivateTransfers` (direkte Privatvorgänge)
 - `Sacheinlagen` (aus `expenses.is_private_paid` abgeleitet)
+
+Der aktuelle Export kann Dateien gleichen Namens im Ziel überschreiben.
+Wähle für geprüfte oder weitergegebene Stände einen neuen Zielordner und
+kontrolliere ihn vor dem Export. Ein standardmäßiger Überschreibschutz und
+ein versionierter Exportmodus sind in [Spec 016](../specs/016-agent-safety-und-guardrails.md)
+und [Spec 021](../specs/021-versionierte-exporte.md) geplant.
+Auch ein versionierter Export mit Manifest wäre nur eine Hilfe zum Vergleichen
+lokaler Dateistände. `euer` beansprucht keine GoBD-Konformität und bietet
+damit keine rechtlich revisionssichere Archivierung.
 
 `exports.directory` ist ein konkreter Ordner und unterstützt keinen
 `{year}`-Platzhalter. Für jahresweise Ablage nutze entweder `--output` mit einem

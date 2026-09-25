@@ -38,14 +38,22 @@ strukturierten CLI-Tools, weisen jedoch spezifische Fehlermuster auf:
 ## 1. Schutz vor destruktiven Aktionen & Datenverlust
 
 ### 1.1 Automatisches DB-Snapshot-Backup
+- **Feedback (wörtlich):** „Zusätzlich sollte euer vor der Migration automatisch eine konsistente Datenbanksicherung erstellen und deren Pfad nennen. Am besten über die SQLite-Backup-Schnittstelle, damit auch ein eventuelles WAL konsistent berücksichtigt wird.“
 - **Verhalten:** Vor jeder schreibenden Operation (`add`, `update`, `delete`, `reconcile`,
-  `import`), die die Datenbank verändert, prüft `euer`, ob bereits ein Snapshot der aktuellen
+  `import`) und vor jeder Migration einer bestehenden DB durch `init`, die die Datenbank verändert, prüft `euer`, ob bereits ein Snapshot der aktuellen
   Session/des aktuellen Tages vorliegt, oder erstellt eine rotierende Sicherung.
+- **Migration:** Vor jedem Migrationslauf wird unabhängig von der Tagesrotation eine
+  neue, konsistente Sicherung mit `sqlite3.Connection.backup()` erstellt und ihr
+  absoluter Pfad vor dem ersten Schreibschritt ausgegeben. Schlägt die Sicherung
+  fehl, beginnt die Migration nicht. Die Sicherung umfasst auch committed Daten
+  aus einem aktiven WAL. Keine bloße Dateikopie einer geöffneten DB verwenden.
+- **Wiederherstellung:** Backup-Datei und Zeitpunkt im Abschlussbericht nennen;
+  die Rücksicherung wird dokumentiert und nicht automatisch ausgeführt.
 - **Speicherort:** `~/.config/euer/backups/euer_YYYY-MM-DD_HHMMSS.db`
 - **Rotation:** Standardmäßig werden die letzten 10 Snapshots aufbewahrt; ältere werden
   automatisch bereinigt.
-- **Overhead:** SQLite-Datenbanken für EÜR umfassen typischerweise nur wenige hundert Kilobyte
-  bis Megabyte. Ein Dateisystem-Snapshot benötigt wenige Millisekunden.
+- **Overhead:** Sicherungen können je nach DB-Größe und Schreiblast dauern;
+  Laufzeit nicht pauschal als wenige Millisekunden zusagen.
 
 ### 1.2 Soft-Delete statt Hard-Delete
 - **Schema-Erweiterung:**
@@ -77,6 +85,19 @@ strukturierten CLI-Tools, weisen jedoch spezifische Fehlermuster auf:
     bei Altbeständen den Datensatz aus `old_data` wieder ein.
   - Bei vorherigem `INSERT`: Markiert die erstellte Zeile als gelöscht (`deleted_at`).
   - Jede Undo-Aktion erzeugt ihrerseits einen sauberen Eintrag im `audit_log`.
+
+### 1.4 Export-Überschreibschutz
+
+**Feedback (wörtlich):** „Exporte standardmäßig nicht überschreiben“ und „Falls ein Ziel bereits existiert, sollte euer abbrechen oder ausdrücklich um Überschreiben bitten.“
+
+- Vor dem Schreiben alle geplanten Zieldateien prüfen. Existiert eine davon,
+  beendet `euer export` den Lauf ohne Änderungen mit Pfad und Hinweis auf
+  `--force` als explizite Überschreibfreigabe.
+- Keine interaktive Rückfrage: Agenten brauchen einen deterministischen Exit-Code.
+- Auch bei `--force` Dateien zunächst temporär im Zielverzeichnis erzeugen und
+  erst nach erfolgreicher Erstellung austauschen. Ein Fehler darf keinen
+  teilweise erneuerten Dateisatz als erfolgreichen Export erscheinen lassen.
+- Versionierte Exportläufe und Manifest sind in [Spec 021](021-versionierte-exporte.md) beschrieben.
 
 ---
 
@@ -118,6 +139,18 @@ strukturierten CLI-Tools, weisen jedoch spezifische Fehlermuster auf:
       `Mögliches Duplikat: Buchung #42 vom 01.09.2026 über 119,00 € (Adobe) existiert bereits.`
     - Agenten können die Buchung bei berechtigtem Anlass mit `--allow-duplicate` oder
       `--force` erzwingen.
+
+### 2.4 Pfad-Guardrail für `init`
+
+**Feedback (wörtlich):** „Für falsche oder nicht existierende DB-Pfade sollte init klar unterscheiden zwischen „bestehende DB migrieren“ und „neue DB anlegen“.“
+
+- `init` meldet den aufgelösten absoluten DB-Pfad und die Aktion vor Schreibzugriff.
+- Bei einem explizit angegebenen, nicht existierenden `--db`-Pfad bricht `init`
+  standardmäßig ab; eine Neuanlage erfordert `--create`.
+- Beim Standardpfad bleibt das dokumentierte Erst-Onboarding möglich. `init`
+  benennt die Neuanlage ausdrücklich und prüft, ob ein bestehendes Dossier oder
+  eine Config auf einen anderen DB-Pfad verweist. Bei Widerspruch abbrechen.
+- Weitere Preflight- und Migrationsregeln stehen in [Spec 020](020-transparente-migrationen.md).
 
 ---
 

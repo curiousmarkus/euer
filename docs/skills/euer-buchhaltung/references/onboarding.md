@@ -17,6 +17,8 @@ Eine vorhandene `AGENTS.md` kann Entwicklerregeln oder andere Anweisungen enthal
 Erhalte diese Inhalte; ergänze ein klar abgegrenztes Mandanten-Dossier oder verlinke
 ein separat vereinbartes Dossier. Fehlt nur die Datei, aber alle Angaben sind bereits
 bekannt, erstelle sie daraus, statt das ganze Interview zu wiederholen.
+Ein Skill- oder Tool-Update ersetzt eine vorhandene persönliche `AGENTS.md`
+niemals automatisch. Lokale Skill-Kopien vor Austausch mit Upstream vergleichen.
 
 | Ausgangslage | Vorgehen |
 |---|---|
@@ -89,7 +91,10 @@ offen; optionale Lieferanten-Mappings oder SKR-Nummern blockieren keine erste Bu
 
 - Typische Lieferanten und gewünschte Kategoriezuordnungen erfragen. Kategorien
   nach Initialisierung mit `euer list categories` prüfen; bei Bedarf ein Jahr mit
-  `--year YYYY` angeben. Keine feste EÜR-Zeilenliste aus dem Gedächtnis übernehmen.
+  `--year YYYY` angeben. Im Dossier nur fachliche Kategorie, Sitz/Land,
+  Reverse-Charge-Typ und Besonderheit speichern, keine festen EÜR-Zeilennummern.
+- Optional Installationsquelle und Updateweg dokumentieren, wenn für das Projekt
+  nützlich; einen festen Binärpfad nur bei unzuverlässigem PATH festhalten.
 - Optional Buchungskonten (`[[ledger_accounts]]`) mit Schlüssel, Name, Kategorie
   und gegebenenfalls SKR-Nummer vereinbaren.
 - Rhythmus für Kontoauszüge und Monatsabgleich, Ablage offener Fragen und

@@ -51,7 +51,23 @@ Bei Buchungen mit einer dieser Kennungen wird die Ausgabe automatisch als Sachei
 
 ## Kategorie-Zuordnungen wiederkehrender Lieferanten
 
+Nur mandantenspezifische Regeln eintragen, etwa Lieferant, Sitz/Land,
+fachliche Kategorie, Reverse-Charge-Typ und Besonderheit. Keine festen
+EÜR-Zeilennummern speichern: für das Berichtsjahr
+`euer list categories --year YYYY` verwenden.
+
+| Lieferant | Sitz/Land | Fachliche Kategorie | RC (`eu`/`third-country`/nein) | Besonderheit |
+|---|---|---|---|---|
+| {{LIEFERANT}} | {{SITZ}} | {{KATEGORIE}} | {{RC_TYP}} | {{BEMERKUNG}} |
+
 {{KATEGORIE_MAPPING}}
+
+## Toolchain (optional)
+
+{{INSTALLATIONSQUELLE_UND_UPDATEWEG}}
+
+Beispiel bei Homebrew: „Installiert via Homebrew; Updates mit `brew upgrade euer`.“
+Einen festen Binärpfad nur angeben, wenn der PATH im Projekt nicht zuverlässig ist.
 
 ---
 
@@ -61,25 +77,11 @@ Bei Buchungen mit einer dieser Kennungen wird die Ausgabe automatisch als Sachei
 
 ---
 
-## Arbeitshinweise
+## Abweichungen und besondere Arbeitsregeln dieses Mandanten
 
-### Buchungsdatum (EÜR-Prinzip)
-**Zufluss-/Abflussprinzip:** Buchungsdatum = **Wertstellungsdatum** aus Kontoauszug (wann Geld tatsächlich floss)
+{{MANDANTENSPEZIFISCHE_ARBEITSREGELN}}
 
-### Beleg-Matching
-- EUR-Betrag muss **exakt** übereinstimmen (aus Kontoauszug)
-- Bei Fremdwährung: EUR-Abbuchung ist maßgeblich, Original in `--foreign` dokumentieren
-- Bei Unsicherheit → **User fragen!**
-
-### Beleg-Ablage
-- Dateiname: **Rechnungsdatum** aus dem Beleg verwenden (nicht Wertstellung, nicht Download-Datum)
-- Ordner: Jahr aus dem Wertstellungsdatum, dann Typ-Unterordner (`Ausgaben`/`Einnahmen`)
-- Verknüpfung: Belegnamen in Buchung eintragen
-
-### Privatvorgänge
-- Betriebsausgabe privat bezahlt: `euer add expense ... --account <private-kennung>` (erkennt Sacheinlage automatisch)
-- Alternativ explizit: `euer add expense ... --private-paid`
-- Reine Kapitalbewegung: `euer add private-deposit|private-withdrawal ...`
-- Jahrescheck: `euer private-summary --year YYYY`
+Allgemeine CLI-Befehle, Datums- und Buchungsregeln stehen im
+`euer-buchhaltung`-Skill und werden hier nicht dupliziert.
 
 ---

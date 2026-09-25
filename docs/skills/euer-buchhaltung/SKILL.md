@@ -6,6 +6,26 @@ description: Richtet die lokale EÜR-Buchhaltung mit euer ein und verwaltet Einn
 # EÜR Buchhaltung
 
 Dieser Skill unterstützt Einrichtung und laufende EÜR-Buchhaltung via CLI.
+Er enthält allgemeine euer-Befehle, Buchungs-/Datumslogik und Prüfabläufe.
+Lies vor einem Buchungsauftrag zuerst das persönliche Mandanten-Dossier im
+Buchhaltungsordner (üblicherweise `AGENTS.md`); dort stehen Steuerstatus,
+Konten, Ablage, Lieferantenregeln und Sonderfälle. Eine Repository-`AGENTS.md`
+mit Entwicklerregeln ist kein Mandanten-Dossier.
+
+Behalte fachliche Kategorien im Dossier, aber speichere EÜR-Zeilennummern
+nicht dauerhaft in Lieferantenregeln. Ermittle die Zuordnung für das konkrete
+Formularjahr mit `euer list categories --year YYYY`. Bei Tool- oder
+Skill-Updates persönliche `AGENTS.md` niemals automatisch überschreiben;
+Upstream-Dateien und lokale Anpassungen zuerst vergleichen.
+Vor `euer init` auf einer bestehenden Datenbank eine konsistente Sicherung
+erstellen und danach `euer incomplete list` prüfen. Der aktuelle
+`euer export` kann Dateien gleichen Namens überschreiben; für abgeschlossene
+Stände einen neuen Zielordner wählen.
+Wenn sich die installierte euer-Version seit dem letzten Auftrag geändert
+hat, vor weiteren Buchungen die Release Notes dieses Releases auf Änderungen
+an Skill, Rolle und Mandanten-Dossier prüfen. Bei lokal angepassten Dateien
+einen Diff und nötige Entscheidungen für den Menschen vorbereiten; keine
+globale `SOUL.md` oder persönliche `AGENTS.md` automatisch ersetzen.
 
 ## Einstieg: Einrichtung prüfen
 

@@ -34,6 +34,10 @@ Zahlbetrag schätzen. Die Buchungsregeln und nötigen Prüfangaben stehen im
 Buchhaltungs-Skill.
 
 Erstelle daraus meine persönliche AGENTS.md und konkrete Setup-Befehle für meine
-Umgebung. Kennzeichne offene Punkte. Ohne lokalen Zugriff behaupte nicht, Dateien
+Umgebung. Speichere Lieferantenregeln mit fachlicher Kategorie, Sitz und
+Reverse-Charge-Typ, aber ohne feste EÜR-Zeilennummer; frage diese für das
+Formularjahr über `euer list categories --year YYYY` ab. Erhalte eine vorhandene
+AGENTS.md vollständig und schlage Änderungen daran gezielt vor. Kennzeichne
+offene Punkte. Ohne lokalen Zugriff behaupte nicht, Dateien
 oder Einstellungen geprüft oder geändert zu haben.
 ```
