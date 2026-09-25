@@ -36,8 +36,7 @@ Wir setzen damit eine absolut strikte Trennung um:
         *   📁 `references/`
             *   `installation_and_setup.md`: Anweisungen für den Agenten zur Systemeinrichtung.
             *   `cli_reference.md`: Harte Befehlsspezifikation (Flags, JSON-Outputs).
-            *   `domain_rules.md`: Fachliche Buchhaltungsregeln (Steuersätze, Bewirtungskosten).
-            *   `faq.md`: Für den Agenten bei Troubleshooting.
+            *   `domain_rules.md`: Fachliche Buchhaltungsregeln (z. B. Prepaid, Cashback, 70/30-Aufteilung). WICHTIG: Zu jeder Regel muss zwingend das "Warum" (Steuergesetz, fachliche Begründung) notiert werden, damit sie wartbar bleibt und der Agent dem Menschen die Buchung auf Nachfrage fundiert erklären kann.
 
 ## Der selbstheilende Update-Prozess (The Update Loop)
 
@@ -84,6 +83,7 @@ Das bereits publizierte Release wird nicht nachträglich ergänzt.
 - Einbau der `MIN_SKILL_VERSION` Konstante und Blockade-Logik in die CLI (`cli.py` / Middleware).
 - Bundling des `docs/skills/euer-buchhaltung/` Ordners in der `pyproject.toml` (`package_data`), sodass dieser Teil des Python-Wheels wird.
 - Auflösung der traditionellen `USER_GUIDE.md` in die neue Struktur (`CONCEPTS.md` und `references/*.md`).
+- Auflösung der bisherigen `FAQ.md` (ersatzlos). Ihre fachlichen Sonderfälle (Prepaid, Cashback etc.) wandern als Wenn-Dann-Regeln (inklusive Begründung) in die `domain_rules.md`. CLI-Probleme und Eigenheiten wandern in die `cli_reference.md` oder werden direkt durch Self-Describing Errors in der CLI (`stderr`) gelöst.
 - Da der Befehl `euer setup --set key value` bereits existiert, ist keine neue CLI-Logik für die Registrierung des Skills nötig.
 
 ## Dokumentation nach Implementierung
