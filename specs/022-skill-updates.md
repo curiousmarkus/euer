@@ -7,115 +7,85 @@ Offen
 ## Originalfeedback (wörtlich)
 
 > Der Skill sollte neben dem Software-Release eine klar ausgewiesene Version haben. Hilfreich wären eine Installations-/Update-Anleitung pro Agent und ein Diff, bevor lokale Dateien ersetzt werden. Nutzerregeln wie AGENTS.md sollten dabei niemals automatisch überschrieben werden. Ein als Vorschlag zu entwickelnder Skill-Updateweg sollte upstream-Inhalte und lokale Anpassungen getrennt behandeln, statt stillschweigend eine Seite zu ersetzen.
->
-> Konkrete Empfehlung für dein Projekt
-> Die Zuständigkeiten würde ich so trennen:
->
-> AGENTS.md: alles, was für diesen Mandanten gilt: Steuerstatus, Konten, Belegablage, Lieferanten → Kategorie, Reverse-Charge-Fälle, gemischte Nutzung, N26-Cashback und Sonderregeln.
-> Buchhaltungsskill: allgemeine Bedienung von euer: Befehle, Buchungs- und Datumslogik, Prüfabläufe, Migrationen und die Regel, zuerst die Projekt-AGENTS.md zu lesen.
-> EÜR-Zeilennummern: möglichst nicht dauerhaft in AGENTS.md speichern. Sie hängen vom Formularjahr ab und sind im CLI mit euer list categories --year YYYY abrufbar. In der Lieferantentabelle reicht die fachliche Kategorie; Reverse Charge und Sitz bleiben sinnvoll.
-> Eine kurze Toolchain-Angabe wie „Homebrew ist die Installationsquelle; Updates mit brew upgrade euer“ kann in AGENTS.md stehen, falls sie für die Arbeit im Projekt wichtig ist. Einen festen Binärpfad würde ich nur dort festhalten, wenn der PATH nicht zuverlässig ist.
 
 ## Learning & Konzept-Evolution
 
 Paket, kopierter Skill und Mandanten-Dossier haben verschiedene Lebenszyklen.
-Ein `pipx`- oder Brew-Update aktualisiert keine lokale Skill-Kopie. Das
-Mandanten-Dossier ist Nutzerdatenbestand und darf bei Tool-/Skill-Updates nicht
-automatisch ersetzt werden.
+Ein `pipx`- oder Brew-Update aktualisiert keine lokale Skill-Kopie. Das Mandanten-Dossier (`AGENTS.md`) ist Nutzerdatenbestand und darf bei Tool-/Skill-Updates niemals automatisch ersetzt werden.
 
-**Die Erkenntnis zur Dokumentation:** Bisher vermischte das `USER_GUIDE.md` Installationshilfen für den Menschen, Syntax-Referenzen für die KI und Steuerlogik. Da der KI-Agent der eigentliche Anwender der CLI ist, benötigt er direkten, strukturierten Zugriff auf diese Spezifikationen. Es führt zu Problemen, wenn Mensch und KI unterschiedliche Informationsstände haben.
+**Die wichtigste Erkenntnis:** `euer` ist eine reine KI-Anwendung. Menschliche Nutzung der CLI ist "out of scope". Demnach muss die gesamte Architektur, Fehlerausgabe und Dokumentation so gebaut sein, dass eine Maschine sie fehlerfrei ausführen und sich im Fehlerfall selbst reparieren kann. Die traditionelle `USER_GUIDE.md` für Menschen ist obsolet.
 
-**Die Lösung: "Skill-as-a-Package"**
+**Die Lösung: "Skill-as-a-Package" & Bundling**
 Um sichere Updates und perfekte KI-Ausführung zu vereinen, wird die Dokumentation vollständig in den Skill integriert. Der Ordner `docs/skills/euer-buchhaltung/` wird zur versionierten, monolithischen "Read-Only Firmware" für den Agenten. 
+
+Zusätzlich wird das fertige Skill-Paket physisch in das Python-Package (`euercli/assets/skill/`) gebündelt. Wenn der Mensch die CLI aktualisiert, wird der neue Skill automatisch mit auf die Festplatte geladen. Das ermöglicht Offline-Updates ohne externe HTTP-Requests durch die KI.
 
 Wir setzen damit eine absolut strikte Trennung um:
 - **Code / Firmware (Darf komplett ersetzt werden):** Der gesamte Skill-Ordner inklusive aller Doku-Referenzen (`SKILL.md` + `references/*.md`).
-- **State / Nutzerdaten (Darf NIE überschrieben werden):** Das persönliche `AGENTS.md` (Mandanten-Dossier).
-
-Ein Update des Skills bedeutet durch diese Architektur automatisch ein Update der Dokumentation (Single Source of Truth). Mensch und KI lesen exakt denselben Wissensstand.
+- **State / Nutzerdaten (Darf NIE überschrieben werden):** Das persönliche `AGENTS.md` (Mandanten-Dossier) liegt außerhalb.
 
 ## Die Zielarchitektur
 
 *   **Der Einstieg (Für den Menschen)**
-    *   `README.md`: Der "Showroom". Fokussiert auf Fähigkeiten und bietet den Handoff-Prompt (Kopier-Vorlage für die KI zur Installation & Doku-Lektüre). Verlinkt für alle Doku-Details direkt in den Skill-Ordner.
-    *   `docs/CONCEPTS.md`: Ein konzeptioneller Überblick für den Menschen (Trust-Building, Guardrails, Architektur, Sicherheit), der komplett ohne CLI-Syntax auskommt.
+    *   `README.md`: Der "Showroom". Fokussiert auf Fähigkeiten und bietet den Handoff-Prompt (Kopier-Vorlage für die KI zur Installation & Lektüre). 
+    *   `docs/CONCEPTS.md`: Ein konzeptioneller Überblick (Trust-Building, Guardrails, Sicherheit, Architektur), komplett ohne CLI-Syntax.
 
 *   **Das Maschinen-Handbuch (Der Skill-Ordner)**
     *   📁 `docs/skills/euer-buchhaltung/`
-        *   `SKILL.md`: Der Orchestrator. Definiert Rolle, zentrale Abläufe und dient als Index für die Referenzen. Enthält im Header eine klare Versionsnummer.
+        *   `SKILL.md`: Der Orchestrator. Definiert Rolle, Abläufe und dient als Index für die Referenzen. Enthält im Header eine klare Versionsnummer.
         *   📁 `references/`
-            *   `installation_and_setup.md`: Anweisungen für den Agenten zur Systemeinrichtung (`pipx`, `brew`, `euer doctor`).
-            *   `cli_reference.md`: Harte Befehlsspezifikation (Flags, Exklusiv-Regeln, JSON-Outputs).
+            *   `installation_and_setup.md`: Anweisungen für den Agenten zur Systemeinrichtung.
+            *   `cli_reference.md`: Harte Befehlsspezifikation (Flags, JSON-Outputs).
             *   `domain_rules.md`: Fachliche Buchhaltungsregeln (Steuersätze, Bewirtungskosten).
-            *   `faq.md`: Für Mensch und Maschine bei Troubleshooting.
+            *   `faq.md`: Für den Agenten bei Troubleshooting.
+
+## Der selbstheilende Update-Prozess (The Update Loop)
+
+Da `euer` ausschließlich von KIs bedient wird, blockiert die CLI gnadenlos jeden Befehl, wenn die KI mit einem veralteten Wissensstand (Skill) arbeitet. Die Blockade enthält eine direkte Anweisung zur Selbstheilung.
+
+**Der Prozess:**
+1. **Das CLI-Update (Mensch):** Der Mensch aktualisiert die CLI (`pipx upgrade euer`). Die CLI ist nun z. B. `v1.3.0` und bringt den passenden Skill `v1.3.0` im Installationspfad (z. B. `~/.local/share/pipx/.../euercli/assets/skill/`) mit.
+2. **Die Versionsprüfung (CLI):** Bei jedem CLI-Aufruf prüft `euer`, ob der in der Config hinterlegte Skill-Stand (`~/.config/euer/config.toml` unter `[skill] version`) mindestens der internen `MIN_SKILL_VERSION` entspricht.
+3. **Die harte Blockade:** Da der Agent noch die alte Config (z. B. `1.2.0`) hat, bricht die CLI den Befehl ab:
+   > `[✗] FEHLER: Dein registrierter Skill (v1.2.0) ist veraltet. Diese CLI erfordert mindestens v1.3.0.`
+   > `Kopiere das neue Skill-Paket von /absoluter/pfad/zu/euercli/assets/skill/ in deinen lokalen Workspace und überschreibe deinen aktuellen Skill.`
+   > `Bestätige das Update danach mit dem Befehl: euer setup --set skill.version "1.3.0"`
+4. **Die Selbstheilung (Agent):** Der Agent liest diesen Fehler und führt die Anweisungen mittels seiner Terminal-Werkzeuge aus:
+   - Er kopiert (`cp -r`) die Dateien aus dem lokalen Installationspfad in seinen Arbeitsordner und aktualisiert so sein eigenes "Gehirn" (`references/` und `SKILL.md`). Das private `AGENTS.md` bleibt unangetastet.
+   - Er führt `euer setup --set skill.version "1.3.0"` aus.
+5. **Freigabe:** Die CLI erkennt die aktualisierte Config. Der Agent kann seine ursprüngliche Aufgabe fortsetzen, nun aber mit exakt auf die CLI-Version abgestimmtem Kontext.
 
 ## Upgrade-Vertrag je Release
 
-Jede Release Note enthält nahe bei den DB-Upgrade-Schritten einen Block
-„Agenten-Dateien“ mit vier getrennten Zeilen:
+Jede Release Note enthält nahe bei den DB-Upgrade-Schritten einen Block „Agenten-Dateien“ mit vier getrennten Zeilen:
 
 | Bereich | Angabe je Release |
 |---|---|
-| Skill-Package | Version vorher/nachher (inkl. Referenz-Dokus), Update nötig: ja/nein |
-| Rolle | Version vorher/nachher, Änderung der gemeinsamen Rolle, Update nötig: ja/nein |
-| Agenten-Adapter | Betroffene Systeme und Dateien; kompatibel/Update empfohlen/Update erforderlich |
-| Mandanten-Dossier | Konkrete Prüfpunkte oder „keine Änderung“; niemals automatisches Ersetzen |
+| Skill-Package | Bundled-Version vorher/nachher, Update zwingend: ja/nein |
+| Rolle | Version vorher/nachher, Änderung der gemeinsamen Rolle |
+| Agenten-Adapter | Betroffene Systeme und Dateien; kompatibel/Update empfohlen |
+| Mandanten-Dossier | Niemals automatisches Ersetzen (Strict State Separation) |
 
-Die CI prüft, dass der Block bei Änderungen am Skill, den Referenzen, der Rolle oder Adaptern vorhanden ist. Das bereits publizierte Release wird nicht nachträglich ergänzt.
-
-## Ablauf beim Nutzer (Sicheres Skill-Update)
-
-1. **Bestand feststellen:** Aktive euer-Version und Installationskanal prüfen;
-   Agentensystem, Profil/Projekt, lokale Skill- und Rollenpfade sowie deren
-   Versionen (Header der `SKILL.md`) ermitteln.
-2. **Passende Quelle laden:** Das gesamte Skill-Package (`euer-buchhaltung/` inkl. `references/`) vom Release-Tag der tatsächlich installierten euer-Version laden.
-3. **Vorschau & Schutz:** 
-   - Das persönliche Mandanten-Dossier (`AGENTS.md`) wird identifiziert und in jedem Fall geschützt.
-   - Upstream-Basis, neues Upstream-Package und lokale Skill-Dateien
-   vergleichen. Ausgabe: fachliche Änderung, Diff, vorgeschlagener Schritt.
-4. **Anwenden:** Da der Skill-Ordner "zustandslos" ist, kann er bei fehlenden lokalen Anpassungen komplett ausgetauscht werden. Lokal bearbeitete
-   Skill-Dateien erhalten einen Patch-Vorschlag;
-   ohne Entscheidung des Menschen kein Überschreiben. Persönliche
-   `AGENTS.md`/`CLAUDE.md`, globale `SOUL.md`, Config und andere
-   Nutzerdaten werden nie automatisch ersetzt. 
-5. **Nachprüfung:** Agent in einer neuen Sitzung starten, Laden des Skills und
-   der Rolle prüfen, Versions-/Kompatibilitätsstand melden. Durch den vollständigen Ordner-Austausch hat der Agent nun sofort die aktuellen `references/` (wie die neue `cli_reference.md`) im Kontext.
-
-Ein späterer Helfer darf Vorschau und Konflikterkennung automatisieren, muss
-aber dieselben Grenzen einhalten. 
+Das bereits publizierte Release wird nicht nachträglich ergänzt.
 
 ## Agentenspezifische Einbindung
 
 | Agent | Ziel für euer | Grenze |
 |---|---|---|
-| Claude Code | Skill-Package plus optionaler eigener Subagent in `.claude/agents/` | Projekt-`CLAUDE.md` nur für lokale Mandantenregeln (State), nicht als Kopie der Rolle |
-| OpenCode | Skill-Package plus optionaler eigener Agent in `.opencode/agents/` | Projekt-`AGENTS.md` bleibt Mandanten-Dossier (State) |
-| Hermes | Skill-Package und gegebenenfalls projektbezogene Kontextdatei | Globale `SOUL.md` ist Identität; Änderungen daran nur als menschlich geprüfter Vorschlag |
+| Claude Code | Skill-Package in Workspace (z. B. `.claude/`) kopieren | Projekt-`CLAUDE.md` / `AGENTS.md` bleibt rein lokaler State |
+| OpenCode | Skill-Package plus optionaler eigener Agent in `.opencode/agents/` | Projekt-`AGENTS.md` bleibt Mandanten-Dossier |
+| Hermes | Skill-Package und projektbezogene Kontextdatei | Globale `SOUL.md` ist Identität |
 
 **Zielbild:** Ein lokaler Adapter enthält nur dauerhafte Einstiegspunkte:
-„Für Buchhaltungsaufträge `euer-buchhaltung` laden, persönliches Dossier lesen,
-Release-Stand bei Versionswechsel prüfen.“ Neue CLI- oder Steuerregeln sowie Doku-Updates gehen vollständig in das Skill-Package. Damit erfordert ein normales euer-Release keine Änderung an
-`SOUL.md`, `CLAUDE.md` oder einem Agentenprofil. 
+„Für Buchhaltungsaufträge den lokalen `euer-buchhaltung` Skill nutzen und persönliches Dossier lesen.“ Neue CLI-Regeln gehen vollständig in das versionierte Skill-Package und aktualisieren sich via Copy-Befehl von selbst.
 
-## Anforderungen
+## Anforderungen zur Implementierung
 
-- Separat sichtbare Skill-Version im `SKILL.md`-Header und dokumentierte Kompatibilität zu euer-Releases.
-- Für unterstützte Agenten Installations- und Updatepfade dokumentieren.
-- Persönliche `AGENTS.md`, Config und andere Mandantendaten nie automatisch
-  überschreiben. 
-- Das Skill-Package beinhaltet zwingend das gesamte Dokumentations-Set im `references/`-Ordner. Die traditionelle `USER_GUIDE.md` wird aufgelöst.
-- Ein möglicher `euer skill update`-Befehl ist eine Option, keine bereits
-  vorhandene Funktion. Vor Implementierung gegen dokumentierte manuelle
-  Diff-Schritte abwägen.
-
-## Akzeptanzfälle
-
-- Nur CLI geändert: kein Agenten-Eingriff nötig.
-- Skill-Package geändert (z. B. neues CLI-Flag in Doku): korrekter Release-Stand wird übernommen und Agent erhält automatisch das neue Wissen.
-- Skill lokal angepasst: Diff und Konflikt sichtbar, keine stille Ersetzung.
-- Claude Code/OpenCode mit projektbezogenem Agenten und persönlichem Dossier:
-  Adaptervorschlag getrennt von Mandantenregeln (`AGENTS.md` wird ignoriert/geschützt).
+- Einbau der `MIN_SKILL_VERSION` Konstante und Blockade-Logik in die CLI (`cli.py` / Middleware).
+- Bundling des `docs/skills/euer-buchhaltung/` Ordners in der `pyproject.toml` (`package_data`), sodass dieser Teil des Python-Wheels wird.
+- Auflösung der traditionellen `USER_GUIDE.md` in die neue Struktur (`CONCEPTS.md` und `references/*.md`).
+- Da der Befehl `euer setup --set key value` bereits existiert, ist keine neue CLI-Logik für die Registrierung des Skills nötig.
 
 ## Dokumentation nach Implementierung
 
-`README.md`, `docs/CONCEPTS.md`, `docs/skills/euer-buchhaltung/SKILL.md` und der gesamte `docs/skills/euer-buchhaltung/references/` Ordner. Das alte `docs/USER_GUIDE.md` entfällt ersatzlos in dieser Architektur.
+`README.md`, `docs/CONCEPTS.md`, gebündeltes `euercli/assets/skill/SKILL.md` und der gesamte `euercli/assets/skill/references/` Ordner. Das alte `docs/USER_GUIDE.md` entfällt ersatzlos.
