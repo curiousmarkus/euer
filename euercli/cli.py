@@ -17,6 +17,7 @@ from .commands import (
     cmd_delete_expense,
     cmd_delete_income,
     cmd_delete_private_transfer,
+    cmd_doctor,
     cmd_export,
     cmd_import,
     cmd_incomplete_list,
@@ -766,6 +767,15 @@ def main(argv: list[str] | None = None) -> None:
     incomplete_list_parser.add_argument("--format", choices=["table", "csv"], default="table")
     incomplete_list_parser.set_defaults(func=cmd_incomplete_list)
 
+    # --- doctor ---
+    doctor_parser = subparsers.add_parser(
+        "doctor", help="Umgebungs- und Pre-Flight-Diagnose"
+    )
+    doctor_parser.add_argument(
+        "--json", action="store_true", help="Maschinenlesbare JSON-Ausgabe"
+    )
+    doctor_parser.set_defaults(func=cmd_doctor)
+
     load_plugins(subparsers)
     args = parser.parse_args(argv)
     args.is_explicit_db = args.db is not None
@@ -777,7 +787,7 @@ def main(argv: list[str] | None = None) -> None:
             project_db = get_project_db_path(args.project_root)
         except (ValueError, OSError) as exc:
             message = f"Ungültige Projekt-Config {project_config_path(args.project_root)}: {exc}"
-            if args.command == "init" and getattr(args, "json", False):
+            if args.command in {"init", "doctor"} and getattr(args, "json", False):
                 import json
 
                 print(json.dumps({"status": "error", "error": message}, ensure_ascii=False))
@@ -788,7 +798,7 @@ def main(argv: list[str] | None = None) -> None:
     else:
         args.db_from_project_config = False
     db_independent = (
-        args.command in {"init", "config"}
+        args.command in {"init", "config", "doctor"}
         or (args.command == "setup" and args.set is not None)
         or (args.command == "import" and args.schema)
     )

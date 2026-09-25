@@ -10,8 +10,8 @@ Prüfe mit `brew info euer`, welche Version der Tap anbietet, und mit
 findet. Der Tap folgt PyPI zeitversetzt (geplant spätestens innerhalb von
 sechs Stunden). Ein früherer pipx-Entry-Point kann Homebrew im PATH verdecken.
 Der [Upgrade-Leitfaden](USER_GUIDE.md#von-pipx-zu-homebrew-wechseln) beschreibt
-den Wechsel. `euer doctor` ist erst in [Spec 019](../specs/019-doctor.md)
-geplant.
+den Wechsel. Mit `euer doctor` kannst du deine Umgebung, verdeckte Binaries im
+PATH und den effektiven Datenbankpfad jederzeit diagnostizieren.
 
 **Darf ich nach einem Update meine `AGENTS.md` durch die neue Vorlage ersetzen?**
 Nein. Sie enthält deine persönlichen Steuer-, Konto- und Lieferantenregeln.

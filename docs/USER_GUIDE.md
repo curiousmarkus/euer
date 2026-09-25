@@ -72,10 +72,25 @@ von `pipx` ändert keine Homebrew-Installation und umgekehrt.
    `hash -r` in bash), öffne ein neues Terminal und prüfe mit
    `command -v euer`, `type -a euer` und `euer --version` den aktiven Aufruf.
 5. Wechsle in den richtigen Buchhaltungsordner und führe erst dann den
-   unten beschriebenen DB-Upgrade-Ablauf aus.
+   ### Umgebungs- und Pre-Flight-Diagnose (`euer doctor`)
 
-`euer doctor` als automatischer Installationscheck ist in
-[Spec 019](../specs/019-doctor.md) geplant und noch kein CLI-Befehl.
+Mit `euer doctor` prüfst du jederzeit den Zustand deiner Installation, deiner
+Pfade und deiner Datenbank:
+
+```bash
+# Umgebungscheck im Terminal
+euer doctor
+
+# Für KI-Agenten oder Automatisierung (maschinenlesbar)
+euer doctor --json
+```
+
+`euer doctor` diagnostiziert rein lesend (ohne Schreibzugriffe oder Seiteneffekte):
+- **Laufzeitumgebung:** Aktive Version, Python-Interpreter und erkannte Installationsquelle (Homebrew, pipx, venv, editable).
+- **PATH-Kollisionen:** Sucht nach weiteren `euer`-Dateien im `$PATH` und warnt, falls beispielsweise ein altes pipx-Binary das neue Homebrew-Paket verdeckt.
+- **Datenbank & Schemastand:** Prüft den effektiven DB-Pfad (CLI-Flag, Projekt-Config `.euer/config.toml` oder Standard `euer.db`), die Dateiexistenz (ohne eine leere DB anzulegen!), Lesbarkeit, Integrität (`PRAGMA quick_check`) und offene Migrationen.
+- **Konfiguration & Verzeichnisse:** Validiert `config.toml`, Projekt-Config sowie Lese-/Schreibrechte für Beleg- und Exportverzeichnisse.
+- **Optionale Features:** Prüft, ob `openpyxl` für den Excel-Export installiert ist.
 
 ### Bestehende Installation aktualisieren
 

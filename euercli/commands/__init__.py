@@ -7,6 +7,7 @@ from .add import (
 from .audit import cmd_audit
 from .config import cmd_config_show
 from .delete import cmd_delete_expense, cmd_delete_income, cmd_delete_private_transfer
+from .doctor import cmd_doctor
 from .export import cmd_export
 from .import_data import cmd_import
 from .incomplete import cmd_incomplete_list
@@ -42,6 +43,7 @@ __all__ = [
     "cmd_delete_expense",
     "cmd_delete_income",
     "cmd_delete_private_transfer",
+    "cmd_doctor",
     "cmd_export",
     "cmd_import",
     "cmd_incomplete_list",

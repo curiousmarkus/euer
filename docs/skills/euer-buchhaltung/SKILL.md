@@ -45,9 +45,9 @@ Nutze bekannte Angaben aus der Sitzung weiter; wiederhole keine bereits beantwor
   Aussage relevante Unklarheiten gezielt klären.
 
 Entscheide anhand tatsächlicher Angaben und Dateien, nicht anhand eines
-`onboarding_done`-Flags. Prüfe vor datenbanklesenden CLI-Aufrufen, ob die gewählte
-DB-Datei existiert: Auch solche Aufrufe können bei falschem Pfad eine leere SQLite-Datei
-anlegen. CLI-Defaults sind keine bestätigten Mandantendaten.
+`onboarding_done`-Flags. Nutze zu Beginn einer Sitzung `euer doctor --json`, um
+Umgebung, aktives Binary, effektiven DB-Pfad, offene Migrationen und Zugriffsrechte
+zu prüfen, ohne Daten zu verändern. CLI-Defaults sind keine bestätigten Mandantendaten.
 
 ## Tool-Pfad
 

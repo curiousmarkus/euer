@@ -67,12 +67,16 @@ Veröffentlichung vom passenden Release-Tag übernehmen.
   - Atomares Undo: `euer undo [--force]` rollt die jeweils letzte Mutation (INSERT, UPDATE, DELETE) basierend auf dem Audit-Log zurück.
   - Export-Überschreibschutz: `euer export` blockiert Überschreiben im Zielordner ohne `--force`, schreibt zuerst temporäre Dateien und setzt bei Austauschfehlern bereits ersetzte Dateien nach Möglichkeit zurück.
   - Validierungs-Guardrails: Mathematische Brutto-USt-Prüfung (Toleranz 0,02 €), strikte Ablehnung von Zukunftszahlungen, Betragsschwelle > 5.000 € (`--force`), unscharfe Duplikaterkennung im Zeitfenster von ±2 Tagen (`--allow-duplicate`).
-  - Ungültige Werte für `[safety].amount_threshold` stoppen betroffene Buchungen jetzt mit einer klaren Fehlermeldung; bisher wurde still 5.000 € verwendet.
+- **Pre-Flight- und Umgebungsdiagnose mit `euer doctor` (Spec 019):**
+  - Neuer Diagnosebefehl `euer doctor` mit strukturierter Terminal- und maschinenlesbarer `--json`-Ausgabe.
+  - Prüft Version, Interpreter, Installationsquelle (Homebrew, pipx, venv, editable) und durchsucht den `$PATH` nach kollidierenden Installationen.
+  - Sichere, rein lesende DB-Prüfung: Ermittelt den effektiven DB-Pfad (CLI-Flag, Projekt-Config oder Standard), prüft Existenz ohne Dateierzeugung, Dateigröße, Berechtigungen, Integrität (`PRAGMA quick_check`) und offene Migrationen.
+  - Validiert `config.toml`, `.euer/config.toml`, Belege- und Exportverzeichnisse sowie die Verfügbarkeit von `openpyxl`.
 - Upgrade-Dokumentation für den Wechsel von pipx/`euercli` zu Homebrew,
   PATH-Prüfung und zeitversetzte Tap-Aktualisierung ergänzt.
 - Agenten-Dokumentation trennt allgemeine Skill-Regeln von persönlichen
   Mandantenregeln und empfiehlt jahresbezogene EÜR-Zeilenabfragen.
-- Geplant, noch nicht implementiert: `euer doctor` (Spec 019), versionierte Exportläufe mit Manifest (Spec 021) und sicherer Skill-Updateweg (Spec 022).
+- Geplant, noch nicht implementiert: versionierte Exportläufe mit Manifest (Spec 021) und sicherer Skill-Updateweg (Spec 022).
 - Export-Spec und User Guide grenzen den geplanten Manifestmodus ausdrücklich
   von GoBD-Konformität und rechtlich revisionssicherer Archivierung ab.
 - Das Accountant-Template beschreibt die Unterscheidung zwischen privat
