@@ -84,6 +84,7 @@ Das bereits publizierte Release wird nicht nachträglich ergänzt.
 - Bundling des `docs/skills/euer-buchhaltung/` Ordners in der `pyproject.toml` (`package_data`), sodass dieser Teil des Python-Wheels wird.
 - Auflösung der traditionellen `USER_GUIDE.md` in die neue Struktur (`CONCEPTS.md` und `references/*.md`).
 - Auflösung der bisherigen `FAQ.md` (ersatzlos). Ihre fachlichen Sonderfälle (Prepaid, Cashback etc.) wandern als Wenn-Dann-Regeln (inklusive Begründung) in die `domain_rules.md`. CLI-Probleme und Eigenheiten wandern in die `cli_reference.md` oder werden direkt durch Self-Describing Errors in der CLI (`stderr`) gelöst.
+- **Doc-Coverage-Test:** Implementierung eines CI-Tests (`test_docs_coverage.py`), der den `argparse`-Baum ausliest und sicherstellt, dass jeder Befehl und jedes Flag zwingend im Text der `cli_reference.md` erwähnt wird (Verhindert "Wissens-Drift" zwischen Code und Agent).
 - Da der Befehl `euer setup --set key value` bereits existiert, ist keine neue CLI-Logik für die Registrierung des Skills nötig.
 
 ## Dokumentation nach Implementierung
