@@ -72,7 +72,9 @@ von `pipx` ändert keine Homebrew-Installation und umgekehrt.
    `hash -r` in bash), öffne ein neues Terminal und prüfe mit
    `command -v euer`, `type -a euer` und `euer --version` den aktiven Aufruf.
 5. Wechsle in den richtigen Buchhaltungsordner und führe erst dann den
-   ### Umgebungs- und Pre-Flight-Diagnose (`euer doctor`)
+   unten beschriebenen DB-Upgrade-Ablauf aus.
+
+### Umgebungs- und Pre-Flight-Diagnose (`euer doctor`)
 
 Mit `euer doctor` prüfst du jederzeit den Zustand deiner Installation, deiner
 Pfade und deiner Datenbank:
