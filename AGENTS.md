@@ -1,6 +1,6 @@
 # AGENTS.md - Coding Agent Guidelines
 
-## Zweck des Projekts
+## Zweck des Projekts & Agent-First-Konzept
 
 `euer` ermöglicht es deutschen Freelancern und Kleinunternehmern, ihre
 Einnahmenüberschussrechnung (EÜR) vollständig an KI-Agenten zu delegieren.
@@ -11,6 +11,16 @@ einer einzigen SQLite-Datei — nachvollziehbar mit Audit-Log, ohne Cloud-Abhän
 Kernfeatures: EÜR-konforme Kategorien (Anlage EÜR Zeilennummern),
 Umsatzsteuer-Logik (Regel-/Kleinunternehmer/Reverse-Charge),
 Beleg-Management, CSV/Excel-Export.
+
+### 1. KI-Agenten sind die primären Nutzer
+Die Software ist primär für **KI-Agenten als eigentliche Nutzer** gedacht. Der Mensch hinter dem Agenten bedient die CLI im Normalfall nicht selbst, sondern delegiert die Buchführung. Sein Hauptinteresse ist, dass der Agent die Buchhaltung **möglichst fehlerfrei und autonom** übernehmen kann.
+- Jede Entscheidung bei CLI-Interface, Fehlermeldungen, Parametern und Validierungen muss daraufhin optimiert sein, dem Agenten verlässliche Leitplanken zu bieten und Fehlbuchungen deterministisch abzufangen.
+- Strukturierte Rückmeldungen (inkl. `--json`), klare Fehlertexte und ein lückenloser Audit-Trail sind zentrale Säulen dieses Prinzips.
+
+### 2. Das AGENTS.md-Konzept: Coding-Guidelines vs. Mandanten-Dossier
+Da moderne KI-Agenten (Claude Code, Cursor, Codex, OpenCode etc.) standardmäßig eine im jeweiligen Arbeitsordner hinterlegte `AGENTS.md` einlesen und berücksichtigen, gehört es zum integralen Konzept von `euer`, diese Konvention gezielt zu nutzen:
+- **Repository-`AGENTS.md` (dieses Dokument):** Richtet sich an Coding-Agenten, die an der Weiterentwicklung der Software `euer` selbst arbeiten (Architektur, Code Style, Test- & Release-Vorgaben).
+- **Mandanten-`AGENTS.md` (im Buchhaltungsordner des Nutzers):** Im Buchhaltungsordner des Endnutzers wird ebenfalls eine `AGENTS.md` abgelegt (siehe `docs/templates/Agents-Template.md`). Diese enthält **keine** Coding- oder Entwicklungsanweisungen, sondern spiegelt das **Mandanten-Dossier** wider. Sie liefert dem Buchhaltungs-Agenten den geschäftlichen Kontext des Mandanten (Steuerstatus, USt-Regelung, Bankkonten, Belegpfade, Zuordnungsregeln für wiederkehrende Lieferanten und Sonderfälle), damit dieser im Buchhaltungsordner die Buchhaltung fehlerfrei führen kann.
 
 ---
 
@@ -62,10 +72,11 @@ Details und Beispiele: `DEVELOPMENT.md` → „Neue Commands hinzufügen"
 | `DEVELOPMENT.md` | Architektur, Service-Layer-Regeln, Checkliste **(Pflichtlektüre)** |
 | `specs/` | Offene Change Requests und Backlog |
 | `euercli/schema.py` | DB-Schema |
-| `docs/USER_GUIDE.md` | Nutzer-Dokumentation |
+| `docs/skills/euer-buchhaltung/references/cli_reference.md` | Nutzer-Dokumentation |
 | `docs/USER_JOURNEY.md` | Vollständige User Journey von Installation bis Jahresabschluss |
 | `docs/RELEASE_NOTES.md` | Upgrade-Hinweise für bestehende lokale Instanzen |
 | `docs/skills/euer-buchhaltung/SKILL.md` | Buchungsregeln für AI-Agenten |
+| `docs/templates/Agents-Template.md` | Vorlage für das Mandanten-Dossier (`AGENTS.md` im Buchhaltungsordner) |
 | `docs/templates/` | Agent-Konfigurationsvorlagen |
 
 ---
@@ -76,7 +87,7 @@ Details und Beispiele: `DEVELOPMENT.md` → „Neue Commands hinzufügen"
 Bei Änderungen auch die Tabelle in `DEVELOPMENT.md` aktualisieren.
 
 **Doku-Update:** Betroffene Dokumente prüfen und aktualisieren:
-`docs/USER_GUIDE.md`, `docs/USER_JOURNEY.md`, `docs/FAQ.md`,
+`docs/skills/euer-buchhaltung/references/cli_reference.md`, `docs/USER_JOURNEY.md`, `docs/skills/euer-buchhaltung/references/domain_rules.md`,
 `docs/skills/euer-buchhaltung/SKILL.md`,
 `docs/templates/onboarding-prompt.md`, `docs/RELEASE_NOTES.md`, `README.md`,
 `DEVELOPMENT.md`
