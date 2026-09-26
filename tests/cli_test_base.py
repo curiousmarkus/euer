@@ -31,7 +31,7 @@ class BaseCLITestCase(unittest.TestCase):
 
     def run_cli(self, args: list[str], input: str | None = None, check: bool = False):
         result = subprocess.run(
-            CLI + ["--db", str(self.db_path)] + args,
+            CLI + ["--db", str(self.db_path)] + args + ["--ignore-skill-version"],
             input=input,
             text=True,
             encoding="utf-8",

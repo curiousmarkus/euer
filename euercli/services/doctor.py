@@ -11,6 +11,7 @@ from ..config import load_config
 from ..constants import CONFIG_PATH, DEFAULT_EXPORT_DIR
 from ..migrations import get_migration_plan
 from ..project_config import get_project_db_path, project_config_path
+from ..skill import skill_status
 
 
 def detect_install_source(python_exe: str, active_bin: str | None) -> str:
@@ -43,7 +44,9 @@ def detect_install_source(python_exe: str, active_bin: str | None) -> str:
 def check_path_binaries(active_binary: str | None) -> list[dict]:
     """Findet alle ausführbaren Dateien namens 'euer' im PATH."""
     path_env = os.environ.get("PATH", "")
-    target_names = ["euer.exe", "euer.cmd", "euer.bat", "euer"] if sys.platform == "win32" else ["euer"]
+    target_names = (
+        ["euer.exe", "euer.cmd", "euer.bat", "euer"] if sys.platform == "win32" else ["euer"]
+    )
 
     found: list[dict] = []
     seen_real_paths: set[str] = set()
@@ -200,7 +203,11 @@ def diagnose_config(project_root: Path) -> dict:
 
     if proj_cfg_exists:
         try:
-            proj_db_val = str(get_project_db_path(project_root)) if get_project_db_path(project_root) else None
+            proj_db_val = (
+                str(get_project_db_path(project_root))
+                if get_project_db_path(project_root)
+                else None
+            )
         except Exception as exc:
             proj_cfg_valid = False
             proj_cfg_error = str(exc)
@@ -288,8 +295,17 @@ def run_doctor(project_root: Path, db_path: Path, source: str) -> dict:
     db_diag = diagnose_database(db_path, source)
     cfg_diag = diagnose_config(project_root)
     features_diag = diagnose_features()
+    skill_diag = skill_status()
 
     recommendations: list[str] = []
+    if skill_diag["status"] in {"unconfirmed", "invalid", "mismatch"}:
+        recommendations.append(
+            "Skill-Version nicht aktuell bestätigt. Skill vollständig aus "
+            f"'{skill_diag['bundle_path']}' installieren, neu laden und erst danach mit "
+            f"'euer setup --set skill.version {skill_diag['expected_version']}' bestätigen."
+        )
+    elif skill_diag["status"] == "error":
+        recommendations.append(f"Skill-Prüfung fehlgeschlagen: {skill_diag.get('error')}")
 
     # 1. Empfehlungen zu PATH-Kollisionen
     if len(path_duplicates) > 1:
@@ -351,16 +367,16 @@ def run_doctor(project_root: Path, db_path: Path, source: str) -> dict:
 
     rec_info = cfg_diag["directories"]["receipts_root"]
     if rec_info["configured"] and rec_info["exists"] and not rec_info["readable"]:
-        recommendations.append(
-            f"Belege-Verzeichnis '{rec_info['configured']}' ist nicht lesbar."
-        )
+        recommendations.append(f"Belege-Verzeichnis '{rec_info['configured']}' ist nicht lesbar.")
 
     # 5. Empfehlungen zu Features (openpyxl)
     if not features_diag["openpyxl"]["available"]:
         if install_source == "pipx":
             cmd_hint = "pipx inject euer openpyxl"
         elif install_source == "homebrew":
-            cmd_hint = "pipx install 'euer[xlsx]' oder in einem virtuellen Python-Environment ausführen"
+            cmd_hint = (
+                "pipx install 'euer[xlsx]' oder in einem virtuellen Python-Environment ausführen"
+            )
         else:
             cmd_hint = "pip install openpyxl"
         recommendations.append(
@@ -372,6 +388,7 @@ def run_doctor(project_root: Path, db_path: Path, source: str) -> dict:
         (db_diag["exists"] and (db_diag["error"] or db_diag["quick_check"] != "ok"))
         or not cfg_diag["system_config"]["valid"]
         or not cfg_diag["project_config"]["valid"]
+        or skill_diag["status"] == "error"
     ):
         overall_status = "error"
     elif (
@@ -382,6 +399,7 @@ def run_doctor(project_root: Path, db_path: Path, source: str) -> dict:
         or not cfg_diag["system_config"]["exists"]
         or (exp_info["exists"] and not exp_info["writable"])
         or (rec_info["configured"] and rec_info["exists"] and not rec_info["readable"])
+        or skill_diag["status"] != "current"
     ):
         overall_status = "warning"
     else:
@@ -404,5 +422,6 @@ def run_doctor(project_root: Path, db_path: Path, source: str) -> dict:
         "database": db_diag,
         "config": cfg_diag,
         "features": features_diag,
+        "skill": skill_diag,
         "recommendations": recommendations,
     }

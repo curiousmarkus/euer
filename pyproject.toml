@@ -40,7 +40,7 @@ euer = "euercli.cli:main"
 [project.urls]
 Issues = "https://github.com/curiousmarkus/euer/issues"
 Repository = "https://github.com/curiousmarkus/euer"
-Documentation = "https://github.com/curiousmarkus/euer/blob/main/docs/USER_GUIDE.md"
+Documentation = "https://github.com/curiousmarkus/euer/blob/main/docs/skills/euer-buchhaltung/references/cli_reference.md"
 Changelog = "https://github.com/curiousmarkus/euer/blob/main/docs/RELEASE_NOTES.md"
 
 [tool.setuptools.dynamic]

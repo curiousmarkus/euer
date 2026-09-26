@@ -31,7 +31,7 @@ class ProjectDbPathTestCase(unittest.TestCase):
 
     def run_cli(self, *args: str, check: bool = False):
         result = subprocess.run(
-            [sys.executable, "-m", "euercli", *args],
+            [sys.executable, "-m", "euercli", *args, "--ignore-skill-version"],
             cwd=self.project,
             env=self.env,
             text=True,

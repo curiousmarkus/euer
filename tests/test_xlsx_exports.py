@@ -35,7 +35,7 @@ class XlsxExportTestCase(unittest.TestCase):
 
     def run_cli(self, args: list[str]) -> subprocess.CompletedProcess[str]:
         result = subprocess.run(
-            CLI + ["--db", str(self.db_path)] + args,
+            CLI + ["--db", str(self.db_path)] + args + ["--ignore-skill-version"],
             text=True,
             encoding="utf-8",
             capture_output=True,

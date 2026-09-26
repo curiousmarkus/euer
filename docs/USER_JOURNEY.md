@@ -53,7 +53,7 @@ flowchart TD
 **Dein Ziel:** Der spätere Agent kann im Terminal `euer` aufrufen und auf deinen
 Buchhaltungsordner zugreifen.
 
-Installiere gemäß [User Guide](USER_GUIDE.md#installation), beispielsweise mit
+Installiere gemäß [User Guide](skills/euer-buchhaltung/references/installation_and_setup.md#installation), beispielsweise mit
 `pipx install euer` oder auf macOS/Linux mit `brew install curiousmarkus/euer/euer`.
 Für Excel-Exporte gibt es bei pipx das Extra `pipx install "euer[xlsx]"`.
 Prüfe die Installation mit `euer --version` und `euer --help`.
@@ -105,17 +105,21 @@ beim separaten Chat, vorbereitete Dateien und Befehle mit noch offener lokaler P
 
 ## 3. Den KI-Buchhalter startklar machen
 
-Richte in deiner KI-Anwendung die drei Bestandteile ein:
+Richte den vollständigen Skill ein. Das persönliche Dossier entsteht beim
+Onboarding oder wird aus vorhandenen Angaben ergänzt:
 
 | Bestandteil | Aufgabe |
 |---|---|
 | Persönliche `AGENTS.md` | Deine Konten, Pfade, steuerlichen Stammdaten und individuellen Regeln |
-| [accountant-role.md](templates/accountant-role.md) | Rolle und Arbeitsablauf des KI-Buchhalters |
-| [Skill euer-buchhaltung](skills/euer-buchhaltung/SKILL.md) inklusive `references/` | Einrichtung, CLI-Bedienung und Buchungsregeln |
+| [Skill euer-buchhaltung](skills/euer-buchhaltung/SKILL.md) inklusive `references/` | Rolle, Grundregeln, Beleg- und Kontoauszugsablauf, CLI-Bedienung |
+| [accountant-role.md](templates/accountant-role.md) (optional) | Kurzer Einstieg für eigens konfigurierte Buchhaltungsagenten |
 
 Die Art der Einbindung hängt von deiner KI-Anwendung ab. Die Installation des
 Python-Pakets richtet diese Agenten-Dateien nicht automatisch ein. Stelle sicher,
 dass der Agent Skill und Referenzen sowie ein vorhandenes Dossier tatsächlich lesen kann.
+Prüfe mit `euer doctor --json` erwartete Skill-Version und Bundle-Pfad. Lade den
+vollständig kopierten Skill neu und bestätige erst dann seine Version mit
+`euer setup --set skill.version "1.1.0"`. Danach können Fachbefehle laufen.
 Bei einer Ersteinrichtung entsteht das Dossier erst im Interview. Für Rechnungen und Kontoauszüge
 braucht er zusätzlich PDF-Textextraktion, etwa `markitdown`, und bei Scans eine
 OCR- oder Bildlesefunktion. Diese Verarbeitung übernimmt der Agent außerhalb von `euer`.
@@ -145,7 +149,7 @@ einen ausdrücklichen Neuanlageauftrag.
 
 **Erster Auftrag:**
 
-> Lies mein Mandanten-Dossier, den Buchhalter-Agenten und den euer-Skill. Prüfe
+> Lies mein Mandanten-Dossier und den euer-Skill samt Buchungsablauf. Prüfe
 > Datenbankpfad, Konfiguration, Belegablage und vorhandene Buchungen. Sage mir,
 > welche Unterlagen für den Einstieg noch fehlen.
 
@@ -258,7 +262,7 @@ Ein gespeicherter Vorsteuerstatus ersetzt nicht die fachliche Belegprüfung.
 
 Bewirtungs-Erstattungen und Bewirtung mit Reverse Charge sind derzeit nicht
 unterstützt. Der Agent hält sie zur gesonderten Klärung offen. Weitere Antworten
-stehen in den [Bewirtungs-FAQ](FAQ.md#4-wie-buche-ich-einen-bewirtungsbeleg-mit-trinkgeld).
+stehen in den [Bewirtungs-FAQ](skills/euer-buchhaltung/references/domain_rules.md#4-wie-buche-ich-einen-bewirtungsbeleg-mit-trinkgeld).
 
 ## 6. Zum Monatswechsel die Konten abgleichen
 
@@ -448,18 +452,18 @@ SQLite-Sicherung erforderlich. CSV-/XLSX-Exporte ersetzen kein vollständiges Ba
 
 Vor Updates liest du die [Release Notes](RELEASE_NOTES.md). Nach dem Paketupdate
 führst du im richtigen Buchhaltungsordner `euer init` für eventuelle Migrationen
-und anschließend die dort beschriebenen Prüfungen aus. Lokal kopierte Skills und
-Agenten-Vorlagen müssen gegebenenfalls separat aktualisiert werden: lokale
-Änderungen zuerst mit der neuen Vorlage vergleichen. Dein persönliches
+und anschließend die dort beschriebenen Prüfungen aus. Den Skill ersetzt der
+Agent vollständig durch den Stand der aktiven CLI und lädt ihn neu. Rollen- und
+Agenten-Vorlagen werden bei Bedarf anhand eines Diffs geprüft. Dein persönliches
 Mandanten-Dossier wird bei Tool- oder Skill-Updates niemals automatisch ersetzt.
 Der Block „Agenten-Dateien“ in den Release Notes nennt pro Release den
 Handlungsbedarf für Skill, Rolle, Agentenkonfiguration und Dossier. Der
-[Upgrade-Ablauf](USER_GUIDE.md#agenten-dateien-aktualisieren) beschreibt die
-Diff-Prüfung und die Fälle, die du selbst freigeben musst.
+[Upgrade-Ablauf](skills/euer-buchhaltung/references/installation_and_setup.md#agenten-dateien-aktualisieren) beschreibt die
+Skill-Bestätigung und den Schutz persönlicher Dateien.
 Bei Homebrew kann der Tap dem PyPI-Release zeitversetzt folgen (geplant innerhalb
 von sechs Stunden); `brew info euer` und `euer --version` zeigen angebotene und
 gestartete Version. Für den Wechsel von pipx/`euercli` zu Homebrew siehe den
-[Upgrade-Leitfaden](USER_GUIDE.md#von-pipx-zu-homebrew-wechseln).
+[Upgrade-Leitfaden](skills/euer-buchhaltung/references/installation_and_setup.md#von-pipx-zu-homebrew-wechseln).
 
 Beim Bewirtungs-Upgrade bleiben historische Beträge und Vorsteuerwerte erhalten;
 `euer init` markiert bisherige Bewirtungen ohne Einzelstatus als `needs_review`.
@@ -493,7 +497,7 @@ Datensätze werden im Preflight-Report angezeigt (auch via `--dry-run` und
 Der Ablauf wurde mit dem [Onboarding-Prompt](templates/onboarding-prompt.md),
 dem [Agenten-Template](templates/accountant-role.md), dem
 [Buchhaltungs-Skill](skills/euer-buchhaltung/SKILL.md) und dem
-[User Guide](USER_GUIDE.md) abgeglichen. Die technischen Grenzen wurden im
+[CLI-Referenz](skills/euer-buchhaltung/references/cli_reference.md) abgeglichen. Die technischen Grenzen wurden im
 [CLI-Parser](../euercli/cli.py), in der
 [Jahresauswertung](../euercli/commands/summary.py), der
 [Belegprüfung](../euercli/commands/receipt.py) und dem

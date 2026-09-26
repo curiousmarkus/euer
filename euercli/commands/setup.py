@@ -23,6 +23,7 @@ from ..db import get_db_connection
 from ..services.categories import get_category_list
 from ..services.errors import ValidationError
 from ..services.eur import get_category_display_name
+from ..skill import VERSION_PATTERN
 
 
 def _ordered_config(config: dict) -> dict:
@@ -100,6 +101,10 @@ def _prompt_ledger_accounts(db_path: str) -> list[dict]:
 
 
 def _normalize_setup_set_value(key: str, value: str):
+    if key == "skill.version":
+        if not VERSION_PATTERN.fullmatch(value):
+            raise ValueError("skill.version muss eine dreiteilige Version MAJOR.MINOR.PATCH sein.")
+        return value
     if key == "tax.mode":
         return normalize_tax_mode(value)
     if key == "receipts.root":

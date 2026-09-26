@@ -35,7 +35,7 @@ class MigrationsAndInitTestCase(unittest.TestCase):
     def test_explicit_nonexistent_db_fails_without_create(self):
         # Pfad existiert nicht, kein --create
         with self.assertRaises(SystemExit) as cm:
-            main(["--db", str(self.db_path), "init"])
+            main(["--ignore-skill-version", "--db", str(self.db_path), "init"])
         self.assertEqual(cm.exception.code, 1)
         self.assertFalse(self.db_path.exists())
 
@@ -45,7 +45,7 @@ class MigrationsAndInitTestCase(unittest.TestCase):
 
         f = io.StringIO()
         with redirect_stdout(f), self.assertRaises(SystemExit) as cm:
-            main(["--db", str(self.db_path), "init", "--json"])
+            main(["--ignore-skill-version", "--db", str(self.db_path), "init", "--json"])
         self.assertEqual(cm.exception.code, 1)
         data = json.loads(f.getvalue())
         self.assertEqual(data["status"], "error")
@@ -57,7 +57,7 @@ class MigrationsAndInitTestCase(unittest.TestCase):
 
         f = io.StringIO()
         with redirect_stdout(f):
-            main(["--db", str(self.db_path), "init", "--create", "--json"])
+            main(["--ignore-skill-version", "--db", str(self.db_path), "init", "--create", "--json"])
         self.assertTrue(self.db_path.exists())
         data = json.loads(f.getvalue())
         self.assertEqual(data["status"], "success")
@@ -70,7 +70,7 @@ class MigrationsAndInitTestCase(unittest.TestCase):
 
         f = io.StringIO()
         with redirect_stdout(f):
-            main(["--db", str(self.db_path), "init", "--create", "--dry-run", "--json"])
+            main(["--ignore-skill-version", "--db", str(self.db_path), "init", "--create", "--dry-run", "--json"])
         self.assertFalse(self.db_path.exists())
         data = json.loads(f.getvalue())
         self.assertEqual(data["status"], "dry_run")
@@ -99,7 +99,7 @@ class MigrationsAndInitTestCase(unittest.TestCase):
 
         f = io.StringIO()
         with redirect_stdout(f):
-            main(["--db", str(self.db_path), "init", "--json"])
+            main(["--ignore-skill-version", "--db", str(self.db_path), "init", "--json"])
         data = json.loads(f.getvalue())
         self.assertEqual(data["status"], "success")
         self.assertEqual(data["action"], "upgrade")
@@ -123,7 +123,7 @@ class MigrationsAndInitTestCase(unittest.TestCase):
         conn.close()
 
         with redirect_stdout(io.StringIO()):
-            main(["--db", str(self.db_path), "init", "--dry-run", "--json"])
+            main(["--ignore-skill-version", "--db", str(self.db_path), "init", "--dry-run", "--json"])
 
         conn = sqlite3.connect(self.db_path)
         marker = conn.execute(
@@ -155,7 +155,7 @@ class MigrationsAndInitTestCase(unittest.TestCase):
             redirect_stdout(io.StringIO()),
             self.assertRaises(SystemExit),
         ):
-            main(["--db", str(self.db_path), "init", "--json"])
+            main(["--ignore-skill-version", "--db", str(self.db_path), "init", "--json"])
 
         conn = sqlite3.connect(self.db_path)
         tables = {
@@ -200,7 +200,7 @@ class MigrationsAndInitTestCase(unittest.TestCase):
         conn.close()
 
         with redirect_stdout(io.StringIO()):
-            main(["--db", str(self.db_path), "init", "--json"])
+            main(["--ignore-skill-version", "--db", str(self.db_path), "init", "--json"])
 
         conn = sqlite3.connect(self.db_path)
         self.assertEqual(
@@ -304,7 +304,7 @@ class MigrationsAndInitTestCase(unittest.TestCase):
 
         f = io.StringIO()
         with redirect_stdout(f):
-            main(["--db", str(self.db_path), "init", "--dry-run", "--json"])
+            main(["--ignore-skill-version", "--db", str(self.db_path), "init", "--dry-run", "--json"])
         data = json.loads(f.getvalue())
         self.assertEqual(data["status"], "dry_run")
         self.assertEqual(data["action"], "upgrade")
@@ -317,7 +317,7 @@ class MigrationsAndInitTestCase(unittest.TestCase):
         # 2. Echte Migration durchführen
         f_real = io.StringIO()
         with redirect_stdout(f_real):
-            main(["--db", str(self.db_path), "init", "--json"])
+            main(["--ignore-skill-version", "--db", str(self.db_path), "init", "--json"])
         data_real = json.loads(f_real.getvalue())
         self.assertEqual(data_real["status"], "success")
         self.assertEqual(data_real["action"], "upgrade")
@@ -335,7 +335,7 @@ class MigrationsAndInitTestCase(unittest.TestCase):
 
     def test_migration_failure_triggers_rollback(self):
         # Erstelle DB mit Basistabellen
-        main(["--db", str(self.db_path), "init", "--create"])
+        main(["--ignore-skill-version", "--db", str(self.db_path), "init", "--create"])
 
         # Simuliere eine fehlerhafte Migration
         def failing_apply(conn):
@@ -358,7 +358,7 @@ class MigrationsAndInitTestCase(unittest.TestCase):
 
             f = io.StringIO()
             with redirect_stdout(f), self.assertRaises(SystemExit) as cm:
-                main(["--db", str(self.db_path), "init", "--json"])
+                main(["--ignore-skill-version", "--db", str(self.db_path), "init", "--json"])
             self.assertEqual(cm.exception.code, 1)
             data = json.loads(f.getvalue())
             self.assertEqual(data["status"], "error")

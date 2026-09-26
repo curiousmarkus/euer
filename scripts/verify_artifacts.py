@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import email
+import json
 import os
 import subprocess
 import sys
@@ -21,10 +22,13 @@ class ArtifactVerificationError(ValueError):
     """Fehler in einem gebauten Paket oder seinem Installations-Smoke-Test."""
 
 
-def _run(command: list[str], *, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+def _run(
+    command: list[str], *, cwd: Path | None = None, env: dict[str, str] | None = None
+) -> subprocess.CompletedProcess[str]:
     result = subprocess.run(
         command,
         cwd=cwd,
+        env=env,
         check=False,
         text=True,
         capture_output=True,
@@ -135,14 +139,21 @@ def _create_venv(path: Path) -> Path:
     return _venv_python(path)
 
 
-def _version_smoke_test(python: Path, artifact: Path, *, extras: bool = False) -> None:
+def _version_smoke_test(
+    python: Path,
+    artifact: Path,
+    *,
+    extras: bool = False,
+    env: dict[str, str] | None = None,
+    cwd: Path | None = None,
+) -> None:
     requirement = f"{artifact}[xlsx]" if extras else str(artifact)
     install_args = [str(python), "-m", "pip", "install", "--no-deps", requirement]
     if extras:
         install_args = [str(python), "-m", "pip", "install", requirement]
-    _run(install_args)
+    _run(install_args, env=env)
     executable = python.parent / ("euer.exe" if os.name == "nt" else "euer")
-    result = _run([str(executable), "--version"])
+    result = _run([str(executable), "--version"], env=env)
     if result.stdout.strip() != VERSION:
         raise ArtifactVerificationError(
             f"Versions-Smoke-Test liefert {result.stdout.strip()!r} statt {VERSION!r}."
@@ -152,25 +163,61 @@ def _version_smoke_test(python: Path, artifact: Path, *, extras: bool = False) -
             str(python),
             "-c",
             "import importlib.metadata; print(importlib.metadata.version('euer'))",
-        ]
+        ],
+        env=env,
     )
+    doctor = json.loads(_run([str(executable), "doctor", "--json"], env=env, cwd=cwd).stdout)
+    bundle = Path(doctor["skill"]["bundle_path"])
+    if (
+        not bundle.is_absolute()
+        or not bundle.resolve().is_relative_to(python.parent.parent.resolve())
+        or not (bundle / "SKILL.md").is_file()
+    ):
+        raise ArtifactVerificationError(f"Skill-Bundle fehlt im installierten Paket: {bundle}")
+    if not (bundle / "references" / "cli_reference.md").is_file():
+        raise ArtifactVerificationError(f"Skill-Referenzen fehlen im installierten Paket: {bundle}")
+    if doctor["skill"]["expected_version"] is None:
+        raise ArtifactVerificationError("Installierter Skill hat keine gültige Version.")
 
 
 def run_installation_smoke_tests(wheel: Path, sdist: Path) -> None:
     """Installiert Wheel, sdist und das XLSX-Extra in frischen Umgebungen."""
     with tempfile.TemporaryDirectory(prefix="euer-artifacts-") as temporary:
         root = Path(temporary)
+        home = root / "home"
+        home.mkdir()
+        env = dict(os.environ, HOME=str(home), USERPROFILE=str(home), APPDATA=str(home / "AppData"))
         wheel_python = _create_venv(root / "wheel")
-        _version_smoke_test(wheel_python, wheel)
+        _version_smoke_test(wheel_python, wheel, env=env, cwd=root)
 
         sdist_python = _create_venv(root / "sdist")
-        _version_smoke_test(sdist_python, sdist)
+        _version_smoke_test(sdist_python, sdist, env=env, cwd=root)
 
         xlsx_python = _create_venv(root / "xlsx")
-        _version_smoke_test(xlsx_python, wheel, extras=True)
+        _version_smoke_test(xlsx_python, wheel, extras=True, env=env, cwd=root)
+        doctor = json.loads(
+            _run([str(xlsx_python), "-m", "euercli", "doctor", "--json"], env=env, cwd=root).stdout
+        )
+        _run(
+            [
+                str(xlsx_python),
+                "-m",
+                "euercli",
+                "setup",
+                "--set",
+                "skill.version",
+                doctor["skill"]["expected_version"],
+            ],
+            env=env,
+            cwd=root,
+        )
         database = root / "xlsx.db"
         output = root / "xlsx-output"
-        _run([str(xlsx_python), "-m", "euercli", "--db", str(database), "init"])
+        _run(
+            [str(xlsx_python), "-m", "euercli", "--db", str(database), "init", "--create"],
+            env=env,
+            cwd=root,
+        )
         _run(
             [
                 str(xlsx_python),
@@ -183,7 +230,9 @@ def run_installation_smoke_tests(wheel: Path, sdist: Path) -> None:
                 "xlsx",
                 "--output",
                 str(output),
-            ]
+            ],
+            env=env,
+            cwd=root,
         )
         if not list(output.glob("*.xlsx")):
             raise ArtifactVerificationError("XLSX-Smoke-Test erzeugte keine XLSX-Datei.")

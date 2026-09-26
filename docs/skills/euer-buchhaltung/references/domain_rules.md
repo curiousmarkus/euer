@@ -1,26 +1,230 @@
-# Häufig gestellte Fragen (FAQ)
+# Fachliche Buchungsregeln und Sonderfälle
 
-Praktische Antworten und Workflows für Sonderfälle in `euer`.
+Prüfe immer Beleg, Zahlungsfluss, Steuerstatus und Geltungsjahr. Diese Regeln
+beschreiben die aktuelle CLI-Behandlung; bei steuerlich strittigen Fällen
+bleibt die fachliche Klärung mit Steuerberatung erforderlich.
 
-## Installation und Updates
+## Geltung und Quellen der wichtigsten Wenn-Dann-Regeln
 
-**Warum zeigt `euer --version` nach `brew upgrade euer` noch eine alte Version?**
-Prüfe mit `brew info euer`, welche Version der Tap anbietet, und mit
-`command -v euer` sowie `type -a euer`, welche Installation dein Terminal
-findet. Der Tap folgt PyPI zeitversetzt (geplant spätestens innerhalb von
-sechs Stunden). Ein früherer pipx-Entry-Point kann Homebrew im PATH verdecken.
-Der [Upgrade-Leitfaden](USER_GUIDE.md#von-pipx-zu-homebrew-wechseln) beschreibt
-den Wechsel. Mit `euer doctor` kannst du deine Umgebung, verdeckte Binaries im
-PATH und den effektiven Datenbankpfad jederzeit diagnostizieren.
+Die CLI-Regeln dieser Referenz beschreiben Skill 1.1.0. Bei älteren Buchungen
+gelten Beleg, Zahlungsjahr und damaliger Steuerstatus; eine spätere Änderung der
+globalen Config ersetzt deren ursprüngliche Behandlung nicht.
 
-**Darf ich nach einem Update meine `AGENTS.md` durch die neue Vorlage ersetzen?**
-Nein. Sie enthält deine persönlichen Steuer-, Konto- und Lieferantenregeln.
-Vergleiche neue Skill- und Template-Dateien mit den lokalen Kopien und übernimm
-nötige Änderungen gezielt. EÜR-Zeilennummern für ein Formularjahr liefert
-`euer list categories --year YYYY`; sie gehören nicht als dauerhafte Regel
-ins Lieferanten-Mapping.
+| Wenn | Dann und Begründung | Quelle | Geltungszeitraum |
+|---|---|---|---|
+| Eine betriebliche Vorauszahlung fließt ab | Die Zahlung einmal im Zahlungsjahr erfassen; die spätere 0-Euro-Verbrauchsrechnung nicht erneut buchen, um Doppelzählung zu vermeiden | § 11 Abs. 2 EStG; Details unten bei Prepaid | Kalenderjahr des tatsächlichen Abflusses |
+| Eine geklärte RC-Vorauszahlung für eine Leistung nach § 13b UStG erfolgt | RC-Typ anhand des leistenden Unternehmens und Belegs setzen; die Umsatzsteuerperiode der Zahlung prüfen | § 13b Abs. 4 Satz 2 UStG und § 15 Abs. 1 Satz 1 Nr. 4 UStG; Details unten bei Prepaid | Voranmeldungszeitraum der Zahlung |
+| Eine geschäftliche Bewirtung wird bezahlt | Zahlbetrag als eine Ausgabe erfassen, belegte Vorsteuer und Trinkgeld getrennt prüfen; die EÜR-Aufteilung im Report kontrollieren | § 4 Abs. 5 Satz 1 Nr. 2 EStG und § 15 Abs. 1/1a UStG; Details unten bei Bewirtung | Zahlungsjahr und zugehöriger Beleg |
+| Cashback geht auf dem Geschäftskonto ein | Als gesonderten Zahlungseingang klassifizieren und die Herkunft prüfen, statt eine frühere Ausgabe blind zu mindern | § 4 Abs. 3 EStG; Details unten bei Cashback | Kalenderjahr des Zuflusses |
 
----
+## Wichtige Regeln
+
+### Beträge
+
+Der Betrag (`--amount`) entspricht immer dem tatsächlichen **Zahlfluss auf dem Bankkonto** (Brutto).
+
+- **Ausgaben**: Immer NEGATIV (z.B. `--amount -119.00`).
+    - Standard-Fall: Das ist der Brutto-Preis inkl. USt.
+    - Reverse-Charge: Das ist der Netto-Preis (da keine USt überwiesen wurde).
+- **Einnahmen**: Immer POSITIV (z.B. `--amount 119.00`).
+    - Standard-Fall: Brutto-Rechnungsbetrag, den der Kunde überwiesen hat.
+- **Privateinlagen/Privatentnahmen**: Immer POSITIV (`add private-deposit`, `add private-withdrawal`), Richtung ergibt sich aus dem Typ.
+
+### Steuermodus (Config)
+
+Das Verhalten hängt von der Konfiguration ab (`~/.config/euer/config.toml`):
+
+```toml
+[tax]
+mode = "small_business"  # oder "standard"
+```
+
+1.  **Kleinunternehmer (`mode = "small_business"`)**:
+    *   Ausgaben werde brutto als Kosten erfasst.
+    *   Einnahmen werden ohne ausgewiesene USt mit dem tatsächlichen Zahlungseingang erfasst.
+    *   Reverse-Charge: Erzeugt eine Umsatzsteuerschuld (`vat_output`), die nicht als Vorsteuer abgezogen werden kann.
+
+2.  **Regelbesteuerung (`mode = "standard"`)**:
+    *   Ausgaben: Vorsteuer (`vat_input`) wird erfasst (automatisch bei RC oder manuell via `--vat`).
+    *   Einnahmen: Umsatzsteuer (`vat_output`) wird erfasst; `vat_rate`/`vat_code`
+        müssen für den UStVA-Report stimmen.
+    *   Standard-Einnahmen ohne Sonderfall mit `--vat-rate 19` buchen; für 7 %
+        `--vat-rate 7`, für 0 % `--vat-rate 0`, für steuerfrei `--tax-free`.
+    *   Reverse-Charge: Nullsummenspiel (Umsatzsteuer = Vorsteuer).
+
+### USt-Voranmeldung (`vat-report`)
+
+```bash
+euer vat-report --year YYYY
+euer vat-report --year YYYY --quarter 1
+euer vat-report --year YYYY --month 3
+euer vat-report --year YYYY --quarter 1 --format csv --output exports/
+```
+
+Der Report ist kein Ersatz für Steuerberatung oder ELSTER-Übermittlung. Er ist
+ein Arbeitsbericht mit Kennzahlen, Warnungen und Diagnose. Er nutzt nur
+`payment_date`; Buchungen ohne Wertstellungsdatum werden gewarnt und nicht
+eingerechnet.
+
+### Reverse-Charge (--rc eu|third-country)
+
+Prüfe bei Auslandsleistungen anhand der konkreten Rechnung, des leistenden
+Unternehmens und des Steuerstatus, ob Reverse Charge anzuwenden ist. Bei
+geklärtem Sachverhalt verwende `--rc eu` oder `--rc third-country`. Ein
+Markenname allein belegt weder Sitz noch RC-Typ.
+
+Berechnet automatisch 19% USt.
+- **Kleinunternehmer**: Erhöht die Zahllast.
+- **Regelbesteuerung**: Bucht USt und VorSt gleichzeitig (Zahllast-neutral).
+Hinweis: Bei `small_business` setzt RC automatisch `vat_output`, `vat_input` bleibt `0.0`.
+Die Anwendung leitet `eu`/`third-country` nicht automatisch aus Anbieter oder Land ab.
+Bestehende RC-Buchungen ohne EU-/Drittland-Typ per `euer update expense <ID> --rc ...`
+nachpflegen.
+
+### Privatvorgänge
+
+- Eine privat bezahlte Betriebsausgabe bleibt eine Ausgabe mit Beleg und
+  fachlicher Kategorie. Verwende das als privat konfigurierte `--account`
+  oder bei bestätigtem Sachverhalt `--private-paid`.
+- Eine reine Kapitalbewegung ist eine Privateinlage oder Privatentnahme mit
+  positivem Betrag; sie ist keine zweite Betriebsausgabe.
+- Bei einer Ausgleichsüberweisung für eine privat bezahlte Ausgabe verknüpfe
+  die Entnahme mit `--related-expense-id <ID>`. Prüfe zuvor, ob die Ausgabe
+  bereits als privat bezahlt erfasst wurde, damit Kosten und Einlage nicht
+  doppelt zählen.
+- Bei Unklarheit kläre, ob Betriebsausgabe, Ausgleich oder reine
+  Kapitalbewegung vorliegt. Kontrolliere `euer private-summary --year YYYY`.
+
+### Fremdwährungen
+
+Für die EÜR gilt der tatsächliche EUR-Zahlbetrag aus dem Kontoauszug. Halte
+Originalbetrag und Währung zusätzlich mit `--foreign` fest. Bei der Zuordnung
+von Rechnung und Zahlung zählt der EUR-Abfluss oder Zufluss; Wechselkurs- und
+Gebührenabweichungen müssen geklärt werden, statt Beträge ungefähr zu matchen.
+
+### Prepaid-Guthaben & Vorauszahlungen (z. B. Google AI Studio, OpenAI)
+
+Bei Anbietern mit Guthabenaufladung (Prepaid):
+1. **Zahlung erfassen:** Die Guthabenaufladung wird direkt bei Zahlung/Kontoabbuchung mit dem Zahlungsbeleg als Ausgabe erfasst (`--amount -XX.XX`, `--rc eu|third-country`). Als `--invoice-date` pragmatisch das Datum des Zahlungsbelegs/Kontoauszugs nutzen. Eine Warnung bei Wertstellungsdatum vor Rechnungsdatum kann ignoriert werden.
+2. **Monatliche Verbrauchsrechnung:** Weist die spätere Monatsrechnung einen Zahlbetrag von 0,00 EUR auf (da mit Guthaben verrechnet), wird sie **nicht** als neue Ausgabe gebucht (Vermeidung von Doppelzählung). Sie wird im Belegordner abgelegt und optional in den `--notes` der Zahlungsbuchung vermerkt. (Details: siehe [Sonderfälle](#häufige-sonderfälle-und-fehlerbehebung)).
+
+### Bewirtungsaufwendungen
+
+Bewirtung mit Reverse Charge und positive Erstattungen sind derzeit nicht
+unterstützt. Nicht durch Vorzeichenwechsel oder eine andere Kategorie umgehen.
+Altbestände separat prüfen; der Bericht bleibt dafür unvollständig.
+
+Eine geschäftliche Bewirtung wird als ein Zahlungsvorgang in
+`Bewirtungsaufwendungen` erfasst. Bei 129,00 € Zahlbetrag und 19,00 € belegter
+Vorsteuer ergibt sich eine Kostenbasis von 110,00 €, davon 77,00 € abziehbar und
+33,00 € nicht abziehbar. Die 19,00 € Vorsteuer bleiben vollständig erhalten.
+Freiwilliges Trinkgeld ist bereits Teil des Zahlbetrags und wird nur als
+Plausibilitätsangabe erfasst.
+
+```bash
+euer add expense --payment-date YYYY-MM-DD --vendor "Restaurant" \
+    --category "Bewirtungsaufwendungen" --amount -129.00 --vat 19.00 --tip 10.00
+```
+
+Prüfe die Rechnung und den Nachweis statt einen Steuersatz zu schätzen. Alte
+Bewirtungsbuchungen werden bei `euer init` als `needs_review` markiert. Positive
+alte Vorsteuer kann nur als vorläufige Aufteilung erscheinen; fehlende oder
+ungeprüfte Daten machen die EÜR-Summe und den Gewinn unvollständig. Der
+nicht abziehbare 30-%-Anteil ist keine Privatentnahme. Bewirtung ausschließlich
+eigener Arbeitnehmer gehört nicht in diese Kategorie.
+Im Standardmodus bleibt die Vorsteuerbehandlung ohne geprüften Wert offen;
+bestätigte Null-Vorsteuer wird ausdrücklich mit `--vat 0` erfasst. Im
+Kleinunternehmermodus gibt es keinen Vorsteuerabzug. `--tip` dokumentiert
+bereits im Zahlbetrag enthaltenes Trinkgeld und addiert es nicht erneut.
+
+### Kategorien
+
+EÜR-Zeilen sind Formularjahr-Metadaten. Für 2025 und 2026 mitgelieferte
+Zuordnungen werden mit `euer list categories --year YYYY` angezeigt; ohne
+geprüfte Zuordnung wird keine Zeilennummer behauptet. Ein Teil der Zeilen hat
+sich zum Formularjahr 2026 verschoben. Verlasse dich nicht auf eine feste
+Jahresliste aus dem Gedächtnis.
+
+`Nicht steuerbare Umsätze` ist fachlich das Unterfeld „Davon nicht steuerbare
+Kleinunternehmerumsätze (§ 19 Abs. 2 UStG)“ in Zeile 13. Es wird nur für
+Kleinunternehmer verwendet. Eine Buchung zählt genau einmal zu den Einnahmen;
+`summary` zeigt den Betrag zusätzlich als „davon“-Wert unter Zeile 12.
+`Gezahlte USt` ist die Zahlung ans Finanzamt; sie ist nicht die abziehbare
+Vorsteuer (2025 Zeile 57, 2026 Zeile 58). Privatentnahmen und Privateinlagen
+haben ebenfalls jahresabhängige Zeilen; `private-summary` zeigt die geprüfte
+Jahreszuordnung.
+
+### Datenmodell (Interpretation der Spalten)
+
+#### Ausgaben (expenses)
+| Spalte | Bedeutung | Format / Hinweis |
+|--------|-----------|------------------|
+| `id` | Eindeutige ID | Automatisch vergeben |
+| `payment_date` | Wertstellungsdatum (EÜR) | `YYYY-MM-DD`, kann leer sein |
+| `invoice_date` | Rechnungsdatum | `YYYY-MM-DD`, kann leer sein |
+| `vendor` | Lieferant | Name des Anbieters |
+| `category` | Kategorie | Name der Ausgabenkategorie |
+| `amount_eur`| Bruttobetrag | **Immer negativ** (z.B. -10.00) |
+| `rc` | Reverse-Charge-Typ | leer, `eu`, `third-country` oder `unclassified` |
+| `vat_input` | Vorsteuer | Forderung an FA (positiv), nur bei Regelbest. |
+| `vat_output`| RC Umsatzsteuer | Schuld an FA (positiv), bei RC |
+| `vat_rate` | USt-Satz | `19`, `7`, `0` oder leer |
+| `vat_code` | UStVA-Klasse | z.B. `input_invoice`, `reverse_charge_eu` |
+| `account` | Konto | Verwendetes Bankkonto/Zahlart |
+| `receipt_name`| Belegdatei | Name der PDF/JPG Datei |
+| `notes` | Notizen | Optionale Bemerkungen |
+
+#### Einnahmen (income)
+| Spalte | Bedeutung | Format / Hinweis |
+|--------|-----------|------------------|
+| `id` | Eindeutige ID | Automatisch vergeben |
+| `payment_date` | Wertstellungsdatum (EÜR) | `YYYY-MM-DD`, kann leer sein |
+| `invoice_date` | Rechnungsdatum | `YYYY-MM-DD`, kann leer sein |
+| `source` | Kunde/Quelle | Wer hat gezahlt? |
+| `category` | Kategorie | Name der Einnahmenkategorie |
+| `amount_eur`| Bruttobetrag | **Immer positiv** (z.B. 1500.00) |
+| `vat_output`| Umsatzsteuer | Schuld an FA (positiv), nur bei Regelbest. |
+| `vat_rate` | USt-Satz | `19`, `7`, `0` |
+| `vat_code` | UStVA-Klasse | `output_standard_19`, `output_reduced_7`, `output_zero_0`, `output_tax_free_no_vorsteuer` |
+| `receipt_name`| Belegdatei | Name der Rechnungsdatei |
+| `notes` | Notizen | Optionale Bemerkungen |
+
+#### Privatvorgänge (private_transfers)
+| Spalte | Bedeutung | Format / Hinweis |
+|--------|-----------|------------------|
+| `id` | Eindeutige ID | Automatisch vergeben |
+| `date` | Buchungsdatum | `YYYY-MM-DD` |
+| `type` | Richtung | `deposit` oder `withdrawal` |
+| `amount_eur` | Betrag | **Immer positiv** |
+| `description` | Beschreibung | Pflichtfeld |
+| `related_expense_id` | Referenz | Optional, z.B. Ausgleich |
+
+### Belegnamen
+
+Format: `YYYY-MM-DD_Anbieter.pdf` oder `YYYYMMDD_Anbieter.pdf`
+
+Beispiele:
+- `2026-01-15_Render.pdf`
+- `20260115_OpenAI.pdf`
+
+Belege werden unter einem gemeinsamen Root jahrzentriert erwartet:
+```
+<root>/<Jahr>/<Typ>/<Belegname>
+```
+
+Standard:
+- Ausgaben: `<root>/<Jahr>/Ausgaben/<Belegname>`
+- Einnahmen: `<root>/<Jahr>/Einnahmen/<Belegname>`
+
+Das Jahr des Belegordners folgt dem `payment_date` der Buchung
+(Zufluss-/Abflussprinzip). Ohne `payment_date` kann `euer` beim Buchen keinen
+Jahresordner sicher ableiten.
+
+Hinweis: Fehlt die Dateiendung, prüft `euer receipt check` automatisch
+`.pdf`, `.jpg`, `.jpeg` und `.png`.
+
+
+## Häufige Sonderfälle und Fehlerbehebung
 
 ## 1. Prepaid-Guthaben & Vorauszahlungen (z. B. Google AI Studio, OpenAI)
 
@@ -106,8 +310,8 @@ nicht nochmals addiert. `--vat` ist der belegte, tatsächlich abziehbare
 Vorsteuerbetrag. Rechnung, Bewirtungsangaben und Trinkgeldnachweis gehören zur
 Belegprüfung. Die CLI prüft deren steuerliche Voraussetzungen nicht automatisch.
 
-Einen vollständigen Ablauf mit CLI-Beispiel findest du in der
-[User Journey](USER_JOURNEY.md#einen-geschäftlichen-bewirtungsbeleg-übergeben).
+Ein CLI-Beispiel findest du in der
+[CLI-Referenz](cli_reference.md#bewirtungsaufwendungen-buchen).
 Bei unterschiedlichen Steuersätzen auf dem Beleg übernimmt der Agent die
 belegten abziehbaren Steuerbeträge; er schätzt keinen einheitlichen Satz.
 

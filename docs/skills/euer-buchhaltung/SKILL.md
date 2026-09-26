@@ -1,597 +1,67 @@
 ---
 name: euer-buchhaltung
-description: Richtet die lokale EÜR-Buchhaltung mit euer ein und verwaltet Einnahmen, Ausgaben, Belege und Auswertungen für deutsche Selbstständige. Nutze den Skill für Buchhaltungs-Onboarding, Mandanten-Dossiers und Buchungsaufträge wie „Rechnung buchen“, „Belege prüfen“ oder „EÜR zusammenfassen“.
+description: "Nutze diesen Skill für deutsche EÜR-Buchhaltung mit euer: Rechnungen und Belege buchen, Kontoauszüge einlesen und abgleichen, Einnahmen, Ausgaben und Privatvorgänge erfassen, Buchungen korrigieren, Belege prüfen, EÜR und UStVA auswerten oder die Buchhaltung einrichten. Gilt auch für allgemeine Agenten ohne separate Buchhalter-Rolle."
+metadata:
+  version: "1.1.0"
 ---
 
 # EÜR Buchhaltung
 
-Dieser Skill unterstützt Einrichtung und laufende EÜR-Buchhaltung via CLI.
-Er enthält allgemeine euer-Befehle, Buchungs-/Datumslogik und Prüfabläufe.
-Lies vor einem Buchungsauftrag zuerst das persönliche Mandanten-Dossier im
-Buchhaltungsordner (üblicherweise `AGENTS.md`); dort stehen Steuerstatus,
-Konten, Ablage, Lieferantenregeln und Sonderfälle. Eine Repository-`AGENTS.md`
-mit Entwicklerregeln ist kein Mandanten-Dossier.
-
-Behalte fachliche Kategorien im Dossier, aber speichere EÜR-Zeilennummern
-nicht dauerhaft in Lieferantenregeln. Ermittle die Zuordnung für das konkrete
-Formularjahr mit `euer list categories --year YYYY`. Bei Tool- oder
-Skill-Updates persönliche `AGENTS.md` niemals automatisch überschreiben;
-Upstream-Dateien und lokale Anpassungen zuerst vergleichen.
-`euer init` erstellt vor Schema-Migrationen automatisch eine konsistente Sicherung
-unter `~/.config/euer/backups/`. Danach `euer incomplete list` prüfen.
-`euer export` verhindert versehentliches Überschreiben vorhandener Dateien im
-Zielordner (kann mit `--force` überschrieben werden).
-Wenn sich die installierte euer-Version seit dem letzten Auftrag geändert
-hat, vor weiteren Buchungen die Release Notes dieses Releases auf Änderungen
-an Skill, Rolle und Mandanten-Dossier prüfen. Bei lokal angepassten Dateien
-einen Diff und nötige Entscheidungen für den Menschen vorbereiten; keine
-globale `SOUL.md` oder persönliche `AGENTS.md` automatisch ersetzen.
-
-## Einstieg: Einrichtung prüfen
-
-Prüfe zu Beginn einer Buchhaltungssitzung den gewählten Arbeitsordner, das persönliche
-Mandanten-Dossier (üblicherweise `AGENTS.md`), den Datenbankpfad und die Config.
-Nutze bekannte Angaben aus der Sitzung weiter; wiederhole keine bereits beantworteten Fragen.
-
-- **User möchte einrichten oder neu onboarden:** Lies
-  [references/onboarding.md](references/onboarding.md) und führe durch die Einrichtung.
-- **Vor einer Buchung fehlen Dossier, Datenbank oder entscheidende Angaben, oder sie
-  widersprechen sich:** Lies dieselbe Referenz, übernimm vorhandene Informationen und
-  kläre nur die Lücken. Eine Entwickler-`AGENTS.md` ist kein Mandanten-Dossier.
-- **Einrichtung passt zum Auftrag:** Direkt mit der Buchhaltung fortfahren; die
-  Onboarding-Referenz muss nicht geladen werden.
-- **Nur Hilfe oder eine lesende Auswertung gewünscht:** Kein vollständiges Interview
-  erzwingen und keine Einrichtung ändern. Fehlenden Datenbankpfad oder für die
-  Aussage relevante Unklarheiten gezielt klären.
-
-Entscheide anhand tatsächlicher Angaben und Dateien, nicht anhand eines
-`onboarding_done`-Flags. Nutze zu Beginn einer Sitzung `euer doctor --json`, um
-Umgebung, aktives Binary, effektiven DB-Pfad, offene Migrationen und Zugriffsrechte
-zu prüfen, ohne Daten zu verändern. CLI-Defaults sind keine bestätigten Mandantendaten.
-
-## Tool-Pfad
-
-Das CLI befindet sich im Projektverzeichnis:
-
-```bash
-euer <command>
-```
-
-Falls das CLI nicht installiert ist, geht auch:
-
-```bash
-python -m euercli <command>
-```
-
-### Datenbank & Config
-
-- Standard‑DB: `euer.db` im aktuellen Arbeitsordner. `.euer/config.toml` bindet
-  pro Buchhaltungsordner einen DB-Pfad; `euer --db PFAD ...` gilt nur für einen
-  Aufruf. Eine vorhandene externe DB mit `euer --db PFAD init --save-db-path`
-  dauerhaft verbinden. Fehlt die gewählte DB, vor Buchungen ihren Pfad klären;
-  nur bei ausdrücklicher Neuanlage `euer init --create` verwenden.
-- Config: unter macOS/Linux `~/.config/euer/config.toml`, unter Windows `%APPDATA%\euer\config.toml` (Beleg‑Pfade, Export‑Verzeichnis, Steuer‑Modus, private Konten, optionaler Kontenrahmen via `[[ledger_accounts]]`). Die Config gilt über Arbeitsordner hinweg.
-- Non-interaktiv setzen: `euer setup --set <section.key> <value>` (z.B. `tax.mode`, `accounts.private`).
-- Direkter sqlite3‑Zugriff ist **verboten**, da sonst Inkonsistenzen auftreten können und das Audit-Log umgangen wird.
-- Für fortgeschrittene Abfragen **nur** `euer query` verwenden (nur SELECT, keine Writes).
-
-### Config-Verwaltung
-
-Alle Config-Werte lassen sich mit `euer setup` lesen und ändern:
-
-```bash
-# Aktuelle Config anzeigen
-euer config show
-
-# Einzelne Werte setzen
-euer setup --set tax.mode "small_business"           # oder "standard"
-euer setup --set receipts.root "/pfad/zu/Buchhaltung"
-euer setup --set receipts.year_dir "{year}"
-euer setup --set receipts.expenses_dir "Ausgaben"
-euer setup --set receipts.income_dir "Einnahmen"
-euer setup --set exports.directory "/pfad/zu/exports"
-euer setup --set user.name "Max"
-
-# Private Konten (kommasepariert)
-euer setup --set accounts.private "p-sparkasse-giro, p-sparkasse-kk"
-```
-
-**`accounts.private`** — Liste von Konto-Kennungen, die als privat gelten.
-Wenn eine Ausgabe mit `--account <kennung>` gebucht wird und die Kennung in dieser Liste steht,
-wird die Ausgabe automatisch als Sacheinlage (Privateinlage) klassifiziert.
-Das Matching ist **case-insensitiv**. Nach Änderung der Liste: `euer reconcile private`
-ausführen, um bestehende Buchungen gegen die neue Config abzugleichen.
-
-**`[[ledger_accounts]]`** — optionaler Kontenrahmen für Buchungskonten.
-Wenn vorhanden, kann der Agent statt `--category` auch `--ledger-account <key>`
-verwenden. Die Kategorie wird dann automatisch aus der Config aufgelöst.
-
-### SQL‑Abfragen (nur lesend)
-
-Nutze `euer query` für komplexe Filter. Ausgabe ist CSV auf stdout.
-
-```bash
-# Ausgaben eines Lieferanten in einem Zeitraum
-euer query "SELECT id, payment_date, invoice_date, vendor, amount_eur FROM expenses WHERE vendor LIKE '%OpenAI%' AND payment_date BETWEEN '2026-01-01' AND '2026-12-31' ORDER BY payment_date DESC"
-
-# Große Ausgaben (Betrag <= -500)
-euer query "SELECT id, payment_date, invoice_date, vendor, amount_eur FROM expenses WHERE amount_eur <= -500 ORDER BY amount_eur ASC"
-```
-
-## Verfügbare Commands
-
-### Ausgaben
-
-```bash
-# Ausgabe hinzufügen
-euer add expense \
-    --payment-date YYYY-MM-DD \
-    [--invoice-date YYYY-MM-DD] \
-    --vendor "Lieferant" \
-    [--category "Kategorie"] \
-    [--ledger-account "hosting"] \
-    --amount -XX.XX  # Brutto-Betrag (negativ, was vom Konto abgeht) \
-    [--account "Bankkonto"] \
-    [--receipt "Belegname.pdf"] \
-    [--foreign "Betrag Währung"] \
-    [--notes "Bemerkung"] \
-    [--vat 3.50]  # Manueller Steuerbetrag in EUR (nicht %) \
-    [--rc eu|third-country]  # Reverse-Charge-Typ \
-    [--private-paid]  # Als privat bezahlt markieren (Sacheinlage)
-
-# Ausgaben anzeigen
-euer list expenses [--year YYYY] [--month MM] [--category "..."] [--full]
-# Zeigt RC-Typ, USt (Output) und VorSt (Input) an, falls vorhanden.
-# Mit --full zeigt die Tabelle zusätzlich Konto, Beleg, Fremdwährung und Notiz.
-# Kategorieanzeige zeigt eine EÜR-Zeile nur für ein geprüftes Formularjahr;
-# ohne Mapping bleibt es beim Kategorienamen.
-
-# Ausgabe aktualisieren
-euer update expense <ID> [--payment-date ...] [--invoice-date ...] [--vendor ...] [--amount ...] [--rc eu|third-country|--no-rc] [--private-paid|--no-private-paid] ...
-
-# Ausgabe löschen
-euer delete expense <ID> [--force]
-```
-
-### Einnahmen
-
-```bash
-# Einnahme hinzufügen
-euer add income \
-    --payment-date YYYY-MM-DD \
-    [--invoice-date YYYY-MM-DD] \
-    --source "Kunde/Quelle" \
-    [--category "Kategorie"] \
-    [--ledger-account "erloese-19"] \
-    --amount XX.XX  # Brutto-Betrag (positiv, was auf dem Konto eingeht) \
-    [--receipt "Belegname.pdf"] \
-    [--foreign "Betrag Währung"] \
-    [--notes "Bemerkung"] \
-    [--vat 285.00]  # Manueller Umsatzsteuer-Betrag bei Regelbesteuerung (nicht %) \
-    [--vat-rate 19|7|0] \
-    [--tax-free]
-
-# Einnahmen anzeigen
-euer list income [--year YYYY] [--month MM] [--full]
-# Tabellenansicht zeigt immer die Spalte USt (vat_output).
-# Mit --full kommt zusätzlich die Spalte Notiz hinzu.
-
-# Einnahme aktualisieren
-euer update income <ID> [--payment-date ...] [--invoice-date ...] [--source ...] [--amount ...] [--vat-rate 19|7|0] [--tax-free] ...
-
-# Einnahme löschen
-euer delete income <ID> [--force]
-```
-
-### Privatvorgänge
-
-```bash
-# Privateinlage/Privatentnahme direkt buchen
-euer add private-deposit --date YYYY-MM-DD --amount XX.XX --description "..."
-euer add private-withdrawal --date YYYY-MM-DD --amount XX.XX --description "..."
-
-# Optional mit Referenz auf Ausgabe (Ausgleich)
-euer add private-withdrawal --date YYYY-MM-DD --amount XX.XX --description "..." --related-expense-id <EXPENSE_ID>
-
-# Anzeigen
-euer list private-transfers [--year YYYY]
-euer list private-deposits [--year YYYY]
-euer list private-withdrawals [--year YYYY]
-
-# Ändern/Löschen
-euer update private-transfer <ID> [--amount ...] [--description ...] [--related-expense-id <ID>|--clear-related-expense]
-euer delete private-transfer <ID> [--force]
-```
-
-### Übersicht & Export
-
-```bash
-# Zusammenfassung (Kategorien + Gewinn/Verlust)
-euer summary [--year YYYY]
-euer summary [--year YYYY] [--include-private]
-
-# Privat-Zusammenfassung mit Jahreszeilen der Anlage EÜR
-euer private-summary --year YYYY
-
-# Persistierte private Klassifikation nachziehen (z.B. nach Setup-Änderung)
-euer reconcile private [--year YYYY] [--dry-run]
-
-# Export als CSV oder XLSX
-euer export [--year YYYY] [--format csv|xlsx]
-# Für jahresweise Exportordner konkreten Pfad setzen; exports.directory
-# unterstützt keinen {year}-Platzhalter.
-euer export --year YYYY --output "/pfad/zu/Buchhaltung/YYYY/Exporte"
-
-# SQL-Query (nur SELECT, Ausgabe als CSV)
-euer query "SELECT ... FROM ... WHERE ..."
-
-# Kategorien und geprüfte Jahreszeilen anzeigen
-euer list categories [--type expense|income] [--year YYYY]
-
-# Kontenrahmen anzeigen
-euer list ledger-accounts [--category "..."]
-
-# Audit-Log für Transaktion
-euer audit <ID> [--table expenses|income|private_transfers]
-```
-
-### Bulk-Import
-
-```bash
-# Import von CSV oder JSONL
-euer import --file import.csv --format csv
-euer import --file import.jsonl --format jsonl
-euer import --schema  # Schema + Beispiele
-
-# Unvollständige Einträge anzeigen
-euer incomplete list
-euer incomplete list --format csv
-```
-
-Hinweis:
-- Fehlende Pflichtfelder brechen den Import ab.
-- Standard `add`-Einträge dürfen optionale Felder (z.B. Beleg/Notiz) fehlen und werden
-  später per `update` ergänzt.
-
-Workflow:
-1. Importieren bzw. Eintrag erfassen, Pflichtfelder müssen vorhanden sein.
-2. `euer incomplete list` prüfen und offene Aufgaben festhalten
-   (fehlende `payment_date`, `invoice_date`, `category`, `receipt`, `vat`,
-   `entertainment_vat_status`, `account`).
-3. Fehlende Felder per `euer update expense <ID>` /
-   `euer update income <ID>` ergänzen.
-Hinweis: Für die Kategorie **Gezahlte USt** ist kein Beleg erforderlich. Ihre
-Formularzeile hängt vom Berichtsjahr ab; sie ist keine Vorsteuerzeile.
-
-Import-Schema (Kurzfassung):
-- Pflichtfelder: `type`, `party`, `amount_eur` und mindestens eines aus `payment_date`/`invoice_date` (`date` gilt als Alias für `payment_date`)
-- Optional: `category`, `account`, `ledger_account`, `foreign_amount`, `receipt_name`, `notes`, `rc`,
-  `private_paid`, `vat_input`, `vat_output`, `vat_rate`, `vat_code`, `tax_free`,
-  `entertainment_tip_eur`, `entertainment_vat_status`
-- Fehlende Pflichtfelder führen zu einem Import-Abbruch.
-- Alias-Keys (Auszug): `EUR`, `Belegname`, `Lieferant`, `Quelle`, `RC`,
-  `Vorsteuer`, `Umsatzsteuer`, `Privat bezahlt`, `Trinkgeld`,
-  `Bewirtung Vorsteuerstatus`
-- `rc` akzeptiert `eu` oder `third-country`; Legacy-Werte `rc=true|X` brauchen
-  zusätzlich eine Jurisdiktionsspalte.
-- `vat_rate` akzeptiert `19`, `7`, `0`, `19%`, `7%`, `0%`.
-- `vat_code` ist für Round-Trips erlaubt:
-  `output_standard_19`, `output_reduced_7`, `output_zero_0`,
-  `output_tax_free_no_vorsteuer`, `input_invoice`, `reverse_charge_eu`,
-  `reverse_charge_third_country`.
-- `private_paid=true|1|yes|X` markiert die Ausgabe manuell als Sacheinlage.
-- Kategorien wie `Arbeitsmittel (51)` werden automatisch auf `Arbeitsmittel` bereinigt.
-- Steuerfelder:
-  - `small_business` + `rc=eu|third-country`: `vat_output` wird automatisch aus `amount_eur * 0.19` berechnet,
-    `vat_input` wird auf `0.0` gesetzt (Felder können weggelassen werden).
-  - `small_business` + Einnahmen: neue Einnahmen werden als
-    `output_tax_free_no_vorsteuer` klassifiziert.
-  - `standard` + Ausgaben: `vat_input` wird per `--vat`/Import erfasst
-    (außer bei RC, dort automatisch).
-  - Bewirtung: `amount_eur` ist der ganze negative Zahlbetrag. `--vat` bzw.
-    `vat_input` enthält ausschließlich die belegte, tatsächlich abziehbare
-    Vorsteuer. Nie den Zahlbetrag mit 7 % oder 19 % zurückrechnen. `--tip` bzw.
-    `entertainment_tip_eur` dokumentiert enthaltenes Trinkgeld und erhöht den
-    Zahlbetrag nicht. Im Standardmodus bedeutet weggelassenes `--vat`
-    `needs_review`; `--vat 0` bedeutet geprüfte Null-Vorsteuer. Im
-    Kleinunternehmermodus wird `no_deduction` gespeichert. `update expense`
-    ergänzt Vorsteuer, Trinkgeld und Status.
-  - `standard` + Einnahmen: ohne Angabe gilt `vat_rate=19`. Nutze
-    `--vat-rate 7`, `--vat-rate 0` oder `--tax-free` für abweichende Fälle.
-    `amount_eur` wird immer 1:1 als Brutto-Zahlfluss gespeichert.
-- `private_transfers`/`Sacheinlagen` aus dem Export sind kein Standard-Bulk-Importformat.
-
-### Beleg-Verwaltung
-
-```bash
-# Konfiguration anzeigen
-euer config show
-
-# Fehlende Belege prüfen
-euer receipt check [--year YYYY] [--type expense|income]
-
-# Beleg öffnen
-euer receipt open <ID> [--table expenses|income]
-```
-
-## Wichtige Regeln
-
-### Beträge
-
-Der Betrag (`--amount`) entspricht immer dem tatsächlichen **Zahlfluss auf dem Bankkonto** (Brutto).
-
-- **Ausgaben**: Immer NEGATIV (z.B. `--amount -119.00`).
-    - Standard-Fall: Das ist der Brutto-Preis inkl. USt.
-    - Reverse-Charge: Das ist der Netto-Preis (da keine USt überwiesen wurde).
-- **Einnahmen**: Immer POSITIV (z.B. `--amount 119.00`).
-    - Standard-Fall: Brutto-Rechnungsbetrag, den der Kunde überwiesen hat.
-- **Privateinlagen/Privatentnahmen**: Immer POSITIV (`add private-deposit`, `add private-withdrawal`), Richtung ergibt sich aus dem Typ.
-
-### Steuermodus (Config)
-
-Das Verhalten hängt von der Konfiguration ab (`~/.config/euer/config.toml`):
-
-```toml
-[tax]
-mode = "small_business"  # oder "standard"
-```
-
-1.  **Kleinunternehmer (`mode = "small_business"`)**:
-    *   Ausgaben werde brutto als Kosten erfasst.
-    *   Einnahmen werden in der Regel netto (ohne USt) erfasst.
-    *   Reverse-Charge: Erzeugt eine Umsatzsteuerschuld (`vat_output`), die nicht als Vorsteuer abgezogen werden kann.
-
-2.  **Regelbesteuerung (`mode = "standard"`)**:
-    *   Ausgaben: Vorsteuer (`vat_input`) wird erfasst (automatisch bei RC oder manuell via `--vat`).
-    *   Einnahmen: Umsatzsteuer (`vat_output`) wird erfasst; `vat_rate`/`vat_code`
-        müssen für den UStVA-Report stimmen.
-    *   Standard-Einnahmen ohne Sonderfall mit `--vat-rate 19` buchen; für 7 %
-        `--vat-rate 7`, für 0 % `--vat-rate 0`, für steuerfrei `--tax-free`.
-    *   Reverse-Charge: Nullsummenspiel (Umsatzsteuer = Vorsteuer).
-
-### USt-Voranmeldung (`vat-report`)
-
-```bash
-euer vat-report --year YYYY
-euer vat-report --year YYYY --quarter 1
-euer vat-report --year YYYY --month 3
-euer vat-report --year YYYY --quarter 1 --format csv --output exports/
-```
-
-Der Report ist kein Ersatz für Steuerberatung oder ELSTER-Übermittlung. Er ist
-ein Arbeitsbericht mit Kennzahlen, Warnungen und Diagnose. Er nutzt nur
-`payment_date`; Buchungen ohne Wertstellungsdatum werden gewarnt und nicht
-eingerechnet.
-
-### Reverse-Charge (--rc eu|third-country)
-
-Verwende `--rc eu` oder `--rc third-country` bei ausländischen Anbietern ohne deutsche USt:
-- OpenAI, Anthropic
-- Render, Vercel, Netlify
-- AWS, Google Cloud, Azure
-- GitHub, Stripe
-
-Berechnet automatisch 19% USt.
-- **Kleinunternehmer**: Erhöht die Zahllast.
-- **Regelbesteuerung**: Bucht USt und VorSt gleichzeitig (Zahllast-neutral).
-Hinweis: Bei `small_business` setzt RC automatisch `vat_output`, `vat_input` bleibt `0.0`.
-Die Anwendung leitet `eu`/`third-country` nicht automatisch aus Anbieter oder Land ab.
-Bestehende RC-Buchungen ohne EU-/Drittland-Typ per `euer update expense <ID> --rc ...`
-nachpflegen.
-
-### Prepaid-Guthaben & Vorauszahlungen (z. B. Google AI Studio, OpenAI)
-
-Bei Anbietern mit Guthabenaufladung (Prepaid):
-1. **Zahlung erfassen:** Die Guthabenaufladung wird direkt bei Zahlung/Kontoabbuchung mit dem Zahlungsbeleg als Ausgabe erfasst (`--amount -XX.XX`, `--rc eu|third-country`). Als `--invoice-date` pragmatisch das Datum des Zahlungsbelegs/Kontoauszugs nutzen. Eine Warnung bei Wertstellungsdatum vor Rechnungsdatum kann ignoriert werden.
-2. **Monatliche Verbrauchsrechnung:** Weist die spätere Monatsrechnung einen Zahlbetrag von 0,00 EUR auf (da mit Guthaben verrechnet), wird sie **nicht** als neue Ausgabe gebucht (Vermeidung von Doppelzählung). Sie wird im Belegordner abgelegt und optional in den `--notes` der Zahlungsbuchung vermerkt. (Details: siehe `docs/FAQ.md`).
-
-### Bewirtungsaufwendungen
-
-Bewirtung mit Reverse Charge und positive Erstattungen sind derzeit nicht
-unterstützt. Nicht durch Vorzeichenwechsel oder eine andere Kategorie umgehen.
-Altbestände separat prüfen; der Bericht bleibt dafür unvollständig.
-
-Eine geschäftliche Bewirtung wird als ein Zahlungsvorgang in
-`Bewirtungsaufwendungen` erfasst. Bei 129,00 € Zahlbetrag und 19,00 € belegter
-Vorsteuer ergibt sich eine Kostenbasis von 110,00 €, davon 77,00 € abziehbar und
-33,00 € nicht abziehbar. Die 19,00 € Vorsteuer bleiben vollständig erhalten.
-Freiwilliges Trinkgeld ist bereits Teil des Zahlbetrags und wird nur als
-Plausibilitätsangabe erfasst.
-
-```bash
-euer add expense --payment-date YYYY-MM-DD --vendor "Restaurant" \
-    --category "Bewirtungsaufwendungen" --amount -129.00 --vat 19.00 --tip 10.00
-```
-
-Prüfe die Rechnung und den Nachweis statt einen Steuersatz zu schätzen. Alte
-Bewirtungsbuchungen werden bei `euer init` als `needs_review` markiert. Positive
-alte Vorsteuer kann nur als vorläufige Aufteilung erscheinen; fehlende oder
-ungeprüfte Daten machen die EÜR-Summe und den Gewinn unvollständig. Der
-nicht abziehbare 30-%-Anteil ist keine Privatentnahme. Bewirtung ausschließlich
-eigener Arbeitnehmer gehört nicht in diese Kategorie.
-
-### Kategorien
-
-EÜR-Zeilen sind Formularjahr-Metadaten. Für 2025 und 2026 mitgelieferte
-Zuordnungen werden mit `euer list categories --year YYYY` angezeigt; ohne
-geprüfte Zuordnung wird keine Zeilennummer behauptet. Ein Teil der Zeilen hat
-sich zum Formularjahr 2026 verschoben. Verlasse dich nicht auf eine feste
-Jahresliste aus dem Gedächtnis.
-
-`Nicht steuerbare Umsätze` ist fachlich das Unterfeld „Davon nicht steuerbare
-Kleinunternehmerumsätze (§ 19 Abs. 2 UStG)“ in Zeile 13. Es wird nur für
-Kleinunternehmer verwendet. Eine Buchung zählt genau einmal zu den Einnahmen;
-`summary` zeigt den Betrag zusätzlich als „davon“-Wert unter Zeile 12.
-`Gezahlte USt` ist die Zahlung ans Finanzamt; sie ist nicht die abziehbare
-Vorsteuer (2025 Zeile 57, 2026 Zeile 58). Privatentnahmen und Privateinlagen
-haben ebenfalls jahresabhängige Zeilen; `private-summary` zeigt die geprüfte
-Jahreszuordnung.
-
-### Datenmodell (Interpretation der Spalten)
-
-#### Ausgaben (expenses)
-| Spalte | Bedeutung | Format / Hinweis |
-|--------|-----------|------------------|
-| `id` | Eindeutige ID | Automatisch vergeben |
-| `payment_date` | Wertstellungsdatum (EÜR) | `YYYY-MM-DD`, kann leer sein |
-| `invoice_date` | Rechnungsdatum | `YYYY-MM-DD`, kann leer sein |
-| `vendor` | Lieferant | Name des Anbieters |
-| `category` | Kategorie | Name der Ausgabenkategorie |
-| `amount_eur`| Bruttobetrag | **Immer negativ** (z.B. -10.00) |
-| `rc` | Reverse-Charge-Typ | leer, `eu`, `third-country` oder `unclassified` |
-| `vat_input` | Vorsteuer | Forderung an FA (positiv), nur bei Regelbest. |
-| `vat_output`| RC Umsatzsteuer | Schuld an FA (positiv), bei RC |
-| `vat_rate` | USt-Satz | `19`, `7`, `0` oder leer |
-| `vat_code` | UStVA-Klasse | z.B. `input_invoice`, `reverse_charge_eu` |
-| `account` | Konto | Verwendetes Bankkonto/Zahlart |
-| `receipt_name`| Belegdatei | Name der PDF/JPG Datei |
-| `notes` | Notizen | Optionale Bemerkungen |
-
-#### Einnahmen (income)
-| Spalte | Bedeutung | Format / Hinweis |
-|--------|-----------|------------------|
-| `id` | Eindeutige ID | Automatisch vergeben |
-| `payment_date` | Wertstellungsdatum (EÜR) | `YYYY-MM-DD`, kann leer sein |
-| `invoice_date` | Rechnungsdatum | `YYYY-MM-DD`, kann leer sein |
-| `source` | Kunde/Quelle | Wer hat gezahlt? |
-| `category` | Kategorie | Name der Einnahmenkategorie |
-| `amount_eur`| Bruttobetrag | **Immer positiv** (z.B. 1500.00) |
-| `vat_output`| Umsatzsteuer | Schuld an FA (positiv), nur bei Regelbest. |
-| `vat_rate` | USt-Satz | `19`, `7`, `0` |
-| `vat_code` | UStVA-Klasse | `output_standard_19`, `output_reduced_7`, `output_zero_0`, `output_tax_free_no_vorsteuer` |
-| `receipt_name`| Belegdatei | Name der Rechnungsdatei |
-| `notes` | Notizen | Optionale Bemerkungen |
-
-#### Privatvorgänge (private_transfers)
-| Spalte | Bedeutung | Format / Hinweis |
-|--------|-----------|------------------|
-| `id` | Eindeutige ID | Automatisch vergeben |
-| `date` | Buchungsdatum | `YYYY-MM-DD` |
-| `type` | Richtung | `deposit` oder `withdrawal` |
-| `amount_eur` | Betrag | **Immer positiv** |
-| `description` | Beschreibung | Pflichtfeld |
-| `related_expense_id` | Referenz | Optional, z.B. Ausgleich |
-
-### Belegnamen
-
-Format: `YYYY-MM-DD_Anbieter.pdf` oder `YYYYMMDD_Anbieter.pdf`
-
-Beispiele:
-- `2026-01-15_Render.pdf`
-- `20260115_OpenAI.pdf`
-
-Belege werden unter einem gemeinsamen Root jahrzentriert erwartet:
-```
-<root>/<Jahr>/<Typ>/<Belegname>
-```
-
-Standard:
-- Ausgaben: `<root>/<Jahr>/Ausgaben/<Belegname>`
-- Einnahmen: `<root>/<Jahr>/Einnahmen/<Belegname>`
-
-Das Jahr des Belegordners folgt dem `payment_date` der Buchung
-(Zufluss-/Abflussprinzip). Ohne `payment_date` kann `euer` beim Buchen keinen
-Jahresordner sicher ableiten.
-
-Hinweis: Fehlt die Dateiendung, prüft `euer receipt check` automatisch
-`.pdf`, `.jpg`, `.jpeg` und `.png`.
-
-## Typische Workflows
-
-### Monatliche Buchung
-
-1. Prüfe bestehende Einträge: `euer list expenses --year 2026 --month 1`
-2. Buche neue Ausgaben mit `add expense`
-3. Buche neue Einnahmen mit `add income`
-4. Prüfe Belege: `euer receipt check --year 2026`
-
-### Jahresabschluss
-
-1. Zusammenfassung anzeigen: `euer summary --year 2026`
-2. UStVA-Arbeitsbericht prüfen: `euer vat-report --year 2026`
-3. Export erstellen: `euer export --year 2026 --format xlsx`
-4. Beleg-Vollständigkeit prüfen: `euer receipt check --year 2026`
-
-### Korrektur & Undo
-
-1. Eintrag finden: `euer list expenses --year 2026`
-2. Aktualisieren: `euer update expense <ID> --amount -XX.XX`
-3. Historie prüfen: `euer audit <ID>`
-4. Letzte Aktion rückgängig machen: `euer undo --force`
-5. Gelöschte Buchung wiederherstellen: `euer trash list` und `euer restore <ID>`
-
-### Sicherheitsregeln für Agenten (Guardrails)
-
-- **Betragsschwelle (> 5.000 €):** Bei Beträgen über 5.000,00 € verlangt die CLI
-  `--force`. Agenten müssen den Betrag am Beleg doppelt verifizieren, bevor sie `--force` setzen.
-- **Duplikaterkennung:** Schlägt `suspicious_duplicate` fehl, existiert im Fenster von ±2 Tagen
-  bereits eine Buchung mit gleichem Betrag und ähnlichem Namen. Nur nach Prüfung auf berechtigte
-  Mehrfachbuchung `--allow-duplicate` übergeben.
-- **Umsatzsteuer-Mathematik:** Wenn `--vat` und `--vat-rate` (19 oder 7) übergeben werden,
-  muss der Steuerbetrag rechnerisch zum Bruttobetrag passen (Toleranz: max. 0,02 €).
-- **Zukunftszahlungen:** Zahlungsdaten (`payment_date`) in der Zukunft werden strikt abgelehnt.
-- **Löschen:** `euer delete` verschiebt standardmäßig in den Papierkorb (Soft-Delete).
-  Verwende niemals `--purge`, es sei denn, der Nutzer verlangt dies ausdrücklich.
-- **Export:** `euer export` blockiert Überschreiben im Zielordner ohne `--force`.
-- **Datenbank-Neuanlage:** `euer init` erfordert bei nicht existierender DB zwingend `--create`.
-
-## Beispiele
-
-### SaaS-Ausgabe buchen (Render)
-
-```bash
-euer add expense \
-    --date 2026-01-04 \
-    --vendor "RENDER.COM" \
-    --category "Laufende EDV-Kosten" \
-    --amount -22.71 \
-    --foreign "26.60 USD" \
-    --receipt "2026-01-04_Render.pdf" \
-    --rc third-country
-```
-
-### Kundenrechnung buchen
-
-```bash
-euer add income \
-    --date 2026-01-20 \
-    --source "Kunde ABC GmbH" \
-    --category "Umsatzsteuerpflichtige Betriebseinnahmen" \
-    --amount 2500.00 \
-    --vat-rate 19 \
-    --receipt "2026-01-20_Rechnung_001.pdf"
-```
-
-### Privat bezahlte Rechnung buchen (Sacheinlage)
-
-```bash
-euer add expense \
-    --date 2026-01-15 \
-    --vendor "Amazon" \
-    --category "Arbeitsmittel" \
-    --amount -19.99 \
-    --account "p-sparkasse-giro" \
-    --receipt "2026-01-15_Amazon.pdf"
-```
-
-Hinweis: Wenn `account` einen in `config.toml [accounts].private` konfigurierten Wert hat
-(z.B. `p-sparkasse-giro`), wird die Ausgabe automatisch als Sacheinlage (Privateinlage) erfasst.
-Alternativ kann `--private-paid` explizit gesetzt werden.
-
-### Anteilig absetzbare Ausgabe buchen (gemischte Nutzung)
-
-Bei Ausgaben mit sowohl privater als auch geschäftlicher Nutzung wird **nur der geschäftliche Anteil** gebucht.
-Der volle Rechnungsbetrag wird in `--notes` dokumentiert.
-
-**Beispiel: Internet-Anschluss, 50% geschäftlich, privat bezahlt:**
-
-```bash
-euer add expense \
-    --date 2026-01-20 \
-    --vendor "Vodafone" \
-    --category "Telekommunikation" \
-    --amount -24.95 \
-    --account "p-sparkasse-giro" \
-    --receipt "2026-01-20_Vodafone.pdf" \
-    --notes "Internet 49,90 EUR, 50% geschäftlich"
-```
+Dieser Skill ist die primäre Bedienungsanleitung für Agenten. Übernimm bei
+Buchhaltungsaufträgen die Rolle eines gewissenhaften EÜR-Buchhalters. Prüfe vor fachlichen Befehlen
+mit `euer doctor --json` die aktive Installation und ihren Skill-Status.
+Lies das persönliche Mandanten-Dossier im Buchhaltungsordner: Da moderne KI-Agenten
+eine im Projektordner hinterlegte `AGENTS.md` automatisch einlesen, wird diese Datei
+im Buchhaltungsordner des Nutzers gezielt als **Mandanten-Dossier** geführt. Sie enthält den steuerlichen und betrieblichen Mandantenkontext: Steuerstatus, USt-Regelung, Konten, Belegpfade, Lieferantenregeln und Sonderfälle.
+Ermittle EÜR-Zeilennummern für das konkrete Jahr mit `euer list categories --year YYYY`.
+
+Bearbeite oder ergänze diesen Skill einschließlich seiner Referenzen nicht lokal.
+Aktualisiere ihn ausschließlich durch vollständigen Austausch gegen den mit der
+CLI ausgelieferten Stand. Dessen Version und absoluten Quellpfad findest du mit
+`euer doctor --json` unter `skill.expected_version` und `skill.bundle_path`.
+Die Bezugsquelle im Paket ist `euercli/assets/skill/`. Mandantenspezifische Angaben
+gehören in das persönliche Mandanten-Dossier (`AGENTS.md`), nicht in den Skill.
+
+Nach einem Update lies die neue `SKILL.md` und benötigte Referenzen oder beginne
+eine neue Sitzung. Bestätige **erst danach** die Version aus deiner tatsächlich
+geladenen `SKILL.md` mit `euer setup --set skill.version "1.1.0"`.
+Die Bestätigung ist eine Selbstauskunft. Bei fehlenden Update-Rechten informiere
+den Nutzer; `--ignore-skill-version` ermöglicht einen einzelnen CLI-Aufruf.
+
+## Arbeitsablauf
+
+1. Prüfe Arbeitsordner, Mandanten-Dossier (`AGENTS.md`), Config, DB und `euer doctor --json`.
+   Ist die CLI nicht verfügbar, nutze die Installationsreferenz und melde den
+   fehlenden Zugriff; behaupte keine ausgeführten Buchungen.
+2. Bei fehlender Einrichtung lies [Onboarding](references/onboarding.md); frage nur
+   fehlende Angaben ab. Für Installation und Updates lies
+   [Installation und Einrichtung](references/installation_and_setup.md).
+3. Lies bei Rechnungen, Kontoauszügen, Belegstapeln und Monatsabgleichen den
+   [Buchungs- und Abgleichablauf](references/accounting_workflow.md). Prüfe vor
+   neuen Buchungen vorhandene und unvollständige Einträge, um Doppelbuchungen
+   zu vermeiden. Die CLI liest PDFs nicht selbst; nutze verfügbare Text- oder
+   Bildwerkzeuge und prüfe die extrahierten Daten am Original.
+4. Für jeden Befehl prüfe [CLI-Referenz](references/cli_reference.md), Beleg und
+   [Fachregeln](references/domain_rules.md). Verwende den tatsächlichen EUR-Zahlfluss
+   und das Wertstellungsdatum für die EÜR; das Rechnungsdatum dient unter anderem
+   der Belegbenennung. Ausgaben sind negativ, Einnahmen und separate
+   Privateinlagen/-entnahmen positiv. Erfinde fehlende Zahlungen, Steuersätze,
+   Vorsteuerbeträge oder Reverse-Charge-Typen nicht.
+5. Kläre Unstimmigkeiten statt Beträge ungefähr zuzuordnen. Erfasse nur
+   nachvollziehbare Angaben; halte fehlende Belege oder offene Klassifikationen
+   sichtbar. Kontrolliere danach `euer incomplete list`, Belegpfade und passende
+   Reports. Gib bei mehreren Buchungen eine Zusammenfassung mit offenen Punkten.
+6. Schlage nach einer Korrektur nur dann eine Änderung des Mandanten-Dossiers (`AGENTS.md`)
+   vor, wenn sich daraus eine wiederkehrende Mandantenregel ergibt. Ersetze
+   persönliche Agentendateien niemals automatisch.
+
+## Referenzen
+
+- [Installation und Einrichtung](references/installation_and_setup.md): CLI,
+  Agentensysteme, Config und vollständige Skill-Updates.
+- [Onboarding](references/onboarding.md): gemeinsames Interview und Mandanten-Dossier (`AGENTS.md`).
+- [Buchungs- und Abgleichablauf](references/accounting_workflow.md): Rechnungen,
+  Kontoauszüge, Belegabgleich und Nachkontrolle.
+- [CLI-Referenz](references/cli_reference.md): Befehle, Parameter, Voraussetzungen,
+  Ausgaben und Beispiele.
+- [Fachregeln](references/domain_rules.md): Steuer-, Buchungs- und Sonderfallregeln.

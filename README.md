@@ -91,7 +91,7 @@ Der Homebrew-Tap übernimmt PyPI-Releases zeitversetzt (geplant spätestens
 innerhalb von sechs Stunden). Prüfe mit `brew info euer` und `euer --version`,
 welche Version verfügbar ist und welche dein Terminal startet. Für den Wechsel
 von einer alten `pipx`-/`euercli`-Installation zu Homebrew siehe den
-[Upgrade-Leitfaden](docs/USER_GUIDE.md#von-pipx-zu-homebrew-wechseln).
+[Upgrade-Leitfaden](docs/skills/euer-buchhaltung/references/installation_and_setup.md#von-pipx-zu-homebrew-wechseln).
 
 **Entwicklungsinstallation unter Windows (PowerShell):**
 
@@ -102,7 +102,7 @@ python -m pip install -e ".[dev,xlsx]"
 python -m unittest discover -s tests
 ```
 
-(Details siehe [User Guide](https://github.com/curiousmarkus/euer/blob/main/docs/USER_GUIDE.md#installation))
+(Details siehe [Installationsreferenz](docs/skills/euer-buchhaltung/references/installation_and_setup.md#installation))
 
 ### 2. Personalisierung
 
@@ -114,11 +114,16 @@ legt dein persönliches Mandanten-Dossier (`AGENTS.md`) sowie die Konfiguration 
 
 Alternativ kannst du den [Onboarding-Prompt](docs/templates/onboarding-prompt.md)
 in einem separaten LLM-Chat verwenden.
-Die gemeinsame [Buchhalter-Rolle](docs/templates/accountant-role.md) ist eine
-Vorlage für den gewählten Agenten. Bei Updates zeigen die
+Der Skill enthält die Buchhalter-Grundregeln und kann auch von einem
+allgemeinen Claude-Code- oder Hermes-Agenten genutzt werden. Die
+[Buchhalter-Rolle](docs/templates/accountant-role.md) ist nur eine optionale
+Vorlage für eigens konfigurierte Agenten. Bei Updates zeigen die
 [Release Notes](docs/RELEASE_NOTES.md) getrennt an, ob Skill, Rolle oder
 persönliches Mandanten-Dossier geprüft werden müssen. Agentendateien und
 `AGENTS.md` werden durch `brew upgrade` oder `pipx upgrade` nicht ersetzt.
+Prüfe nach dem Update `euer doctor --json`, ersetze den Skill vollständig aus
+`skill.bundle_path`, lies ihn neu und bestätige dann seine Version mit
+`euer setup --set skill.version "1.1.0"`.
 
 ### 3. Initialisierung
 Falls noch nicht durch den Agenten erledigt: Wechsle in deinen Buchhaltungsordner
@@ -160,8 +165,9 @@ Gib es an deinen KI-Agenten:
 Detaillierte Anleitungen findest du in unseren Guides:
 
 - 🧭 **[User Journey](docs/USER_JOURNEY.md)** – Von Installation und Onboarding über den Monatsabgleich bis zur EÜR, mit Ablaufdiagramm.
-- 📖 **[User Guide](https://github.com/curiousmarkus/euer/blob/main/docs/USER_GUIDE.md)** – Installation, Workflows und alle Befehle.
-- ❓ **[FAQ](https://github.com/curiousmarkus/euer/blob/main/docs/FAQ.md)** – Häufige Fragen, Sonderfälle (z. B. Prepaid-Guthaben) und Best Practices.
+- 🧩 **[Konzept und Grenzen](docs/CONCEPTS.md)** – Was euer und der Agent übernehmen.
+- 📖 **[CLI-Referenz](docs/skills/euer-buchhaltung/references/cli_reference.md)** – Befehle, Optionen und Workflows.
+- ❓ **[Fachregeln und Sonderfälle](docs/skills/euer-buchhaltung/references/domain_rules.md)** – Buchungsregeln und Beispiele.
 - 🧾 **[Release Notes](https://github.com/curiousmarkus/euer/blob/main/docs/RELEASE_NOTES.md)** – Upgrade-Hinweise für bestehende lokale Instanzen.
 - 🤖 **[SKILL "euer-buchhaltung"](https://github.com/curiousmarkus/euer/blob/main/docs/skills/euer-buchhaltung/SKILL.md)** – Die Anleitung für deinen Agenten
 - 🤖 **[Agent Templates](https://github.com/curiousmarkus/euer/tree/main/docs/templates)** – Konfigurationsvorlagen für KI-Buchhalter

@@ -15,7 +15,7 @@ Beleg-Management, CSV/Excel-Export.
 ### 1. KI-Agenten sind die primären Nutzer
 Die Software ist primär für **KI-Agenten als eigentliche Nutzer** gedacht. Der Mensch hinter dem Agenten bedient die CLI im Normalfall nicht selbst, sondern delegiert die Buchführung. Sein Hauptinteresse ist, dass der Agent die Buchhaltung **möglichst fehlerfrei und autonom** übernehmen kann.
 - Jede Entscheidung bei CLI-Interface, Fehlermeldungen, Parametern und Validierungen muss daraufhin optimiert sein, dem Agenten verlässliche Leitplanken zu bieten und Fehlbuchungen deterministisch abzufangen.
-- Strukturierte Rückmeldungen (inkl. `--json`), klare Fehlertexte und ein lückenloser Audit-Trail sind zentrale Säulen dieses Prinzips.
+- Strukturierte Rückmeldungen, klare Fehlertexte und ein lückenloser Audit-Trail sind zentrale Säulen dieses Prinzips.
 
 ### 2. Das AGENTS.md-Konzept: Coding-Guidelines vs. Mandanten-Dossier
 Da moderne KI-Agenten (Claude Code, Cursor, Codex, OpenCode etc.) standardmäßig eine im jeweiligen Arbeitsordner hinterlegte `AGENTS.md` einlesen und berücksichtigen, gehört es zum integralen Konzept von `euer`, diese Konvention gezielt zu nutzen:

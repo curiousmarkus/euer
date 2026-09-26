@@ -50,6 +50,14 @@ def cmd_doctor(args) -> None:
             print(f"                      {idx}. {d['path']}{mark}")
     print()
 
+    skill = report["skill"]
+    print("Buchhaltungs-Skill:")
+    print(f"  Bestätigte Version: {skill['confirmed_version'] or '(keine)'}")
+    print(f"  Erwartete Version:  {skill['expected_version'] or '(nicht lesbar)'}")
+    print(f"  Bundle-Pfad:        {skill['bundle_path']}")
+    print(f"  Prüfstatus:         {skill['status']}")
+    print()
+
     # 2. Datenbank
     db = report["database"]
     print("Datenbank:")
@@ -99,21 +107,29 @@ def cmd_doctor(args) -> None:
 
     if proj_cfg["exists"]:
         if proj_cfg["valid"]:
-            print(f"  Projekt-Config:     [✓] {proj_cfg['path']} (db: {proj_cfg['db_path'] or 'keine'})")
+            print(
+                f"  Projekt-Config:     [✓] {proj_cfg['path']} (db: {proj_cfg['db_path'] or 'keine'})"
+            )
         else:
             print(f"  Projekt-Config:     [✗] {proj_cfg['path']} (Fehler: {proj_cfg['error']})")
 
     rec = dirs["receipts_root"]
     if rec["configured"]:
         if rec["exists"]:
-            rec_perm = "schreibbar" if rec["writable"] else ("lesbar" if rec["readable"] else "eingeschränkt")
+            rec_perm = (
+                "schreibbar"
+                if rec["writable"]
+                else ("lesbar" if rec["readable"] else "eingeschränkt")
+            )
             print(f"  Belege-Root:        [✓] {rec['configured']} ({rec_perm})")
         else:
             print(f"  Belege-Root:        [⚠] {rec['configured']} (nicht gefunden)")
 
     exp = dirs["exports_directory"]
     if exp["exists"]:
-        exp_perm = "schreibbar" if exp["writable"] else ("lesbar" if exp["readable"] else "eingeschränkt")
+        exp_perm = (
+            "schreibbar" if exp["writable"] else ("lesbar" if exp["readable"] else "eingeschränkt")
+        )
         print(f"  Exporte:            [✓] {exp['configured']} ({exp_perm})")
     else:
         print(f"  Exporte:            [⚠] {exp['configured']} (Ordner wird bei Export erzeugt)")

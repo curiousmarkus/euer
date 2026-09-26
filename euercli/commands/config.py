@@ -78,3 +78,9 @@ def cmd_config_show(args):
     audit_user = get_audit_user(config)
     print("[user]")
     print(f"  name = {audit_user}")
+    skill = config.get("skill", {})
+    skill_version = (
+        skill.get("version", "(nicht bestätigt)") if isinstance(skill, dict) else "(ungültig)"
+    )
+    print("[skill]")
+    print(f"  version = {skill_version}")

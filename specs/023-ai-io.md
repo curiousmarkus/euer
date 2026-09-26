@@ -20,11 +20,17 @@ Jeder lesende Befehl (Read-Operation) und jeder Report muss zwingend strukturier
   {
     "status": "error",
     "error_code": "outdated_skill",
-    "message": "Skill (v1.2.0) ist veraltet.",
-    "remediation": "euer setup --set skill.version 1.3.0"
+    "message": "Bestätigte Skill-Version weicht vom lokalen Bundle ab; Skill vollständig austauschen und neu laden.",
+    "confirmed_version": "1.2.0",
+    "expected_version": "1.3.0",
+    "bundle_path": "/absoluter/pfad/euercli/assets/skill",
+    "remediation": "euer setup --set skill.version \"1.3.0\""
   }
   ```
 - Dadurch muss der Agent nicht mit Regex arbeiten, um Tabellen oder Warnungen zu parsen.
+- Die Skill-Sperre aus [Spec 022](022-skill-updates.md) liefert bei Befehlen mit
+  `--json` bereits diesen stderr-Vertrag. Ohne JSON-Modus erscheint derselbe
+  Update-Hinweis als lesbarer Text, einschließlich `--ignore-skill-version`.
 
 ## 2. Der Dry-Run Modus (Probebuchungen für KIs)
 

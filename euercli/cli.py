@@ -1,5 +1,6 @@
 import argparse
 import importlib.metadata
+import json
 import sys
 from pathlib import Path
 
@@ -47,6 +48,7 @@ from .commands import (
 )
 from .constants import DEFAULT_DB_PATH, DEFAULT_EXPORT_DIR
 from .project_config import get_project_db_path, project_config_path
+from .skill import skill_status
 
 
 def load_plugins(subparsers: argparse._SubParsersAction) -> None:
@@ -69,7 +71,7 @@ def load_plugins(subparsers: argparse._SubParsersAction) -> None:
             )
 
 
-def main(argv: list[str] | None = None) -> None:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="EÜR - Einnahmenüberschussrechnung CLI",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -84,6 +86,11 @@ def main(argv: list[str] | None = None) -> None:
         "--db",
         default=None,
         help=f"Pfad zur Datenbank (default: {DEFAULT_DB_PATH})",
+    )
+    parser.add_argument(
+        "--ignore-skill-version",
+        action="store_true",
+        help="Umgeht die Skill-Versionssperre für diesen Aufruf",
     )
 
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -768,16 +775,62 @@ def main(argv: list[str] | None = None) -> None:
     incomplete_list_parser.set_defaults(func=cmd_incomplete_list)
 
     # --- doctor ---
-    doctor_parser = subparsers.add_parser(
-        "doctor", help="Umgebungs- und Pre-Flight-Diagnose"
-    )
-    doctor_parser.add_argument(
-        "--json", action="store_true", help="Maschinenlesbare JSON-Ausgabe"
-    )
+    doctor_parser = subparsers.add_parser("doctor", help="Umgebungs- und Pre-Flight-Diagnose")
+    doctor_parser.add_argument("--json", action="store_true", help="Maschinenlesbare JSON-Ausgabe")
     doctor_parser.set_defaults(func=cmd_doctor)
 
     load_plugins(subparsers)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> None:
+    parser = build_parser()
+    if argv is None:
+        argv = sys.argv[1:]
+    # Das globale Notfall-Flag darf auch hinter dem letzten Unterbefehl stehen.
+    ignored = "--ignore-skill-version" in argv
+    argv = [item for item in argv if item != "--ignore-skill-version"]
     args = parser.parse_args(argv)
+    args.ignore_skill_version = ignored
+    exempt = args.command in {"doctor", "config"} or (
+        args.command == "setup" and args.set is not None and args.set[0] == "skill.version"
+    )
+    if not exempt:
+        skill = skill_status()
+        if skill["status"] == "error":
+            parser.exit(1, f"Fehler: {skill.get('error', 'Skill oder Config nicht lesbar')}\n")
+        if skill["status"] != "current" and not args.ignore_skill_version:
+            confirmed = skill["confirmed_version"] or "(nicht bestätigt)"
+            expected = skill["expected_version"]
+            message = (
+                "[✗] FEHLER: Deine bestätigte Skill-Version weicht von der erwarteten Version ab.\n"
+                f"Bestätigt: {confirmed}; erwartet: {expected}\n"
+                f"Skill-Bundle: {skill['bundle_path']}\n"
+                "Ersetze deinen Skill vollständig durch den mitgelieferten Stand über den "
+                "Installationsweg deines Agentensystems. Lies die aktualisierten Anweisungen.\n"
+                "Bestätige anschließend die verwendete Version mit: "
+                f'euer setup --set skill.version "{expected}"\n'
+                "Falls du das Update aufgrund fehlender Rechte nicht durchführen kannst, "
+                "hänge --ignore-skill-version an deinen Befehl an, um die Blockade zu umgehen."
+            )
+            if getattr(args, "json", False):
+                print(
+                    json.dumps(
+                        {
+                            "status": "error",
+                            "error_code": "outdated_skill",
+                            "message": message,
+                            "confirmed_version": skill["confirmed_version"],
+                            "expected_version": expected,
+                            "bundle_path": skill["bundle_path"],
+                            "remediation": f'euer setup --set skill.version "{expected}"',
+                        },
+                        ensure_ascii=False,
+                    ),
+                    file=sys.stderr,
+                )
+                parser.exit(1)
+            parser.exit(1, message + "\n")
     args.is_explicit_db = args.db is not None
     args.project_root = Path.cwd()
     if getattr(args, "save_db_path", False) and not args.is_explicit_db:
@@ -786,13 +839,18 @@ def main(argv: list[str] | None = None) -> None:
         try:
             project_db = get_project_db_path(args.project_root)
         except (ValueError, OSError) as exc:
-            message = f"Ungültige Projekt-Config {project_config_path(args.project_root)}: {exc}"
-            if args.command in {"init", "doctor"} and getattr(args, "json", False):
-                import json
-
-                print(json.dumps({"status": "error", "error": message}, ensure_ascii=False))
-                parser.exit(1)
-            parser.exit(1, f"Fehler: {message}\n")
+            if args.command == "doctor":
+                # doctor soll den Fehler selbst diagnostizieren und alle anderen
+                # Prüfungen einschließlich Skill-Auskunft trotzdem ausgeben.
+                project_db = None
+            else:
+                message = (
+                    f"Ungültige Projekt-Config {project_config_path(args.project_root)}: {exc}"
+                )
+                if args.command == "init" and getattr(args, "json", False):
+                    print(json.dumps({"status": "error", "error": message}, ensure_ascii=False))
+                    parser.exit(1)
+                parser.exit(1, f"Fehler: {message}\n")
         args.db = str(project_db or args.project_root / "euer.db")
         args.db_from_project_config = project_db is not None
     else:

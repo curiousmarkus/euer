@@ -19,7 +19,10 @@ Erhalte diese Inhalte; ergänze ein klar abgegrenztes Mandanten-Dossier oder ver
 ein separat vereinbartes Dossier. Fehlt nur die Datei, aber alle Angaben sind bereits
 bekannt, erstelle sie daraus, statt das ganze Interview zu wiederholen.
 Ein Skill- oder Tool-Update ersetzt eine vorhandene persönliche `AGENTS.md`
-niemals automatisch. Lokale Skill-Kopien vor Austausch mit Upstream vergleichen.
+niemals automatisch. Den Skill bei einem Update vollständig aus dem mit der CLI
+ausgelieferten Bundle ersetzen und nach erneutem Laden dessen Version mit
+`euer setup --set skill.version VERSION` bestätigen. `euer doctor --json` nennt
+Bundle-Pfad, erwartete Version und Prüfstatus.
 
 | Ausgangslage | Vorgehen |
 |---|---|

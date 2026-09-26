@@ -1,10 +1,14 @@
 # Release Notes
 
 Diese Hinweise richten sich an Nutzer:innen mit bestehenden lokalen Instanzen.
-Für Installationen ab 0.8.1 ergänzen sie die normale Update-Sequenz aus dem User Guide:
+Für Installationen ab 0.8.1 ergänzen sie die normale Update-Sequenz aus der
+[Installationsreferenz](skills/euer-buchhaltung/references/installation_and_setup.md):
 
 ```bash
 pipx upgrade euer
+euer doctor --json
+# Skill vollständig aus skill.bundle_path installieren und neu laden
+euer setup --set skill.version "1.1.0"
 euer init
 euer incomplete list
 euer summary --year 2026
@@ -12,7 +16,7 @@ euer summary --year 2026
 
 Bei einer bestehenden `euercli`-Installation zuerst die einmalige Migration im
 Abschnitt `0.8.1` ausführen. Beim Wechsel von pipx zu Homebrew zuerst den
-[Upgrade-Leitfaden](USER_GUIDE.md#von-pipx-zu-homebrew-wechseln) lesen. Der
+[Upgrade-Leitfaden](skills/euer-buchhaltung/references/installation_and_setup.md#von-pipx-zu-homebrew-wechseln) lesen. Der
 Homebrew-Tap übernimmt PyPI-Releases zeitversetzt (geplant spätestens innerhalb
 von sechs Stunden). `brew info euer` zeigt die Tap-Version; `euer --version`
 zeigt die tatsächlich gestartete Installation. Die historischen Abschnitte
@@ -26,13 +30,14 @@ zusätzlich aktualisiert werden. Das betrifft insbesondere:
 - gezielte Änderungen am persönlichen Mandanten-Dossier, falls in der jeweiligen
   Release Note ausdrücklich genannt
 
-Skill- und Agenten-Vorlagen vor einem Austausch mit lokalen Kopien vergleichen.
+Den Skill vollständig aus dem lokalen Bundle ersetzen und neu laden;
+Rollen- und Agenten-Vorlagen vor einem Austausch mit lokalen Kopien vergleichen.
 Die persönliche `AGENTS.md` darf nie automatisch ersetzt werden, weil sie individuelle
 Pfade, Konten, Lieferanten-Mappings und steuerliche Stammdaten enthält.
 Bei jedem neuen Release steht der konkrete Handlungsbedarf für Skill, Rolle,
 Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
 „Agenten-Dateien“. Die wiederkehrende Prozedur beschreibt der
-[User Guide](USER_GUIDE.md#agenten-dateien-aktualisieren).
+[Installationsreferenz](skills/euer-buchhaltung/references/installation_and_setup.md#agenten-dateien-aktualisieren).
 
 ## Unveröffentlicht
 
@@ -40,15 +45,20 @@ Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
 
 | Bereich | Änderung | Aktion nach diesem Release |
 |---|---|---|
-| Skill | Sicherheits-Guardrails (> 5.000 €, Duplikaterkennung, USt-Prüfung), Undo/Restore, Migrationshinweise und Projekt-DB-Pfad ergänzt | Lokale Kopie mit `docs/skills/euer-buchhaltung/` des Release-Tags vergleichen |
-| Rolle | `accountant-agent.md` heißt jetzt `accountant-role.md`; Privatvorgänge präzisiert | Lokale Agentendatei nach Diff gezielt anpassen; nicht durch die neue Vorlage ersetzen |
+| Skill | Unversionierter Stand → 1.1.0; Aufträge zu Rechnungen, Kontoauszügen und Abgleichen aktivieren den Skill; Buchhalter-Grundregeln und Arbeitsablauf sind enthalten | Skill vollständig aus `skill.bundle_path` ersetzen, neu laden und Version bestätigen |
+| Rolle | `accountant-agent.md` heißt jetzt `accountant-role.md` und ist ein optionaler kurzer Einstieg; die allgemeinen Regeln liegen im Skill | Nur bei eigens konfigurierten Buchhaltungsagenten die lokale Rollen-Datei nach Diff anpassen |
 | Agenten-Adapter | Noch keine plattformspezifischen Dateien im Release | Keine automatische Änderung an `SOUL.md`, `CLAUDE.md` oder `AGENTS.md` |
 | Mandanten-Dossier | Keine automatische Migration; keine festen EÜR-Zeilennummern in Lieferantenregeln | Bestehende Regeln prüfen und Änderungen nur als Vorschlag übernehmen |
 
-Die Skill- und Rollen-Versionierung sowie eine automatische Diff-Vorschau
-sind in [Spec 022](../specs/022-skill-updates.md) geplant und hier noch
-nicht verfügbar. Quellen für dieses unveröffentlichte Update erst nach
-Veröffentlichung vom passenden Release-Tag übernehmen.
+Der Skill ist nun mit Version 1.1.0 im CLI-Paket enthalten. Nach dem Paketupdate
+`euer doctor --json` ausführen, den Ordner unter `skill.bundle_path` vollständig
+in das Agentensystem übernehmen, die Anweisungen neu laden und erst dann mit
+`euer setup --set skill.version "1.1.0"` bestätigen. Die bisher unversionierte
+Skill-Kopie wird ersetzt; die persönliche `AGENTS.md` bleibt erhalten. Die
+Rolle und Agenten-Adapter werden bei Bedarf gezielt geprüft, nicht automatisch
+ersetzt. Keine Datenbankmigration erforderlich; die globale Config erhält
+`[skill] version = "1.1.0"`. Bei fehlenden Update-Rechten kann
+`--ignore-skill-version` einen einzelnen Aufruf freigeben.
 
 ### Weitere Änderungen
 
@@ -76,8 +86,8 @@ Veröffentlichung vom passenden Release-Tag übernehmen.
   PATH-Prüfung und zeitversetzte Tap-Aktualisierung ergänzt.
 - Agenten-Dokumentation trennt allgemeine Skill-Regeln von persönlichen
   Mandantenregeln und empfiehlt jahresbezogene EÜR-Zeilenabfragen.
-- Geplant, noch nicht implementiert: versionierte Exportläufe mit Manifest (Spec 021) und sicherer Skill-Updateweg (Spec 022).
-- Export-Spec und User Guide grenzen den geplanten Manifestmodus ausdrücklich
+- Geplant, noch nicht implementiert: versionierte Exportläufe mit Manifest (Spec 021).
+- Export-Spec und CLI-Referenz grenzen den geplanten Manifestmodus ausdrücklich
   von GoBD-Konformität und rechtlich revisionssicherer Archivierung ab.
 - Das Accountant-Template beschreibt die Unterscheidung zwischen privat
   bezahlter Betriebsausgabe, Ausgleich und reiner Kapitalbewegung genauer.

@@ -48,7 +48,7 @@ euer/
 ├── tests/                   # CLI Integrationstests (unittest)
 ├── specs/                   # Historische Anforderungen + Backlog Items
 ├── docs/
-│   ├── USER_GUIDE.md         # Nutzer:innen-Doku
+│   ├── CONCEPTS.md           # Konzept und Produktgrenzen
 │   ├── USER_JOURNEY.md       # Ablauf von Onboarding bis Jahresabschluss
 │   ├── RELEASE_NOTES.md      # Upgrade-Hinweise für bestehende lokale Instanzen
 │   ├── skills/               # AI Agent Skills
@@ -343,7 +343,7 @@ Das Projekt folgt einer klaren Zweiteilung:
 | **Kategorienamen** (`SEED_CATEGORIES`) | **Deutsch** | Bilden offizielle ELSTER-Positionen ab |
 | **CLI-Commands & Flags** | **Englisch** | `add`, `--vendor`, `--amount` |
 | **Docstrings & Kommentare** | **Deutsch** | `"""Erzeugt einen eindeutigen Hash."""` |
-| **Dokumentation** (README, Specs, User Guide) | **Deutsch** | Zielgruppe sind deutschsprachige Nutzer |
+| **Dokumentation** (README, Specs, Skill-Referenzen) | **Deutsch** | Zielgruppe sind deutschsprachige Nutzer |
 | **Tests** (Methodennamen, Klassen) | **Englisch** | `test_create_expense()`, `ExpenseServiceTestCase` |
 
 **Kurzregel:** Alles, was der Nutzer sieht → Deutsch. Alles im Code → Englisch.
@@ -370,8 +370,8 @@ Weitere Details: `TESTING.md`.
 
 - Der allgemeine Ablauf für Beiträge und Pull Requests steht in `CONTRIBUTING.md`.
 - Kleine, fokussierte PRs bevorzugt.
-- Bitte relevante Doku aktualisieren (`README.md`, `docs/USER_GUIDE.md`,
-  `docs/USER_JOURNEY.md`, `docs/FAQ.md`, `docs/RELEASE_NOTES.md`, `DEVELOPMENT.md`).
+- Bitte relevante Doku aktualisieren (`README.md`, `docs/skills/euer-buchhaltung/references/cli_reference.md`,
+  `docs/USER_JOURNEY.md`, `docs/skills/euer-buchhaltung/references/domain_rules.md`, `docs/RELEASE_NOTES.md`, `DEVELOPMENT.md`).
 - User‑Facing Texte auf Deutsch halten.
 
 ## Checkliste vor dem Entwickeln
@@ -391,11 +391,11 @@ Bevor du Code schreibst oder änderst:
 Bei jeder nutzerwirksamen Änderung die folgenden Dokumente auf Betroffenheit
 prüfen und nötige Anpassungen im selben Change durchführen:
 
-- [ ] `docs/USER_GUIDE.md`: CLI-Aufrufe, Felder und Produktgrenzen aktualisiert.
+- [ ] `docs/skills/euer-buchhaltung/references/cli_reference.md`: CLI-Aufrufe, Felder und Produktgrenzen aktualisiert.
 - [ ] `docs/USER_JOURNEY.md`: betroffene Schritte vom Onboarding über Belegerfassung,
   Rückfragen und Monatsabgleich bis UStVA, Jahresabschluss und Upgrade aktualisiert.
   Aufgaben von Nutzer und Agent, vorläufige Ergebnisse und Übergabe an ELSTER prüfen.
-- [ ] `docs/FAQ.md`: bestehende Antworten abgeglichen; wiederkehrende Fragen und
+- [ ] `docs/skills/euer-buchhaltung/references/domain_rules.md`: bestehende Antworten abgeglichen; wiederkehrende Fragen und
   fehleranfällige Sonderfälle bei Bedarf ergänzt und aus der Journey verlinkt.
 - [ ] Skill, Referenzen und Agenten-/Onboarding-Templates auf konsistente Regeln geprüft.
 - [ ] `README.md`, Spec-Status und diese Dokumentation abgeglichen.
@@ -438,7 +438,7 @@ Offene Change Requests werden innerhalb der jeweiligen Spec dokumentiert.
 | 019 | `euer doctor` (Umgebungs- und Pre-Flight-Diagnose) | Implementiert |
 | 020 | Transparente und sichere DB-Migrationen | Implementiert |
 | 021 | Versionierte Exportläufe mit Manifest | Offen |
-| 022 | Versionierter Skill als primäre Dokumentation und Bestätigung in der Config | Offen |
+| 022 | Versionierter Skill als primäre Dokumentation und Bestätigung in der Config | Implementiert |
 
 ### Agenten-Dateien und Mandantendaten
 
@@ -447,10 +447,17 @@ Onboarding. Die persönliche `AGENTS.md` im Buchhaltungsordner enthält ausschli
 mandantenspezifische Angaben wie Steuerstatus, Konten, Pfade, Lieferantenregeln und
 Sonderfälle. Die Repository-`AGENTS.md` bleibt eine Entwickleranweisung.
 Skill- oder Paketupdates dürfen das persönliche Dossier nicht automatisch ersetzen.
+Die kanonische Skill-Quelle liegt in `docs/skills/euer-buchhaltung/`; der Build
+kopiert sie nach `euercli/assets/skill/`. Änderungen am Skill erhöhen dessen
+`metadata.version` unabhängig von `euercli.VERSION`. Der Agent bestätigt die
+geladene Version mit `euer setup --set skill.version VERSION`.
 EÜR-Zeilennummern sind jahrabhängige Formularmetadaten und werden für ein
 konkretes Jahr mit `euer list categories --year YYYY` abgefragt, nicht als
 dauerhafte Lieferantenregel gespeichert.
-Die gemeinsame Rollen-Vorlage heißt `docs/templates/accountant-role.md`.
+Der Skill enthält Rolle und Grundregeln; `references/accounting_workflow.md`
+beschreibt den Beleg- und Kontoauszugsablauf auch für allgemeine Agenten.
+`docs/templates/accountant-role.md` ist ein optionaler kurzer Einstieg für
+spezialisierte Agenten.
 Ändern sich Skill, Rolle, Agenten-Adapter oder Onboarding, erhält der nächste
 unveröffentlichte Versionsabschnitt in `docs/RELEASE_NOTES.md` einen Block
 „Agenten-Dateien“ mit konkretem Update- und Prüfbedarf pro Bereich.

@@ -2,7 +2,7 @@
 
 ## Status
 
-Offen
+Implementiert
 
 ## Ziel
 
@@ -147,8 +147,15 @@ ersetzt. Fehlen Update-Rechte, informiert der Agent den Nutzer.
 | `SKILL.md` | Version, Rolle, Arbeitsablauf, Änderungsverbot, Bundle-Bezugsquelle, Versionsbestätigung und Referenzindex |
 | `references/installation_and_setup.md` | Installation, Agenteneinbindung, Config und Updates |
 | `references/onboarding.md` | Bestehendes Interview und Mandanten-Dossier; keine zweite Interview-Anleitung |
+| `references/accounting_workflow.md` | Beleg- und Kontoauszugsablauf für allgemeine und spezialisierte Agenten |
 | `references/cli_reference.md` | Alle CLI-Befehle mit Syntax, Bedeutung, Voraussetzungen, Ausgabe und Beispielen |
 | `references/domain_rules.md` | Fachliche Wenn-Dann-Regeln mit Begründung, Quelle und Geltungszeitraum |
+
+Der Skill benennt Buchungs-, Beleg- und Kontoauszugsaufträge ausdrücklich im
+YAML-`description`-Feld. Rolle und grundlegende Prüfregeln stehen im Skill;
+der ausführliche Abgleich liegt in `accounting_workflow.md`. Die optionale
+`accountant-role.md` verweist darauf, damit auch ein allgemeiner Agent ohne
+besondere Rollen-Konfiguration vollständig arbeiten kann.
 
 Inhalte aus `docs/USER_GUIDE.md` und `docs/FAQ.md` werden in diese Dateien migriert;
 anschließend werden beide alten Dateien entfernt. Fachliche Sonderfälle wie Prepaid
@@ -191,6 +198,9 @@ Abnahmekriterien:
   verbietet lokale Änderungen einschließlich Ergänzungen der Referenzen.
 - CLI verändert keine Agenten-Skills oder Dossiers. Dokumentationsmigration,
   Referenzlinks und strukturierter Coverage-Test sind vollständig geprüft.
+- Die `description` nennt Rechnungs- und Kontoauszugsaufträge als Auslöser für
+  die Skill-Auswahl. Nach dem Laden erhält auch ein allgemeiner Agent Rolle,
+  Grundregeln und den Abgleichablauf ohne separate `accountant-role.md`.
 
 ## Release und betroffene Dateien
 
@@ -201,5 +211,4 @@ Release Notes nennen unter „Agenten-Dateien“ die Skill-Version vorher/nachhe
 Bestätigung über `skill.version`, nötige Adapteränderungen und den Schutz des Dossiers.
 Bereits veröffentlichte Release Notes bleiben unverändert.
 
-Die Spec bleibt bis zur Umsetzung offen. Diese reine Spec-Änderung benötigt keinen
-Versionsbump; die Implementierung erhält einen Release gemäß `DEVELOPMENT.md`.
+Die Implementierung ist in der unveröffentlichten Version 0.11.0 enthalten.
