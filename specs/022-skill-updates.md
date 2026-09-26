@@ -1,348 +1,199 @@
-# Spec 022: Versionierte, sichere Skill-Aktualisierung
+# Spec 022: Versionierter Skill als primäre Dokumentation
 
 ## Status
 
 Offen
 
-Review-Entwurf: Die folgenden Funktionen sind geplant, noch nicht implementiert.
-Diese Änderung aktualisiert die Spec; Skill, CLI und Agenteninstallationen bleiben
-unverändert. Der Entwurf wird vor einem Commit vom Nutzer geprüft.
+## Ziel
 
-## Originalfeedback (wörtlich)
+Der Buchhaltungs-Skill ist die primäre Bedienungsdokumentation für Agenten. Er hat
+eine eigene Version und wird vollständig mit der CLI ausgeliefert. Die CLI vergleicht
+seine Version mit der in der Config bestätigten Version und
+weist bei Abweichungen auf das nötige Skill-Update hin.
 
-> Der Skill sollte neben dem Software-Release eine klar ausgewiesene Version haben. Hilfreich wären eine Installations-/Update-Anleitung pro Agent und ein Diff, bevor lokale Dateien ersetzt werden. Nutzerregeln wie AGENTS.md sollten dabei niemals automatisch überschrieben werden. Ein als Vorschlag zu entwickelnder Skill-Updateweg sollte upstream-Inhalte und lokale Anpassungen getrennt behandeln, statt stillschweigend eine Seite zu ersetzen.
+## 1. Version und Auslieferung
 
-## Ziel und Grenzen
+- Kanonische Quelle: `docs/skills/euer-buchhaltung/`. Der Build übernimmt den gesamten
+  Ordner nach `euercli/assets/skill/`; diese Kopie wird nicht separat gepflegt.
+- `SKILL.md` enthält im YAML-Header unter `metadata` das Feld `version` als
+  Zeichenkette `"MAJOR.MINOR.PATCH"`. Dies ist die einzige Quelle der Skill-Version.
+  Die CLI liest die erwartete Version aus ihrem gebündelten `SKILL.md`.
+- Änderungen an ausgelieferten Skill-Inhalten erhöhen die Skill-Version. Ein
+  CLI-Release ohne Skill-Änderung behält die bisherige Skill-Version bei.
+  `euercli.VERSION` bleibt die unabhängige Softwareversion.
+- Es gibt keinen separaten Skill-Release-Prozess. Wheel und sdist enthalten alle
+  Skill-Dateien; das aus der sdist gebaute Wheel enthält denselben Skill.
+- Maßgeblich ist der Skill des tatsächlich aufgerufenen CLI-Pakets, nicht ein
+  vermeintlich neuester Stand im Internet. Version und Bundle-Pfad sind offline
+  abrufbar. Versionsbereiche und Kompatibilitätskataloge sind nicht erforderlich.
 
-CLI-Paket, verfügbare Skill-Dateien, tatsächlich geladener Agentenkontext und
-Mandanten-Dossier haben unterschiedliche Lebenszyklen. Ein CLI-Update liefert einen
-passenden Skill mit, aktualisiert aber weder Agenteninstallationen noch laufende
-Sitzungen. Hermes, Claude Code und andere Systeme verwalten und laden Skills auf
-unterschiedliche Weise.
+## 2. Bestätigung in der Config
 
-**Verantwortungsgrenze:** `euer` stellt das zum aktiven CLI-Paket gehörende Skill-Bundle
-bereit, prüft die vom Aufrufer angegebene Skill-Version und meldet Updatebedarf.
-Installation und erneutes Laden erfolgen über den jeweiligen Agenten beziehungsweise
-dessen dokumentierten Installationsweg. `euer` überschreibt keine Agenten-Skills,
-registriert keine vermeintlich erfolgreiche Kontextaktualisierung und startet keine
-Paketmanager-Upgrades.
+Die CLI kann den Skill eines Agenten nicht selbst prüfen. Deshalb bestätigt der
+Agent nach Einrichtung oder Update seine Skill-Version in der bestehenden globalen
+Config (`~/.config/euer/config.toml`, unter Windows am bestehenden Config-Pfad):
 
-Die Prüfung ist ein Kompatibilitätsvertrag mit dem Aufrufer, kein Nachweis seines
-internen Wissensstands. Fachliche Validierung bleibt im Service-Layer. `euer` wird
-primär durch KI-Agenten bedient; Menschen behalten verständliche Einstiegs-, Kontroll-
-und Reparaturanleitungen. „Fehlerfreie KI-Ausführung“ wird nicht zugesichert.
-
-## Entscheidungen und Annahmen
-
-### D1: Nur Mutationen sperren — entschieden
-
-**Annahme:** Unverstandene Schreiboperationen sollen verhindert werden; Einsicht und
-Diagnose müssen bei Versionsproblemen möglich bleiben.
-
-- **Gewählt:** Mutationen erfordern einen kompatiblen angegebenen Skill-Stand.
-  Lesende Befehle bleiben verfügbar und melden Kompatibilitätsprobleme als Warnung.
-- **Pro:** Diagnose, Reparatur und Einsicht bleiben möglich.
-- **Contra:** Ein alter Agent kann neue Berichtsfelder falsch interpretieren;
-  die Warnung muss ihn zur Lektüre der passenden Referenz auffordern.
-- **Verworfen:** Alle Fachbefehle sperren. Dies wäre einheitlicher, würde aber auch
-  lesende Arbeit bis zur Aktualisierung verhindern.
-
-### D2: Separate Skill-Version und CLI-Kompatibilitätsbereich — entschieden
-
-**Annahme:** CLI-Patches und Änderungen der Agentenanweisungen können unabhängig
-voneinander notwendig sein.
-
-- **Gewählt:** Eigene Skill-Version und expliziter Bereich unterstützter CLI-Versionen.
-- **Pro:** Kein Skill-Update allein wegen einer kompatiblen CLI-Änderung.
-- **Contra:** Kompatibilitätsmetadaten und zugehörige Tests müssen gepflegt werden.
-- **Verworfen:** Exakte Gleichheit von CLI- und Skill-Version. Einfachere Zuordnung,
-  aber unnötige Skill-Updates bei jedem Software-Release.
-
-### D3: Agentenübergreifend informieren, nicht installieren — entschieden
-
-**Annahme:** `euer` kennt weder den verbindlichen Installationsort noch das
-Reload-Verfahren jedes Agenten.
-
-- **Gewählt:** CLI liefert Status, Bundle und Update-Hinweise. Der Agent übernimmt
-  Vergleich, Konfliktklärung, Installation und erneutes Laden.
-- **Pro:** Keine fremden Agentenverzeichnisse werden automatisch verändert;
-  funktioniert unabhängig vom jeweiligen Skill-Verwaltungssystem.
-- **Contra:** Kein universeller selbstheilender Installationsprozess; der Erfolg
-  hängt vom Adapter und gegebenenfalls von einer neuen Sitzung ab.
-- **Verworfen:** CLI-eigener Installer/Updater für fremde Skill-Ordner. Könnte
-  Dateiaustausch standardisieren, kennt aber aktive Installation und Kontext nicht.
-
-### D4: Nur Version und Bundle-Pfad, kein CLI-Diff — entschieden
-
-**Annahme:** Der Agent verfügt über eigene Vergleichswerkzeuge; ein lokaler
-Skill-Pfad ist nicht bei jedem System zugänglich.
-
-- **Gewählt:** `euer` meldet Version, Kompatibilität, Bundle-Pfad und nächste Schritte.
-  Einen Datei-Diff erstellt der Agent mit seinen vorhandenen Werkzeugen.
-- **Pro:** Kleiner agentenunabhängiger Umfang, kein Zugriff auf fremde Skill-Bäume.
-- **Contra:** Vergleich und Erkennung lokaler Anpassungen müssen die Agentenanleitungen
-  abdecken; `euer` kann deren Durchführung nicht verifizieren.
-- **Verworfen:** Optionaler lesender CLI-Diff. Würde konkrete Änderungen einheitlich
-  darstellen, benötigt aber zusätzliche Logik und zugängliche lokale Dateien.
-
-## Paket und Dokumentation
-
-Einzige gepflegte Quelle ist `docs/skills/euer-buchhaltung/`. Der Build übernimmt
-sie einschließlich Manifest und aller Referenzen nach `euercli/assets/skill/`.
-Das Bundle ist ein erzeugtes Artefakt und wird nicht separat redaktionell gepflegt.
-Wheel und sdist müssen den vollständigen Skill liefern; ein aus der sdist gebautes
-Wheel muss dieselben Skill-Inhalte enthalten. Der Zugriff erfolgt über
-Package-Ressourcen, ohne fest codierte pipx-, Homebrew- oder venv-Pfade.
-
-Geplante Struktur:
-
-- `SKILL.md`: kurzer Einstieg, sichtbare Version, Routing und Update-Ablauf.
-- `manifest.json`: maschinenlesbare Identität, Kompatibilität und Dateiinventar.
-- `references/onboarding.md`: bestehende gemeinsame Quelle für Interview und Dossier.
-- `references/installation_and_setup.md`: Installation, Adapter, Update und Recovery;
-  verweist für das Interview auf `onboarding.md`, statt es zu duplizieren.
-- `references/cli_reference.md`: Syntax, Semantik, Ausgabe- und Fehlerverträge.
-- `references/domain_rules.md`: fachliche Regeln mit Voraussetzungen, Begründung,
-  Quelle, Geltungszeitraum und Verhalten bei unklaren Angaben.
-
-Referenzen werden aufgabenbezogen geladen. Sämtliche für reguläre Bedienung und
-Update benötigten Inhalte sind offline im Paket verfügbar. Externe Quellen
-begründen Regeln, sind aber keine Voraussetzung für den lokalen Updateweg.
-
-`README.md` enthält Fähigkeiten und Handoff-Prompt; `docs/CONCEPTS.md` erklärt
-Architektur und Grenzen. Inhalte von `USER_GUIDE.md` und `FAQ.md` werden vor ihrer
-Migration vollständig zugeordnet. `USER_JOURNEY.md` behält den menschlichen Kontroll- und
-Übergabeablauf. Links einschließlich der Paketmetadaten werden angepasst.
-
-## Versions- und Kompatibilitätsvertrag
-
-Das Manifest enthält mindestens:
-
-| Feld | Vertrag |
-|---|---|
-| `manifest_schema` | Ganzzahlige Formatversion |
-| `skill_id` | Stabile Kennung `euer-buchhaltung` |
-| `skill_version` | Eigene Version `MAJOR.MINOR.PATCH` |
-| `cli_min` | Kleinste unterstützte CLI-Version, einschließlich |
-| `cli_max_exclusive` | Erste nicht unterstützte CLI-Version, ausschließlich |
-| `files` | Relative Dateipfade und SHA-256-Hashes sämtlicher Nutzdateien |
-
-Das Manifest selbst ist nicht in seiner Hashliste enthalten. Eine Paketkennung
-ist der SHA-256-Hash seiner deterministisch erzeugten Bytes. Hashes erkennen
-Abweichungen; sie beweisen keine vertrauenswürdige Herkunft oder geladenen Kontext.
-
-Jedes CLI-Release enthält einen expliziten Kompatibilitätskatalog der unterstützten
-Skill-Versionen und ihrer CLI-Bereiche sowie eine `MIN_SKILL_VERSION`. Dieser Katalog
-ermöglicht eine Prüfung ohne Zugriff auf das Dateisystem des Agenten. Akzeptiert
-wird eine bekannte Skill-Version, deren Bereich die aktive CLI-Version einschließt
-und die mindestens die Mindestversion erfüllt. Unbekannte zukünftige Versionen
-werden nicht aufgrund ihrer größeren Nummer als kompatibel angenommen.
-
-Der Katalog ist Release-Metadatum und wird zusammen mit dem Bundle geprüft. Bereits
-unterstützte Skill-Versionen bleiben enthalten, solange sie fachlich kompatibel
-sind. Eine erhöhte Mindestversion muss in den Release Notes begründet werden.
-Das gebündelte Manifest und sein Katalogeintrag müssen übereinstimmen; das Bundle
-muss von seiner eigenen CLI akzeptiert werden.
-
-Die erste Fassung unterstützt stabile dreiteilige Versionsnummern; Vergleiche sind
-numerisch, keine Stringvergleiche. Fehlende, ungültige, unbekannte und bekannte
-inkompatible Versionen werden unterschieden. Bei bekannter kompatibler Version
-ist ein neueres Bundle nur ein Updateangebot, keine Sperre.
-
-Die Skill-Version wird im Quellmanifest gepflegt. Sichtbare Angaben in `SKILL.md`
-werden daraus erzeugt oder im Build auf Gleichheit geprüft. Eine Änderung der
-ausgelieferten Skill-Inhalte erfordert eine neue Skill-Version; eine Version darf
-nicht für unterschiedliche Inhalte wiederverwendet werden. Redaktionelle Korrekturen
-sind PATCH, kompatible Erweiterungen MINOR, inkompatible Arbeitsabläufe MAJOR.
-`euercli.VERSION` bleibt die einzige Quelle der Softwareversion.
-
-## Angabe des tatsächlich verwendeten Skills
-
-Der Agent übergibt die aus seinem geladenen Skill gelesene Version pro Aufruf mit
-dem globalen Flag `--skill-version VERSION`, vor dem Subcommand. Alternativ kann
-ein Adapter `EUER_SKILL_VERSION` pro Prozess setzen; das Flag hat Vorrang.
-Keine dauerhafte globale Shell-Variable als Ersatz für die Sitzungsprüfung verwenden.
-
-Beispiel der geplanten Syntax:
-
-```bash
-euer --skill-version 1.2.0 doctor --json
+```toml
+[skill]
+version = "1.2.3"
 ```
 
-Ein globales `[skill].version` in der Config ist kein Nachweis und schaltet keine
-Sperre frei. Ein Agent darf niemals einfach die erwartete Version übernehmen, um
-einen Fehler zu umgehen. Zwei Agenten mit verschiedenen geladenen Skills geben
-unabhängige Versionen an. Die CLI benennt den Wert ausdrücklich als „angegebenen
-Skill-Stand“, nicht als technisch nachgewiesenen Kontext.
+**Annahme:** Im Regelfall arbeitet nur ein Agent mit der Installation. Ein gemeinsamer
+Versionswert genügt; Agentenkennungen und zusätzliche Aufrufparameter entfallen.
+Bei mehreren Agenten mit unterschiedlichen Skill-Ständen kann die CLI diese nicht
+unterscheiden. Diese Einschränkung wird bewusst zugunsten einfacher Bedienung akzeptiert.
 
-Nach Aktualisierung der Dateien liest der Agent `SKILL.md` und die für den Auftrag
-benötigten Referenzen erneut. Erst danach gibt er die neue Version an. Unterstützt
-das Agentensystem kein verlässliches Reload, ist eine neue Sitzung erforderlich.
-Kann der Agent seinen Stand nicht ermitteln, bleiben Mutationen gesperrt und die
-passenden lokalen Anweisungen werden zum Lesen angeboten.
+Der Agent liest die Version aus seiner tatsächlich verwendeten `SKILL.md` und
+speichert sie über den bestehenden Config-Befehl:
 
-## CLI-Oberfläche und Fehlervertrag
+```bash
+euer setup --set skill.version "1.2.3"
+```
 
-Folgende neuen Funktionen sind vorgesehen, aber noch nicht implementiert:
+`setup --set` validiert für `skill.version` eine dreiteilige Versionsnummer und
+erhält die übrige Config. Auch eine von der erwarteten Version abweichende Version
+darf wahrheitsgemäß bestätigt werden. Der Eintrag ist eine Selbstauskunft, kein
+technischer Nachweis geladener Inhalte. Bei Fachbefehlen liest die CLI diesen Wert
+automatisch; der Agent muss weder Identität noch Version pro Aufruf angeben.
 
-| Aufruf | Verhalten |
+## 3. Versionsprüfung und Warnung
+
+Bei Fachbefehlen vergleicht die CLI `skill.version` aus der Config exakt mit der
+gebündelten Skill-Version. Fehlende oder ungültige Bestätigung und Versionsabweichung
+erzeugen einen Hinweis auf stderr.
+
+Die Meldung enthält bestätigte und erwartete Skill-Version,
+den absoluten Bundle-Pfad und folgende Handlungsanweisung:
+
+> Ersetze deinen Skill vollständig durch den mitgelieferten Stand über den
+> Installationsweg deines Agentensystems. Lies die aktualisierten Anweisungen.
+> Bestätige anschließend die verwendete Version mit
+> `euer setup --set skill.version "<VERSION>"`.
+
+Auch ein neuerer bestätigter Skill ist eine Abweichung; die CLI fordert deshalb
+nicht automatisch zu einem Software-Upgrade auf. Fehlen Update-Rechte, informiert
+der Agent den Nutzer und belässt seine Bestätigung auf dem tatsächlichen Stand.
+
+**Entscheidung: nur warnen.** Die Warnung verhindert die Befehlsausführung nicht,
+ändert deren Exitcode nicht und verunreinigt stdout nicht. Bestehende Validierungen
+bleiben wirksam. Annahme: Agenten haben nicht immer Update-Rechte und die Bestätigung
+ist ohnehin eine Selbstauskunft. Vorteil ist fortgesetzte Nutzbarkeit; Nachteil ist,
+dass ein Agent trotz veralteter Anweisungen weiterarbeiten kann.
+
+Hilfe, Versionsanzeige, `config show` und die Bestätigung über `setup --set skill.version`
+bleiben ohne wiederholte Skill-Warnung nutzbar. Eine defekte Config oder ein defektes
+Bundle wird als solcher Fehler gemeldet, nicht als Versionsabweichung verschleiert.
+
+## 4. Skill-Auskunft in `doctor`
+
+`euer doctor` zeigt zusätzlich die bestätigte Skill-Version, die erwartete
+Skill-Version, den absoluten Bundle-Pfad und den Prüfstatus. Ein eigener
+Skill-Statusbefehl wird nicht eingeführt.
+
+`euer doctor --json` ergänzt das bestehende Ergebnis um ein Objekt `skill` mit
+`confirmed_version`, `expected_version`, `bundle_path` und `status`.
+Mögliche Skill-Statuswerte: `current`, `unconfirmed`, `invalid`, `mismatch` und
+`error` bei nicht lesbarer Config oder defektem Bundle. Fehlende Werte sind `null`.
+CLI-Version und übrige Diagnosen bleiben in ihren bisherigen Feldern.
+
+Die Skill-Auskunft wird auch bei fehlender Datenbank oder Config ausgegeben.
+Fehlende oder abweichende Bestätigung wird als Warnung in die Gesamtdiagnose
+aufgenommen, nicht als Fehler. Lese-/Paketfehler werden als Fehler aufgenommen.
+Die bestehende Exitcode-Regel von `doctor` bleibt erhalten: 1 bei Fehlern, sonst 0.
+Ein unabhängiger DB-Fehler kann daher trotz aktuellem Skill zu Exitcode 1 führen.
+
+Die CLI bietet keinen Installer und keinen Datei-Diff. Warnungen bei Fachbefehlen
+werden im JSON-Modus als strukturierte Hinweise auf stderr ausgegeben. Der gemeinsame
+Ausgabevertrag und das bisherige Skill-Reparaturbeispiel in
+[Spec 023](023-ai-io.md) müssen bei Umsetzung entsprechend angepasst werden.
+
+## 5. Unveränderter Skill und Update-Hinweis
+
+`SKILL.md` enthält ausdrücklich folgende Anweisung:
+
+> Bearbeite oder ergänze diesen Skill einschließlich seiner Referenzen nicht lokal.
+> Aktualisiere ihn ausschließlich durch vollständigen Austausch gegen den mit der
+> CLI ausgelieferten Stand. Dessen Version und absoluten Quellpfad findest du mit
+> `euer doctor --json` unter `skill.expected_version` und `skill.bundle_path`.
+> Mandantenspezifische Angaben gehören in das persönliche Dossier, nicht in den Skill.
+
+Der Paketpfad `euercli/assets/skill/` wird im Skill als Bezugsquelle genannt.
+Ein absoluter Pfad wird dort nicht fest eingebaut, weil er von Installationsart
+und System abhängt; `doctor` ermittelt ihn für die tatsächlich aktive CLI.
+
+Nach einem Update muss der Agent die neue `SKILL.md` und benötigte Referenzen lesen
+beziehungsweise eine neue Sitzung starten. Erst danach bestätigt er die Version
+mit `euer setup --set skill.version "<VERSION>"`.
+
+Die Installationsreferenz beschreibt für Claude Code, OpenCode und Hermes jeweils
+Installation, vollständigen Austausch und erneutes Laden. Die CLI führt diese
+Schritte nicht aus und kann ihre Durchführung nicht kontrollieren. Ein Diff-/Merge-
+Verfahren für lokale Skill-Anpassungen gehört nicht zum Funktionsumfang; solche
+Anpassungen werden nicht unterstützt. Persönliche `AGENTS.md`, `CLAUDE.md`, `SOUL.md`
+und andere Dateien außerhalb des Skills werden beim Austausch nicht automatisch
+ersetzt. Fehlen Update-Rechte, informiert der Agent den Nutzer.
+
+## 6. Dokumentationsstruktur und Migration
+
+| Datei im Skill | Inhalt |
 |---|---|
-| `euer skill status [--json]` | CLI-/angegebene Skill-Version, Kompatibilität, Bundle-Version/-Pfad und nächste Schritte melden |
-| `euer doctor [--json]` | Skill-Kompatibilität zusätzlich zur bestehenden Diagnose ausweisen |
+| `SKILL.md` | Version, Rolle, Arbeitsablauf, Änderungsverbot, Bundle-Bezugsquelle, Versionsbestätigung und Referenzindex |
+| `references/installation_and_setup.md` | Installation, Agenteneinbindung, Config und Updates |
+| `references/onboarding.md` | Bestehendes Interview und Mandanten-Dossier; keine zweite Interview-Anleitung |
+| `references/cli_reference.md` | Alle CLI-Befehle mit Syntax, Bedeutung, Voraussetzungen, Ausgabe und Beispielen |
+| `references/domain_rules.md` | Fachliche Wenn-Dann-Regeln mit Begründung, Quelle und Geltungszeitraum |
 
-Die Bundle-Auskunft funktioniert ohne DB, angegebenen Skill oder gültige globale
-beziehungsweise Projekt-Config. `doctor` berichtet defekte Config getrennt, statt
-deshalb die Skill-Diagnose zu verlieren. Quelle ist das Bundle des tatsächlich
-aktiven CLI-Pakets; aktive Softwareversion und Binary-Pfad werden mit ausgegeben.
-Es gibt keine CLI-Befehle zur Installation, Aktualisierung oder Registrierung
-fremder Agenten-Skills.
+Inhalte aus `docs/USER_GUIDE.md` und `docs/FAQ.md` werden in diese Dateien migriert;
+anschließend werden beide alten Dateien entfernt. Fachliche Sonderfälle wie Prepaid
+und Cashback gehören in `domain_rules.md`, Bedienungsfragen in die CLI-Referenz.
+Alle Links und Paketmetadaten werden auf die neuen Ziele umgestellt. Relative
+Referenzen im Skill müssen auch im installierten Bundle funktionieren.
 
-Die Mutationssperre greift vor DB-Schreibzugriff, Backups und sonstigen Seiteneffekten:
+Die Dokumentation für menschliche Anwender beschränkt sich auf `README.md`
+(Fähigkeiten und Handoff-Prompt), `docs/CONCEPTS.md` (Konzept und Grenzen) und
+`docs/USER_JOURNEY.md` (Ablauf der Arbeit des Agenten und Beteiligung des Menschen).
+Entwicklerdokumentation und Release Notes bleiben bestehen.
 
-| Befehlsgruppe | Verhalten bei fehlender oder inkompatibler Skill-Version |
-|---|---|
-| `add`, `update`, `delete`, `restore`, `undo`, schreibender `import`/`reconcile`, `trash empty` | Sperren |
-| Ausführendes `init`, interaktives `setup`, `setup --set`, Änderungen der Projektbindung | Sperren |
-| Datei-erzeugende Exporte einschließlich Report-Exporten | Sperren |
-| Rein lesende Fachbefehle, `import --schema`, Reportausgabe ohne Dateischreiben | Erlauben, Kompatibilitätswarnung ausgeben |
-| Echte seiteneffektfreie `--dry-run`-Aufrufe | Erlauben, warnen; Ergebnis ist keine Freigabe der späteren Mutation |
-| Hilfe, Versionsanzeige, `config show`, `doctor`, Skill-Auskunft | Immer für Diagnose erreichbar |
+## 7. Vollständigkeit und Abnahme
 
-Commands deklarieren ihre Seiteneffekte; neue Commands müssen klassifiziert werden.
-Unklassifizierte Plugin-Commands werden konservativ als schreibend behandelt.
-Bestehende Validierungen und Berechtigungsprüfungen gelten unverändert.
+Ein CI-Test gleicht den `argparse`-Baum mit den Befehlsabschnitten in
+`cli_reference.md` ab. Jeder vollständige Core-Befehlspfad, jedes Positionsargument
+und jedes Flag muss dem richtigen Befehlsabschnitt zugeordnet sein. Ein irgendwo
+im Dokument erwähntes Flag genügt nicht. Plugin-Befehle gehören in die jeweilige
+Plugin-Dokumentation.
 
-Stabile Fehler-/Diagnosecodes sind mindestens `skill_version_missing`,
-`skill_version_invalid`, `skill_version_unknown`, `skill_incompatible` und
-`skill_bundle_invalid`. Normale erfolgreiche Befehle enden mit 0, gesperrte
-Mutationen mit 1, Syntaxfehler mit 2. Lesebefehle bleiben bei bloßer Skill-Warnung
-erfolgreich. `skill status` liefert bei nicht kompatiblem oder nicht prüfbarem
-Stand 1 mit vollständiger Diagnose. Die bestehende Exitcode-Semantik von `doctor`
-ist bei der Integration ausdrücklich zu berücksichtigen und zu dokumentieren.
+Der Test sichert die strukturelle Abdeckung, nicht die fachliche Vollständigkeit.
+Das Review prüft zusätzlich Bedeutung, Voraussetzungen, Wechselwirkungen,
+Fehlerfälle und brauchbare Beispiele. Ausgewählte Beispiele werden gegen die CLI
+getestet. Eine reine generierte Befehlsliste erfüllt die Anforderung nicht.
 
-`skill status` liefert mit `--json` genau ein Ergebnisobjekt auf stdout,
-auch bei diagnostiziertem Updatebedarf; operative Fehler gehen als Fehlerobjekt
-auf stderr. Felder: `status`, `code`, deutsche `message`, `cli_version`, `binary_path`,
-`reported_skill_version`, `bundled_skill_version`, `bundle_path`,
-`compatible`, `update_available` und geordnete `remediation_steps`.
-Nicht ermittelbare Werte sind `null`; keine zusätzliche Prosa auf stdout.
-Gesperrte Fachbefehle liefern im JSON-Modus ein Fehlerobjekt auf stderr.
-Lesewarnungen dürfen weder Tabellen noch JSON-Ergebnisse auf stdout beschädigen.
+Abnahmekriterien:
 
-Mit [Spec 023](023-ai-io.md) wird der gemeinsame Ausgabe-/Fehlervertrag abgestimmt.
-Deren Reparaturbeispiel mit bloßem Setzen von `skill.version` ist bei Umsetzung zu
-ersetzen. Bestehende `doctor`-/`init`-JSON-Verträge werden nicht nebenbei gebrochen.
-Die neue Skill-Auskunft benötigt strukturierte Ausgaben unabhängig vom gesamten
-JSON-Rollout der Spec 023.
+- Skill samt Referenzen und Version ist aus installiertem Wheel und aus sdist
+  gebautem Wheel ohne Repository und ohne Netzwerk nutzbar.
+- `setup --set skill.version` speichert die Bestätigung und erhält die übrige
+  Config. Fachbefehle prüfen diesen Wert ohne zusätzliche Aufrufparameter.
+- Fehlende, ungültige, ältere und neuere Bestätigungen liefern die beschriebenen
+  Hinweise. Passende Bestätigungen erzeugen keine Versionswarnung.
+- Warnungen verändern weder Ausführung noch Exitcode/stdout des Fachbefehls.
+  Skill-Auskunft in `doctor` und Bestätigung funktionieren auch ohne DB und bei
+  der Erstinstallation; unabhängige Diagnosefehler bleiben sichtbar.
+- CLI-Patch ohne Skill-Änderung erfordert keine neue Bestätigung. Änderungen am
+  Skill werden mit neuer Skill-Version und Release-Hinweisen ausgeliefert.
+- `doctor --json` ergänzt `skill`, ohne bestehende Felder zu verändern, und meldet
+  den Bundle-Pfad der aktiven CLI. Die Skill-Anweisung verweist auf dieses Feld und
+  verbietet lokale Änderungen einschließlich Ergänzungen der Referenzen.
+- CLI verändert keine Agenten-Skills oder Dossiers. Dokumentationsmigration,
+  Referenzlinks und strukturierter Coverage-Test sind vollständig geprüft.
 
-## Update-Ablauf im Agenten
+## Release und betroffene Dateien
 
-1. **Diagnose:** Die CLI meldet angegebenen Stand, konkrete Inkompatibilität,
-   aktives Binary und den absoluten Pfad des mitgelieferten Skills. Kein pauschales
-   `pipx upgrade`, wenn beispielsweise Homebrew aktiv ist.
-2. **Vergleich:** Agent nutzt den vorgesehenen Installationsweg seines Systems und
-   erstellt vor Ersetzen lokaler Dateien einen Diff einschließlich entfallener
-   Dateien. Ist der Skill nicht als Verzeichnis zugänglich, verwendet er die
-   Vergleichsfunktion des Agentensystems. Kann er Änderungen nicht ermitteln,
-   meldet er diese Grenze und ersetzt keinen unbekannten Bestand stillschweigend.
-3. **Lokale Anpassungen:** Vorhandene Änderungen und zusätzliche Dateien erhalten.
-   Ohne verlässlichen Ausgangsstand keine Unverändertheit behaupten. Konflikte
-   dem Nutzer zur Entscheidung vorlegen; keine automatische Zusammenführung.
-4. **Installation:** Nach dem Verfahren und den Freigaberegeln des Agentensystems
-   aktualisieren. Bei Dateikopien vorher sichern und einen vollständigen Dateisatz
-   herstellen; einfaches `cp -r` über den alten Ordner genügt nicht, weil entfallene
-   Dateien zurückbleiben können. Teilweise Updates dürfen nicht als Erfolg gelten.
-5. **Prüfen und laden:** Vollständigkeit/Manifest prüfen, neue Anweisungen lesen
-   oder Sitzung neu starten. Erst dann die neue Skill-Version übergeben.
-6. **Fortsetzen:** Nur einen nachweislich vor Ausführung gesperrten Befehl erneut
-   ausführen. Bei unklarem vorherigem Erfolg zuerst Daten/Audit prüfen, um doppelte
-   Buchungen zu vermeiden.
+Die Umsetzung aktualisiert Skill, Referenzen, Agenten-/Onboarding-Templates,
+`README.md`, `docs/CONCEPTS.md`, `docs/USER_JOURNEY.md`, `DEVELOPMENT.md` und die
+Paketmetadaten; `USER_GUIDE.md` und `FAQ.md` entfallen nach Migration.
+Release Notes nennen unter „Agenten-Dateien“ die Skill-Version vorher/nachher,
+Bestätigung über `skill.version`, nötige Adapteränderungen und den Schutz des Dossiers.
+Bereits veröffentlichte Release Notes bleiben unverändert.
 
-Allgemeine Upstream-Anweisungen und lokale Regeln bleiben getrennt. Mandanten-
-`AGENTS.md`, `CLAUDE.md`, globale `SOUL.md` und Adapter werden durch diesen Ablauf
-nicht automatisch ersetzt. Mandantenangaben gehören ins Dossier; allgemeine lokale
-Arbeitsanweisungen in eine getrennte Ergänzung. Widersprüche werden vor Buchungen
-geklärt; lokale Regeln umgehen keine CLI-Validierung.
-
-Ein CLI-Downgrade oder Rollback des Skills ist keine automatische Reparaturaktion.
-Der wieder verwendete Stand muss ebenfalls kompatibel sein. Fehlt ein geeigneter
-Installations-/Reload-Weg, bleibt die Aufgabe mit einem konkreten Hinweis stehen.
-
-## Agentenspezifische Einbindung
-
-Adapter enthalten dauerhafte Einstiegspunkte: Skill laden, dessen Version angeben,
-Dossier lesen, Preflight durchführen und nach Update neu laden. CLI-Regeln liegen
-im Paket. Für zunächst Claude Code, OpenCode und Hermes sind vor Auslieferung
-jeweils verifizierte Anleitungen erforderlich: Installationsweg, Workspace-/globale
-Priorität, Versionsübergabe, Vergleich und lokale Anpassungen, Reload/Neustart und
-Wiederherstellung nach einem abgebrochenen Update.
-
-Ungeprüfte Beispiele wie „in `.claude/` kopieren“ gelten nicht als Unterstützung.
-Einzelne Adapter können nacheinander freigegeben werden; ungeprüfte Systeme werden
-als solche gekennzeichnet. `euer` setzt keinen universellen Skill-Pfad voraus.
-
-## Tests und Akzeptanzfälle
-
-- Skill-Auskunft ohne DB, Config oder Versionsangabe; defekte Config verhindert
-  keine Bundle-Auskunft und keine aussagekräftige Diagnose.
-- Zwei Agenten geben unterschiedliche Versionen an; globale Registrierung eines
-  anderen Agenten hat keinen Einfluss. Flag hat Vorrang vor Prozessumgebung.
-- Bekannte kompatible ältere/neue Version, Mindestversion unterschritten,
-  CLI außerhalb des Bereichs, unbekannte zukünftige und syntaktisch ungültige Version.
-- Numerischer Versionsvergleich, Grenzen einschließlich/ausschließlich,
-  Katalog-/Manifestkonsistenz und Annahme des mitgelieferten Bundles.
-- Jede Zeile der Befehlsmatrix: gesperrte Mutationen erzeugen weder DB-Änderung
-  noch Backup/Export/Config-Änderung; Lesen und echte Dry-runs bleiben möglich.
-- CLI verändert weder Agenten-Skill noch Dossier/Adapter, auch bei Versionskonflikt.
-- Offline-Auskunft aus installiertem Wheel und aus sdist gebautem Wheel außerhalb
-  des Repositorys; vollständige Referenzen und identische Hashes auf Linux,
-  macOS und Windows.
-- Adapter-Abnahme: Update während einer Sitzung, erneutes Lesen oder neue Sitzung,
-  Erhalt lokaler Änderungen und Fortsetzen ohne doppelte Buchung. Keine behauptete
-  technische Garantie über den Modellkontext.
-- JSON-Ausgaben, Warnungen, Exitcodes und vollständige Reparaturschritte.
-
-Die Syntaxreferenz wird aus einer ohne Seiteneffekte erzeugbaren Parserdefinition
-abgeleitet oder strukturiert dagegen geprüft: vollständige Befehlspfade,
-Positionsargumente, Flags, Defaults, Choices und Ausschlussgruppen. Core-Commands
-werden unabhängig von zufällig installierten Plugins geprüft; Plugins verantworten
-ihre eigene Referenz. Ein Substring-Test allein reicht nicht aus. Ausgewählte
-Beispiele werden ausgeführt; Output-Verträge und fachliche Semantik separat getestet.
-Alle relativen Links im ausgelieferten Skill müssen innerhalb des Pakets auflösen.
-
-## Umsetzung und Release-Vertrag
-
-1. Spec einschließlich Befehls- und Fehlervertrag reviewen.
-2. Kanonischen Skill, Manifest/Katalog und Build-Bundling mit Artefaktprüfungen umsetzen.
-3. Versionsübergabe und Status implementieren; Bundle-Validierung und
-   Kompatibilitätslogik in Services, Commands als View-Controller.
-4. Mutationssperre, `doctor`-Integration und Agentenanleitungen ergänzen.
-5. Dokumentationsmigration, Akzeptanztests und Release Notes abschließen.
-
-Diese Spec-Überarbeitung allein benötigt keinen Release oder Versionsbump. Die
-spätere verpflichtende Skill-Angabe/Sperre verändert die bisherige CLI-API und ist
-nach Projektregel ein Breaking Change. Ein vorgeschaltetes rein additives Bundle-/
-Status-Release kann separat als MINOR erscheinen; es darf keine aktive Sperre
-suggerieren. Vor Veröffentlichung gelten Tests, Lint, Build und Artefakt-Smoke-Test.
-
-Jeder betroffene Release erhält unter „Agenten-Dateien“ folgende Angaben:
-
-| Bereich | Angabe je Release |
-|---|---|
-| Skill-Package | Version vorher/nachher, Kompatibilität, Pflicht/Empfehlung, konkreter Update-/Prüfschritt |
-| Rolle | Änderung der gemeinsamen Rolle; Release-Bezug, sofern keine eigene Version existiert |
-| Agenten-Adapter | Betroffene Systeme/Dateien, nötige Anpassung und Reload/Neustart |
-| Mandanten-Dossier | Kein automatischer Ersatz; gegebenenfalls manuell zu klärende neue Angaben |
-
-Upgrade-Schritte unterscheiden Erstinstallation, unveränderte Kopie, lokal angepasste
-Altinstallation und parallele Agenten. Bereits veröffentlichte Release Notes bleiben
-unverändert. Spec-Status und Entwicklungstabelle wechseln erst nach vollständiger
-Umsetzung auf „Implementiert“.
-
-## Dokumentation nach Implementierung
-
-Betroffen sind `README.md`, `DEVELOPMENT.md`, `docs/CONCEPTS.md`, `docs/USER_GUIDE.md`,
-`docs/FAQ.md`, `docs/USER_JOURNEY.md`, `docs/RELEASE_NOTES.md`, der kanonische Skill
-mit Referenzen, Rollen-/Agenten-Templates und `docs/templates/onboarding-prompt.md`.
-Paketmetadaten und Links auf migrierte Inhalte werden geprüft. Spec 023 wird auf den
-gemeinsamen Fehlervertrag abgestimmt.
+Die Spec bleibt bis zur Umsetzung offen. Diese reine Spec-Änderung benötigt keinen
+Versionsbump; die Implementierung erhält einen Release gemäß `DEVELOPMENT.md`.

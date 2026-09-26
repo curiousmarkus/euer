@@ -438,7 +438,7 @@ Offene Change Requests werden innerhalb der jeweiligen Spec dokumentiert.
 | 019 | `euer doctor` (Umgebungs- und Pre-Flight-Diagnose) | Implementiert |
 | 020 | Transparente und sichere DB-Migrationen | Implementiert |
 | 021 | Versionierte Exportläufe mit Manifest | Offen |
-| 022 | Versionierte Skill-Bundles, Kompatibilitätsprüfung und agentenseitige Updates | Offen |
+| 022 | Versionierter Skill als primäre Dokumentation und Bestätigung in der Config | Offen |
 
 ### Agenten-Dateien und Mandantendaten
 
