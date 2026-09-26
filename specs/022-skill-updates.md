@@ -56,33 +56,40 @@ darf wahrheitsgemäß bestätigt werden. Der Eintrag ist eine Selbstauskunft, ke
 technischer Nachweis geladener Inhalte. Bei Fachbefehlen liest die CLI diesen Wert
 automatisch; der Agent muss weder Identität noch Version pro Aufruf angeben.
 
-## 3. Versionsprüfung und Warnung
+## 3. Versionsprüfung und Blockade (mit Escape Hatch)
 
 Bei Fachbefehlen vergleicht die CLI `skill.version` aus der Config exakt mit der
-gebündelten Skill-Version. Fehlende oder ungültige Bestätigung und Versionsabweichung
-erzeugen einen Hinweis auf stderr.
+gebündelten Skill-Version. Fehlende oder ungültige Bestätigung sowie eine
+Versionsabweichung erzeugen einen Fehler (Exitcode 1) auf stderr.
 
-Die Meldung enthält bestätigte und erwartete Skill-Version,
+Die Fehlermeldung enthält bestätigte und erwartete Skill-Version,
 den absoluten Bundle-Pfad und folgende Handlungsanweisung:
 
+> [✗] FEHLER: Deine bestätigte Skill-Version weicht von der erwarteten Version ab.
 > Ersetze deinen Skill vollständig durch den mitgelieferten Stand über den
 > Installationsweg deines Agentensystems. Lies die aktualisierten Anweisungen.
-> Bestätige anschließend die verwendete Version mit
-> `euer setup --set skill.version "<VERSION>"`.
+> Bestätige anschließend die verwendete Version mit:
+> `euer setup --set skill.version "<VERSION>"`
+>
+> Falls du das Update aufgrund fehlender Rechte nicht durchführen kannst,
+> hänge `--ignore-skill-version` an deinen Befehl an, um die Blockade zu umgehen.
 
 Auch ein neuerer bestätigter Skill ist eine Abweichung; die CLI fordert deshalb
-nicht automatisch zu einem Software-Upgrade auf. Fehlen Update-Rechte, informiert
-der Agent den Nutzer und belässt seine Bestätigung auf dem tatsächlichen Stand.
+nicht automatisch zu einem Software-Upgrade auf, sondern blockiert ebenfalls
+mit dem Verweis auf das lokale Bundle.
 
-**Entscheidung: nur warnen.** Die Warnung verhindert die Befehlsausführung nicht,
-ändert deren Exitcode nicht und verunreinigt stdout nicht. Bestehende Validierungen
-bleiben wirksam. Annahme: Agenten haben nicht immer Update-Rechte und die Bestätigung
-ist ohnehin eine Selbstauskunft. Vorteil ist fortgesetzte Nutzbarkeit; Nachteil ist,
-dass ein Agent trotz veralteter Anweisungen weiterarbeiten kann.
+**Entscheidung: Blockade mit Notausgang.** Die strikte Blockade (Exitcode 1)
+zwingt den Agenten dazu, sein Wissen (Skill) zu aktualisieren, bevor er
+potenziell falsche Daten produziert (Selbstheilung). Kann der Agent die
+Dateien mangels Dateisystemrechten nicht aktualisieren, bewahrt ihn das Flag
+`--ignore-skill-version` davor, in einer Endlosschleife gefangen zu sein,
+und ermöglicht die fortgesetzte Nutzbarkeit auf eigenes Risiko.
 
-Hilfe, Versionsanzeige, `config show` und die Bestätigung über `setup --set skill.version`
-bleiben ohne wiederholte Skill-Warnung nutzbar. Eine defekte Config oder ein defektes
-Bundle wird als solcher Fehler gemeldet, nicht als Versionsabweichung verschleiert.
+Hilfe, Versionsanzeige, `doctor`, `config show` und die Bestätigung über
+`setup --set skill.version` bleiben ungeblockt nutzbar, damit der Agent
+diagnostizieren und den Zustand reparieren kann.
+Eine defekte Config oder ein defektes Bundle wird als echter Dateifehler
+gemeldet, nicht als Versionsabweichung.
 
 ## 4. Skill-Auskunft in `doctor`
 
@@ -173,10 +180,9 @@ Abnahmekriterien:
   gebautem Wheel ohne Repository und ohne Netzwerk nutzbar.
 - `setup --set skill.version` speichert die Bestätigung und erhält die übrige
   Config. Fachbefehle prüfen diesen Wert ohne zusätzliche Aufrufparameter.
-- Fehlende, ungültige, ältere und neuere Bestätigungen liefern die beschriebenen
-  Hinweise. Passende Bestätigungen erzeugen keine Versionswarnung.
-- Warnungen verändern weder Ausführung noch Exitcode/stdout des Fachbefehls.
-  Skill-Auskunft in `doctor` und Bestätigung funktionieren auch ohne DB und bei
+- Fehlende, ungültige, ältere und neuere Bestätigungen blockieren Fachbefehle mit Exitcode 1 und liefern die beschriebenen Fehlerhinweise inklusive Escape Hatch. Passende Bestätigungen erzeugen keine Fehler.
+- Das Flag `--ignore-skill-version` umgeht die Blockade und lässt den Fachbefehl regulär durchlaufen (Exitcode 0 bei sonstigem Erfolg).
+- Skill-Auskunft in `doctor` und Bestätigung funktionieren ungeblockt, auch ohne DB und bei
   der Erstinstallation; unabhängige Diagnosefehler bleiben sichtbar.
 - CLI-Patch ohne Skill-Änderung erfordert keine neue Bestätigung. Änderungen am
   Skill werden mit neuer Skill-Version und Release-Hinweisen ausgeliefert.
