@@ -8,7 +8,7 @@
 
 ## Warum euer?
 
-Wenn du eine EÜR erstellen musst, stehst du vor der Entscheidung: ein Software-Abo bei einer großen Buchhaltugnssoftware (Lexoffice, SevDesk) abschließen oder irgendwas in Excel zu basteln. `euer` geht einen dritten Weg: **Ein CLI-Tool, das deinen KI-Agent befähigt, die Buchführung zu übernehmen.**
+Wenn du eine EÜR erstellen musst, stehst du vor der Entscheidung: ein Software-Abo bei einer großen Buchhaltungssoftware (Lexoffice, SevDesk) abschließen oder irgendwas in Excel zu basteln. `euer` geht einen dritten Weg: **Ein CLI-Tool, das deinen KI-Agent befähigt, die Buchführung zu übernehmen.**
 
 ### 🤖 Built for AI Agents (Claude Code, Hermes, OpenCode, Codex, etc.)
 *   **Agent-First:** Software für die Bedienung durch KI-Agenten. Damit sie dir die manuelle Erfassung deiner Ein- und Ausgaben abnehmen können.
@@ -21,7 +21,7 @@ Wenn du eine EÜR erstellen musst, stehst du vor der Entscheidung: ein Software-
 * **Jederzeit zugänglich:** Du kannst deine Daten direkt auswerten und jederzeit als CSV oder Excel exportieren.
 
 ### ✅ Passend für die EÜR und UStVA
-* **Passend für Freiberufler und Einzelunternehmer:** Buchführung nach dem Zufluss-/Abfluss-Prinzip (§ 11 EStG) inkl. Bericht für die UStVA, ohne unnötige doppelte Buchführung oder festem Kontenrahmen.
+* **Passend für Freiberufler und Einzelunternehmer:** Buchführung nach dem Zufluss-/Abfluss-Prinzip (§ 11 EStG) inkl. Bericht für die UStVA, ohne unnötige doppelte Buchführung oder festen Kontenrahmen.
 * **Steuerfälle unterstützt:** EÜR-Kategorien, Kleinunternehmerregelung (§ 19 UStG), Umsatzsteuer und Reverse Charge (§ 13b UStG) sind abgebildet.
 * **Geordnet und nachvollziehbar:** Belege lassen sich Buchungen zuordnen; Änderungen über die CLI werden im Audit-Log festgehalten.
 
