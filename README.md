@@ -31,141 +31,68 @@ Wenn du eine EÜR erstellen musst, stehst du vor der Entscheidung: ein Software-
 
 ### 1. Installation
 
-**macOS und Linux (Homebrew):**
+**macOS und Linux mit Homebrew:**
 
 ```bash
 brew install curiousmarkus/euer/euer
 ```
 
-**Alle Plattformen (PyPI):**
+**Alle Plattformen mit pipx:**
 
 ```bash
-# pipx einmalig installieren (falls noch nicht vorhanden)
-python3 -m pip install --user pipx
-pipx ensurepath
-
 pipx install euer
 ```
 
-Für den optionalen Excel-Export installierst du direkt das XLSX-Extra:
+Für den Excel-Export installierst du hier zusätzlich das XLSX-Addon:
 
-```powershell
+```bash
 pipx install "euer[xlsx]"
 ```
 
-Unter Windows kannst du stattdessen `py -m pip install --user pipx` und danach
-`pipx ensurepath` verwenden. Die Paketinstallation bleibt identisch.
+Prüfe die Installation mit `euer --version`. Die [Installationsreferenz](docs/skills/euer-buchhaltung/references/installation_and_setup.md#installation)
+erklärt Updates, Entwicklungsversionen und den Wechsel zwischen pipx und Homebrew.
+Die [Entwicklungsinstallation unter Windows](DEVELOPMENT.md#windows-powershell) ist im Developer Guide beschrieben.
 
-**GitHub-Fallback:**
+### 2. KI-Agenten einrichten
 
-Für Entwicklungsversionen oder einen Checkout ohne PyPI kannst du auch direkt aus
-dem Repository installieren:
+Installiere den vollständigen [Skill-Ordner `euer-buchhaltung`](docs/skills/euer-buchhaltung)
+inklusive `references/` in deiner KI-Anwendung.
 
-```bash
-pipx install git+https://github.com/curiousmarkus/euer.git
-```
+Starte deinen Agenten im Buchhaltungsordner und sage:
+**„Richte meine Buchhaltung mit euer ein.“**
+Der Agent fragt die nötigen Angaben ab und legt deine Konfiguration sowie
+dein Mandanten-Dossier (als `AGENTS.md`) an.
 
-Danach ist `euer` sofort und dauerhaft in jedem Terminal verfügbar.
+### 3. Erste Belege buchen lassen
 
-**Update auf die neueste Version:**
-```bash
-pipx upgrade euer
-```
+Gib deinem Agenten deine Belege und sage zum Beispiel:
 
-Bei einer Homebrew-Installation aktualisierst du mit:
+> „Buche diese Belege mit euer“
 
-```bash
-brew upgrade euer
-```
+Der Agent nutzt dafür die CLI:
 
-Der Homebrew-Tap übernimmt PyPI-Releases zeitversetzt (geplant spätestens
-innerhalb von sechs Stunden). Prüfe mit `brew info euer` und `euer --version`,
-welche Version verfügbar ist und welche dein Terminal startet. Für den Wechsel
-von einer alten `pipx`-/`euercli`-Installation zu Homebrew siehe den
-[Upgrade-Leitfaden](docs/skills/euer-buchhaltung/references/installation_and_setup.md#von-pipx-zu-homebrew-wechseln).
-
-**Entwicklungsinstallation unter Windows (PowerShell):**
-
-```powershell
-py -3 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -e ".[dev,xlsx]"
-python -m unittest discover -s tests
-```
-
-(Details siehe [Installationsreferenz](docs/skills/euer-buchhaltung/references/installation_and_setup.md#installation))
-
-### 2. Personalisierung
-
-Richte den vollständigen [Skill-Ordner `euer-buchhaltung`](docs/skills/euer-buchhaltung)
-**inklusive `references/`** in deiner KI-Anwendung ein. Starte deinen Agenten im
-Buchhaltungsordner und sage: **„Richte meine Buchhaltung mit euer ein.“**
-Der Agent prüft vorhandene Angaben, führt bei Bedarf das Onboarding durch und
-legt dein persönliches Mandanten-Dossier (`AGENTS.md`) sowie die Konfiguration an.
-Da moderne KI-Agenten die `AGENTS.md` im Arbeitsverzeichnis automatisch einlesen,
-dient sie als Mandanten-Dossier für deine betrieblichen Regeln (ohne Coding-Anweisungen).
-
-Alternativ kannst du den [Onboarding-Prompt](docs/templates/onboarding-prompt.md)
-in einem separaten LLM-Chat verwenden.
-Der Skill enthält die Buchhalter-Grundregeln und kann auch von einem
-allgemeinen Claude-Code- oder Hermes-Agenten genutzt werden. Die
-[Buchhalter-Rolle](docs/templates/accountant-role.md) ist nur eine optionale
-Vorlage für eigens konfigurierte Agenten. Bei Updates zeigen die
-[Release Notes](docs/RELEASE_NOTES.md) getrennt an, ob Skill, Rolle oder
-persönliches Mandanten-Dossier geprüft werden müssen. Agentendateien und
-`AGENTS.md` werden durch `brew upgrade` oder `pipx upgrade` nicht ersetzt.
-Prüfe nach dem Update `euer doctor`, ersetze den Skill vollständig aus
-`skill.bundle_path`, lies ihn neu und bestätige dann seine Version mit
-`euer setup --set skill.version "1.1.0"`.
-
-### 3. Initialisierung
-Falls noch nicht durch den Agenten erledigt: Wechsle in deinen Buchhaltungsordner
-und initialisiere Datenbank und Konfiguration:
-```bash
-euer init --create
-euer setup
-```
-
-### 4. Erste Buchung (lass es deinen AI-Agent machen!)
-```bash
-euer add expense --payment-date 2026-02-02 --vendor "Hetzner" --category "Laufende EDV-Kosten" --amount -10.00
-
-# Optional mit Kontenrahmen:
-euer add expense --payment-date 2026-02-02 --vendor "Hetzner" --ledger-account hosting --amount -10.00
-```
+1. Er liest die gültigen Kategorien mit `euer list categories` und bei Bedarf deine
+   Buchungskonten mit `euer list ledger-accounts`.
+2. Er bucht Ausgaben mit `euer add expense` und Einnahmen mit `euer add income`;
+   den jeweiligen Beleg verknüpft er über `--receipt`.
+3. Mit `euer incomplete list` prüft er, welche Angaben noch fehlen, und fragt bei
+   Unklarheiten nach.
+4. Mit `euer summary --year 2026` zeigt er dir die Jahresübersicht. Bei Bedarf
+   erstellt `euer vat-report --year 2026` einen UStVA-Arbeitsbericht.
 
 ---
 
-## So arbeitet dein AI-Agent mit euer
+## Dokumentation & Hilfe
 
-Du hast einen Stapel PDF Belege?
-Gib es an deinen KI-Agenten:
-> "Buche diese Belege in euer ein."
+- [User Journey](docs/USER_JOURNEY.md): Der gesamte Ablauf von der Einrichtung bis zum Jahresabschluss.
+- [CLI-Referenz](docs/skills/euer-buchhaltung/references/cli_reference.md): Alle Befehle und Optionen für deinen Agenten.
+- [Fachregeln und Sonderfälle](docs/skills/euer-buchhaltung/references/domain_rules.md): Buchungsregeln mit Beispielen.
+- [Konzept und Grenzen](docs/CONCEPTS.md): Was euer und der Agent übernehmen.
+- [Release Notes](docs/RELEASE_NOTES.md): Änderungen und Hinweise für bestehende Installationen.
 
-1. Der Agent holt sich die korrekten Steuerkategorien mit `euer list categories`
-2. Prüft optional den Kontenrahmen mit `euer list ledger-accounts`
-3. Fügt die Belege in die EÜR mit `euer add expense --payment-date ... --vendor ...`
-4. kontrolliert die Vollständigkeit mit `euer incomplete list`
-5. gibt dir eine Übersicht über deine EÜR mit `euer summary --year 2026`
-6. erstellt bei Bedarf einen UStVA-Arbeitsbericht mit `euer vat-report --year 2026`
-
-**Ergebnis:** Du kannst dich zurücklehnen — dein Agent übernimmt für dich die Buchhaltung!
-
----
-
-## Dokumentation & Support
-
-Detaillierte Anleitungen findest du in unseren Guides:
-
-- 🧭 **[User Journey](docs/USER_JOURNEY.md)** – Von Installation und Onboarding über den Monatsabgleich bis zur EÜR, mit Ablaufdiagramm.
-- 🧩 **[Konzept und Grenzen](docs/CONCEPTS.md)** – Was euer und der Agent übernehmen.
-- 📖 **[CLI-Referenz](docs/skills/euer-buchhaltung/references/cli_reference.md)** – Befehle, Optionen und Workflows.
-- ❓ **[Fachregeln und Sonderfälle](docs/skills/euer-buchhaltung/references/domain_rules.md)** – Buchungsregeln und Beispiele.
-- 🧾 **[Release Notes](https://github.com/curiousmarkus/euer/blob/main/docs/RELEASE_NOTES.md)** – Upgrade-Hinweise für bestehende lokale Instanzen.
-- 🤖 **[SKILL "euer-buchhaltung"](https://github.com/curiousmarkus/euer/blob/main/docs/skills/euer-buchhaltung/SKILL.md)** – Die Anleitung für deinen Agenten
-- 🤖 **[Agent Templates](https://github.com/curiousmarkus/euer/tree/main/docs/templates)** – Konfigurationsvorlagen für KI-Buchhalter
-- 🤝 **[Mitwirken](https://github.com/curiousmarkus/euer/blob/main/CONTRIBUTING.md)** – Hinweise für Issues, Änderungen und Pull Requests.
-- 🛠️ **[Development](https://github.com/curiousmarkus/euer/blob/main/DEVELOPMENT.md)** – Architektur und technische Entwicklungsregeln.
+Fragen oder einen Fehler gefunden? [Erstelle ein GitHub-Issue](https://github.com/curiousmarkus/euer/issues).
+Wenn du mitarbeiten möchtest, lies [Mitwirken](CONTRIBUTING.md) und den
+[Developer Guide](DEVELOPMENT.md).
 
 ---
 
