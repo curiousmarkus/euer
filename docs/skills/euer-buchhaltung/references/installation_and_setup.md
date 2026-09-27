@@ -204,3 +204,57 @@ Dateien außerhalb des Skill-Ordners bleiben erhalten. Prüfe
 gezielte Änderungen an Rolle,
 Adapter und Dossier. Ein CLI-Patch ohne Skill-Änderung erfordert keine neue
 Bestätigung.
+
+## Konfiguration und Ablage
+
+Die allgemeine Konfiguration gilt für alle Buchhaltungsordner: unter macOS/Linux
+`~/.config/euer/config.toml`, unter Windows `%APPDATA%\euer\config.toml`.
+Der Datenbankpfad für einen Buchhaltungsordner steht dagegen in dessen
+`.euer/config.toml`. Prüfe mit `euer config show` beide Pfade, bevor du Daten
+änderst. Ein neuer Mandant darf nicht stillschweigend die globale Konfiguration
+eines anderen Mandanten übernehmen.
+
+Setze `tax.mode` nur aus dem bestätigten Steuerstatus des Mandanten. `euer setup`
+kann Werte interaktiv einrichten; `euer setup --set <section.key> <value>` ändert
+gezielt einen Wert. Belege und Exporte lassen sich beispielsweise so ablegen:
+
+```toml
+[receipts]
+root = "/pfad/zu/Buchhaltung"
+year_dir = "{year}"
+expenses_dir = "Ausgaben"
+income_dir = "Einnahmen"
+
+[exports]
+directory = "/pfad/zu/Buchhaltung/Exporte"
+```
+
+`receipts.year_dir` muss `{year}` enthalten. Belege liegen unter
+`<root>/<Jahr>/<Typ>/<Belegname>`; der Jahresordner folgt dem
+`payment_date`. `exports.directory` ist ein konkreter Ordner und unterstützt
+keinen `{year}`-Platzhalter. Für einen einzelnen Jahreslauf kann
+`euer export --year 2026 --output <Jahresordner>` einen anderen Zielordner
+wählen. Ohne Endung im gespeicherten Belegnamen sucht `euer receipt check`
+nach `.pdf`, `.jpg`, `.jpeg` und `.png`.
+
+Ein optionales Buchungskonto verknüpft eine frei gewählte Kennung mit einer
+vorhandenen EÜR-Kategorie:
+
+```toml
+[[ledger_accounts]]
+key = "hosting"
+name = "Hosting und Cloud"
+category = "Laufende EDV-Kosten"
+account_number = "4940"
+```
+
+`--ledger-account hosting` wählt dieses Buchungskonto und setzt die Kategorie;
+`--account` bezeichnet dagegen das tatsächliche Zahlungs- oder Bankkonto.
+Prüfe den Kontenrahmen mit `euer list ledger-accounts`. Persönliche
+Zuordnungsregeln gehören ins Mandanten-Dossier, nicht in den ausgelieferten Skill.
+
+Die [Dossier-Vorlage](../assets/Agents-Template.md) liegt im Skill-Bundle.
+Im Repository liegen unter `docs/templates/` außerdem ein optionaler
+`accountant-role.md` für spezialisierte Agenten und ein
+`onboarding-prompt.md` für separate Chats. Ein allgemeiner Agent kann mit dem
+vollständigen Skill einschließlich Referenzen und Vorlage arbeiten.

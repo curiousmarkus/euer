@@ -145,14 +145,14 @@ ersetzt. Fehlen Update-Rechte, informiert der Agent den Nutzer.
 | `SKILL.md` | Version, Rolle, Arbeitsablauf, Änderungsverbot, Bundle-Bezugsquelle, Versionsbestätigung und Referenzindex |
 | `references/installation_and_setup.md` | Installation, Agenteneinbindung, Config und Updates |
 | `references/onboarding.md` | Bestehendes Interview und Mandanten-Dossier; keine zweite Interview-Anleitung |
-| `references/accounting_workflow.md` | Beleg- und Kontoauszugsablauf für allgemeine und spezialisierte Agenten |
+| `assets/Agents-Template.md` | Kopierbare, mandantenspezifische Vorlage für die persönliche `AGENTS.md` |
 | `references/cli_reference.md` | Alle CLI-Befehle mit Syntax, Bedeutung, Voraussetzungen, Ausgabe und Beispielen |
 | `references/domain_rules.md` | Fachliche Wenn-Dann-Regeln mit Begründung, Quelle und Geltungszeitraum |
 
 Der Skill benennt Buchungs-, Beleg- und Kontoauszugsaufträge ausdrücklich im
-YAML-`description`-Feld. Rolle und grundlegende Prüfregeln stehen im Skill;
-der ausführliche Abgleich liegt in `accounting_workflow.md`. Die optionale
-`accountant-role.md` verweist darauf, damit auch ein allgemeiner Agent ohne
+YAML-`description`-Feld. Rolle, grundlegende Prüfregeln und der vollständige
+Beleg- und Kontoauszugsablauf stehen direkt im Skill. Die optionale
+`accountant-role.md` verweist auf ihn, damit auch ein allgemeiner Agent ohne
 besondere Rollen-Konfiguration vollständig arbeiten kann.
 
 Inhalte aus `docs/USER_GUIDE.md` und `docs/FAQ.md` werden in diese Dateien migriert;

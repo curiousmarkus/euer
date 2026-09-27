@@ -1,27 +1,31 @@
 # Fachliche Buchungsregeln und Sonderfälle
 
-Prüfe immer Beleg, Zahlungsfluss, Steuerstatus und Geltungsjahr. Diese Regeln
-beschreiben die aktuelle CLI-Behandlung; bei steuerlich strittigen Fällen
-bleibt die fachliche Klärung mit Steuerberatung erforderlich.
+Prüfe immer Beleg, Zahlungsfluss, Steuerstatus und Geltungsjahr. Diese Referenz
+verbindet die aktuelle CLI-Behandlung mit fachlichen Prüffragen. Wenn ein
+Sachverhalt oder seine steuerliche Einordnung unklar ist, frage nach und buche
+keinen erfundenen Steuersatz, RC-Typ oder Beleg. Die CLI entscheidet die
+steuerliche Einordnung nicht selbst.
 
 ## Geltung und Quellen der wichtigsten Wenn-Dann-Regeln
 
-Die CLI-Regeln dieser Referenz beschreiben Skill 1.1.0. Bei älteren Buchungen
+Die CLI-Regeln dieser Referenz beschreiben Skill 1.1.1. Bei älteren Buchungen
 gelten Beleg, Zahlungsjahr und damaliger Steuerstatus; eine spätere Änderung der
 globalen Config ersetzt deren ursprüngliche Behandlung nicht.
 
 | Wenn | Dann und Begründung | Quelle | Geltungszeitraum |
 |---|---|---|---|
-| Eine betriebliche Vorauszahlung fließt ab | Die Zahlung einmal im Zahlungsjahr erfassen; die spätere 0-Euro-Verbrauchsrechnung nicht erneut buchen, um Doppelzählung zu vermeiden | § 11 Abs. 2 EStG; Details unten bei Prepaid | Kalenderjahr des tatsächlichen Abflusses |
-| Eine geklärte RC-Vorauszahlung für eine Leistung nach § 13b UStG erfolgt | RC-Typ anhand des leistenden Unternehmens und Belegs setzen; die Umsatzsteuerperiode der Zahlung prüfen | § 13b Abs. 4 Satz 2 UStG und § 15 Abs. 1 Satz 1 Nr. 4 UStG; Details unten bei Prepaid | Voranmeldungszeitraum der Zahlung |
+| Eine betriebliche Vorauszahlung fließt ab | Zahlung und späteren Verbrauch abgleichen; dieselbe Ausgabe nicht zweimal buchen. Jahreswechsel und Ausnahmen vom Abflussprinzip prüfen | [§ 11 Abs. 2 EStG](https://www.gesetze-im-internet.de/estg/__11.html); Details unten bei Prepaid | Zahlungsjahr, vorbehaltlich gesetzlicher Ausnahmen |
+| Eine geklärte RC-Vorauszahlung für eine Leistung nach § 13b UStG erfolgt | RC-Typ anhand von Leistung, leistendem Unternehmen und Beleg bestimmen; Steuerperiode und Vorsteuerberechtigung gesondert prüfen | [§ 13b Abs. 4 UStG](https://www.gesetze-im-internet.de/ustg_1980/__13b.html), [§ 15 Abs. 1 Nr. 4 UStG](https://www.gesetze-im-internet.de/ustg_1980/__15.html); Details unten bei Prepaid | Je nach Voraussetzungen der Anzahlung |
 | Eine geschäftliche Bewirtung wird bezahlt | Zahlbetrag als eine Ausgabe erfassen, belegte Vorsteuer und Trinkgeld getrennt prüfen; die EÜR-Aufteilung im Report kontrollieren | § 4 Abs. 5 Satz 1 Nr. 2 EStG und § 15 Abs. 1/1a UStG; Details unten bei Bewirtung | Zahlungsjahr und zugehöriger Beleg |
-| Cashback geht auf dem Geschäftskonto ein | Als gesonderten Zahlungseingang klassifizieren und die Herkunft prüfen, statt eine frühere Ausgabe blind zu mindern | § 4 Abs. 3 EStG; Details unten bei Cashback | Kalenderjahr des Zuflusses |
+| Eine Cashback-Gutschrift geht ein | Herkunft, Bedingungen und Bezug zu früheren Käufen prüfen, bevor Einnahme oder Entgeltminderung gebucht wird | § 4 Abs. 3 EStG; Details unten bei Cashback | Jahr des tatsächlichen Zuflusses beziehungsweise der Korrektur |
 
 ## Wichtige Regeln
 
 ### Beträge
 
-Der Betrag (`--amount`) entspricht immer dem tatsächlichen **Zahlfluss auf dem Bankkonto** (Brutto).
+Der Betrag (`--amount`) entspricht dem tatsächlichen **EUR-Zahlfluss** auf dem
+Geschäfts- oder Privatkonto beziehungsweise in bar. Eine privat bezahlte
+Betriebsausgabe wird zusätzlich als solche gekennzeichnet.
 
 - **Ausgaben**: Immer NEGATIV (z.B. `--amount -119.00`).
     - Standard-Fall: Das ist der Brutto-Preis inkl. USt.
@@ -29,6 +33,22 @@ Der Betrag (`--amount`) entspricht immer dem tatsächlichen **Zahlfluss auf dem 
 - **Einnahmen**: Immer POSITIV (z.B. `--amount 119.00`).
     - Standard-Fall: Brutto-Rechnungsbetrag, den der Kunde überwiesen hat.
 - **Privateinlagen/Privatentnahmen**: Immer POSITIV (`add private-deposit`, `add private-withdrawal`), Richtung ergibt sich aus dem Typ.
+
+### Plausibilitätsprüfungen
+
+Die CLI lehnt künftige Zahlungsdaten und bezahlte Buchungen mit künftigem
+Rechnungsdatum ab. Bei Daten, die mehr als zwei Jahre zurückliegen, warnt sie.
+Liegt ein Betrag über dem konfigurierten `[safety].amount_threshold`
+(Standard: 5.000 EUR), fordert sie `--force`. Ein gleicher Betrag bei ähnlicher
+Gegenpartei innerhalb von zwei Tagen vor oder nach einer bestehenden Buchung
+gilt als mögliches Duplikat; `--allow-duplicate` kann diese Prüfung übergehen.
+Bei gemeinsam übergebenem Steuersatz und Steuerbetrag prüft sie deren
+rechnerische Übereinstimmung mit 0,02 EUR Toleranz.
+
+Prüfe vor jeder Ausnahme Beleg, Zahlung, vorhandene Buchung und Mandantenregel.
+`--force` übergeht mehrere Schutzprüfungen und ersetzt keine fachliche Klärung.
+Verwende `--allow-duplicate` nur für belegte, getrennte Vorgänge und dokumentiere
+den Grund. Eine Warnung allein rechtfertigt keinen erfundenen Wert.
 
 ### Steuermodus (Config)
 
@@ -40,7 +60,7 @@ mode = "small_business"  # oder "standard"
 ```
 
 1.  **Kleinunternehmer (`mode = "small_business"`)**:
-    *   Ausgaben werde brutto als Kosten erfasst.
+    *   Ausgaben werden brutto als Kosten erfasst.
     *   Einnahmen werden ohne ausgewiesene USt mit dem tatsächlichen Zahlungseingang erfasst.
     *   Reverse-Charge: Erzeugt eine Umsatzsteuerschuld (`vat_output`), die nicht als Vorsteuer abgezogen werden kann.
 
@@ -50,7 +70,8 @@ mode = "small_business"  # oder "standard"
         müssen für den UStVA-Report stimmen.
     *   Standard-Einnahmen ohne Sonderfall mit `--vat-rate 19` buchen; für 7 %
         `--vat-rate 7`, für 0 % `--vat-rate 0`, für steuerfrei `--tax-free`.
-    *   Reverse-Charge: Nullsummenspiel (Umsatzsteuer = Vorsteuer).
+    *   Reverse-Charge: Die CLI erfasst Umsatzsteuer und Vorsteuer gleichzeitig.
+        Ob der volle Vorsteuerabzug fachlich zulässig ist, muss geklärt sein.
 
 ### USt-Voranmeldung (`vat-report`)
 
@@ -64,7 +85,8 @@ euer vat-report --year YYYY --quarter 1 --format csv --output exports/
 Der Report ist kein Ersatz für Steuerberatung oder ELSTER-Übermittlung. Er ist
 ein Arbeitsbericht mit Kennzahlen, Warnungen und Diagnose. Er nutzt nur
 `payment_date`; Buchungen ohne Wertstellungsdatum werden gewarnt und nicht
-eingerechnet.
+eingerechnet. Prüfe die rechtlich maßgebliche USt-Periode vor der Übernahme nach
+ELSTER gesondert, insbesondere bei Anzahlungen und RC.
 
 ### Reverse-Charge (--rc eu|third-country)
 
@@ -73,7 +95,8 @@ Unternehmens und des Steuerstatus, ob Reverse Charge anzuwenden ist. Bei
 geklärtem Sachverhalt verwende `--rc eu` oder `--rc third-country`. Ein
 Markenname allein belegt weder Sitz noch RC-Typ.
 
-Berechnet automatisch 19% USt.
+Die CLI berechnet für unterstützte RC-Buchungen automatisch 19 % USt. Prüfe,
+ob dieser Satz und die RC-Behandlung zum konkreten Vorgang passen.
 - **Kleinunternehmer**: Erhöht die Zahllast.
 - **Regelbesteuerung**: Bucht USt und VorSt gleichzeitig (Zahllast-neutral).
 Hinweis: Bei `small_business` setzt RC automatisch `vat_output`, `vat_input` bleibt `0.0`.
@@ -94,6 +117,12 @@ nachpflegen.
   doppelt zählen.
 - Bei Unklarheit kläre, ob Betriebsausgabe, Ausgleich oder reine
   Kapitalbewegung vorliegt. Kontrolliere `euer private-summary --year YYYY`.
+- Für bestehende Buchungen zeigt `euer reconcile private --year YYYY --dry-run`
+  Änderungen nach den aktuellen Privatkonto-Regeln. Prüfe die betroffenen
+  Buchungen; erst danach `euer reconcile private --year YYYY` anwenden.
+  Manuelle Markierungen bleiben erhalten. Eine einzelne bestätigte Ausgabe
+  kannst du mit `euer update expense <ID> --private-paid` kennzeichnen.
+  Direkte SQL-Änderungen umgehen Validierung und Audit-Log.
 
 ### Fremdwährungen
 
@@ -105,7 +134,7 @@ Gebührenabweichungen müssen geklärt werden, statt Beträge ungefähr zu match
 ### Prepaid-Guthaben & Vorauszahlungen (z. B. Google AI Studio, OpenAI)
 
 Bei Anbietern mit Guthabenaufladung (Prepaid):
-1. **Zahlung erfassen:** Die Guthabenaufladung wird direkt bei Zahlung/Kontoabbuchung mit dem Zahlungsbeleg als Ausgabe erfasst (`--amount -XX.XX`, `--rc eu|third-country`). Als `--invoice-date` pragmatisch das Datum des Zahlungsbelegs/Kontoauszugs nutzen. Eine Warnung bei Wertstellungsdatum vor Rechnungsdatum kann ignoriert werden.
+1. **Zahlung prüfen:** Die Guthabenaufladung anhand von Zahlungsbeleg und Kontoauszug erfassen, wenn sie als Betriebsausgabe geklärt ist. `--rc` nur bei belegter RC-Pflicht und geklärtem Typ setzen. `--invoice-date` nur mit dem tatsächlichen Belegdatum füllen; ein fehlendes Rechnungsdatum sichtbar lassen.
 2. **Monatliche Verbrauchsrechnung:** Weist die spätere Monatsrechnung einen Zahlbetrag von 0,00 EUR auf (da mit Guthaben verrechnet), wird sie **nicht** als neue Ausgabe gebucht (Vermeidung von Doppelzählung). Sie wird im Belegordner abgelegt und optional in den `--notes` der Zahlungsbuchung vermerkt. (Details: siehe [Sonderfälle](#häufige-sonderfälle-und-fehlerbehebung)).
 
 ### Bewirtungsaufwendungen
@@ -165,7 +194,7 @@ Jahreszuordnung.
 | `vendor` | Lieferant | Name des Anbieters |
 | `category` | Kategorie | Name der Ausgabenkategorie |
 | `amount_eur`| Bruttobetrag | **Immer negativ** (z.B. -10.00) |
-| `rc` | Reverse-Charge-Typ | leer, `eu`, `third-country` oder `unclassified` |
+| `rc_type` | Gespeicherter Reverse-Charge-Typ | `none`, `eu`, `third_country` oder `unclassified`; die CLI-Option heißt `--rc third-country` |
 | `vat_input` | Vorsteuer | Forderung an FA (positiv), nur bei Regelbest. |
 | `vat_output`| RC Umsatzsteuer | Schuld an FA (positiv), bei RC |
 | `vat_rate` | USt-Satz | `19`, `7`, `0` oder leer |
@@ -201,7 +230,8 @@ Jahreszuordnung.
 
 ### Belegnamen
 
-Format: `YYYY-MM-DD_Anbieter.pdf` oder `YYYYMMDD_Anbieter.pdf`
+Empfohlenes Dateinamenformat: `YYYY-MM-DD_Anbieter.pdf` oder
+`YYYYMMDD_Anbieter.pdf`. Die CLI erzwingt dieses Namensschema nicht.
 
 Beispiele:
 - `2026-01-15_Render.pdf`
@@ -223,85 +253,65 @@ Jahresordner sicher ableiten.
 Hinweis: Fehlt die Dateiendung, prüft `euer receipt check` automatisch
 `.pdf`, `.jpg`, `.jpeg` und `.png`.
 
-
 ## Häufige Sonderfälle und Fehlerbehebung
 
-## 1. Prepaid-Guthaben & Vorauszahlungen (z. B. Google AI Studio, OpenAI)
+### Prepaid-Guthaben und Vorauszahlungen
 
-### Frage
-Anbieter wie Google AI Studio oder OpenAI stellen auf Vorauszahlung (Prepaid-Guthaben / Credits) um. Ich erhalte bei der Abbuchung sofort einen **Zahlungsbeleg**, die eigentliche **Verbrauchsrechnung** (mit 0,00 € Zahlbetrag) kommt jedoch erst gesammelt im Folgemonat. Wie erfasse ich das sauber in `euer`?
+#### Aufladung und spätere Verbrauchsrechnung
 
----
+Eine Zahlung lädt ein Software-Guthaben auf; die Verbrauchsrechnung kommt
+später mit 0,00 € Zahlbetrag.
 
-### Steuerlicher Hintergrund (EÜR & Reverse Charge)
+Prüfe zuerst, ob die Aufladung eine Zahlung an den Anbieter für eine bestimmte
+betriebliche Leistung ist oder nur eine Umbuchung auf ein eigenes Zahlungsmittel.
+Gleiche Zahlungsbeleg, Kontoauszug und spätere Verbrauchsrechnung ab. Eine
+bereits erfasste Zahlung darf durch die 0-Euro-Rechnung nicht nochmals als
+Ausgabe in die EÜR gelangen.
 
-1. **Abflussprinzip (§ 11 Abs. 2 EStG):**  
-   In der Einnahmen-Überschuss-Rechnung (EÜR) gibt es keine Bilanzierung und keine aktiven Rechnungsabgrenzungsposten für Vorleistungen wie Software-Guthaben. Eine Ausgabe ist in voller Höhe in dem Kalenderjahr bzw. Monat steuerlich wirksam, in dem das Geld von deinem Bankkonto oder deiner Kreditkarte abfließt.
-2. **Reverse-Charge-Entstehung (§ 13b Abs. 4 Satz 2 UStG):**  
-   Bei Dienstleistern aus dem EU-Ausland (z. B. Google Cloud EMEA Ltd. in Irland) entsteht die Steuerschuldnerschaft des Leistungsempfängers bei Vorauszahlungen/Anzahlungen bereits **mit Ablauf des Voranmeldungszeitraums, in dem die Zahlung geleistet wurde**. Auch der Vorsteuerabzug (§ 15 Abs. 1 S. 1 Nr. 4 UStG bei Regelbesteuerung) greift im Monat der Zahlung.
-3. **Keine Doppelbuchung der Verbrauchsrechnung:**  
-   Die spätere Monatsrechnung weist den Verbrauch aus (z. B. 35,00 € abzüglich 35,00 € verrechnetes Guthaben = 0,00 € Zahlbetrag). Sie darf **nicht** nochmals als Ausgabe erfasst werden, da die Kosten sonst doppelt in der EÜR gezählt würden.
+Bei einer geklärten betrieblichen Vorauszahlung kann die Ausgabe im Zahlungsjahr
+liegen. [§ 11 Abs. 2 EStG](https://www.gesetze-im-internet.de/estg/__11.html)
+kennt jedoch Ausnahmen für regelmäßig wiederkehrende Ausgaben und langfristige
+Nutzungsüberlassung. Prüfe sie besonders am Jahreswechsel; entscheide nicht
+allein anhand des Datums der Kontoabbuchung.
 
----
+**CLI-Ablauf:**
 
-### Der empfohlene pragmatische Workflow in `euer`
+1. Erfasse nur den belegten EUR-Abfluss mit `--payment-date`, `--amount` und
+   passender Kategorie. Übernimm `--invoice-date` ausschließlich aus einem
+   tatsächlich vorliegenden Rechnungs- oder Zahlungsbeleg. Wenn kein solches
+   Datum belegt ist, lasse das Feld offen und kläre den Eintrag in
+   `euer incomplete list` später; fülle es nicht bloß zur Warnungsfreiheit.
+2. Bestimme `--rc` aus der konkreten Leistung und dem leistenden Unternehmen,
+   nicht aus dem Markennamen. Bei einer echten RC-Anzahlung können
+   [§ 13b Abs. 4 UStG](https://www.gesetze-im-internet.de/ustg_1980/__13b.html)
+   und [§ 15 Abs. 1 Nr. 4 UStG](https://www.gesetze-im-internet.de/ustg_1980/__15.html)
+   relevant sein. Die CLI nutzt für `vat-report` das `payment_date`; prüfe die
+   rechtlich maßgebliche USt-Periode und den Vorsteuerabzug gesondert.
+3. Lege die spätere 0-Euro-Verbrauchsrechnung als Nachweis zur vorhandenen
+   Zahlung ab. Füge bei Bedarf mit `euer update expense <ID> --notes ...` einen
+   Verweis hinzu. Buche nur dann erneut, wenn ein weiterer tatsächlicher
+   Zahlfluss oder ein gesonderter, geklärter Vorgang vorliegt.
 
-#### Schritt 1: Aufladung mit dem Zahlungsbeleg buchen
+#### Rechnung über 0,00 EUR
 
-Erfasse die Abbuchung direkt bei Zahlung:
+Eine Rechnung mit 0,00 € Zahlbetrag ist für sich keine zusätzliche
+Zahlungsbuchung. Bewahre sie als Nachweis auf und ordne sie der zugehörigen
+Zahlung zu. Prüfe bei Gutschriften, Erstattungen oder Verrechnungen, ob ein
+weiterer Geschäftsvorfall vorliegt; unterdrücke ihn nicht allein wegen des
+Nullbetrags auf einer Einzelrechnung.
 
-```bash
-euer add expense \
-  --payment-date 2026-08-15 \
-  --invoice-date 2026-08-15 \
-  --vendor "Google Cloud" \
-  --category "Laufende EDV-Kosten" \
-  --amount -50.00 \
-  --rc eu \
-  --receipt "2026-08-15_google-payment-receipt.pdf" \
-  --notes "Google AI Studio Prepaid-Guthaben"
-```
+#### Restguthaben zum Jahreswechsel
 
-* **Datum:** Trage als `--invoice-date` pragmatisch das Datum des Zahlungsbelegs bzw. der Kontoabbuchung ein. Dadurch vermeidest du Meldungen in `euer incomplete list`.
-* **Reverse Charge:** Setze `--rc eu` (bei Google Irland) bzw. `--rc third-country` (bei US-Anbietern ohne EU-Sitz). Dadurch stimmt die USt-Voranmeldung (`euer vat-report`) für den Zahlungsmonat automatisch.
-* **Datums-Warnung:** Sollte das Wertstellungsdatum vor dem Rechnungsdatum liegen (falls du als Rechnungsdatum ein späteres Datum wählst), gibt `euer` die Meldung aus:
-  `Warnung: Wertstellungsdatum liegt vor Rechnungsdatum. Bitte prüfen.`  
-  Diese Meldung ist **nur eine Warnung und kein Blocker**. Bei Vorauszahlungen ist dieser Zustand völlig normal und die Warnung kann ignoriert werden.
+Gleiche Aufladungen, Verbrauch und Rückzahlungen ab. Eine geklärte
+Betriebsausgabe wird nicht ein zweites Mal beim Verbrauch gebucht. Ob eine
+Dezember-Aufladung vollständig dem Zahlungsjahr zuzuordnen ist, hängt vom
+Sachverhalt und den Ausnahmen in § 11 Abs. 2 EStG ab. Bei unklarem
+Guthabentyp, längerer Nutzungsüberlassung oder fehlenden Belegen fachlich
+klären, bevor der Jahresabschluss übernommen wird.
 
-#### Schritt 2: Verbrauchsrechnung ablegen
+### Bewirtung
 
-Wenn Anfang des Folgemonats die Verbrauchsrechnung (Zahlbetrag 0,00 €) im Google Cloud Portal bereitsteht:
-
-1. **Nicht als neue Ausgabe buchen!**
-2. Lege das PDF als Leistungsnachweis für das Finanzamt in deinen Belegordner (oder füge es mit dem Zahlungsbeleg zu einer gemeinsamen PDF-Datei zusammen).
-3. Ergänze optional eine Notiz bei der ursprünglichen Ausgabe:
-   ```bash
-   euer update expense <ID> --notes "Google AI Studio Prepaid; Verbrauchsrechnung 2026-08 (0,00 EUR) im Belegordner"
-   ```
-
----
-
-## 2. Dürfen 0,00-Euro-Rechnungen in `euer` gebucht werden?
-
-### Frage
-Kann oder sollte ich Null-Betrags-Rechnungen (z. B. durch Guthabenverrechnung oder Rabatte) in `euer` als Buchung anlegen?
-
-### Antwort
-**Nein.** Die EÜR bildet nach § 11 EStG reine Geldflüsse ab. Buchungen ohne Zahlungsfluss (`--amount 0.00`) verfälschen Statistiken und haben steuerlich in der EÜR keinen Platz. Bewahre solche Belege stattdessen im Belegarchiv als Leistungsnachweis auf und verweise bei Bedarf in den Notizen der zugehörigen Zahlungsbuchung darauf.
-
----
-
-## 3. Was passiert mit unverbrauchtem Restguthaben zum Jahreswechsel?
-
-### Frage
-Ich lade im Dezember 100 € Guthaben auf, verbrauche davon aber bis zum 31.12. nur 20 €. Wie wird das Restguthaben steuerlich behandelt?
-
-### Antwort
-Nach dem Abflussprinzip (§ 11 Abs. 2 Satz 1 EStG) sind die gesamten 100 € im Jahr der Zahlung als Betriebsausgabe abzugsfähig. Im Folgejahr fallen bei der Nutzung des restlichen Guthabens keine weiteren Betriebsausgaben mehr an. Es ist keine rechnerische Abgrenzung in der EÜR erforderlich.
-
----
-
-## 4. Wie buche ich einen Bewirtungsbeleg mit Trinkgeld?
+#### Beleg mit Trinkgeld buchen
 
 Erfasse eine geschäftliche Bewirtung als eine Ausgabe in `Bewirtungsaufwendungen`.
 `--amount` enthält den gesamten negativen Zahlbetrag einschließlich Trinkgeld.
@@ -310,14 +320,14 @@ nicht nochmals addiert. `--vat` ist der belegte, tatsächlich abziehbare
 Vorsteuerbetrag. Rechnung, Bewirtungsangaben und Trinkgeldnachweis gehören zur
 Belegprüfung. Die CLI prüft deren steuerliche Voraussetzungen nicht automatisch.
 
-Ein CLI-Beispiel findest du in der
-[CLI-Referenz](cli_reference.md#bewirtungsaufwendungen-buchen).
+Die verfügbaren Flags stehen unter
+[`euer add expense`](cli_reference.md#euer-add-expense).
 Bei unterschiedlichen Steuersätzen auf dem Beleg übernimmt der Agent die
 belegten abziehbaren Steuerbeträge; er schätzt keinen einheitlichen Satz.
 
-## 5. Muss ich die 70/30-Aufteilung selbst buchen? Was gilt für Kleinunternehmer?
+#### 70/30-Aufteilung und Kleinunternehmer
 
-Nein. Buche den ganzen Zahlungsvorgang; `summary` übernimmt die Aufteilung.
+Buche den ganzen Zahlungsvorgang; `summary` übernimmt die Aufteilung.
 Für angemessene und nachgewiesene geschäftliche Bewirtung gilt die Begrenzung
 auf 70 % des Aufwands. Grundlage ist
 [§ 4 Abs. 5 Satz 1 Nr. 2 EStG](https://www.gesetze-im-internet.de/estg/__4.html).
@@ -345,7 +355,7 @@ Zahlung enthaltene Vorsteuer anlegen. Das Beispiel setzt einen geprüften,
 unterstützten Bewirtungsfall voraus; reine Arbeitnehmerbewirtung gehört nicht
 in diesen Workflow.
 
-## 6. Was bedeutet `needs_review`? Darf ich fehlende Vorsteuer mit null angeben?
+#### Ungeprüfte Vorsteuer (`needs_review`)
 
 `needs_review` bedeutet, dass die Vorsteuerbehandlung noch am Beleg geprüft
 werden muss. Bei Regelbesteuerung lässt du `--vat` weg, wenn diese Angabe fehlt.
@@ -361,106 +371,79 @@ Bereits vorhandene Vorsteuerwerte können in Berichten vorläufig berücksichtig
 sein; Hinweise und UStVA-Diagnosen müssen vor der Übernahme nach ELSTER geklärt
 werden. Ein technisch gesetzter Status ersetzt keine vollständigen Belege.
 
----
+### Cashback vom Geschäftskonto
 
-## 7. Wie buche ich Cashback von meinem Geschäftskonto (z. B. bei N26)?
+Wenn eine Bank oder ein Kartenanbieter Cashback für Kartenzahlungen gutschreibt,
+prüfe Programmbedingungen, Zahler und zugehörige Käufe. Gleiche den Betrag mit
+dem Kontoauszug ab. Der Programmname allein bestimmt weder EÜR-Kategorie noch
+Umsatzsteuerbehandlung.
 
-### Frage
-Mein Geschäftskonto (z. B. N26 Business oder Finom) vergütet monatlich Cashback auf Kartenzahlungen (z. B. 0,1 % oder 0,5 %). Am Monatsanfang erhalte ich eine gesammelte Gutschrift auf dem Konto (z. B. 1,42 €). Wie erfasse ich das steuerlich sauber in `euer`?
+- Wenn die Gutschrift privaten Käufen zuzuordnen ist, erfasse sie nicht als
+  Betriebseinnahme.
+- Wenn sie betrieblich veranlasst und ein eigenständiger Zufluss ist, erfasse
+  sie nach Klärung einmalig mit `euer add income` und dem tatsächlichen
+  Wertstellungsdatum. Bewahre Kontoauszug und Programmbedingungen als Nachweis
+  auf.
+- Wenn sie den Preis eines früheren Einkaufs mindert, prüfe die Zuordnung zu
+  diesem Einkauf und eine mögliche Vorsteuerberichtigung nach
+  [§ 17 UStG](https://www.gesetze-im-internet.de/ustg_1980/__17.html).
+- Wenn sie Entgelt für eine Leistung ist, kläre die Umsatzsteuerbehandlung,
+  bevor du Kategorie oder `--tax-free` setzt.
 
----
+Die Einordnung hängt vom konkreten Verhältnis zwischen Händler, Anbieter und
+Karteninhaber ab. Der
+[BFH zu Boni eines Zentralregulierers](https://www.bundesfinanzhof.de/de/entscheidung/entscheidungen-online/detail/STRE202520084/)
+zeigt, dass die Stellung des Zahlenden in der Leistungskette entscheidend sein
+kann; daraus folgt keine pauschale Einstufung für Bank-Cashback. Wenn die
+Bedingungen unklar bleiben, kläre den Sachverhalt vor der Buchung.
 
-### Steuerlicher Hintergrund
+### CLI-Schutzprüfungen und Korrekturen
 
-1. **Betriebliche Einnahme (§ 4 Abs. 3 EStG):**  
-   Cashback auf geschäftliche Kartenausgaben ist betrieblich veranlasst und gehört in die EÜR. Da die Bank (Zahlungsdienstleister) das Cashback als Treue-/Marketing-Incentive aus eigener Marge zahlt und nicht der jeweilige Händler, handelt es sich nicht um einen nachträglichen Lieferantenrabatt, sondern um einen sonstigen betrieblichen Ertrag (SKR03: 2700 / 8605; SKR04: 4830).
-2. **Keine Umsatzsteuer / Keine Vorsteuerkorrektur:**  
-   Du erbringst für die Bank keine Gegenleistung (§ 1 Abs. 1 UStG); die Gutschrift ist nicht umsatzsteuerbar (0 % USt). Eine Vorsteuerberichtigung nach § 17 UStG entfällt, da die Bank nicht Teil der warenwirtschaftlichen Leistungskette ist (vgl. BFH V R 42/17) und eine cent-genaue Zerlegung eines monatlichen Sammelbetrags auf Vorsteuerklassen (19 %, 7 %, Reverse Charge EU/Drittland, steuerfrei) unverhältnismäßig und unpraktikabel wäre.
-3. **Beleg:**  
-   Banken stellen für Cashback keine gesonderte Rechnung aus. Als Nachweis für das Finanzamt dient der monatliche PDF-Kontoauszug, auf dem der Betrag und der Buchungstext ausgewiesen sind.
+#### Versehentlich geänderte oder gelöschte Buchung
 
----
+Für versehentliche Änderungen und Löschungen stehen je nach Fall Papierkorb
+und Undo zur Verfügung:
 
-### Empfohlener Workflow in `euer`
-
-Buche die Gutschrift mit `euer add income`:
-
-* **Bei Regelbesteuerung:**
-  ```bash
-  euer add income \
-    --payment-date 2026-09-01 \
-    --source "N26 Bank AG" \
-    --category "Umsatzsteuerfreie, nicht umsatzsteuerbare Betriebseinnahmen" \
-    --amount 1.42 \
-    --tax-free \
-    --receipt "2026-08_n26-kontoauszug.pdf" \
-    --notes "N26 Business Cashback August 2026"
-  ```
-* **Als Kleinunternehmer (§ 19 UStG):**
-  ```bash
-  euer add income \
-    --payment-date 2026-09-01 \
-    --source "N26 Bank AG" \
-    --category "Betriebseinnahmen als Kleinunternehmer" \
-    --amount 1.42 \
-    --receipt "2026-08_n26-kontoauszug.pdf" \
-    --notes "N26 Business Cashback August 2026"
-  ```
-
-* **Privatkonten:** Cashback auf privaten Girokonten oder Kreditkarten (z. B. privates N26-Konto oder Trade Republic Saveback) gehört in die Privatsphäre und wird in `euer` **nicht** erfasst.
-
----
-
-## 8. Was passiert beim Löschen? Kann ich gelöschte Buchungen wiederherstellen?
-
-### Frage
-Ich oder mein KI-Agent hat versehentlich eine Buchung gelöscht oder geändert. Sind die Daten unwiderruflich verloren?
-
-### Antwort
-**Nein.**
 1. **Papierkorb (Soft-Delete):** `euer delete` löscht Datensätze standardmäßig nicht physisch aus der Datenbank, sondern versieht sie mit einem Löschzeitstempel (`deleted_at`). Sie tauchen in normalen Listen und Auswertungen nicht mehr auf, können aber jederzeit wiederhergestellt werden:
    - `euer trash list` zeigt alle gelöschten Buchungen an.
-   - `euer restore <ID>` holt den Datensatz sofort aus dem Papierkorb zurück.
-   - Nur mit `euer delete <ID> --purge` oder `euer trash empty` werden Daten physisch entfernt.
+   - `euer restore <ID> --table expenses` holt eine gelöschte Ausgabe zurück; für andere Typen `income` oder `private_transfers` angeben.
+   - `euer delete expense <ID> --purge` (entsprechend `income` oder `private-transfer`) und `euer trash empty` entfernen Daten physisch. Vorher Ziel und Sicherung prüfen.
 2. **Undo-Funktion:** Wurde gerade ein falscher Befehl abgesetzt (z. B. fehlerhaftes `update`, versehentliches `add` oder `delete`), macht `euer undo` die letzte Mutation im Audit-Log rückgängig (mit Vorschau und Bestätigung bzw. per `euer undo --force`).
 
----
+#### Exportdateien existieren bereits
 
-## 9. Warum bricht `euer export` mit einem Fehler ab, dass Dateien bereits existieren?
+Bei `euer export --year 2026` kann diese Fehlermeldung erscheinen:
 
-### Frage
-Beim Ausführen von `euer export --year 2026` erhalte ich die Fehlermeldung:  
 `Fehler: Exportdateien existieren bereits im Zielordner: [...] Nutze --force zum Überschreiben.`
 
-### Antwort
-`euer` verfügt über einen Kollisionsschutz (Guardrail), um zu verhindern, dass fertig geprüfte Jahresabschlüsse oder externe Exportdateien versehentlich überschrieben werden.
+`euer` schützt vorhandene Dateien vor versehentlichem Überschreiben.
+
 - Wenn du die Exporte bewusst neu generieren möchtest, hänge `--force` an den Befehl an: `euer export --year 2026 --force`.
 - Alternativ kannst du mit `--output <verzeichnis>` einen separaten Zielordner angeben.
 - Exportdateien werden zunächst temporär im Zielordner geschrieben. Bei einem Fehler während des Austauschs setzt `euer` bereits ersetzte Dateien nach Möglichkeit zurück; der gesamte Dateisatz ist nicht atomar.
 
----
+#### Verdächtiges Duplikat (`suspicious_duplicate`)
 
-## 10. Was mache ich bei der Fehlermeldung "suspicious_duplicate" (unscharfes Duplikat)?
+Beim Hinzufügen einer Ausgabe kann `euer` mit `suspicious_duplicate` abbrechen:
 
-### Frage
-Beim Hinzufügen einer Ausgabe bricht `euer` mit `suspicious_duplicate` ab:  
 `Verdächtiges Duplikat erkannt: [...] Nutze --allow-duplicate zum Erzwingen.`
 
-### Antwort
-Die CLI prüft Buchungen auf Ähnlichkeit: Liegt innerhalb eines Fensters von $\pm 2$ Tagen bereits eine Buchung mit **exakt demselben Betrag** und einem **ähnlichen Empfänger-/Kundennamen** vor, schlägt die Duplikaterkennung an, um doppelte Erfassungen durch Agenten zu verhindern.
-- Handelt es sich um zwei getrennte, berechtigte Transaktionen (z. B. zwei Monatsabos oder separate Einkäufe am selben Wochenende), setze das Flag `--allow-duplicate`:  
-  `euer add expense ... --allow-duplicate` (oder `--force`).
+Die CLI prüft Buchungen auf Ähnlichkeit: Liegt innerhalb eines Fensters von
+$\pm 2$ Tagen bereits eine Buchung mit **exakt demselben Betrag** und einem
+**ähnlichen Empfänger-/Kundennamen** vor, schlägt die Duplikaterkennung an.
 
----
+- Vergleiche zuerst Belege, Zahlungsdaten und vorhandene Buchungen. Nur bei zwei
+  belegten, getrennten Transaktionen `--allow-duplicate` setzen und den Grund
+  festhalten. `--force` übergeht zusätzlich andere Schutzprüfungen und ist dafür
+  keine Standardlösung.
 
-## 11. Warum verlangt `euer init` das Flag `--create` bei einer neuen Datenbank?
+#### Neue Datenbank mit `euer init --create` anlegen
 
-### Frage
-Beim Aufruf von `euer init` in einem neuen Verzeichnis erhalte ich den Hinweis,
+Beim Aufruf von `euer init` in einem neuen Verzeichnis erscheint der Hinweis,
 eine vorhandene DB zu verbinden oder mit `euer init --create` neu anzulegen.
 
-### Antwort
-Dies ist eine Schutzmaßnahme gegen Fehlbedienung. Wenn du dich versehentlich im falschen Terminal-Ordner befindest und `euer init` aufrufst, würde ohne dieses Flag stillschweigend eine neue, leere Datenbank an der falschen Stelle initialisiert.
+Dieses Flag schützt vor einer neuen, leeren Datenbank im falschen Verzeichnis.
+
 - Um bewusst eine neue `euer.db` im aktuellen Ordner anzulegen, führe `euer init --create` aus.
 - Wenn die DB bereits existiert, starte `euer init` in ihrem Projektordner. Es
   trägt `./euer.db` in `.euer/config.toml` ein. Für eine DB an anderem Ort nutze

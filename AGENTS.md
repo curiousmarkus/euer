@@ -2,8 +2,8 @@
 
 ## Zweck des Projekts & Agent-First-Konzept
 
-`euer` ermöglicht es deutschen Freelancern und Kleinunternehmern, ihre
-Einnahmenüberschussrechnung (EÜR) vollständig an KI-Agenten zu delegieren.
+`euer` ermöglicht es deutschen Freiberuflern und Kleinunternehmern, die
+laufende EÜR-Buchhaltung an KI-Agenten zu delegieren.
 Das Tool ist **CLI-first** und für LLM-gesteuerte Workflows optimiert:
 Belege und Kontoauszüge an KI-Agenten übergeben, dieser liest die Daten aus und bucht sie über die CLI. Die Buchhaltungsdaten liegen lokal in
 einer einzigen SQLite-Datei — nachvollziehbar mit Audit-Log, ohne Cloud-Abhängigkeit.
@@ -13,14 +13,15 @@ Umsatzsteuer-Logik (Regel-/Kleinunternehmer/Reverse-Charge),
 Beleg-Management, CSV/Excel-Export.
 
 ### 1. KI-Agenten sind die primären Nutzer
-Die Software ist primär für **KI-Agenten als eigentliche Nutzer** gedacht. Der Mensch hinter dem Agenten bedient die CLI im Normalfall nicht selbst, sondern delegiert die Buchführung. Sein Hauptinteresse ist, dass der Agent die Buchhaltung **möglichst fehlerfrei und autonom** übernehmen kann.
-- Jede Entscheidung bei CLI-Interface, Fehlermeldungen, Parametern und Validierungen muss daraufhin optimiert sein, dem Agenten verlässliche Leitplanken zu bieten und Fehlbuchungen deterministisch abzufangen.
-- Strukturierte Rückmeldungen, klare Fehlertexte und ein lückenloser Audit-Trail sind zentrale Säulen dieses Prinzips.
+Die Software ist primär für **KI-Agenten als eigentliche Nutzer** gedacht. Der Mensch hinter dem Agenten bedient die CLI im Normalfall nicht selbst, sondern delegiert die laufende Erfassung und den Abgleich. Der Agent soll Routinefälle selbstständig bearbeiten und fehlende Angaben oder fachlich unklare Fälle sichtbar machen.
+- Jede Entscheidung bei CLI-Interface, Fehlermeldungen, Parametern und Validierungen muss daraufhin optimiert sein, dem Agenten verlässliche Leitplanken zu bieten und erkennbare Fehlbuchungen abzufangen.
+- Strukturierte Rückmeldungen, klare Fehlertexte und das Audit-Log für Änderungen
+  über die CLI sind zentrale Säulen dieses Prinzips.
 
 ### 2. Das AGENTS.md-Konzept: Coding-Guidelines vs. Mandanten-Dossier
 Da moderne KI-Agenten (Claude Code, Cursor, Codex, OpenCode etc.) standardmäßig eine im jeweiligen Arbeitsordner hinterlegte `AGENTS.md` einlesen und berücksichtigen, gehört es zum integralen Konzept von `euer`, diese Konvention gezielt zu nutzen:
 - **Repository-`AGENTS.md` (dieses Dokument):** Richtet sich an Coding-Agenten, die an der Weiterentwicklung der Software `euer` selbst arbeiten (Architektur, Code Style, Test- & Release-Vorgaben).
-- **Mandanten-`AGENTS.md` (im Buchhaltungsordner des Nutzers):** Im Buchhaltungsordner des Endnutzers wird ebenfalls eine `AGENTS.md` abgelegt (siehe `docs/templates/Agents-Template.md`). Diese enthält **keine** Coding- oder Entwicklungsanweisungen, sondern spiegelt das **Mandanten-Dossier** wider. Sie liefert dem Buchhaltungs-Agenten den geschäftlichen Kontext des Mandanten (Steuerstatus, USt-Regelung, Bankkonten, Belegpfade, Zuordnungsregeln für wiederkehrende Lieferanten und Sonderfälle), damit dieser im Buchhaltungsordner die Buchhaltung fehlerfrei führen kann.
+- **Mandanten-`AGENTS.md` (im Buchhaltungsordner des Nutzers):** Im Buchhaltungsordner des Endnutzers wird ebenfalls eine `AGENTS.md` abgelegt (siehe `docs/skills/euer-buchhaltung/assets/Agents-Template.md`). Diese enthält **keine** Coding- oder Entwicklungsanweisungen, sondern spiegelt das **Mandanten-Dossier** wider. Sie liefert dem Buchhaltungs-Agenten den geschäftlichen Kontext des Mandanten (Steuerstatus, USt-Regelung, Bankkonten, Belegpfade, Zuordnungsregeln für wiederkehrende Lieferanten und Sonderfälle), damit er Vorgänge einordnen und Rückfragen gezielt stellen kann.
 
 ---
 
@@ -76,7 +77,7 @@ Details und Beispiele: `DEVELOPMENT.md` → „Neue Commands hinzufügen"
 | `docs/USER_JOURNEY.md` | Vollständige User Journey von Installation bis Jahresabschluss |
 | `docs/RELEASE_NOTES.md` | Upgrade-Hinweise für bestehende lokale Instanzen |
 | `docs/skills/euer-buchhaltung/SKILL.md` | Buchungsregeln für AI-Agenten |
-| `docs/templates/Agents-Template.md` | Vorlage für das Mandanten-Dossier (`AGENTS.md` im Buchhaltungsordner) |
+| `docs/skills/euer-buchhaltung/assets/Agents-Template.md` | Vorlage für das Mandanten-Dossier (`AGENTS.md` im Buchhaltungsordner) |
 | `docs/templates/` | Agent-Konfigurationsvorlagen |
 
 ---

@@ -11,23 +11,23 @@
 Wenn du eine EÜR erstellen musst, stehst du vor der Entscheidung: ein Software-Abo bei einer großen Buchhaltugnssoftware (Lexoffice, SevDesk) abschließen oder irgendwas in Excel zu basteln. `euer` geht einen dritten Weg: **Ein CLI-Tool, das deinen KI-Agent befähigt, die Buchführung zu übernehmen.**
 
 ### 🤖 Built for AI Agents (Claude Code, Hermes, OpenCode, Codex, etc.)
-*   **Agent-First:** KI-Agenten sind die eigentlichen Nutzer der Software. Sie übernehmen die Buchführung; dank euer autonom und so gut wie fehlerfrei.
-*   **Basierend auf CLI Commands:** Perfekt für Tool-Calling lokaler Agenten (`euer add expense`, `euer summary`). Klare Anweisungen sowie strikte Validierungen und Sicherheitsprüfungen verhindern Fehlbuchungen.
-*   **Mit SQL Superpowers:** Für komplexe Auswertungen kann der Agent direkt auf die lokale SQLite-Datenbank zugreifen.
+*   **Agent-First:** Software für die Bedienung durch KI-Agenten. Damit sie dir die manuelle Erfassung deiner Ein- und Ausgaben abnehmen können.
+*   **Basierend auf CLI Commands:** Befehle wie `euer add expense` und `euer summary` lassen sich von lokalen Agenten aufrufen. Validierungen und Sicherheitsprüfungen erkennen bestimmte fehlerhafte oder doppelte Eingaben.
+*   **Mit SQL Superpowers:** Für zusätzliche Auswertungen kann der Agent SQL-Abfragen durchführen; Änderungen laufen über die CLI.
 
 ### 🔒 Lokal und Open Source
-* **Deine Daten bleiben bei dir:** Alle Buchungen liegen in einer lokalen SQLite-Datenbank bei dir auf deinem Rechner.
+* **Lokale Buchungsdaten:** `euer` speichert Buchungen in einer lokalen SQLite-Datenbank direkt bei dir auf dem Rechner.
 * **Offener Quellcode:** `euer` ist Open Source (AGPLv3) und damit transparent und auditierbar. 
 * **Jederzeit zugänglich:** Du kannst deine Daten direkt auswerten und jederzeit als CSV oder Excel exportieren.
 
 ### ✅ Passend für die EÜR und UStVA
 * **Passend für Freiberufler und Einzelunternehmer:** Buchführung nach dem Zufluss-/Abfluss-Prinzip (§ 11 EStG) inkl. Bericht für die UStVA, ohne unnötige doppelte Buchführung oder festem Kontenrahmen.
-* **Steuerlichen Regeln eingebaut:** EÜR-Kategorien, Kleinunternehmerregelung (§19 UStG), Umsatzsteuer und Reverse Charge (§13b UStG) werden direkt unterstützt.
-* **Geordnet und nachvollziehbar:** Zugeordnete Belege zu jeder Buchung und ein  Audit-Trail, der jede Änderung durch den Agenten mitschreibt.
+* **Steuerfälle unterstützt:** EÜR-Kategorien, Kleinunternehmerregelung (§ 19 UStG), Umsatzsteuer und Reverse Charge (§ 13b UStG) sind abgebildet.
+* **Geordnet und nachvollziehbar:** Belege lassen sich Buchungen zuordnen; Änderungen über die CLI werden im Audit-Log festgehalten.
 
 ---
 
-## Quickstart: In 2 Minuten startklar
+## Quickstart
 
 ### 1. Installation
 
@@ -79,6 +79,15 @@ Der Agent nutzt dafür die CLI:
    Unklarheiten nach.
 4. Mit `euer summary --year 2026` zeigt er dir die Jahresübersicht. Bei Bedarf
    erstellt `euer vat-report --year 2026` einen UStVA-Arbeitsbericht.
+
+### Vor der steuerlichen Abgabe
+
+`euer` unterstützt die laufende Buchhaltung und erstellt Arbeitsberichte. Die
+CLI-Prüfungen erkennen nicht jeden fachlichen Fehler; auch ein KI-Agent kann
+Belege oder steuerliche Sachverhalte falsch einordnen. Der Agent soll fehlende
+Angaben und ungeklärte Fälle sichtbar machen. Prüfe Berichte, Belege und offene
+Punkte vor der Übernahme in ELSTER und hole bei steuerlich unklaren Fällen
+fachlichen Rat ein. `euer` übermittelt keine Steuererklärung.
 
 ---
 

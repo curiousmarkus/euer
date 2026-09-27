@@ -8,7 +8,7 @@ Für Installationen ab 0.8.1 ergänzen sie die normale Update-Sequenz aus der
 pipx upgrade euer
 euer doctor
 # Skill vollständig aus dem Bundle-Pfad installieren und neu laden
-euer setup --set skill.version "1.1.0"
+euer setup --set skill.version "1.1.1"
 euer init
 euer incomplete list
 euer summary --year 2026
@@ -45,23 +45,43 @@ Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
 
 | Bereich | Änderung | Aktion nach diesem Release |
 |---|---|---|
-| Skill | Unversionierter Stand → 1.1.0; Aufträge zu Rechnungen, Kontoauszügen und Abgleichen aktivieren den Skill; Buchhalter-Grundregeln und Arbeitsablauf sind enthalten | Skill vollständig aus `skill.bundle_path` ersetzen, neu laden und Version bestätigen |
+| Skill | Unversionierter Stand → 1.1.1; Buchhalter-Grundregeln und Arbeitsablauf sind enthalten. CLI- und Fachreferenzen verlangen Belegprüfung vor Ausnahmen und geben keine pauschale Prepaid-/Cashback-Einstufung mehr vor. Die bereinigte Dossier-Vorlage liegt jetzt unter `assets/Agents-Template.md` im Bundle | Skill vollständig aus `skill.bundle_path` ersetzen, neu laden und Version bestätigen; vorhandene persönliche `AGENTS.md` nicht überschreiben |
 | Rolle | `accountant-agent.md` heißt jetzt `accountant-role.md` und ist ein optionaler kurzer Einstieg; die allgemeinen Regeln liegen im Skill | Nur bei eigens konfigurierten Buchhaltungsagenten die lokale Rollen-Datei nach Diff anpassen |
 | Agenten-Adapter | Noch keine plattformspezifischen Dateien im Release | Keine automatische Änderung an `SOUL.md`, `CLAUDE.md` oder `AGENTS.md` |
 | Mandanten-Dossier | Keine automatische Migration; keine festen EÜR-Zeilennummern in Lieferantenregeln | Bestehende Regeln prüfen und Änderungen nur als Vorschlag übernehmen |
 
-Der Skill ist nun mit Version 1.1.0 im CLI-Paket enthalten. Nach dem Paketupdate
+Der Buchungs- und Kontoauszugsablauf steht direkt in `SKILL.md`.
+`cli_reference.md` enthält nur noch Core-Befehle, Optionen und knappe
+Ein-/Ausgabehinweise. Konfiguration und Ablage stehen in
+`references/installation_and_setup.md`, fachliche Prüfungen und Privatregeln in
+`references/domain_rules.md`. Nach dem Update den vollständigen Skill-Ordner
+ersetzen und neu laden. An Datenbank und persönlichem Mandanten-Dossier ist für
+diese Dokumentationsänderung nichts zu migrieren.
+Die Onboarding-Referenz verweist auf die mitgelieferte Dossier-Vorlage und
+führt bei vorhandenen Datenbanken vor `init` durch dessen `--dry-run`-Vorschau.
+
+Der Skill ist nun mit Version 1.1.1 im CLI-Paket enthalten. Nach dem Paketupdate
 `euer doctor` ausführen, den Ordner aus dem Bundle-Pfad vollständig
 in das Agentensystem übernehmen, die Anweisungen neu laden und erst dann mit
-`euer setup --set skill.version "1.1.0"` bestätigen. Die bisher unversionierte
+`euer setup --set skill.version "1.1.1"` bestätigen. Die bisher unversionierte
 Skill-Kopie wird ersetzt; die persönliche `AGENTS.md` bleibt erhalten. Die
 Rolle und Agenten-Adapter werden bei Bedarf gezielt geprüft, nicht automatisch
 ersetzt. Keine Datenbankmigration erforderlich; die globale Config erhält
-`[skill] version = "1.1.0"`. Bei fehlenden Update-Rechten kann
+`[skill] version = "1.1.1"`. Bei fehlenden Update-Rechten kann
 `--ignore-skill-version` einen einzelnen Aufruf freigeben.
+
+Für bestehende Agenten-Installationen ist der vollständige Austausch des Skills
+einschließlich `references/` nötig. Geprüfte Buchungen werden dadurch nicht
+automatisch umklassifiziert; offene Prepaid-, Cashback- und Privatvorgänge
+anhand der Belege erneut prüfen. Keine zusätzliche Datenbankmigration für diese
+Referenzänderungen.
 
 ### Weitere Änderungen
 
+- README, Konzept, User Journey und Repository-`AGENTS.md` beschreiben die
+  Grenzen von CLI-Prüfungen und Agenten-Einordnungen genauer. Vor der
+  steuerlichen Abgabe bleiben offene Fälle und Berichte zu prüfen; für diese
+  Textänderungen ist keine Migration nötig.
 - **Transparente und sichere DB-Migrationen (Spec 020, Spec 016 §1.1/§2.4):**
   - Automatisches WAL-sicheres Online-Backup via SQLite-Backup-API nach `~/.config/euer/backups/euer_YYYY-MM-DD_HHMMSS.db` vor Schema-Migrationen.
   - Vor dem ersten schreibenden CLI-Befehl pro Datenbank und Tag wird ein zusätzlicher Snapshot mit Datenbankkennung im Dateinamen erstellt.

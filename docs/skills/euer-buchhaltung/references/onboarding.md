@@ -1,25 +1,30 @@
 # Onboarding: Buchhaltung einrichten oder gezielt vervollständigen
 
-Ziel dieser Interview-Anleitung sind ein persönliches Mandanten-Dossier
-in Form einer `AGENTS.md` im Buchhaltungsordner, eine dazu passende euer-Konfiguration
-und ein klarer nächster Arbeitsauftrag.
+Nutze diesen Leitfaden, wenn der Buchhaltungsordner neu eingerichtet oder eine
+bestehende Einrichtung ergänzt werden soll. Ergebnis sind ein persönliches
+Mandanten-Dossier als `AGENTS.md` im Buchhaltungsordner, eine dazu passende
+euer-Konfiguration und ein klarer nächster Schritt.
 
 ## 1. Vorhandenen Stand übernehmen
 
-Bei lokalem Zugriff zuerst Arbeitsordner, vorhandenes Dossier (`AGENTS.md`), CLI-Verfügbarkeit,
-Existenz der vorgesehenen Datenbank, `.euer/config.toml` im Arbeitsordner und die
-globale Config prüfen. `euer --version`
-und `euer config show` helfen dabei. Die Config-Datei selbst enthält zusätzlich
+Bei lokalem Zugriff zuerst Arbeitsordner, vorhandenes Dossier (`AGENTS.md`),
+CLI-Verfügbarkeit, Datenbankpfad und Existenz der Datenbank, `.euer/config.toml`
+im Arbeitsordner sowie die globale Config prüfen. `euer doctor` zeigt unter
+anderem Installation, Skill-Status und Datenbankpfad; `euer config show` zeigt
+die wirksame Konfiguration. Die globale Config-Datei selbst enthält zusätzlich
 private Konten und optionale Buchungskonten, die `config show` nicht vollständig zeigt.
 Unter macOS/Linux liegt sie in `~/.config/euer/config.toml`, unter Windows in
-`%APPDATA%\euer\config.toml`.
+`%APPDATA%\euer\config.toml`. Fehlt die CLI oder ist der Skill veraltet, folge der
+[Installationsreferenz](installation_and_setup.md), bevor du `init`, das
+interaktive `setup` oder Fachbefehle ausführst.
 
 ### Das AGENTS.md-Konzept als Mandanten-Dossier
 
 Da moderne KI-Agenten (Claude Code, Cursor, Codex, OpenCode etc.) standardmäßig eine
 im Projektordner hinterlegte `AGENTS.md` einlesen, nutzt `euer` dieses Muster gezielt:
-Im Buchhaltungsordner des Nutzers dient die `AGENTS.md` als **persönliches Mandanten-Dossier**
-(Vorlage: `docs/templates/Agents-Template.md`).
+Im Buchhaltungsordner des Nutzers dient die `AGENTS.md` als **persönliches Mandanten-Dossier**.
+Die [Dossier-Vorlage](../assets/Agents-Template.md) liegt im Skill-Bundle und
+kann beim Einrichten an die bestätigten Angaben angepasst werden.
 
 - **Keine Coding-Anweisungen:** Das Dossier enthält **keinerlei Coding- oder Programmierregeln**
   und dupliziert weder CLI-Befehle noch fachliche Buchhaltungsregeln (diese stellt der Skill `SKILL.md`
@@ -116,44 +121,17 @@ offen; optionale Lieferanten-Mappings oder SKR-Nummern blockieren keine erste Bu
 
 Fasse die ermittelten Werte und konkrete Änderungen zusammen. Nutze bereits
 bestätigte Angaben; frage nur bei neuen Annahmen, Widersprüchen oder noch offenen
-Entscheidungen nach. Das Dossier wird als persönliche `AGENTS.md` im Buchhaltungsordner
-abgelegt (Vorlage: `docs/templates/Agents-Template.md`). Sie fungiert rein als Mandanten-Dossier
-ohne Coding-Anweisungen und muss mindestens den Mandanten, Arbeits-/DB-Pfad,
-bestätigten Steuermodus und die für den Auftrag benötigten Ablage-/Kontenregeln
-eindeutig beschreiben. Offene Punkte erhalten einen Status und nächsten Schritt.
+Entscheidungen nach. Das Dossier wird als persönliche `AGENTS.md` im
+Buchhaltungsordner abgelegt. Es muss mindestens den Mandanten, Arbeits- und
+DB-Pfad, bestätigten Steuermodus und die für den Auftrag benötigten Ablage- und
+Kontenregeln eindeutig beschreiben. Offene Punkte erhalten einen Status und
+nächsten Schritt.
 
-Mögliche Gliederung der persönlichen `AGENTS.md` (an den Fall anpassen):
-
-```markdown
-# Mandanten-Dossier
-
-## Mandant und Arbeitsbereich
-Name, Geschäftsform, geklärte EÜR-Nutzung, Arbeitsordner, DB-Pfad,
-Beginn und bereits erfasste Zeiträume.
-
-## Steuerlicher Kontext
-Bestätigter Steuermodus; soweit relevant Besteuerungsart, Voranmeldungszeitraum,
-Zuständigkeit für Abgabe, geklärte RC-Fälle und offene steuerliche Fragen.
-
-## Dateiablage und Werkzeuge
-Beleg-Root, Jahresformat, Typ-Unterordner, Dateinamen-Regel,
-Kontoauszüge, Exportordner, PDF-/OCR-Werkzeug.
-
-## Konten und private Vorgänge
-Geschäftliche und private Kennungen; privat bezahlte Ausgaben,
-Ausgleichsüberweisungen, gemischte Nutzung mit vereinbarten Anteilen.
-
-## Wiederkehrende Zuordnungen
-Lieferant zu Kategorie; optionale Buchungskonten.
-
-## Zusammenarbeit und offene Punkte
-Monatsabgleich, bereitgestellte Zeiträume, Sicherung, Rückfragen mit nächstem Schritt.
-```
-
-Ersetze die beschreibenden Zeilen durch tatsächliche Angaben. Ein ausführliches
-Duplikat der CLI-Anleitung oder allgemeine Coding-Regeln gehören nicht ins Dossier:
-Die fachlichen Buchungsregeln liefert weiterhin `SKILL.md`, die CLI-Befehle die
-CLI-Referenz. Bewahre bereits vorhandene individuelle Regeln.
+Nutze die [Dossier-Vorlage](../assets/Agents-Template.md) als Ausgangspunkt.
+Ersetze Platzhalter durch bestätigte Angaben; entferne nicht benötigte Felder
+und kennzeichne Ungeklärtes ausdrücklich. Übernimm keine Beispielwerte als
+Mandantenregel und bewahre bereits vorhandene individuelle Regeln. Allgemeine
+Buchungs- und CLI-Regeln gehören nicht ins Dossier.
 
 ## 4. Einrichtung anwenden
 
@@ -167,10 +145,12 @@ Config-Nutzung klären.
 
 - Falls die CLI fehlt, passend zur Umgebung installieren bzw. den nötigen
   Installationsschritt benennen. Ein reiner Interviewauftrag umfasst keine Installation.
-- Eine vorhandene `./euer.db` mit `euer init` prüfen und in der Projekt-Config
-  registrieren. Eine DB an anderem Ort mit
-  `euer --db "/vereinbarter/pfad/euer.db" init --save-db-path` verbinden;
-  dabei können Migrationen anfallen. Nur bei bestätigter Neuanlage
+- Bei einer vorhandenen `./euer.db` zuerst `euer init --dry-run` ausführen,
+  Pfad- und Migrationsbericht prüfen und danach mit `euer init` registrieren.
+  Liegt die DB an anderem Ort, denselben Pfad zunächst mit
+  `euer --db "/vereinbarter/pfad/euer.db" init --dry-run` prüfen und danach mit
+  `euer --db "/vereinbarter/pfad/euer.db" init --save-db-path` verbinden.
+  Dabei können Migrationen anfallen. Nur bei bestätigter Neuanlage
   `euer init --create` ausführen. `--db` allein ist keine dauerhafte Bindung.
 - Meldet euer einen fehlenden konfigurierten DB-Pfad, nach der vorhandenen Datei
   suchen und den richtigen Pfad klären. Keinen neuen leeren Bestand anlegen, um
@@ -193,15 +173,16 @@ Config-Nutzung klären.
 
 Ohne lokalen Zugriff gibst du stattdessen das vollständige Dossier und konkrete,
 zur Shell passende Setup-Befehle zum Kopieren aus. Kennzeichne die Einrichtung als
-vorbereitet, aber noch nicht lokal geprüft. Alle fehlenden Referenzinhalte müssen
-bereitgestellt werden; einen nicht gelesenen Leitfaden nicht aus dem Gedächtnis ersetzen.
+vorbereitet, aber noch nicht lokal geprüft. Fehlt dir eine benötigte Referenz,
+fordere ihren Inhalt an, statt Anweisungen aus dem Gedächtnis zu ergänzen.
 
 ## 5. Abschluss und Rückkehr zum Auftrag
 
-Nach der Einrichtung Dossier und tatsächliche Config vergleichen, Existenz der
-gewählten DB und Belegordner prüfen und auf dieser DB Kategorien sowie gegebenenfalls
-Buchungskonten lesen. `euer incomplete list` zeigt offene Bestandsfälle, ist aber
-kein Test für vollständiges Onboarding. Ohne Schreibauftrag keine Testbuchung anlegen.
+Nach der Einrichtung `euer doctor` erneut prüfen, Dossier und tatsächliche
+Config vergleichen, Existenz der gewählten DB und Belegordner prüfen und auf
+dieser DB Kategorien sowie gegebenenfalls Buchungskonten lesen.
+`euer incomplete list` zeigt offene Bestandsfälle, ist aber kein Test für
+vollständiges Onboarding. Ohne Schreibauftrag keine Testbuchung anlegen.
 
 Berichte knapp: verwendeter DB-/Config-Pfad, angelegte oder ergänzte Dateien,
 geprüfte Einstellungen und offene Punkte. Für eine erste Buchung müssen Datenbank,

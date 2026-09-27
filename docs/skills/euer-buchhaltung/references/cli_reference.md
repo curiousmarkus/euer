@@ -2,6 +2,9 @@
 
 Alle Core-Befehle der aktiven CLI. Globale Optionen stehen vor dem Befehl;
 `--ignore-skill-version` darf auch am Ende stehen. Plugin-Befehle sind hier nicht enthalten.
+Für den Ablauf gilt [SKILL.md](../SKILL.md#arbeitsablauf), für die fachliche
+Einordnung gelten die [Fachregeln](domain_rules.md). Diese Referenz beschreibt
+die CLI-Syntax und Ausgabe, nicht die Buchungsentscheidung.
 
 ## Globale Optionen
 
@@ -22,7 +25,7 @@ Initialisiert oder aktualisiert die Datenbank
 
 | Argument | Bedeutung |
 |---|---|
-| `--create` | Erlaubt die Neuanlage einer Datenbank an einem explizit angegebenen Pfad |
+| `--create` | Erlaubt die bestätigte Neuanlage einer Datenbank am gewählten Pfad |
 | `--dry-run` | Führt Migrationen nur zur Probe aus und zeigt den Plan an, ohne Daten zu verändern |
 | `--json` | Gibt den Migrationsbericht oder Dry-Run als JSON aus |
 | `--save-db-path` | Speichert den mit --db gewählten Pfad dauerhaft in der Projekt-Config |
@@ -42,7 +45,7 @@ Ersteinrichtung (interaktiv oder --set KEY VALUE)
 |---|---|
 | `--set` | Setzt einen Config-Wert direkt (z.B. tax.mode small_business) |
 
-**Beispiel:** `euer setup --set skill.version "1.1.0"`
+**Beispiel:** `euer setup --set skill.version "1.1.1"`
 
 ### euer import
 
@@ -62,6 +65,14 @@ Bulk-Import von Transaktionen
 | `--schema` | Zeigt Import-Schema, Beispiele und Alias-Keys |
 
 **Beispiel:** `euer import --schema`
+
+`euer import --schema` zeigt das aktuelle Importschema und die akzeptierten
+Feldnamen. Für CSV/JSONL werden `party`, `amount_eur` und mindestens
+`payment_date` oder `invoice_date` benötigt. Ohne `type` wird der Buchungstyp
+aus dem Vorzeichen abgeleitet; `date` ist ein Alias für `payment_date`.
+Exportierte Ausgaben und Einnahmen sind als Importquelle vorgesehen,
+`PrivateTransfers` und `Sacheinlagen` nicht. Bankdateien vor dem Import auf
+das Schema normalisieren und den Lauf zuerst mit `--dry-run` prüfen.
 
 ### euer add
 
@@ -144,7 +155,7 @@ Einnahme hinzufügen
 | `--notes` | Bemerkung |
 | `--vat` | Umsatzsteuer-Betrag (für Regelb.) |
 | `--vat-rate` | USt-Satz für Ausgangsumsätze (0, 7, 19) |
-| `--tax-free` | Steuerfreie Einnahme ohne Vorsteuerabzug (§19/steuerfrei) |
+| `--tax-free` | Steuerfreie oder nicht steuerbare Einnahme nach fachlicher Prüfung |
 | `--force` | Erzwingt Buchung trotz Schwellenwert-Überschreitung oder möglicher Duplikate |
 | `--allow-duplicate` | Erlaubt mögliches Duplikat trotz Ähnlichkeit |
 
@@ -224,7 +235,7 @@ Ausgaben anzeigen
 | `--year` | Jahr filtern (default: aktuelles) |
 | `--month` | Monat filtern (1-12) |
 | `--category` | Kategorie filtern |
-| `--format` | Positionsargument |
+| `--format` | Ausgabeformat (`table` oder `csv`) |
 | `--full` | Tabellenansicht mit zusätzlichen Spalten (Konto, Beleg, Fremdwährung, Notiz) |
 | `--trash` | Nur gelöschte Ausgaben anzeigen |
 
@@ -245,7 +256,7 @@ Einnahmen anzeigen
 | `--year` | Jahr filtern (default: aktuelles) |
 | `--month` | Monat filtern (1-12) |
 | `--category` | Kategorie filtern |
-| `--format` | Positionsargument |
+| `--format` | Ausgabeformat (`table` oder `csv`) |
 | `--full` | Tabellenansicht mit zusätzlicher Spalte (Notiz) |
 | `--trash` | Nur gelöschte Einnahmen anzeigen |
 
@@ -294,7 +305,7 @@ Privateinlagen anzeigen
 | Argument | Bedeutung |
 |---|---|
 | `--year` | Jahr filtern |
-| `--format` | Positionsargument |
+| `--format` | Ausgabeformat (`table` oder `csv`) |
 
 **Beispiel:** `euer list private-deposits --help` zeigt Syntax und Optionen der aktiven Version.
 
@@ -310,7 +321,7 @@ Privatentnahmen anzeigen
 | Argument | Bedeutung |
 |---|---|
 | `--year` | Jahr filtern |
-| `--format` | Positionsargument |
+| `--format` | Ausgabeformat (`table` oder `csv`) |
 
 **Beispiel:** `euer list private-withdrawals --help` zeigt Syntax und Optionen der aktiven Version.
 
@@ -326,7 +337,7 @@ Privateinlagen und Privatentnahmen anzeigen
 | Argument | Bedeutung |
 |---|---|
 | `--year` | Jahr filtern |
-| `--format` | Positionsargument |
+| `--format` | Ausgabeformat (`table` oder `csv`) |
 
 **Beispiel:** `euer list private-transfers --help` zeigt Syntax und Optionen der aktiven Version.
 
@@ -605,11 +616,19 @@ Exportiert Daten
 | Argument | Bedeutung |
 |---|---|
 | `--year` | Jahr filtern (ohne Angabe: alle Jahre exportieren) |
-| `--format` | Positionsargument |
-| `--output` | Ausgabeverzeichnis (default: exports.directory aus Config oder /Users/markus/dev/euer-buchhaltung/euer/exports) |
+| `--format` | Exportformat (`csv` oder `xlsx`) |
+| `--output` | Ausgabeverzeichnis (Config `exports.directory` oder `./exports`) |
 | `--force` | Bestehende Exportdateien überschreiben |
 
 **Beispiel:** `euer export --year 2026`
+
+Ohne `--year` werden alle Jahre exportiert; Standardformat ist CSV, XLSX
+benötigt `openpyxl`. Der Export schreibt Ausgaben, Einnahmen, direkte
+Privatvorgänge und aus privat bezahlten Ausgaben abgeleitete Sacheinlagen.
+Vorhandene Zieldateien blockieren den Export; `--force` überschreibt sie
+erst nach Prüfung des Zielordners. Gelöschte Buchungen bleiben ausgeschlossen.
+Der Dateisatz wird nicht als Ganzes atomar ersetzt. Ein Export ist weder
+vollständiges SQLite-Backup noch rechtlich revisionssicheres Archiv.
 
 ### euer summary
 
@@ -644,9 +663,13 @@ Erzeugt einen ELSTER-nahen USt-Voranmeldungs-Report
 | `--quarter` | Quartal |
 | `--month` | Monat |
 | `--format` | Ausgabeformat |
-| `--output` | Ausgabeverzeichnis für csv/xlsx (default: exports.directory aus Config oder /Users/markus/dev/euer-buchhaltung/euer/exports) |
+| `--output` | Ausgabeverzeichnis für CSV/XLSX (Config `exports.directory` oder `./exports`) |
 
 **Beispiel:** `euer vat-report --year 2026 --quarter 1`
+
+Der Arbeitsbericht nutzt nur `payment_date`; Buchungen ohne Wertstellungsdatum
+erscheinen in der Diagnose und werden nicht summiert. CSV erzeugt zusätzlich
+eine Diagnose-Datei, XLSX ein Sheet `Diagnose`. Er übermittelt nichts an ELSTER.
 
 ### euer private-summary
 
@@ -826,7 +849,7 @@ Listet unvollständige Einträge
 |---|---|
 | `--type` | Typ filtern |
 | `--year` | Jahr filtern |
-| `--format` | Positionsargument |
+| `--format` | Ausgabeformat (`table` oder `csv`) |
 
 **Beispiel:** `euer incomplete list --year 2026`
 
@@ -844,697 +867,3 @@ Umgebungs- und Pre-Flight-Diagnose
 | `--json` | Maschinenlesbare JSON-Ausgabe |
 
 **Beispiel:** `euer doctor`
-
-## Bedienung, Beispiele und Fehlerfälle
-
-Die folgenden bewährten Arbeitsabläufe und Beispiele stammen aus dem bisherigen
-Benutzerhandbuch. Bei Syntaxfragen gilt die obige Befehlsübersicht der aktiven CLI.
-
-## KI-Agenten Konfiguration
-
-Das CLI-Tool ist so konzipiert, dass KI-Agenten die Buchhaltung automatisieren können.
-Im Ordner `docs/templates/` findest du Vorlagen für die Agent-Konfiguration.
-
-### Verfügbare Templates
-
-| Datei | Beschreibung |
-|-------|--------------|
-| `accountant-role.md` | Optionale Startvorlage für spezialisierte Agenten; Grundregeln stehen im Skill |
-| `Agents-Template.md` | Template für persönliche Buchhaltungsdaten (kann geführt mit dem Onboarding-Prompt erstellt werden) |
-| `onboarding-prompt.md` | Interview-Prompt zur Erstellung einer personalisierten `AGENTS.md` |
-
-### Schnellstart für KI-Agenten
-
-1. **Agent konfigurieren:**
-   - Kopiere den vollständigen Ordner `docs/skills/euer-buchhaltung/` einschließlich
-     `references/` in den Skill-Pfad deiner KI-Anwendung.
-   - Für einen allgemeinen Agenten genügt der Skill; übertrage `accountant-role.md`
-     nur bei Bedarf in eine eigene Agenten-Konfiguration.
-   - Starte den Agenten in deinem Buchhaltungsordner.
-
-2. **Einrichtung beauftragen:**
-   - Sage: „Richte meine Buchhaltung mit euer ein.“
-   - Der Skill prüft den Bestand und lädt bei fehlender Einrichtung den
-     [Onboarding-Leitfaden](onboarding.md).
-   - Der Agent fragt nur fehlende Angaben ab und erstellt oder ergänzt das persönliche
-     Mandanten-Dossier sowie die technische Konfiguration. Vorhandene Dateien bleiben erhalten.
-   - Alternativ führt `docs/templates/onboarding-prompt.md` aus dem Repository durch ein
-     Interview in einem separaten Chat; anschließend lokal speichern und einrichten.
-
-3. **Einrichtung prüfen und starten:**
-   - Der Agent prüft Datenbank, Config und Ablage, dann setzt er einen bereits
-     erteilten Buchungsauftrag fort. Bei vollständiger Einrichtung entfällt das Interview.
-   - Die Config liegt unter macOS/Linux in `~/.config/euer/config.toml`, unter Windows
-     in `%APPDATA%\euer\config.toml` und gilt über Arbeitsordner hinweg.
-   - Die Prüfung ist eine Agenten-Anweisung im Skill, kein neuer CLI-Befehl.
-
-### Empfohlene Tools für Agenten
-
-- **PDF-Parsing:** `markitdown` – extrahiert Text aus PDFs (Kontoauszüge, Rechnungen)
-  - siehe: https://github.com/microsoft/markitdown
-
-## Erste Schritte
-
-### Nach der Installation
-
-Wechsle in deinen **Buchhaltungs-Arbeitsordner**, z.B.:
-
-```bash
-# Beispiel: Separater Ordner für Buchhaltungsdaten
-mkdir -p ~/Documents/Buchhaltung
-cd ~/Documents/Buchhaltung
-
-# Datenbank anlegen (erstellt euer.db, .euer/config.toml und exports/ hier)
-euer init --create
-
-# Beleg-/Export-Pfade und Steuermodus konfigurieren (empfohlen)
-euer setup
-
-# Konfiguration prüfen
-euer config show
-
-# Erste Buchung
-euer add expense --payment-date 2026-02-02 --vendor "Test" --category "Laufende EDV-Kosten" --amount -10.00
-```
-
-### Wo liegen meine Daten?
-
-- **Datenbank:** Standard `euer.db` im aktuellen Projektordner; der tatsächliche
-  Pfad steht in `.euer/config.toml`.
-- **Allgemeine Konfiguration:** `~/.config/euer/config.toml` (nutzerweit)
-- **Belege:** Pfade in der Konfiguration festgelegt
-- **Exports:** `exports/` im aktuellen Verzeichnis oder als konkreter Pfad in der Config
-  festgelegt. `exports.directory` unterstützt keinen `{year}`-Platzhalter.
-
-## Grundbegriffe
-
-- **Ausgaben** haben immer **negative** Beträge (`--amount -10.00`).
-- **Einnahmen** haben immer **positive** Beträge (`--amount 10.00`).
-- **Privateinlagen/Privatentnahmen** (`add private-*`) verwenden immer **positive** Beträge; die Richtung ergibt sich aus dem Command.
-- **Kategorien** sind vorgegeben und müssen existieren: `euer list categories`.
-- **Buchungskonten** (`--ledger-account`) sind optional und werden in der Config als
-  `[[ledger_accounts]]` gepflegt. Sie setzen die Kategorie automatisch.
-- **Datumsfelder**: `payment_date` (Wertstellung, EÜR-relevant) und `invoice_date` (Rechnungsdatum).
-  Mindestens eines der beiden muss gesetzt sein.
-- **Belege** können geprüft und geöffnet werden, wenn Pfade konfiguriert sind.
-- **Datenbank**: Standard `euer.db` im **aktuellen Verzeichnis**; `.euer/config.toml`
-  kann pro Projekt einen anderen Pfad speichern. `--db PFAD` gilt für einen Aufruf.
-- **Arbeitsverzeichnis**: Das Tool liest dort die Projekt-Config und verwendet
-  ohne gespeicherten Pfad `./euer.db`. Wechsle vor dem Arbeiten in deinen
-  Buchhaltungsordner!
-
-## Typische Befehle
-
-### Ausgaben & Einnahmen erfassen
-
-```bash
-# Ausgabe
-euer add expense --payment-date 2026-01-15 --invoice-date 2026-01-14 --vendor "1und1" \
-    --category "Telekommunikation" --amount -39.99 --account "Sparkasse Giro"
-
-# Ausgabe mit Kontenrahmen
-euer add expense --payment-date 2026-01-15 --vendor "Hetzner" \
-    --ledger-account hosting --amount -29.00 --account "g-n26"
-
-# Einnahme
-euer add income --payment-date 2026-01-20 --invoice-date 2026-01-18 --source "Kunde ABC" \
-    --category "Umsatzsteuerpflichtige Betriebseinnahmen" --amount 1500.00
-
-# Einnahme bei Regelbesteuerung mit explizitem USt-Satz
-euer add income --payment-date 2026-01-20 --source "Kunde ABC" \
-    --category "Umsatzsteuerpflichtige Betriebseinnahmen" --amount 1190.00 --vat-rate 19
-
-# Einnahme mit Kontenrahmen
-euer add income --payment-date 2026-01-20 --source "Kunde ABC" \
-    --ledger-account erloese-19 --amount 1500.00
-```
-
-### Anzeigen & Filtern
-
-```bash
-# Default: aktuelles Jahr
-euer list expenses --year 2026
-euer list expenses --year 2026 --month 1
-euer list expenses --year 2026 --full
-euer list income --year 2026
-euer list income --year 2026 --full
-euer list categories
-euer list categories --year 2026
-euer list ledger-accounts
-euer list ledger-accounts --category "Laufende EDV-Kosten"
-```
-
-Hinweis: `list ... --format csv` gibt die Liste als CSV auf stdout aus (für Pipes/Redirects).
-Hinweis: `euer list expenses --full` erweitert die Tabellenansicht um fachliche Details wie
-`Konto`, `Beleg`, `Fremdw.` und `Notiz`.
-Hinweis: `euer list income` zeigt in der Tabellenansicht die Spalte `USt` (vat_output) immer an.
-Hinweis: RC-Ausgaben zeigen in der Spalte `RC` den Typ `eu` oder `third-country`.
-Hinweis: `euer list income --full` ergänzt die Tabellenansicht um die Spalte `Notiz`.
-Hinweis: `list expenses` und `list income` zeigen für das angezeigte Jahr eine
-EÜR-Zeile nur dann an, wenn dafür eine geprüfte Formularzuordnung mitgeliefert
-wird. Mit `euer list categories --year YYYY` lässt sich die Zuordnung für ein
-konkretes Formularjahr anzeigen. Ohne Formularjahr erscheinen keine festen
-ELSTER-Zeilennummern.
-
-### Privatvorgänge
-
-```bash
-# Direkte Privatvorgänge
-euer add private-deposit --date 2026-01-15 --amount 500 --description "Einlage"
-euer add private-withdrawal --date 2026-01-20 --amount 200 --description "Entnahme"
-
-# Als Liste (inkl. Sacheinlagen aus Ausgaben mit privater Zahlung)
-euer list private-transfers --year 2026
-euer list private-deposits --year 2026
-euer list private-withdrawals --year 2026
-```
-
-Bei Ausgaben kannst du private Zahlung explizit markieren:
-
-```bash
-euer add expense --payment-date 2026-01-10 --vendor "Adobe" \
-  --category "Laufende EDV-Kosten" --amount -22.99 --private-paid
-```
-
-### Korrigieren, Löschen, Papierkorb & Undo
-
-```bash
-# Ausgabe korrigieren
-euer update expense 42 --amount -25.00 --notes "Korrigiert"
-euer update expense 42 --payment-date 2026-01-17
-euer update expense 42 --invoice-date 2026-01-15
-euer update expense 42 --ledger-account hosting
-euer update expense 42 --private-paid
-euer update expense 42 --no-private-paid
-euer update expense 42 --rc eu
-euer update expense 42 --rc third-country
-euer update expense 42 --no-rc
-euer update income 17 --vat-rate 7
-euer update income 17 --tax-free
-
-# Privatvorgang korrigieren
-euer update private-transfer 7 --amount 600 --description "Korrektur"
-euer update private-transfer 7 --clear-related-expense
-
-# Löschen (Standard: Soft-Delete in den Papierkorb)
-euer delete expense 42
-euer delete expense 42 --force
-
-# Dauerhaftes physisches Löschen (ohne Papierkorb)
-euer delete expense 42 --purge --force
-
-# Papierkorb verwalten
-euer trash list
-euer trash empty
-euer trash empty --force
-
-# Wiederherstellung aus dem Papierkorb
-euer restore 42
-euer restore 42 --table expenses
-
-# Letzte schreibende Aktion rückgängig machen (Undo)
-euer undo
-euer undo --force
-
-# Änderungshistorie
-euer audit 42 --table expenses
-```
-
-#### Papierkorb (Soft-Delete) & Wiederherstellung
-
-Um versehentlichen Datenverlust durch Agenten oder Tippfehler zu verhindern, löscht
-`euer delete` Einträge standardmäßig nicht physisch, sondern markiert sie mit einem
-Zeitstempel (`deleted_at`).
-- **Unsichtbar im Normalbetrieb:** Gelöschte Einträge erscheinen nicht in Listen,
-  Berichten (`summary`, `vat-report`), EÜR-Ergebnissen oder Exporten.
-- **Wiederherstellbar:** Mit `euer restore <ID>` wird die Buchung sofort wieder
-  in den aktiven Bestand übernommen.
-- **Papierkorb prüfen & leeren:** `euer trash list` zeigt alle gelöschten Datensätze;
-  `euer trash empty` entfernt sie nach Bestätigung (oder mit `--force`) endgültig.
-- **Physisches Löschen:** Nur mit dem Flag `--purge` wird ein Eintrag sofort
-  dauerhaft gelöscht.
-
-#### Undo-Mechanismus
-
-Mit `euer undo` lässt sich die jeweils letzte schreibende Mutation (INSERT, UPDATE
-oder DELETE) atomar zurückrollen:
-- **INSERT rückgängig machen:** Der neu angelegte Datensatz wird soft-gelöscht.
-- **UPDATE rückgängig machen:** Alle geänderten Spalten werden auf ihren vorherigen
-  Zustand aus dem Audit-Log zurückgesetzt.
-- **DELETE rückgängig machen:** Die gelöschte Zeile wird wiederhergestellt.
-Ohne `--force` zeigt `euer undo` eine genaue Vorschau der rückgängig zu machenden
-Änderung und fordert eine interaktive Bestätigung an.
-
-### Zusammenfassung & Export
-
-```bash
-euer summary --year 2026
-euer summary --year 2026 --include-private
-euer private-summary --year 2026
-euer reconcile private --year 2026 --dry-run
-euer reconcile private --year 2026
-euer vat-report --year 2026
-euer vat-report --year 2026 --quarter 1
-euer vat-report --year 2026 --month 3 --format csv --output exports/
-
-# Default: CSV, ohne --year = alle Jahre
-euer export
-euer export --year 2026
-# XLSX benötigt openpyxl:
-euer export --year 2026 --format xlsx
-# Überschreiben vorhandener Exportdateien erzwingen:
-euer export --year 2026 --force
-```
-
-Hinweis: `export` schreibt Dateien ins Export-Verzeichnis:
-- Ausgaben
-- Einnahmen
-- `PrivateTransfers` (direkte Privatvorgänge)
-- `Sacheinlagen` (aus `expenses.is_private_paid` abgeleitet)
-
-#### Export-Schutz vor Überschreiben
-
-- **Kollisionsprüfung:** Wenn im Zielordner bereits Exportdateien existieren, bricht
-  `euer export` mit einem Fehler ab und nennt die betroffenen Dateipfade. Um bestehende
-  Exporte bewusst zu überschreiben, muss `--force` übergeben werden.
-- **Staging und Rückabwicklung:** Jede Exportdatei wird zunächst als temporäre Datei
-  im Zielverzeichnis geschrieben. Wenn beim anschließenden Austausch einer Datei ein
-  Fehler auftritt, werden bereits ersetzte Dateien nach Möglichkeit zurückgesetzt.
-  Ein Dateisatz lässt sich auf Dateisystemebene nicht als Ganzes atomar austauschen.
-- Gelöschte Buchungen (`deleted_at`) werden vom Export vollständig ausgeschlossen.
-
-Auch ein Export schützt nur lokale Dateistände: `euer` beansprucht keine
-GoBD-Konformität und bietet damit keine rechtlich revisionssichere Archivierung.
-Ein versionierter Exportmodus mit Manifest ist als separates Feature geplant.
-
-`exports.directory` ist ein konkreter Ordner und unterstützt keinen
-`{year}`-Platzhalter. Für jahresweise Ablage nutze entweder `--output` mit einem
-konkreten Jahresordner oder setze die Config entsprechend um:
-
-```bash
-euer export --year 2026 --output "/pfad/zu/Buchhaltung/2026/Exporte"
-```
-
-### Plausibilitätsprüfungen & Validierungs-Guardrails
-
-Um Fehleingaben und Missverständnisse durch automatisierte Agenten zu verhindern,
-verfügt `euer` über integrierte Plausibilitätsprüfungen:
-
-1. **Umsatzsteuer-Konsistenz (Gross-VAT):**
-   Wird bei einer Ausgabe oder Einnahme sowohl ein Steuersatz (`--vat-rate 19` oder `7`)
-   als auch ein absoluter Steuerbetrag (`--vat`) übergeben, prüft `euer`, ob der
-   Steuerbetrag rechnerisch zum Bruttobetrag passt:
-   $$\text{USt} = \text{Brutto} - \frac{\text{Brutto}}{1 + \text{Satz}}$$
-   Weicht der angegebene Betrag um mehr als 0,02 € (Rundungstoleranz) ab, wird die
-   Buchung mit einem Fehler abgelehnt.
-2. **Datumsplausibilität:**
-   - **Keine Zukunftszahlungen:** Ein Wertstellungs-/Zahlungsdatum (`--payment-date`)
-     in der Zukunft wird abgelehnt, da in der EÜR das Zufluss-/Abflussprinzip gilt
-     (Geld kann erst nach tatsächlichem Fluss gebucht werden).
-   - **Zukunftsrechnungen:** Ein Rechnungsdatum (`--invoice-date`) in der Zukunft ist
-     nur zulässig, wenn die Rechnung noch unbezahlt ist (kein `payment_date`).
-   - **Historien-Warnung:** Liegt ein Datum mehr als 2 Jahre in der Vergangenheit,
-     weist `euer` mit einer Warnung darauf hin.
-3. **Betragsschwelle (Großbeträge > 5.000 €):**
-   Buchungen mit einem Betrag von über 5.000,00 € (absolut) werden abgewiesen,
-   um Tippfehler (z. B. versehentlich weggelassenes Komma `500000`) zu verhindern.
-   Soll die Buchung tatsächlich getätigt werden, muss `--force` angegeben werden.
-   Der Schwellenwert kann in der Config unter `[safety].amount_threshold` angepasst werden.
-   Der Wert muss endlich und größer als null sein. Bei einem ungültigen Wert bricht
-   die Buchung mit einem Config-Fehler ab; `euer` verwendet dann keinen stillen Ersatzwert.
-4. **Unscharfe Duplikaterkennung (Fuzzy Match):**
-   Wird eine Ausgabe oder Einnahme erfasst, für die bereits eine Buchung mit exakt
-   demselben Betrag im Zeitfenster von $\pm 2$ Tagen und ähnlichem Namen (Empfänger/Kunde)
-   existiert, wird die Buchung als verdächtiges Duplikat abgelehnt.
-   - Handelt es sich um eine berechtigte Mehrfachbuchung (z. B. zwei gleich hohe
-     Lizenzgebühren), kann die Buchung mit `--allow-duplicate` (oder `--force`)
-     erzwungen werden.
-
-Hinweis: Jahres-Exporte für Ausgaben und Einnahmen enthalten zusätzlich die
-Spalten `Buchungskonto`, `Kontonummer`, `Steuersatz` und `Steuerklasse`.
-Ausgabenexporte ergänzen bei Bewirtung Vorsteuerstatus, Trinkgeld, Kostenbasis
-und die berechnete Aufteilung. Ohne `--year` werden keine ELSTER-Zeilen behauptet.
-
-### Bewirtungsaufwendungen buchen
-
-Eine geschäftliche Bewirtung wird als ein Zahlungsvorgang mit dem vollständigen,
-negativen Zahlbetrag erfasst. `--vat` ist die am Beleg ausgewiesene und tatsächlich
-abziehbare Vorsteuer; `--tip` erfasst freiwilliges Trinkgeld, das bereits im
-Zahlbetrag enthalten ist. Das folgende Beispiel gilt für die Regelbesteuerung
-und einen Beleg, der 19,00 € abziehbare Vorsteuer ausweist.
-
-```bash
-euer add expense --payment-date 2026-03-19 --vendor "Restaurant Beispiel" \
-    --category "Bewirtungsaufwendungen" --amount -129.00 --vat 19.00 --tip 10.00 \
-    --account "Geschäftskonto" --receipt "rechnung.pdf"
-```
-
-Beispielausgabe:
-
-```text
-Ausgabe #1 hinzugefügt: Restaurant Beispiel -129,00 EUR (Vorst: 19.00, USt: 0.00, Saldo: -19.00)
-  Bewirtung: Zahlbetrag 129.00 EUR, Vorsteuer 19.00 EUR, Kostenbasis 110.00 EUR, abziehbar 77.00 EUR, nicht abziehbar 33.00 EUR
-```
-
-Der Service berechnet `Kostenbasis = Zahlbetrag − Vorsteuer`, danach 70 %
-abziehbar und 30 % nicht abziehbar. Die belegte Vorsteuer bleibt vollständig
-separat erfasst; sie wird nicht aus einem Steuersatz geschätzt. Für eine geprüfte
-Null-Vorsteuer im Standardmodus `--vat 0` angeben. Ohne `--vat` bleibt die
-Behandlung `needs_review`, bis der Beleg geprüft und per `update expense` ergänzt
-wurde. Im Kleinunternehmermodus wird `no_deduction` gespeichert; positive
-Vorsteuerangaben werden bei neuen Buchungen abgewiesen. Importzeilen mit einem
-expliziten Bewirtungsstatus erhalten den gespeicherten historischen Status auch
-bei geändertem Steuermodus.
-
-`summary` zeigt abziehbaren Bewirtungsaufwand und Vorsteuer getrennt. Bei
-ungeprüften Altbuchungen zeigt es IDs und bekannte vorläufige Teilbeträge; die
-70/30-Aufteilung, der Gewinn und die EÜR-Werte werden als unvollständig markiert.
-Der nicht abziehbare Anteil wird nicht automatisch als Privatentnahme gebucht.
-Bewirtung ausschließlich eigener Arbeitnehmer gehört nicht in diese Kategorie.
-
-### SQL‑Abfragen (nur lesend)
-
-```bash
-# Ausgabe als CSV auf stdout (nur SELECT)
-euer query "SELECT id, payment_date, invoice_date, vendor, amount_eur FROM expenses WHERE vendor LIKE '%OpenAI%' ORDER BY payment_date DESC"
-```
-
-Hinweis: `query` ist **nur** für SELECT‑Abfragen. Keine Änderungen/Schreiboperationen.
-
-### Bulk‑Import & Unvollständige Einträge
-
-```bash
-euer import --file import.csv --format csv
-euer import --schema  # Schema + Beispiele
-
-euer incomplete list
-euer incomplete list --format csv
-```
-
-Hinweise zum Import:
-- Pflichtfelder: `type`, `party`, `amount_eur` und mindestens eines aus `payment_date`/`invoice_date` (`date` ist Alias für `payment_date`)
-- Optionale Felder: `category`, `account`, `ledger_account`, `foreign_amount`, `receipt_name`, `notes`, `rc`, `private_paid`, `vat_input`, `vat_output`, `vat_rate`, `vat_code`, `tax_free`, `entertainment_tip_eur`, `entertainment_vat_status`
-- Fehlende Pflichtfelder führen zu einem Import-Abbruch.
-- `type` kann fehlen, wenn `amount_eur` ein Vorzeichen hat (negativ = Ausgabe, positiv = Einnahme).
-- CSV‑Exports für **Ausgaben/Einnahmen** können direkt re‑importiert werden (Spaltennamen sind gemappt).
-- Historische Kategorienlabels mit einer Endung wie `(63)` oder `(Zeile 64)` werden anhand des Kategorienamens aufgelöst.
-- Exporte `PrivateTransfers` und `Sacheinlagen` sind nicht als Standard-Importquelle vorgesehen.
-- Kategorien mit `"(NN)"` werden beim Import automatisch bereinigt.
-- Alias‑Keys werden akzeptiert (z.B. `EUR`, `Belegname`, `Lieferant`, `Quelle`, `RC`).
-- `private_paid=true|1|yes|X` markiert eine importierte Ausgabe manuell als Sacheinlage.
-- `rc` akzeptiert `eu` oder `third-country`; Legacy-Werte `rc=true|X` brauchen zusätzlich eine Jurisdiktionsspalte.
-- `vat_rate` akzeptiert `19`, `7`, `0` sowie Werte mit `%`.
-- `vat_code` akzeptiert persistierte Steuerklassen wie `output_standard_19`,
-  `output_reduced_7`, `output_zero_0`, `output_tax_free_no_vorsteuer`,
-  `input_invoice`, `reverse_charge_eu`, `reverse_charge_third_country`.
-- Bewirtungsimporte können `entertainment_tip_eur`/`tip`/`Trinkgeld` und
-  `entertainment_vat_status`/`Bewirtung Vorsteuerstatus` enthalten. Vorsteuer ist
-  ein belegter Betrag, kein aus dem Zahlbetrag geschätzter Steuersatz. Ein
-  expliziter Status erhält bei einem Round-Trip die Behandlung der Einzelbuchung,
-  auch wenn sich der globale Steuermodus geändert hat.
-- `Nicht steuerbare Umsätze` ist fachlich das Unterfeld „Davon nicht steuerbare
-  Kleinunternehmerumsätze (§ 19 Abs. 2 UStG)“. Es wird nur einmal als Einnahme
-  gezählt; `summary` zeigt Zeile 13 zusätzlich als „davon“-Betrag innerhalb der
-  Kleinunternehmer-Einnahmen.
-
-## Kontenrahmen
-
-Der optionale Kontenrahmen lebt in `~/.config/euer/config.toml` und ordnet
-frei benannte Buchungskonten einer bestehenden EÜR-Kategorie zu:
-
-```toml
-[[ledger_accounts]]
-key = "hosting"
-name = "Hosting & Cloud-Dienste"
-category = "Laufende EDV-Kosten"
-account_number = "4940"
-
-[[ledger_accounts]]
-key = "erloese-19"
-name = "Erlöse 19% USt"
-category = "Umsatzsteuerpflichtige Betriebseinnahmen"
-account_number = "8400"
-```
-
-Wichtig:
-- `--account` bleibt das Zahlungskonto (Bank-/Kreditkartenkonto).
-- `--ledger-account` ist das Buchungskonto aus dem Kontenrahmen.
-- `euer setup` kann Buchungskonten interaktiv anlegen.
-- `euer list ledger-accounts` zeigt den aktuell konfigurierten Kontenrahmen.
-- Steuerfelder:
-  - `small_business` + `rc=eu|third-country`: `vat_output` wird automatisch aus `amount_eur * 0.19` berechnet,
-    `vat_input` wird auf `0.0` gesetzt (Felder können weggelassen werden).
-  - `small_business` + Einnahmen: neue Einnahmen werden als
-    `output_tax_free_no_vorsteuer` klassifiziert.
-  - `standard` + Ausgaben: `--vat` bzw. `vat_input` ist der belegte Vorsteuerbetrag;
-    RC bucht `vat_input` und `vat_output` automatisch.
-  - `standard` + Einnahmen: ohne explizite Angabe gilt `vat_rate=19`. Nutze
-    `--vat-rate 7`, `--vat-rate 0` oder `--tax-free` für abweichende Fälle.
-    `amount_eur` wird immer 1:1 als Brutto-Zahlfluss gespeichert.
-
-Workflow für unvollständige Einträge:
-1. Import/Add ausführen → Buchungen werden angelegt (Pflichtfelder müssen vorhanden sein).
-2. `euer incomplete list` zeigt fehlende **Qualitätsfelder**:
-   `payment_date`, `invoice_date`, `category`, `receipt`, `vat`,
-   `entertainment_vat_status`, `account` (abhängig von Typ/Steuermodus).
-3. Fehlende Infos per `euer update expense|income <ID>` nachpflegen.
-Hinweis: Für die Kategorie **Gezahlte USt** ist kein Beleg erforderlich. Ihre
-Formularzeile hängt vom Berichtsjahr ab und ist keine Vorsteuerzeile.
-
-## Beleg‑Verwaltung
-
-### Konfiguration
-
-`euer setup` legt Pfade und den Audit‑User in `~/.config/euer/config.toml` an.
-Belege werden unter einem gemeinsamen Root jahrzentriert erwartet:
-`<root>/<Jahr>/<Typ>/<Belegname>`.
-Mit `euer setup --set section.key value` kannst du einzelne Werte ohne Prompt setzen.
-
-```toml
-[receipts]
-root = "/pfad/zu/Buchhaltung"
-year_dir = "{year}"
-expenses_dir = "Ausgaben"
-income_dir = "Einnahmen"
-
-[exports]
-directory = "/pfad/zu/exports"
-
-[user]
-name = "Dein Name"
-
-[accounts]
-private = ["privat", "private Kreditkarte"]
-```
-
-Beispiele:
-
-```text
-/pfad/zu/Buchhaltung/2026/Ausgaben/2026-01-15_Amazon.pdf
-/pfad/zu/Buchhaltung/2026/Einnahmen/2026-01-20_Rechnung_001.pdf
-```
-
-`year_dir` muss `{year}` enthalten. Damit sind auch Ordner wie
-`Buchhaltung 2026` möglich:
-
-```bash
-euer setup --set receipts.root "/pfad/zu/Buchhaltung"
-euer setup --set receipts.year_dir "Buchhaltung {year}"
-euer setup --set receipts.expenses_dir "Ausgaben"
-euer setup --set receipts.income_dir "Einnahmen"
-```
-
-### Prüfen & Öffnen
-
-```bash
-euer receipt check --year 2026
-euer receipt check --type expense
-
-euer receipt open 12
-euer receipt open 5 --table income
-```
-
-Tipp: Wenn der gespeicherte Belegname **keine Dateiendung** hat, versucht der Check automatisch
-`.pdf`, `.jpg`, `.jpeg` und `.png`.
-
-## USt‑Modus (Config)
-
-Hier legst du fest, **wie das Tool mit Umsatzsteuer (USt)** rechnet:
-- **Kleinunternehmerregelung (§19 UStG)** oder
-- **Regelbesteuerung**.
-
-Der Modus wird in der Config gesetzt (Standard: `small_business`).
-
-```toml
-[tax]
-mode = "small_business"  # oder "standard"
-```
-
-- **`small_business`** = Kleinunternehmerregelung (§19 UStG): keine Vorsteuer; Reverse‑Charge erzeugt USt‑Zahllast.
-- **`standard`** = Regelbesteuerung: Vorsteuer wird erfasst; Reverse‑Charge bucht USt und VorSt gleichzeitig.
-
-### Einnahmen klassifizieren
-
-Für den UStVA-Report speichert `euer` an Einnahmen `vat_rate` und `vat_code`.
-
-```bash
-euer add income ... --vat-rate 19
-euer add income ... --vat-rate 7
-euer add income ... --vat-rate 0
-euer add income ... --tax-free
-```
-
-`--tax-free` ist exklusiv zu `--vat-rate` und `--vat`. Im Modus `standard`
-setzt `euer` ohne Angabe automatisch `19 %`. Der Betrag bleibt der tatsächliche
-Zahlfluss; `vat_output` wird aus dem Bruttobetrag herausgerechnet, sofern kein
-manueller Steuerbetrag per `--vat` gesetzt ist.
-
-### Steuermodus setzen, einsehen, aendern
-
-- **Setzen (interaktiv):** `euer setup` fragt nach `small_business|standard`.
-- **Einsehen:** `euer config show` zeigt den aktuellen Wert unter `[tax]`.
-- **Aendern:** `euer setup` erneut ausfuehren und den Modus neu waehlen.
-- **Manuell:** `~/.config/euer/config.toml` bearbeiten und `mode` anpassen.
-
-### Audit‑User
-
-Der Audit‑User wird für Änderungen in der `audit_log`‑Tabelle gespeichert.
-
-- **Setzen (interaktiv):** `euer setup` fragt nach dem Namen.
-- **Einsehen:** `euer config show` zeigt den aktuellen Wert unter `[user]`.
-- **Manuell:** `~/.config/euer/config.toml` bearbeiten und `name` anpassen.
-
-```bash
-# aktuelle Konfiguration inkl. Steuermodus anzeigen
-euer config show
-
-# Steuermodus neu setzen (interaktiv)
-euer setup
-```
-
-## Reverse‑Charge (RC)
-
-Verwende `--rc eu` oder `--rc third-country` für ausländische Anbieter ohne deutsche USt.
-Der RC-Typ ist Pflicht, damit spätere UStVA-Auswertungen EU-Leistungen und
-Drittland-Leistungen trennen können:
-
-```bash
-euer add expense --date 2026-01-04 --vendor "RENDER.COM" \
-    --category "Laufende EDV-Kosten" --amount -22.71 --rc third-country
-```
-
-Hinweis: Bei `small_business` setzt RC automatisch `vat_output`, `vat_input` bleibt `0.0`.
-Bestehende RC-Buchungen ohne EU-/Drittland-Typ können nachgepflegt werden:
-
-```bash
-euer update expense 42 --rc eu
-euer update expense 42 --rc third-country
-```
-
-## USt-Voranmeldung (`vat-report`)
-
-`vat-report` ist ein separater, formularnaher Arbeitsbericht für die manuelle
-Übertragung in ELSTER. Er nutzt ausschließlich `payment_date`; Buchungen ohne
-Wertstellungsdatum werden nicht eingerechnet und erscheinen als Warnung.
-
-```bash
-euer vat-report --year 2026
-euer vat-report --year 2026 --quarter 1
-euer vat-report --year 2026 --month 3
-euer vat-report --year 2026 --quarter 1 --format csv --output exports/
-euer vat-report --year 2026 --month 3 --format xlsx --output exports/
-```
-
-Der Report enthält u.a. KZ 81/86/87/48 für Ausgangsumsätze, KZ 46/47 und
-84/85 für Reverse Charge, KZ 66/67 für Vorsteuer sowie KZ 83 als Zahllast oder
-Erstattung. CSV erzeugt zusätzlich eine Diagnose-Datei mit ausgeschlossenen und
-gewarnten Buchungen; XLSX enthält ein zweites Sheet `Diagnose`.
-
-## Backfill / Reklassifikation für bestehende DB
-
-Empfohlen ist zuerst der CLI-Abgleich:
-
-```bash
-euer reconcile private --year 2026 --dry-run
-euer reconcile private --year 2026
-```
-
-Das Kommando reklassifiziert persistierte `expenses.is_private_paid`-Werte auf Basis der
-aktuellen Config (`[accounts].private`) und lässt manuelle Markierungen unverändert.
-
-### Alternativ: Einmaliger Backfill direkt in SQLite
-
-Wenn du alte Ausgaben nachträglich als private Sacheinlagen markieren willst:
-
-1. Backup erstellen:
-
-```bash
-cp euer.db euer.backup.db
-```
-
-2. Sicherstellen, dass neue Spalten existieren:
-
-```bash
-euer init
-```
-
-3. Einmaliger Backfill (Beispiel-Regeln):
-
-```bash
-sqlite3 euer.db <<'SQL'
-BEGIN;
-
--- Regel 1: private Konten
-UPDATE expenses
-SET is_private_paid = 1,
-    private_classification = 'account_rule'
-WHERE LOWER(COALESCE(account, '')) IN ('privat', 'private kreditkarte', 'barauslagen')
-  AND is_private_paid = 0;
-
--- Regel 2: Nutzungseinlage-Kategorie
-UPDATE expenses
-SET is_private_paid = 1,
-    private_classification = 'category_rule'
-WHERE category_id IN (
-  SELECT id FROM categories
-  WHERE type = 'expense' AND name = 'Fahrtkosten (Nutzungseinlage)'
-);
-
-COMMIT;
-SQL
-```
-
-4. Ergebnis prüfen:
-
-```bash
-euer private-summary --year 2026
-euer list private-deposits --year 2026
-```
-
-Hinweis: Direkte Privatentnahmen/Privateinlagen aus früheren Jahren können nicht zuverlässig aus `expenses`/`income` rekonstruiert werden und sollten bei Bedarf manuell über `add private-deposit`/`add private-withdrawal` nachgetragen werden.
-
-
-## Troubleshooting
-
-- **Kategorie fehlt**: `euer list categories` prüfen.
-- **Duplikat erkannt**: gleiche Transaktion wurde bereits importiert.
-- **Beleg nicht gefunden**: Pfade in `config.toml` prüfen und Ordnerstruktur beachten.
-
-## Hilfe & FAQ
-
-- ❓ **[Häufig gestellte Fragen (FAQ)](domain_rules.md)** – Sonderfälle wie Prepaid-Guthaben (Google AI Studio, OpenAI), Nullbetragsrechnungen und Jahreswechsel.
-- Parameter-Hilfe im Terminal:
-
-```bash
-euer --help
-euer add expense --help
-euer receipt --help
-```
-
-### Grenzen bei Bewirtungs-Sonderfällen
-
-Bewirtungen mit Reverse Charge sowie positive Erstattungsbuchungen werden aktuell
-nicht neu unterstützt. Vorhandene Sonderfälle erhalten keine automatische
-70/30-Aufteilung; die EÜR bleibt als unvollständig gekennzeichnet. Diese Belege
-separat prüfen und keine negativen Ausgaben erfinden, um eine Erstattung zu buchen.
-Nach einem Upgrade betroffene Berichte und XLSX-Exporte erneut erzeugen.

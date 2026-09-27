@@ -236,7 +236,7 @@ Bei Implementierung aktualisieren:
 - `docs/skills/euer-buchhaltung/SKILL.md`
 - `docs/templates/onboarding-prompt.md`
 - `docs/templates/accountant-agent.md`
-- `docs/templates/Agents-Template.md`
+- `docs/skills/euer-buchhaltung/assets/Agents-Template.md`
 - `docs/RELEASE_NOTES.md`
 - `README.md`, falls Schnellstart oder Beispiele Belegpfade nennen
 - `DEVELOPMENT.md` Spec-Tabelle und Funktionsüberblick

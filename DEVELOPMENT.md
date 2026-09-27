@@ -77,6 +77,7 @@ euer/
 `docs/skills/euer-buchhaltung/SKILL.md` enthält die Zustandsprüfung und verweist bei
 fehlender Einrichtung auf `references/onboarding.md` im selben Skill-Ordner.
 Dieser Leitfaden ist die gemeinsame Quelle für Interview, Dossier und Setup;
+die Dossier-Vorlage liegt unter `assets/Agents-Template.md` im Skill-Bundle.
 `docs/templates/onboarding-prompt.md` dient als Einstieg für separate LLM-Chats.
 Keine zweite Interview-Anleitung im Prompt pflegen. Bei Skill-Updates müssen auch
 die Referenzen verteilt werden. Das Routing ist eine Agenten-Anweisung, keine
@@ -371,8 +372,8 @@ geladene Version mit `euer setup --set skill.version VERSION`.
 EÜR-Zeilennummern sind jahrabhängige Formularmetadaten und werden für ein
 konkretes Jahr mit `euer list categories --year YYYY` abgefragt, nicht als
 dauerhafte Lieferantenregel gespeichert.
-Der Skill enthält Rolle und Grundregeln; `references/accounting_workflow.md`
-beschreibt den Beleg- und Kontoauszugsablauf auch für allgemeine Agenten.
+Der Skill enthält Rolle, Grundregeln und den Beleg- und Kontoauszugsablauf auch
+für allgemeine Agenten.
 `docs/templates/accountant-role.md` ist ein optionaler kurzer Einstieg für
 spezialisierte Agenten.
 Ändern sich Skill, Rolle, Agenten-Adapter oder Onboarding, erhält der nächste

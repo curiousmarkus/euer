@@ -4,7 +4,7 @@ Diese Vorlage ist ein kurzer Einstieg für einen eigens konfigurierten
 Buchhaltungsagenten. Sie ist keine fertige `SOUL.md`, `CLAUDE.md` oder
 `AGENTS.md`. Ein allgemeiner Agent benötigt sie nicht: Der installierte
 [`euer-buchhaltung`-Skill](../skills/euer-buchhaltung/SKILL.md) enthält Rolle,
-Grundregeln, [Buchungs- und Abgleichablauf](../skills/euer-buchhaltung/references/accounting_workflow.md)
+Grundregeln, [Buchungs- und Abgleichablauf](../skills/euer-buchhaltung/SKILL.md#arbeitsablauf)
 und Fachregeln. Halte hier keine zweite Kopie dieser Anweisungen.
 
 ## Rollen-Text für eine Agentenkonfiguration

@@ -50,8 +50,9 @@ flowchart TD
 
 ## 1. Installieren und den Arbeitsplatz vorbereiten
 
-**Dein Ziel:** Dein KI-Agent ist der primäre Nutzer der CLI und kann im Terminal `euer`
-aufrufen, um deine Buchhaltung autonom und fehlerfrei zu übernehmen.
+**Dein Ziel:** Dein KI-Agent ist der primäre Nutzer der CLI. Er kann im Terminal
+`euer` aufrufen, um Buchungen zu erfassen und abzugleichen sowie offene Fälle
+für deine Prüfung sichtbar zu machen.
 
 Installiere gemäß [User Guide](skills/euer-buchhaltung/references/installation_and_setup.md#installation), beispielsweise mit
 `pipx install euer` oder auf macOS/Linux mit `brew install curiousmarkus/euer/euer`.
@@ -91,7 +92,8 @@ Das Interview klärt nach Bedarf:
 5. Wiederkehrende Zuordnungen, optionale Buchungskonten, Monatsabgleich und Sicherung.
 
 Der Agent fasst die Angaben zusammen, klärt offene Entscheidungen und erstellt oder
-ergänzt deine persönliche **`AGENTS.md` als Mandanten-Dossier**. Bei einem lokalen
+ergänzt deine persönliche **`AGENTS.md` als Mandanten-Dossier** anhand der
+[Vorlage im Skill](skills/euer-buchhaltung/assets/Agents-Template.md). Bei einem lokalen
 Einrichtungsauftrag übernimmt er auch die passenden Setup-Schritte. Bestehende
 Dateien und individuelle Regeln bleiben erhalten. Er prüft den tatsächlichen Stand;
 eine beliebige vorhandene `AGENTS.md` oder ein gesetztes Status-Flag genügt nicht.
@@ -121,7 +123,7 @@ Python-Pakets richtet diese Agenten-Dateien nicht automatisch ein. Stelle sicher
 dass der Agent Skill und Referenzen sowie ein vorhandenes Dossier tatsächlich lesen kann.
 Prüfe mit `euer doctor` erwartete Skill-Version und Bundle-Pfad. Lade den
 vollständig kopierten Skill neu und bestätige erst dann seine Version mit
-`euer setup --set skill.version "1.1.0"`. Danach können Fachbefehle laufen.
+`euer setup --set skill.version "1.1.1"`. Danach können Fachbefehle laufen.
 Bei einer Ersteinrichtung entsteht das Dossier erst im Interview. Für Rechnungen und Kontoauszüge
 braucht er zusätzlich PDF-Textextraktion, etwa `markitdown`, und bei Scans eine
 OCR- oder Bildlesefunktion. Diese Verarbeitung übernimmt der Agent außerhalb von `euer`.
@@ -264,7 +266,7 @@ Ein gespeicherter Vorsteuerstatus ersetzt nicht die fachliche Belegprüfung.
 
 Bewirtungs-Erstattungen und Bewirtung mit Reverse Charge sind derzeit nicht
 unterstützt. Der Agent hält sie zur gesonderten Klärung offen. Weitere Antworten
-stehen in den [Bewirtungs-FAQ](skills/euer-buchhaltung/references/domain_rules.md#4-wie-buche-ich-einen-bewirtungsbeleg-mit-trinkgeld).
+stehen in den [Bewirtungsregeln](skills/euer-buchhaltung/references/domain_rules.md#bewirtung).
 
 ## 6. Zum Monatswechsel die Konten abgleichen
 
