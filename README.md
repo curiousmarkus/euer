@@ -2,44 +2,34 @@
 
 # EÜR-Buchhaltung für KI-Agenten
 
-> `euer` ist die Lösung für Freelancer und Kleinunternehmer in Deutschland, die ihre Einnahmenüberschussrechnung (EÜR) an ihre KI-Agenten auslagern möchten.
+> `euer` ist die Lösung für Freelancer und Einzelunternehmer in Deutschland, die ihre Einnahmenüberschussrechnung (EÜR) an ihre KI-Agenten auslagern möchten.
 
 ---
 
 ## Warum euer?
 
-Die meisten Tools zwingen dich zu einer Entscheidung: Entweder du nutzt unflexible SaaS-Abos (Lexoffice, SevDesk) oder du bastelst manuell in Excel. `euer` geht einen dritten Weg: **Ein Tool, damit dein Agent die Arbeit übernehmen kann.**
+Wenn du eine EÜR erstellen musst, stehst du vor der Entscheidung: ein Software-Abo bei einer großen Buchhaltugnssoftware (Lexoffice, SevDesk) abschließen oder irgendwas in Excel zu basteln. `euer` geht einen dritten Weg: **Ein CLI-Tool, das deinen KI-Agent befähigt, die Buchführung zu übernehmen.**
 
 ### 🤖 Built for AI Agents (Claude Code, Hermes, OpenCode, Codex, etc.)
-*   **Agent-First:** KI-Agenten sind die eigentlichen Nutzer der Software. Als Mensch bedienst du die CLI im Alltag nicht selbst, sondern delegierst die Buchführung; dein Fokus liegt darauf, dass dein Agent die EÜR autonom und möglichst fehlerfrei übernimmt.
-*   **Structured CLI & Guardrails:** Perfekt für Tool-Calling lokaler Agenten (`euer add expense`, `euer summary`). Klare Anweisungen sowie strikte Validierungen und Sicherheitsprüfungen verhindern Fehlbuchungen.
-*   **Zero bloat:** Schlanke EÜR nach Zufluss-/Abfluss-Prinzip (§ 11 EStG) ohne doppelte Buchführung, Kontenrahmenzwang oder Bilanzierungs-Overhead.
-*   **SQL Superpowers:** Für komplexe Auswertungen kann der Agent direkt auf die lokale SQLite-Datenbank zugreifen. Volle Flexibilität für intelligente Automatisierung.
+*   **Agent-First:** KI-Agenten sind die eigentlichen Nutzer der Software. Sie übernehmen die Buchführung; dank euer autonom und so gut wie fehlerfrei.
+*   **Basierend auf CLI Commands:** Perfekt für Tool-Calling lokaler Agenten (`euer add expense`, `euer summary`). Klare Anweisungen sowie strikte Validierungen und Sicherheitsprüfungen verhindern Fehlbuchungen.
+*   **Mit SQL Superpowers:** Für komplexe Auswertungen kann der Agent direkt auf die lokale SQLite-Datenbank zugreifen.
 
-### 🔒 Nachvollziehbar & Lokal
-*   **Local First:** Eine SQLite-Datei. Deine Daten. Dein Backup. Volle Datenhoheit ohne Cloud-Zwang.
-*   **Audit-Trail:** Jede Buchung und Änderung über die CLI wird in einer Historie protokolliert (`euer audit`). Volle Transparenz darüber, was dein Agent getan hat.
-*   **Leichtgewichtig:** Nur Python 3.11+. Keine schweren Abhängigkeiten. Läuft überall.
-*   **Kein Lock-in:** Daten einfach in CSV oder Excel exportieren.
+### 🔒 Lokal und Open Source
+* **Deine Daten bleiben bei dir:** Alle Buchungen liegen in einer lokalen SQLite-Datenbank bei dir auf deinem Rechner.
+* **Offener Quellcode:** `euer` ist Open Source (AGPLv3) und damit transparent und auditierbar. 
+* **Jederzeit zugänglich:** Du kannst deine Daten direkt auswerten und jederzeit als CSV oder Excel exportieren.
 
-### ✅ Alles, was du steuerlich brauchst
-- **EÜR-konforme Kategorien:** Direkt einsatzbereit mit geprüften, jahresabhängigen
-  Zuordnungen zu Formularfeldern unterstützter Anlagen EÜR.
-- **Optionaler Kontenrahmen:** Frei konfigurierbare Buchungskonten (`[[ledger_accounts]]`) mit automatischer Kategoriezuordnung.
-- **Umsatzsteuer-Logik:** Voller Support für Regelbesteuerung (USt/Vorsteuer) sowie Kleinunternehmerregelung (§19 UStG).
-- **Reverse-Charge Support:** Umsatzsteuerliche Behandlung von Dienstleistern aus
-  dem EU-/Drittland-Ausland (§13b UStG) inklusive persistiertem RC-Typ.
-- **UStVA-Report:** `euer vat-report` erzeugt einen ELSTER-nahen
-  USt-Voranmeldungs-Arbeitsbericht mit KZ-Mapping, Warnungen und CSV/XLSX-Export.
-- **Beleg-Management:** Verknüpfe digitale Belege (PDF/Bilder) direkt mit deinen Buchungen.
+### ✅ Passend für die EÜR und UStVA
+* **Passend für Freiberufler und Einzelunternehmer:** Buchführung nach dem Zufluss-/Abfluss-Prinzip (§ 11 EStG) inkl. Bericht für die UStVA, ohne unnötige doppelte Buchführung oder festem Kontenrahmen.
+* **Steuerlichen Regeln eingebaut:** EÜR-Kategorien, Kleinunternehmerregelung (§19 UStG), Umsatzsteuer und Reverse Charge (§13b UStG) werden direkt unterstützt.
+* **Geordnet und nachvollziehbar:** Zugeordnete Belege zu jeder Buchung und ein  Audit-Trail, der jede Änderung durch den Agenten mitschreibt.
 
 ---
 
 ## Quickstart: In 2 Minuten startklar
 
 ### 1. Installation
-
-`pipx` installiert `euer` global, ohne dass du je eine virtuelle Umgebung aktivieren musst.
 
 **macOS und Linux (Homebrew):**
 
@@ -68,7 +58,7 @@ Unter Windows kannst du stattdessen `py -m pip install --user pipx` und danach
 
 **GitHub-Fallback:**
 
-Für Entwicklungsversionen oder einen Checkout ohne PyPI kannst du weiterhin direkt aus
+Für Entwicklungsversionen oder einen Checkout ohne PyPI kannst du auch direkt aus
 dem Repository installieren:
 
 ```bash
