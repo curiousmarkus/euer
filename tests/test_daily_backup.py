@@ -1,4 +1,5 @@
 import sqlite3
+from contextlib import closing
 from unittest.mock import patch
 
 from euercli.backup import create_database_backup
@@ -14,11 +15,11 @@ class DailyBackupTestCase(BaseCLITestCase):
         self.assertEqual(list(backup_dir.iterdir()), [])
 
     def test_first_mutation_is_backed_up_once_per_day(self):
-        backup_dir = self.home / ".config" / "euer" / "backups"
+        backup_dir = self.expected_config_path().parent / "backups"
         self.add_expense(vendor="First", amount="-10.00")
         backups = list(backup_dir.glob("euer_daily_*.db"))
         self.assertEqual(len(backups), 1)
-        with sqlite3.connect(backups[0]) as conn:
+        with closing(sqlite3.connect(backups[0])) as conn:
             self.assertEqual(conn.execute("SELECT COUNT(*) FROM expenses").fetchone()[0], 0)
 
         self.add_expense(vendor="Second", amount="-20.00")

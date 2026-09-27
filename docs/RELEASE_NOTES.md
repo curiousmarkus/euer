@@ -39,7 +39,11 @@ Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
 „Agenten-Dateien“. Die wiederkehrende Prozedur beschreibt der
 [Installationsreferenz](skills/euer-buchhaltung/references/installation_and_setup.md#agenten-dateien-aktualisieren).
 
-## 0.11.0
+## 0.11.1
+
+Der Tag `v0.11.0` löste wegen eines fehlgeschlagenen Windows-CI-Tests keine
+Paketveröffentlichung aus. `0.11.1` ist die erste veröffentlichte Version nach
+`0.10.2`; die folgenden Upgrade-Schritte gelten daher für bestehende Installationen.
 
 ### Agenten-Dateien
 

@@ -7,6 +7,7 @@ import sys
 import tempfile
 import tomllib
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -67,7 +68,7 @@ class ProjectDbPathTestCase(unittest.TestCase):
             "-10",
             check=True,
         )
-        with sqlite3.connect(self.project / "euer.db") as conn:
+        with closing(sqlite3.connect(self.project / "euer.db")) as conn:
             self.assertEqual(conn.execute("SELECT COUNT(*) FROM expenses").fetchone()[0], 1)
 
     def test_existing_default_db_is_registered_by_init(self):
