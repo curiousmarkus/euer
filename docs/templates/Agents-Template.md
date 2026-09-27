@@ -1,6 +1,17 @@
+<!--
+HINWEIS: Dieses Dokument wird als `AGENTS.md` im Buchhaltungsordner des Nutzers abgelegt.
+Da moderne KI-Agenten eine im Projektordner hinterlegte `AGENTS.md` automatisch berücksichtigen,
+fungiert diese Datei als persönliches Mandanten-Dossier (keine Coding- oder CLI-Anweisungen).
+-->
+
 # Mandanten-Dossier: {{NAME}}
 
 Geschäftsform: {{GESCHAEFTSFORM}}  
+
+> **Kontext für KI-Agenten:** Dieses Dokument ist die `AGENTS.md` dieses Buchhaltungsordners.
+> Es dient ausschließlich als persönliches Mandanten-Dossier (keine Coding-Anweisungen).
+> Allgemeine Buchungsregeln, CLI-Befehle und Guardrails stehen im `euer-buchhaltung`-Skill;
+> hier stehen die individuellen betrieblichen und steuerlichen Rahmendaten dieses Mandanten.
 
 ---
 
@@ -82,6 +93,7 @@ Einen festen Binärpfad nur angeben, wenn der PATH im Projekt nicht zuverlässig
 {{MANDANTENSPEZIFISCHE_ARBEITSREGELN}}
 
 Allgemeine CLI-Befehle, Datums- und Buchungsregeln stehen im
-`euer-buchhaltung`-Skill und werden hier nicht dupliziert.
+`euer-buchhaltung`-Skill und werden hier nicht dupliziert. Diese `AGENTS.md`
+dient ausschließlich als Mandanten-Dossier und enthält keine Coding-Anweisungen.
 
 ---

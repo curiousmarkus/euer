@@ -11,7 +11,8 @@
 Die meisten Tools zwingen dich zu einer Entscheidung: Entweder du nutzt unflexible SaaS-Abos (Lexoffice, SevDesk) oder du bastelst manuell in Excel. `euer` geht einen dritten Weg: **Ein Tool, damit dein Agent die Arbeit übernehmen kann.**
 
 ### 🤖 Built for AI Agents (Claude Code, Hermes, OpenCode, Codex, etc.)
-*   **Structured CLI interface:** Deterministischer Text rein, strukturierter Output raus. Perfekt für Tool-Calling lokaler Coding-Agenten (`euer add expense`, `euer summary`).
+*   **Agent-First:** KI-Agenten sind die eigentlichen Nutzer der Software. Als Mensch bedienst du die CLI im Alltag nicht selbst, sondern delegierst die Buchführung; dein Fokus liegt darauf, dass dein Agent die EÜR autonom und möglichst fehlerfrei übernimmt.
+*   **Structured CLI & Guardrails:** Perfekt für Tool-Calling lokaler Agenten (`euer add expense`, `euer summary`). Klare Anweisungen sowie strikte Validierungen und Sicherheitsprüfungen verhindern Fehlbuchungen.
 *   **Zero bloat:** Schlanke EÜR nach Zufluss-/Abfluss-Prinzip (§ 11 EStG) ohne doppelte Buchführung, Kontenrahmenzwang oder Bilanzierungs-Overhead.
 *   **SQL Superpowers:** Für komplexe Auswertungen kann der Agent direkt auf die lokale SQLite-Datenbank zugreifen. Volle Flexibilität für intelligente Automatisierung.
 
@@ -111,6 +112,8 @@ Richte den vollständigen [Skill-Ordner `euer-buchhaltung`](docs/skills/euer-buc
 Buchhaltungsordner und sage: **„Richte meine Buchhaltung mit euer ein.“**
 Der Agent prüft vorhandene Angaben, führt bei Bedarf das Onboarding durch und
 legt dein persönliches Mandanten-Dossier (`AGENTS.md`) sowie die Konfiguration an.
+Da moderne KI-Agenten die `AGENTS.md` im Arbeitsverzeichnis automatisch einlesen,
+dient sie als Mandanten-Dossier für deine betrieblichen Regeln (ohne Coding-Anweisungen).
 
 Alternativ kannst du den [Onboarding-Prompt](docs/templates/onboarding-prompt.md)
 in einem separaten LLM-Chat verwenden.

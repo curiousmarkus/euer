@@ -50,8 +50,8 @@ flowchart TD
 
 ## 1. Installieren und den Arbeitsplatz vorbereiten
 
-**Dein Ziel:** Der spätere Agent kann im Terminal `euer` aufrufen und auf deinen
-Buchhaltungsordner zugreifen.
+**Dein Ziel:** Dein KI-Agent ist der primäre Nutzer der CLI und kann im Terminal `euer`
+aufrufen, um deine Buchhaltung autonom und fehlerfrei zu übernehmen.
 
 Installiere gemäß [User Guide](skills/euer-buchhaltung/references/installation_and_setup.md#installation), beispielsweise mit
 `pipx install euer` oder auf macOS/Linux mit `brew install curiousmarkus/euer/euer`.
@@ -60,8 +60,10 @@ Prüfe die Installation mit `euer --version` und `euer --help`.
 
 Lege einen eigenen Buchhaltungsordner fest. Hier liegen später deine persönliche
 `AGENTS.md`, die Projekt-Config `.euer/config.toml` und standardmäßig die Datenbank
-`euer.db`. Das ist dein Arbeitsordner,
-unabhängig vom Quellcode-Repository und dessen Entwickler-`AGENTS.md`.
+`euer.db`. Da moderne KI-Agenten eine im Projektordner hinterlegte `AGENTS.md`
+automatisch berücksichtigen, fungiert diese Datei im Buchhaltungsordner als dein
+**persönliches Mandanten-Dossier** (ohne Coding-Anweisungen). Das ist dein Arbeitsordner,
+vollständig unabhängig vom Quellcode-Repository und dessen Entwickler-`AGENTS.md`.
 
 Du brauchst außerdem eine KI-Anwendung mit Terminal- und Dateizugriff. Ein normaler
 LLM-Chat reicht für das Interview; für das tatsächliche Buchen muss der Agent die
@@ -110,7 +112,7 @@ Onboarding oder wird aus vorhandenen Angaben ergänzt:
 
 | Bestandteil | Aufgabe |
 |---|---|
-| Persönliche `AGENTS.md` | Deine Konten, Pfade, steuerlichen Stammdaten und individuellen Regeln |
+| Persönliche `AGENTS.md` | Mandanten-Dossier: Konten, Pfade, steuerliche Stammdaten und Arbeitsregeln (keine Coding-Anweisungen) |
 | [Skill euer-buchhaltung](skills/euer-buchhaltung/SKILL.md) inklusive `references/` | Rolle, Grundregeln, Beleg- und Kontoauszugsablauf, CLI-Bedienung |
 | [accountant-role.md](templates/accountant-role.md) (optional) | Kurzer Einstieg für eigens konfigurierte Buchhaltungsagenten |
 

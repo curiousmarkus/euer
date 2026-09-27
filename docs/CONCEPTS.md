@@ -1,5 +1,32 @@
 # Konzept und Grenzen
 
+## Philosophie: Agent-First Buchhaltung
+
+`euer` ist von Grund auf dafür konzipiert, von **KI-Agenten als primäre Nutzer**
+bedient zu werden. Der Mensch hinter dem Agenten führt die CLI-Befehle im Alltag in
+der Regel nicht selbst aus, sondern delegiert die Buchhaltung; sein Hauptinteresse
+ist, dass der Agent die EÜR autonom, verlässlich und vor allem **möglichst fehlerfrei**
+übernimmt.
+
+- **Deterministische Guardrails:** Eindeutige Parameter, strukturierte Rückmeldungen
+  (inkl. `--json`-Modus) und strikte Validierungen schützen den Agenten vor Fehlinterpretationen.
+- **Lückenloser Audit-Trail:** Jede Buchung und Änderung wird in der Historie festgehalten,
+  sodass alle Aktionen des Agenten transparent und nachvollziehbar bleiben.
+- **Klare Rollenteilung:** Der Mensch trägt die steuerliche Letztverantwortung und Freigabe,
+  während der Agent die Belege auswertet, Vorprüfungen durchführt und per CLI bucht.
+
+## Das AGENTS.md-Konzept: Mandanten-Dossier statt Coding-Anweisungen
+
+Da moderne KI-Agenten (Claude Code, Cursor, Codex, OpenCode etc.) standardmäßig eine
+im Projektordner liegende `AGENTS.md` einlesen, nutzt `euer` diese Konvention gezielt:
+
+- **Mandanten-`AGENTS.md` (im Buchhaltungsordner):**
+  Im Buchhaltungsordner des Nutzers wird eine `AGENTS.md` abgelegt (Vorlage:
+  `docs/templates/Agents-Template.md`). Diese enthält **keine Coding- oder Programmierregeln**,
+  sondern spiegelt das **Mandanten-Dossier** wider: Steuerstatus, USt-Regelung,
+  Bankkonten, Belegpfade, Zuordnungsregeln wiederkehrender Lieferanten und individuelle
+  Arbeitsregeln des Mandanten.
+
 ## Grundbegriffe
 
 - **Ausgaben** haben immer **negative** Beträge (`--amount -10.00`).

@@ -442,10 +442,16 @@ Offene Change Requests werden innerhalb der jeweiligen Spec dokumentiert.
 
 ### Agenten-Dateien und Mandantendaten
 
-Der Buchhaltungs-Skill beschreibt allgemeine euer-Bedienung, Prüfabläufe und
-Onboarding. Die persönliche `AGENTS.md` im Buchhaltungsordner enthält ausschließlich
-mandantenspezifische Angaben wie Steuerstatus, Konten, Pfade, Lieferantenregeln und
-Sonderfälle. Die Repository-`AGENTS.md` bleibt eine Entwickleranweisung.
+`euer` ist konsequent für KI-Agenten als primäre Nutzer gebaut: Der Mensch hinter dem
+Agenten bedient die CLI in der Regel nicht selbst, sondern delegiert die Buchhaltung
+mit dem Ziel einer möglichst fehlerfreien, autonomen Erfassung.
+
+Der Buchhaltungs-Skill beschreibt die allgemeine euer-Bedienung, Prüfabläufe und das
+Onboarding. Da moderne KI-Agenten eine im Projektordner hinterlegte `AGENTS.md`
+automatisch berücksichtigen, fungiert die persönliche `AGENTS.md` im Buchhaltungsordner
+als **Mandanten-Dossier** und enthält ausschließlich betriebliche und steuerliche Angaben
+(Steuerstatus, Konten, Pfade, Lieferantenregeln und Sonderfälle) — **keine Coding-Anweisungen**.
+Die Repository-`AGENTS.md` bleibt hingegen eine reine Entwickleranweisung für die Software selbst.
 Skill- oder Paketupdates dürfen das persönliche Dossier nicht automatisch ersetzen.
 Die kanonische Skill-Quelle liegt in `docs/skills/euer-buchhaltung/`; der Build
 kopiert sie nach `euercli/assets/skill/`. Änderungen am Skill erhöhen dessen
