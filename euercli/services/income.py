@@ -559,12 +559,7 @@ def update_income(
             skip_vat_auto=False,
         )
 
-        if (
-            vat_rate is not None
-            and vat_rate in (7.0, 19.0)
-            and vat is not None
-            and not tax_free
-        ):
+        if vat_rate is not None and vat_rate in (7.0, 19.0) and vat is not None and not tax_free:
             validate_vat_math(
                 amount_eur=new_amount,
                 vat_rate=vat_rate,

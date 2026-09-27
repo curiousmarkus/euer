@@ -53,7 +53,9 @@ class TestDoctor(unittest.TestCase):
 
         # pipx
         self.assertEqual(
-            detect_install_source("/home/user/.local/pipx/venvs/euer/bin/python", "/home/user/.local/bin/euer"),
+            detect_install_source(
+                "/home/user/.local/pipx/venvs/euer/bin/python", "/home/user/.local/bin/euer"
+            ),
             "pipx",
         )
 
@@ -115,7 +117,9 @@ class TestDoctor(unittest.TestCase):
             report = run_doctor(self.project_root, self.db_path, source="--db")
             self.assertIn("warning", report["status"])
             self.assertTrue(len(report["path_duplicates"]) >= 2)
-            self.assertTrue(any("Kollidierende Installationen" in rec for rec in report["recommendations"]))
+            self.assertTrue(
+                any("Kollidierende Installationen" in rec for rec in report["recommendations"])
+            )
 
     def test_case_3_missing_db_not_created(self):
         non_existent_db = self.project_root / "non_existent.db"
@@ -133,16 +137,22 @@ class TestDoctor(unittest.TestCase):
     def test_case_4_missing_openpyxl(self):
         self._init_healthy_db()
 
-        with patch("euercli.services.doctor.diagnose_features", return_value={"openpyxl": {"available": False, "version": None}}):
+        with patch(
+            "euercli.services.doctor.diagnose_features",
+            return_value={"openpyxl": {"available": False, "version": None}},
+        ):
             report = run_doctor(self.project_root, self.db_path, source="--db")
             self.assertFalse(report["features"]["openpyxl"]["available"])
             self.assertIn("warning", report["status"])
-            self.assertTrue(any("XLSX-Export ist nicht verfügbar" in r for r in report["recommendations"]))
+            self.assertTrue(
+                any("XLSX-Export ist nicht verfügbar" in r for r in report["recommendations"])
+            )
 
     def test_case_5_pending_migrations(self):
         # Create DB and only run first migration
         conn = sqlite3.connect(self.db_path)
         from euercli.migrations import MIGRATIONS, init_migration_table
+
         init_migration_table(conn)
         MIGRATIONS[0].apply(conn)
         conn.execute(
@@ -164,7 +174,12 @@ class TestDoctor(unittest.TestCase):
         report = run_doctor(self.project_root, self.db_path, source="--db")
         self.assertEqual(report["database"]["status"], "error")
         self.assertEqual(report["status"], "error")
-        self.assertTrue(any("Integritätsprüfung" in r or "Datenbank-Fehler" in r for r in report["recommendations"]))
+        self.assertTrue(
+            any(
+                "Integritätsprüfung" in r or "Datenbank-Fehler" in r
+                for r in report["recommendations"]
+            )
+        )
 
     def test_case_7_invalid_system_config(self):
         self._init_healthy_db()
@@ -172,11 +187,15 @@ class TestDoctor(unittest.TestCase):
         dummy_cfg.write_text("broken toml [")
 
         with patch("euercli.services.doctor.CONFIG_PATH", dummy_cfg):
-            with patch("euercli.services.doctor.load_config", side_effect=Exception("Invalid TOML syntax")):
+            with patch(
+                "euercli.services.doctor.load_config", side_effect=Exception("Invalid TOML syntax")
+            ):
                 report = run_doctor(self.project_root, self.db_path, source="--db")
                 self.assertFalse(report["config"]["system_config"]["valid"])
                 self.assertEqual(report["status"], "error")
-                self.assertTrue(any("Syntaxfehler in System-Config" in r for r in report["recommendations"]))
+                self.assertTrue(
+                    any("Syntaxfehler in System-Config" in r for r in report["recommendations"])
+                )
 
     def test_cli_doctor_json_output(self):
         self._init_healthy_db()

@@ -57,7 +57,9 @@ class MigrationsAndInitTestCase(unittest.TestCase):
 
         f = io.StringIO()
         with redirect_stdout(f):
-            main(["--ignore-skill-version", "--db", str(self.db_path), "init", "--create", "--json"])
+            main(
+                ["--ignore-skill-version", "--db", str(self.db_path), "init", "--create", "--json"]
+            )
         self.assertTrue(self.db_path.exists())
         data = json.loads(f.getvalue())
         self.assertEqual(data["status"], "success")
@@ -70,7 +72,17 @@ class MigrationsAndInitTestCase(unittest.TestCase):
 
         f = io.StringIO()
         with redirect_stdout(f):
-            main(["--ignore-skill-version", "--db", str(self.db_path), "init", "--create", "--dry-run", "--json"])
+            main(
+                [
+                    "--ignore-skill-version",
+                    "--db",
+                    str(self.db_path),
+                    "init",
+                    "--create",
+                    "--dry-run",
+                    "--json",
+                ]
+            )
         self.assertFalse(self.db_path.exists())
         data = json.loads(f.getvalue())
         self.assertEqual(data["status"], "dry_run")
@@ -123,7 +135,9 @@ class MigrationsAndInitTestCase(unittest.TestCase):
         conn.close()
 
         with redirect_stdout(io.StringIO()):
-            main(["--ignore-skill-version", "--db", str(self.db_path), "init", "--dry-run", "--json"])
+            main(
+                ["--ignore-skill-version", "--db", str(self.db_path), "init", "--dry-run", "--json"]
+            )
 
         conn = sqlite3.connect(self.db_path)
         marker = conn.execute(
@@ -304,7 +318,9 @@ class MigrationsAndInitTestCase(unittest.TestCase):
 
         f = io.StringIO()
         with redirect_stdout(f):
-            main(["--ignore-skill-version", "--db", str(self.db_path), "init", "--dry-run", "--json"])
+            main(
+                ["--ignore-skill-version", "--db", str(self.db_path), "init", "--dry-run", "--json"]
+            )
         data = json.loads(f.getvalue())
         self.assertEqual(data["status"], "dry_run")
         self.assertEqual(data["action"], "upgrade")

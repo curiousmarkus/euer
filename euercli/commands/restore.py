@@ -34,8 +34,6 @@ def cmd_restore(args) -> None:
 
     conn.close()
     label = (
-        "Ausgabe"
-        if table == "expenses"
-        else ("Einnahme" if table == "income" else "Privatvorgang")
+        "Ausgabe" if table == "expenses" else ("Einnahme" if table == "income" else "Privatvorgang")
     )
     print(f"{label} #{record_id} wiederhergestellt.")

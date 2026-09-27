@@ -328,7 +328,19 @@ class CLIPrivateTransfersTestCase(BaseCLITestCase):
 
         # Im aktiven Datenbestand nicht mehr sichtbar
         query = self.run_cli(
-            ["query", "SELECT", "COUNT(*)", "as", "cnt", "FROM", "private_transfers", "WHERE", "deleted_at", "IS", "NULL"],
+            [
+                "query",
+                "SELECT",
+                "COUNT(*)",
+                "as",
+                "cnt",
+                "FROM",
+                "private_transfers",
+                "WHERE",
+                "deleted_at",
+                "IS",
+                "NULL",
+            ],
             check=True,
         )
         rows = self.parse_csv(query.stdout)
@@ -342,7 +354,19 @@ class CLIPrivateTransfersTestCase(BaseCLITestCase):
         )
         self.assertIn("Privatvorgang #2 endgültig gelöscht", result_purge.stdout)
         query_purge = self.run_cli(
-            ["query", "SELECT", "COUNT(*)", "as", "cnt", "FROM", "private_transfers", "WHERE", "id", "=", "2"],
+            [
+                "query",
+                "SELECT",
+                "COUNT(*)",
+                "as",
+                "cnt",
+                "FROM",
+                "private_transfers",
+                "WHERE",
+                "id",
+                "=",
+                "2",
+            ],
             check=True,
         )
         rows_purge = self.parse_csv(query_purge.stdout)
