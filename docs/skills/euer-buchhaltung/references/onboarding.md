@@ -1,12 +1,12 @@
 # Onboarding: Buchhaltung einrichten oder gezielt vervollständigen
 
-Diese Referenz ist die gemeinsame Interview-Anleitung für den lokalen Buchhaltungs-
-Agenten und einen separaten LLM-Chat. Ziel sind ein persönliches Mandanten-Dossier,
-eine dazu passende euer-Konfiguration und ein klarer nächster Arbeitsauftrag.
+Ziel dieser Interview-Anleitung sind ein persönliches Mandanten-Dossier
+in Form einer `AGENTS.md` im Buchhaltungsordner, eine dazu passende euer-Konfiguration
+und ein klarer nächster Arbeitsauftrag.
 
 ## 1. Vorhandenen Stand übernehmen
 
-Bei lokalem Zugriff zuerst Arbeitsordner, vorhandenes Dossier, CLI-Verfügbarkeit,
+Bei lokalem Zugriff zuerst Arbeitsordner, vorhandenes Dossier (`AGENTS.md`), CLI-Verfügbarkeit,
 Existenz der vorgesehenen Datenbank, `.euer/config.toml` im Arbeitsordner und die
 globale Config prüfen. `euer --version`
 und `euer config show` helfen dabei. Die Config-Datei selbst enthält zusätzlich
@@ -14,15 +14,22 @@ private Konten und optionale Buchungskonten, die `config show` nicht vollständi
 Unter macOS/Linux liegt sie in `~/.config/euer/config.toml`, unter Windows in
 `%APPDATA%\euer\config.toml`.
 
-Eine vorhandene `AGENTS.md` kann Entwicklerregeln oder andere Anweisungen enthalten.
-Erhalte diese Inhalte; ergänze ein klar abgegrenztes Mandanten-Dossier oder verlinke
-ein separat vereinbartes Dossier. Fehlt nur die Datei, aber alle Angaben sind bereits
-bekannt, erstelle sie daraus, statt das ganze Interview zu wiederholen.
-Ein Skill- oder Tool-Update ersetzt eine vorhandene persönliche `AGENTS.md`
-niemals automatisch. Den Skill bei einem Update vollständig aus dem mit der CLI
-ausgelieferten Bundle ersetzen und nach erneutem Laden dessen Version mit
-`euer setup --set skill.version VERSION` bestätigen. `euer doctor --json` nennt
-Bundle-Pfad, erwartete Version und Prüfstatus.
+### Das AGENTS.md-Konzept als Mandanten-Dossier
+
+Da moderne KI-Agenten (Claude Code, Cursor, Codex, OpenCode etc.) standardmäßig eine
+im Projektordner hinterlegte `AGENTS.md` einlesen, nutzt `euer` dieses Muster gezielt:
+Im Buchhaltungsordner des Nutzers dient die `AGENTS.md` als **persönliches Mandanten-Dossier**
+(Vorlage: `docs/templates/Agents-Template.md`).
+
+- **Keine Coding-Anweisungen:** Das Dossier enthält **keinerlei Coding- oder Programmierregeln**
+  und dupliziert weder CLI-Befehle noch fachliche Buchhaltungsregeln (diese stellt der Skill `SKILL.md`
+  bereit). Es spiegelt ausschließlich das steuerliche und betriebliche Profil des Mandanten wider
+  (Steuerstatus, Konten, Belegpfade, Lieferantenregeln und Sonderfälle).
+- **Abgrenzung:** Eine Repository-`AGENTS.md` mit Entwickler- und Codierungsanweisungen ist kein Mandanten-Dossier.
+- **Bestehende Inhalte:** Enthält eine vorgefundene `AGENTS.md` bereits andere Anweisungen,
+  bleiben diese erhalten; das Mandanten-Dossier wird klar abgegrenzt ergänzt oder ein separat
+  vereinbartes Dossier verlinkt. Fehlt nur die Datei, aber alle Angaben sind bereits sicher bekannt,
+  erstelle sie daraus, statt das ganze Interview zu wiederholen.
 
 | Ausgangslage | Vorgehen |
 |---|---|
@@ -109,7 +116,9 @@ offen; optionale Lieferanten-Mappings oder SKR-Nummern blockieren keine erste Bu
 
 Fasse die ermittelten Werte und konkrete Änderungen zusammen. Nutze bereits
 bestätigte Angaben; frage nur bei neuen Annahmen, Widersprüchen oder noch offenen
-Entscheidungen nach. Das Dossier muss mindestens den Mandanten, Arbeits-/DB-Pfad,
+Entscheidungen nach. Das Dossier wird als persönliche `AGENTS.md` im Buchhaltungsordner
+abgelegt (Vorlage: `docs/templates/Agents-Template.md`). Sie fungiert rein als Mandanten-Dossier
+ohne Coding-Anweisungen und muss mindestens den Mandanten, Arbeits-/DB-Pfad,
 bestätigten Steuermodus und die für den Auftrag benötigten Ablage-/Kontenregeln
 eindeutig beschreiben. Offene Punkte erhalten einen Status und nächsten Schritt.
 
@@ -142,8 +151,9 @@ Monatsabgleich, bereitgestellte Zeiträume, Sicherung, Rückfragen mit nächstem
 ```
 
 Ersetze die beschreibenden Zeilen durch tatsächliche Angaben. Ein ausführliches
-Duplikat der CLI-Anleitung gehört nicht ins Dossier: Die Buchungsregeln liefert
-weiterhin `SKILL.md`. Bewahre bereits vorhandene individuelle Regeln.
+Duplikat der CLI-Anleitung oder allgemeine Coding-Regeln gehören nicht ins Dossier:
+Die fachlichen Buchungsregeln liefert weiterhin `SKILL.md`, die CLI-Befehle die
+CLI-Referenz. Bewahre bereits vorhandene individuelle Regeln.
 
 ## 4. Einrichtung anwenden
 
