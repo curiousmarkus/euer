@@ -81,6 +81,6 @@ für KI-Agenten und Nutzer:
 
 - `README.md` und `docs/USER_GUIDE.md`: `euer doctor` als erster Schritt bei Problemen oder zur
   Ersteinrichtungsprüfung.
-- `docs/skills/euer-buchhaltung/SKILL.md`: Aufnahme von `euer doctor --json` in den Pre-Flight-Check
+- `docs/skills/euer-buchhaltung/SKILL.md`: Aufnahme von `euer doctor` in den Pre-Flight-Check
   des Agenten zu Beginn einer Sitzung.
 - `docs/RELEASE_NOTES.md`: Vorstellung des Diagnosebefehls.

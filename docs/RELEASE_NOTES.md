@@ -6,8 +6,8 @@ Für Installationen ab 0.8.1 ergänzen sie die normale Update-Sequenz aus der
 
 ```bash
 pipx upgrade euer
-euer doctor --json
-# Skill vollständig aus skill.bundle_path installieren und neu laden
+euer doctor
+# Skill vollständig aus dem Bundle-Pfad installieren und neu laden
 euer setup --set skill.version "1.1.0"
 euer init
 euer incomplete list
@@ -51,7 +51,7 @@ Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
 | Mandanten-Dossier | Keine automatische Migration; keine festen EÜR-Zeilennummern in Lieferantenregeln | Bestehende Regeln prüfen und Änderungen nur als Vorschlag übernehmen |
 
 Der Skill ist nun mit Version 1.1.0 im CLI-Paket enthalten. Nach dem Paketupdate
-`euer doctor --json` ausführen, den Ordner unter `skill.bundle_path` vollständig
+`euer doctor` ausführen, den Ordner aus dem Bundle-Pfad vollständig
 in das Agentensystem übernehmen, die Anweisungen neu laden und erst dann mit
 `euer setup --set skill.version "1.1.0"` bestätigen. Die bisher unversionierte
 Skill-Kopie wird ersetzt; die persönliche `AGENTS.md` bleibt erhalten. Die

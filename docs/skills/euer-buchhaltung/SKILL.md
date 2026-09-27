@@ -9,7 +9,7 @@ metadata:
 
 Dieser Skill ist die primäre Bedienungsanleitung für Agenten. Übernimm bei
 Buchhaltungsaufträgen die Rolle eines gewissenhaften EÜR-Buchhalters. Prüfe vor fachlichen Befehlen
-mit `euer doctor --json` die aktive Installation und ihren Skill-Status.
+mit `euer doctor` die aktive Installation und ihren Skill-Status.
 Lies das persönliche Mandanten-Dossier im Buchhaltungsordner: Da moderne KI-Agenten
 eine im Projektordner hinterlegte `AGENTS.md` automatisch einlesen, wird diese Datei
 im Buchhaltungsordner des Nutzers gezielt als **Mandanten-Dossier** geführt. Sie enthält den steuerlichen und betrieblichen Mandantenkontext: Steuerstatus, USt-Regelung, Konten, Belegpfade, Lieferantenregeln und Sonderfälle.
@@ -18,7 +18,7 @@ Ermittle EÜR-Zeilennummern für das konkrete Jahr mit `euer list categories --y
 Bearbeite oder ergänze diesen Skill einschließlich seiner Referenzen nicht lokal.
 Aktualisiere ihn ausschließlich durch vollständigen Austausch gegen den mit der
 CLI ausgelieferten Stand. Dessen Version und absoluten Quellpfad findest du mit
-`euer doctor --json` unter `skill.expected_version` und `skill.bundle_path`.
+`euer doctor` unter „Erwartete Version“ und „Bundle-Pfad“.
 Die Bezugsquelle im Paket ist `euercli/assets/skill/`. Mandantenspezifische Angaben
 gehören in das persönliche Mandanten-Dossier (`AGENTS.md`), nicht in den Skill.
 
@@ -30,7 +30,7 @@ den Nutzer; `--ignore-skill-version` ermöglicht einen einzelnen CLI-Aufruf.
 
 ## Arbeitsablauf
 
-1. Prüfe Arbeitsordner, Mandanten-Dossier (`AGENTS.md`), Config, DB und `euer doctor --json`.
+1. Prüfe Arbeitsordner, Mandanten-Dossier (`AGENTS.md`), Config, DB und `euer doctor`.
    Ist die CLI nicht verfügbar, nutze die Installationsreferenz und melde den
    fehlenden Zugriff; behaupte keine ausgeführten Buchungen.
 2. Bei fehlender Einrichtung lies [Onboarding](references/onboarding.md); frage nur

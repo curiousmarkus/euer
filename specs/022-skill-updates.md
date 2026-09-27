@@ -110,9 +110,7 @@ Die bestehende Exitcode-Regel von `doctor` bleibt erhalten: 1 bei Fehlern, sonst
 Ein unabhängiger DB-Fehler kann daher trotz aktuellem Skill zu Exitcode 1 führen.
 
 Die CLI bietet keinen Installer und keinen Datei-Diff. Warnungen bei Fachbefehlen
-werden im JSON-Modus als strukturierte Hinweise auf stderr ausgegeben. Der gemeinsame
-Ausgabevertrag und das bisherige Skill-Reparaturbeispiel in
-[Spec 023](023-ai-io.md) müssen bei Umsetzung entsprechend angepasst werden.
+werden im JSON-Modus (z. B. bei `init --json`) als strukturierte Hinweise auf stderr ausgegeben.
 
 ## 5. Unveränderter Skill und Update-Hinweis
 
@@ -121,7 +119,7 @@ Ausgabevertrag und das bisherige Skill-Reparaturbeispiel in
 > Bearbeite oder ergänze diesen Skill einschließlich seiner Referenzen nicht lokal.
 > Aktualisiere ihn ausschließlich durch vollständigen Austausch gegen den mit der
 > CLI ausgelieferten Stand. Dessen Version und absoluten Quellpfad findest du mit
-> `euer doctor --json` unter `skill.expected_version` und `skill.bundle_path`.
+> `euer doctor` unter „Erwartete Version“ und „Bundle-Pfad“.
 > Mandantenspezifische Angaben gehören in das persönliche Dossier, nicht in den Skill.
 
 Der Paketpfad `euercli/assets/skill/` wird im Skill als Bezugsquelle genannt.

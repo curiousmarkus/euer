@@ -124,7 +124,7 @@ Vorlage für eigens konfigurierte Agenten. Bei Updates zeigen die
 [Release Notes](docs/RELEASE_NOTES.md) getrennt an, ob Skill, Rolle oder
 persönliches Mandanten-Dossier geprüft werden müssen. Agentendateien und
 `AGENTS.md` werden durch `brew upgrade` oder `pipx upgrade` nicht ersetzt.
-Prüfe nach dem Update `euer doctor --json`, ersetze den Skill vollständig aus
+Prüfe nach dem Update `euer doctor`, ersetze den Skill vollständig aus
 `skill.bundle_path`, lies ihn neu und bestätige dann seine Version mit
 `euer setup --set skill.version "1.1.0"`.
 

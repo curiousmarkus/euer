@@ -18,7 +18,7 @@ Initialisiert oder aktualisiert die Datenbank
 **Syntax:** `euer init [-h] [--create] [--dry-run] [--json] [--save-db-path]`
 
 **Voraussetzung:** Keine Datenbank für Diagnose/Einrichtung erforderlich; Skill-Bestätigung für `init` und interaktives `setup`. `setup --set skill.version` ist ungeblockt.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Migrations- oder Preflight-Bericht; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -36,7 +36,7 @@ Ersteinrichtung (interaktiv oder --set KEY VALUE)
 **Syntax:** `euer setup [-h] [--set KEY VALUE]`
 
 **Voraussetzung:** Keine Datenbank für Diagnose/Einrichtung erforderlich; Skill-Bestätigung für `init` und interaktives `setup`. `setup --set skill.version` ist ungeblockt.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Deutschsprachige Bestätigung; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -52,7 +52,7 @@ Bulk-Import von Transaktionen
                 [--schema]`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Zusammenfassung des Importlaufs (importiert, Duplikate, Fehler); Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -70,7 +70,7 @@ Fügt Transaktion hinzu
 **Syntax:** `euer add [-h] {expense,income,private-deposit,private-withdrawal} ...`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Deutschsprachige Bestätigung; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -92,7 +92,7 @@ Ausgabe hinzufügen
                      [--allow-duplicate]`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Deutschsprachige Bestätigung; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -129,7 +129,7 @@ Einnahme hinzufügen
                     [--tax-free] [--force] [--allow-duplicate]`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Deutschsprachige Bestätigung; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -159,7 +159,7 @@ Privateinlage hinzufügen
                              [--related-expense-id RELATED_EXPENSE_ID]`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Deutschsprachige Bestätigung; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -180,7 +180,7 @@ Privatentnahme hinzufügen
                                 [--related-expense-id RELATED_EXPENSE_ID]`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Deutschsprachige Bestätigung; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -200,7 +200,7 @@ Listet Daten
               {expenses,income,categories,ledger-accounts,private-deposits,private-withdrawals,private-transfers} ...`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Formatierte Tabelle oder CSV je nach Option; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -217,7 +217,7 @@ Ausgaben anzeigen
                        [--trash]`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Formatierte Tabelle oder CSV je nach Option; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -238,7 +238,7 @@ Einnahmen anzeigen
                      [--format {table,csv}] [--full] [--trash]`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Formatierte Tabelle oder CSV je nach Option; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -258,7 +258,7 @@ Kategorien anzeigen
 **Syntax:** `euer list categories [-h] [--type {expense,income}] [--year YEAR]`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Formatierte Tabelle; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -274,7 +274,7 @@ Kontenrahmen anzeigen
 **Syntax:** `euer list ledger-accounts [-h] [--category CATEGORY]`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Formatierte Textübersicht nach Kategorien; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -289,7 +289,7 @@ Privateinlagen anzeigen
 **Syntax:** `euer list private-deposits [-h] [--year YEAR] [--format {table,csv}]`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Formatierte Tabelle oder CSV je nach Option; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -305,7 +305,7 @@ Privatentnahmen anzeigen
 **Syntax:** `euer list private-withdrawals [-h] [--year YEAR] [--format {table,csv}]`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Formatierte Tabelle oder CSV je nach Option; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -321,7 +321,7 @@ Privateinlagen und Privatentnahmen anzeigen
 **Syntax:** `euer list private-transfers [-h] [--year YEAR] [--format {table,csv}]`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Formatierte Tabelle oder CSV je nach Option; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -337,7 +337,7 @@ Aktualisiert Transaktion
 **Syntax:** `euer update [-h] {expense,income,private-transfer} ...`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Deutschsprachige Bestätigung; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -363,7 +363,7 @@ Ausgabe aktualisieren
                         id`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Deutschsprachige Bestätigung; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -405,7 +405,7 @@ Einnahme aktualisieren
                        id`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Deutschsprachige Bestätigung; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -438,7 +438,7 @@ Privatvorgang aktualisieren
                                  id`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Deutschsprachige Bestätigung; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -459,7 +459,7 @@ Löscht Transaktion
 **Syntax:** `euer delete [-h] {expense,income,private-transfer} ...`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Deutschsprachige Bestätigung; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -473,7 +473,7 @@ Ausgabe löschen
 **Syntax:** `euer delete expense [-h] [--force] [--purge] id`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Deutschsprachige Bestätigung; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -490,7 +490,7 @@ Einnahme löschen
 **Syntax:** `euer delete income [-h] [--force] [--purge] id`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Deutschsprachige Bestätigung; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -507,7 +507,7 @@ Privatvorgang löschen
 **Syntax:** `euer delete private-transfer [-h] [--force] [--purge] id`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Deutschsprachige Bestätigung; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -524,7 +524,7 @@ Stellt gelöschten Datensatz wieder her
 **Syntax:** `euer restore [-h] [--table {expenses,income,private_transfers}] id`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Deutschsprachige Bestätigung; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -540,7 +540,7 @@ Macht eine Änderung rückgängig
 **Syntax:** `euer undo [-h] [--id ID] [--force]`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Deutschsprachige Bestätigung; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -556,7 +556,7 @@ Verwaltet den Papierkorb
 **Syntax:** `euer trash [-h] {list,empty} ...`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Formatierte Tabelle oder Bestätigung; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -570,7 +570,7 @@ Gelöschte Einträge anzeigen
 **Syntax:** `euer trash list [-h]`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Formatierte Tabelle gelöschter Einträge; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -584,7 +584,7 @@ Papierkorb endgültig leeren
 **Syntax:** `euer trash empty [-h] [--force]`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Deutschsprachige Bestätigung; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -600,7 +600,7 @@ Exportiert Daten
                 [--force]`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Deutschsprachige Bestätigung und Exportdateien (CSV oder XLSX); Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -618,7 +618,7 @@ Zeigt Zusammenfassung
 **Syntax:** `euer summary [-h] [--year YEAR] [--include-private]`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** EÜR-Jahreszusammenfassung als formatierter Text; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -636,7 +636,7 @@ Erzeugt einen ELSTER-nahen USt-Voranmeldungs-Report
                     [--format {table,csv,xlsx}] [--output OUTPUT]`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** UStVA-Bericht (Tabelle, CSV oder XLSX); Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -655,7 +655,7 @@ Zeigt ELSTER-Summen für Privatvorgänge
 **Syntax:** `euer private-summary [-h] --year YEAR`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Formatierte Übersicht der Privatvorgänge; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -670,7 +670,7 @@ Abgleich/Fix für persistierte Daten
 **Syntax:** `euer reconcile [-h] {private} ...`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Deutschsprachige Bestätigung oder Bericht; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -684,7 +684,7 @@ Reklassifiziert Sacheinlagen anhand aktueller Config
 **Syntax:** `euer reconcile private [-h] [--year YEAR] [--dry-run]`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Zusammenfassung der reklassifizierten Sacheinlagen; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -700,7 +700,7 @@ Führt eine SQL-SELECT-Query aus (nur lesend)
 **Syntax:** `euer query [-h] ...`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Formatierte Tabelle der Abfrageergebnisse; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -715,7 +715,7 @@ Zeigt Änderungshistorie
 **Syntax:** `euer audit [-h] [--table {expenses,income,private_transfers}] id`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Formatierte Tabelle der Änderungshistorie; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -731,7 +731,7 @@ Konfiguration verwalten
 **Syntax:** `euer config [-h] {show} ...`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Konfigurationsausgabe; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -745,7 +745,7 @@ Zeigt aktuelle Konfiguration
 **Syntax:** `euer config show [-h]`
 
 **Voraussetzung:** Keine Datenbank für Diagnose/Einrichtung erforderlich; Skill-Bestätigung für `init` und interaktives `setup`. `setup --set skill.version` ist ungeblockt.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Formatierte Konfigurationsübersicht; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -759,7 +759,7 @@ Beleg-Verwaltung
 **Syntax:** `euer receipt [-h] {check,open} ...`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Prüfbericht oder Bestätigung; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -773,7 +773,7 @@ Prüft Transaktionen auf fehlende Belege
 **Syntax:** `euer receipt check [-h] [--year YEAR] [--type {expense,income}]`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Formatierter Prüfbericht; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -789,7 +789,7 @@ Prüft Transaktionen auf fehlende Belege
 **Syntax:** `euer receipt open [-h] [--table {expenses,income}] id`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Öffnet die Datei im Standardbetrachter; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -805,7 +805,7 @@ Unvollständige Buchungen
 **Syntax:** `euer incomplete [-h] {list} ...`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Formatierte Tabelle unvollständiger Einträge; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -820,7 +820,7 @@ Listet unvollständige Einträge
                          [--format {table,csv}]`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Formatierte Tabelle oder CSV je nach Option; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
@@ -837,13 +837,13 @@ Umgebungs- und Pre-Flight-Diagnose
 **Syntax:** `euer doctor [-h] [--json]`
 
 **Voraussetzung:** Keine Datenbank für Diagnose/Einrichtung erforderlich; Skill-Bestätigung für `init` und interaktives `setup`. `setup --set skill.version` ist ungeblockt.
-**Ausgabe:** Deutschsprachige Bestätigung, Tabelle, CSV oder JSON je nach Option; Fehler auf stderr.
+**Ausgabe:** Diagnosebericht; Fehler auf stderr.
 
 | Argument | Bedeutung |
 |---|---|
 | `--json` | Maschinenlesbare JSON-Ausgabe |
 
-**Beispiel:** `euer doctor --json`
+**Beispiel:** `euer doctor`
 
 ## Bedienung, Beispiele und Fehlerfälle
 

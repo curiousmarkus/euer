@@ -119,7 +119,7 @@ Onboarding oder wird aus vorhandenen Angaben ergänzt:
 Die Art der Einbindung hängt von deiner KI-Anwendung ab. Die Installation des
 Python-Pakets richtet diese Agenten-Dateien nicht automatisch ein. Stelle sicher,
 dass der Agent Skill und Referenzen sowie ein vorhandenes Dossier tatsächlich lesen kann.
-Prüfe mit `euer doctor --json` erwartete Skill-Version und Bundle-Pfad. Lade den
+Prüfe mit `euer doctor` erwartete Skill-Version und Bundle-Pfad. Lade den
 vollständig kopierten Skill neu und bestätige erst dann seine Version mit
 `euer setup --set skill.version "1.1.0"`. Danach können Fachbefehle laufen.
 Bei einer Ersteinrichtung entsteht das Dossier erst im Interview. Für Rechnungen und Kontoauszüge
@@ -477,8 +477,7 @@ und Exporte neu.
 `euer init` führt anstehende Schema-Migrationen transparent und
 transaktionssicher aus: Vorab wird automatisch eine konsistente WAL-Sicherung
 erstellt (`~/.config/euer/backups/`), anstehende Migrationen und betroffene
-Datensätze werden im Preflight-Report angezeigt (auch via `--dry-run` und
-`--json`).
+Datensätze werden im Preflight-Report angezeigt (auch via `--dry-run`).
 
 ## Vorhandene Funktionen und offene Erweiterungen
 

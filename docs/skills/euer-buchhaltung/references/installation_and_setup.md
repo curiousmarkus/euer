@@ -6,8 +6,8 @@ CLI selbst installiert keine Agentendateien. Die persönliche `AGENTS.md`,
 
 ## Skill in Agentensystemen installieren und aktualisieren
 
-1. Ermittle mit `euer doctor --json` den absoluten `skill.bundle_path` und die
-   `skill.expected_version` der tatsächlich aufgerufenen CLI.
+1. Ermittle mit `euer doctor` den absoluten Bundle-Pfad und die
+   erwartete Skill-Version der tatsächlich aufgerufenen CLI.
 2. Kopiere den **gesamten** Ordner aus `skill.bundle_path` in den Skill-Ordner deines
    Agentensystems. Ersetze die alte Skill-Kopie vollständig, einschließlich
    `references/`. Ergänze oder bearbeite Dateien im Skill nicht lokal.
@@ -15,7 +15,7 @@ CLI selbst installiert keine Agentendateien. Die persönliche `AGENTS.md`,
    die für den Auftrag nötigen Referenzen.
 4. Bestätige erst danach die Version aus der tatsächlich verwendeten `SKILL.md`:
    `euer setup --set skill.version "MAJOR.MINOR.PATCH"`.
-5. Prüfe `euer doctor --json`: `skill.status` muss `current` sein.
+5. Prüfe `euer doctor`: Der Prüfstatus muss `current` bzw. aktuell sein.
 
 - **Claude Code:** Lege den vollständigen Ordner als Skill unter dem von Claude Code
   verwendeten Skill-Verzeichnis ab; beim Update den Ordner vollständig austauschen
@@ -109,11 +109,8 @@ Mit `euer doctor` prüfst du jederzeit den Zustand deiner Installation, deiner
 Pfade und deiner Datenbank:
 
 ```bash
-# Umgebungscheck im Terminal
+# Umgebungs- und Skill-Diagnose
 euer doctor
-
-# Für KI-Agenten oder Automatisierung (maschinenlesbar)
-euer doctor --json
 ```
 
 `euer doctor` diagnostiziert rein lesend (ohne Schreibzugriffe oder Seiteneffekte):
@@ -174,9 +171,6 @@ Zusätzliche Flags für `euer init`:
 # Migration nur simulieren (keine Schreibzugriffe, kein Backup)
 euer init --dry-run
 
-# Maschinenlesbarer Preflight- und Abschlussbericht für Agenten/Skripte
-euer init --json
-
 # Vollständig neue Datenbank anlegen (Pflichtflag zur Vermeidung von Fehlplatzierungen)
 euer init --create
 ```
@@ -201,8 +195,8 @@ Dateiexistenz. `init --dry-run` ändert auch die Projekt-Config nicht.
 
 ### Agenten-Dateien aktualisieren
 
-Nach jedem CLI-Update `euer doctor --json` ausführen und den Skill anhand von
-`skill.bundle_path` vollständig austauschen, falls `skill.expected_version` von
+Nach jedem CLI-Update `euer doctor` ausführen und den Skill anhand des
+Bundle-Pfads vollständig austauschen, falls die erwartete Version von
 der bestätigten Version abweicht. Die Schritte für Claude Code, OpenCode und
 Hermes stehen am Anfang dieser Referenz. Die persönliche `AGENTS.md` und andere
 Dateien außerhalb des Skill-Ordners bleiben erhalten. Prüfe

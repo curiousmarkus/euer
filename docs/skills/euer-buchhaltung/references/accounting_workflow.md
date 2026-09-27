@@ -7,7 +7,7 @@ Command-Syntax und Fehlerfälle stehen in der [CLI-Referenz](cli_reference.md).
 
 ## Vor jeder Buchungsrunde
 
-1. Prüfe mit `euer doctor --json` Installation, Skill und Datenbankpfad. Lies
+1. Prüfe mit `euer doctor` Installation, Skill und Datenbankpfad. Lies
    das Dossier im Buchhaltungsordner. Kläre Widersprüche zwischen Dossier,
    Config und Beleg, bevor du betroffene Buchungen vornimmst.
 2. Sieh vorhandene Buchungen für den Zeitraum sowie `euer incomplete list` an.

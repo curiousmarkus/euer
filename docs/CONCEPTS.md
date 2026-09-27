@@ -8,8 +8,8 @@ der Regel nicht selbst aus, sondern delegiert die Buchhaltung; sein Hauptinteres
 ist, dass der Agent die EÜR autonom, verlässlich und vor allem **möglichst fehlerfrei**
 übernimmt.
 
-- **Deterministische Guardrails:** Eindeutige Parameter, strukturierte Rückmeldungen
-  (inkl. `--json`-Modus) und strikte Validierungen schützen den Agenten vor Fehlinterpretationen.
+- **Deterministische Guardrails:** Eindeutige Parameter, verlässliche Ausgaben
+  und strikte Validierungen schützen den Agenten vor Fehlinterpretationen.
 - **Lückenloser Audit-Trail:** Jede Buchung und Änderung wird in der Historie festgehalten,
   sodass alle Aktionen des Agenten transparent und nachvollziehbar bleiben.
 - **Klare Rollenteilung:** Der Mensch trägt die steuerliche Letztverantwortung und Freigabe,
