@@ -11,9 +11,18 @@ class InvoiceNumberTestCase(BaseCLITestCase):
     def test_import_rolls_back_on_suspicious_invoice_number(self):
         self.run_cli(
             [
-                "add", "expense", "--date", "2026-01-10", "--vendor", "Anbieter",
-                "--category", "Arbeitsmittel", "--amount", "-25",
-                "--invoice-number", "RE-7",
+                "add",
+                "expense",
+                "--date",
+                "2026-01-10",
+                "--vendor",
+                "Anbieter",
+                "--category",
+                "Arbeitsmittel",
+                "--amount",
+                "-25",
+                "--invoice-number",
+                "RE-7",
             ],
             check=True,
         )
@@ -33,8 +42,16 @@ class InvoiceNumberTestCase(BaseCLITestCase):
 
     def test_hash_distinguishes_receipt_delimiter_and_legacy_numbered_rows(self):
         base = [
-            "add", "expense", "--date", "2026-01-10", "--vendor", "Anbieter",
-            "--category", "Arbeitsmittel", "--amount", "-25",
+            "add",
+            "expense",
+            "--date",
+            "2026-01-10",
+            "--vendor",
+            "Anbieter",
+            "--category",
+            "Arbeitsmittel",
+            "--amount",
+            "-25",
         ]
         self.run_cli(base + ["--receipt", "beleg|R-1"], check=True)
         self.run_cli(
@@ -42,9 +59,20 @@ class InvoiceNumberTestCase(BaseCLITestCase):
             check=True,
         )
         old_base = [
-            "add", "expense", "--date", "2026-02-10", "--vendor", "Anbieter",
-            "--category", "Arbeitsmittel", "--amount", "-25",
-            "--receipt", "alt", "--invoice-number", "R-2",
+            "add",
+            "expense",
+            "--date",
+            "2026-02-10",
+            "--vendor",
+            "Anbieter",
+            "--category",
+            "Arbeitsmittel",
+            "--amount",
+            "-25",
+            "--receipt",
+            "alt",
+            "--invoice-number",
+            "R-2",
         ]
         self.run_cli(old_base, check=True)
         with closing(sqlite3.connect(self.db_path)) as conn:
