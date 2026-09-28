@@ -21,8 +21,8 @@ class Euer < Formula
 
     database = testpath / "euer.db"
     output = testpath / "xlsx-output"
-    system bin / "euer", "--db", database, "init", "--create"
-    system bin / "euer", "--db", database, "export", "--format", "xlsx", "--output", output
+    system bin / "euer", "--db", database, "init", "--create", "--ignore-skill-version"
+    system bin / "euer", "--db", database, "export", "--format", "xlsx", "--output", output, "--ignore-skill-version"
     assert_path_exists output / "EÜR_Ausgaben.xlsx"
   end
 end
