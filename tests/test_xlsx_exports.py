@@ -94,16 +94,18 @@ class XlsxExportTestCase(unittest.TestCase):
 
         expense_workbook = openpyxl.load_workbook(output_dir / "EÜR_2026_Ausgaben.xlsx")
         expense_sheet = expense_workbook["Ausgaben"]
-        self.assertEqual(expense_sheet.cell(1, 4).value, "Lieferant")
-        self.assertEqual(expense_sheet.cell(2, 4).value, "Bürobedarf GmbH")
-        self.assertEqual(expense_sheet.cell(2, 6).value, -119)
+        self.assertEqual(expense_sheet.cell(1, 4).value, "Rechnungsnummer")
+        self.assertEqual(expense_sheet.cell(1, 5).value, "Lieferant")
+        self.assertEqual(expense_sheet.cell(2, 5).value, "Bürobedarf GmbH")
+        self.assertEqual(expense_sheet.cell(2, 7).value, -119)
         expense_workbook.close()
 
         income_workbook = openpyxl.load_workbook(output_dir / "EÜR_2026_Einnahmen.xlsx")
         income_sheet = income_workbook["Einnahmen"]
-        self.assertEqual(income_sheet.cell(1, 4).value, "Quelle")
-        self.assertEqual(income_sheet.cell(2, 4).value, "Kunde GmbH")
-        self.assertEqual(income_sheet.cell(2, 6).value, 1190)
+        self.assertEqual(income_sheet.cell(1, 4).value, "Rechnungsnummer")
+        self.assertEqual(income_sheet.cell(1, 5).value, "Quelle")
+        self.assertEqual(income_sheet.cell(2, 5).value, "Kunde GmbH")
+        self.assertEqual(income_sheet.cell(2, 7).value, 1190)
         income_workbook.close()
 
         private_workbook = openpyxl.load_workbook(output_dir / "EÜR_2026_Privatvorgaenge.xlsx")

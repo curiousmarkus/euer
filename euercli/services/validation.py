@@ -140,16 +140,84 @@ def check_fuzzy_duplicate(
     name: str,
     amount_eur: float,
     date_val: str | datetime.date | None,
+    invoice_number: str | None = None,
+    invoice_date: str | None = None,
+    receipt_name: str | None = None,
     allow_duplicate: bool = False,
     force: bool = False,
     exclude_id: int | None = None,
 ) -> None:
-    """Fuzzy Duplicate Detection (Spec 016 §2.3).
-
-    Prüft +/- 2 Tage auf identischen Betrag und ähnlichen Namen.
-    """
+    """Prüft ähnliche Buchungen und vorhandene Rechnungsnummern auf Duplikate."""
     if force or allow_duplicate:
         return
+
+    target_abs = abs(round(float(amount_eur), 2))
+    clean_target_name = _normalize_name(name)
+    name_col = "vendor" if table_name == "expenses" else "source"
+
+    # Gleiche Rechnungsnummern sind bei gleichem Aussteller und Betrag verdächtig;
+    # Teilzahlungen mit anderem Betrag bleiben möglich.
+    if invoice_number and clean_target_name:
+        query = f"""
+            SELECT id, {name_col} AS entity_name, amount_eur
+            FROM {table_name}
+            WHERE deleted_at IS NULL AND invoice_number = ?
+        """
+        params: list[object] = [invoice_number]
+        if exclude_id is not None:
+            query += " AND id != ?"
+            params.append(exclude_id)
+        for row in conn.execute(query, params):
+            if (
+                _normalize_name(str(row["entity_name"] or "")) == clean_target_name
+                and abs(round(float(row["amount_eur"]), 2)) == target_abs
+            ):
+                raise ValidationError(
+                    f"Mögliches Duplikat: Rechnungsnummer {invoice_number} bei {name} "
+                    f"und {target_abs:.2f} € gehört bereits zu Buchung #{row['id']}. "
+                    "Mit --allow-duplicate oder --force bestätigen.",
+                    code="suspicious_duplicate",
+                    details={
+                        "existing_id": row["id"],
+                        "invoice_number": invoice_number,
+                        "existing_name": row["entity_name"],
+                        "amount": target_abs,
+                    },
+                )
+
+    # Wenn nur eine Buchung eine Nummer hat, kann der gemeinsame Beleg dennoch
+    # über Rechnungsdatum oder Dateiname erkannt werden, auch bei späterer Zahlung.
+    if (invoice_date or receipt_name) and clean_target_name:
+        matches = []
+        params = []
+        if invoice_date:
+            matches.append("invoice_date = ?")
+            params.append(invoice_date)
+        if receipt_name:
+            matches.append("receipt_name = ?")
+            params.append(receipt_name)
+        number_clause = "invoice_number IS NULL" if invoice_number else "invoice_number IS NOT NULL"
+        query = f"""
+            SELECT id, {name_col} AS entity_name, amount_eur
+            FROM {table_name}
+            WHERE deleted_at IS NULL AND {number_clause} AND ({" OR ".join(matches)})
+        """
+        if exclude_id is not None:
+            query += " AND id != ?"
+            params.append(exclude_id)
+        for row in conn.execute(query, params):
+            if (
+                _normalize_name(str(row["entity_name"] or "")) == clean_target_name
+                and abs(round(float(row["amount_eur"]), 2)) == target_abs
+            ):
+                raise ValidationError(
+                    f"Mögliches Duplikat: Buchung #{row['id']} von {name} über "
+                    f"{target_abs:.2f} € hat dasselbe Rechnungsdatum oder denselben Beleg; "
+                    "nur eine Buchung enthält eine Rechnungsnummer. "
+                    "Mit --allow-duplicate oder --force bestätigen.",
+                    code="suspicious_duplicate",
+                    details={"existing_id": row["id"], "amount": target_abs},
+                )
 
     parsed_date = _parse_date(date_val)
     if parsed_date is None or not name:
@@ -157,10 +225,6 @@ def check_fuzzy_duplicate(
 
     d_min = str(parsed_date - datetime.timedelta(days=2))
     d_max = str(parsed_date + datetime.timedelta(days=2))
-    target_abs = abs(round(float(amount_eur), 2))
-    clean_target_name = _normalize_name(name)
-
-    name_col = "vendor" if table_name == "expenses" else "source"
     query = f"""
         SELECT id, payment_date, invoice_date, {name_col} as entity_name, amount_eur
         FROM {table_name}

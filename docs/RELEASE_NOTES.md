@@ -44,7 +44,13 @@ Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
 - Ausgaben und Einnahmen können eine optionale Rechnungsnummer speichern.
   `add`/`update` verwenden `--invoice-number`; CSV-/JSONL-Import erkennt
   `invoice_number` und `Rechnungsnummer`. Listen-CSV und CSV-/XLSX-Exporte
-  ergänzen die Spalte am Ende, ohne bestehende Spalten zu verschieben.
+  ergänzen die Spalte; im Export steht sie direkt hinter dem Rechnungsdatum.
+  Gleiche Nummer, Gegenpartei und Betrag lösen auch über größere Datumsabstände
+  eine Dublettenprüfung aus (`--allow-duplicate` für belegte Ausnahmen).
+  Wenn nur eine Buchung eine Nummer hat, können auch Rechnungsdatum oder
+  Belegname bei gleicher Gegenpartei und gleichem Betrag ein Duplikat anzeigen.
+  Der technische Buchungs-Hash berücksichtigt neue Rechnungsnummern; für
+  bestehende Buchungen ohne Nummer bleibt der bisherige Hash gültig.
 - **Upgrade:** Paket aktualisieren und im Buchhaltungsordner `euer init`
   ausführen (vorher bei Bedarf `euer init --dry-run`). Migration 009 ergänzt
   beide Tabellen ohne Änderung bestehender Buchungen. Alte Nummern werden

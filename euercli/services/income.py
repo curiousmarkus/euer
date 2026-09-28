@@ -284,15 +284,23 @@ def create_income(
                 code="small_business_subset_vat_conflict",
             )
 
+    invoice_number = invoice_number.strip() or None if invoice_number is not None else None
     tx_hash = compute_hash(
+        hash_date(resolved_payment_date, resolved_invoice_date),
+        source,
+        amount_eur,
+        receipt_name or "",
+        invoice_number,
+    )
+    legacy_hash = compute_hash(
         hash_date(resolved_payment_date, resolved_invoice_date),
         source,
         amount_eur,
         receipt_name or "",
     )
     existing = conn.execute(
-        "SELECT id FROM income WHERE hash = ?",
-        (tx_hash,),
+        "SELECT id FROM income WHERE hash = ? OR (hash = ? AND invoice_number IS NULL)",
+        (tx_hash, legacy_hash),
     ).fetchone()
     if existing:
         if on_duplicate == DuplicateAction.SKIP:
@@ -310,13 +318,15 @@ def create_income(
             name=source,
             amount_eur=amount_eur,
             date_val=resolved_payment_date or resolved_invoice_date,
+            invoice_number=invoice_number.strip() or None if invoice_number else None,
+            invoice_date=resolved_invoice_date,
+            receipt_name=receipt_name,
             allow_duplicate=allow_duplicate,
             force=force,
         )
 
     record_uuid = str(uuid.uuid4())
 
-    invoice_number = invoice_number.strip() or None if invoice_number is not None else None
     cursor = conn.execute(
         """INSERT INTO income
            (uuid, receipt_name, payment_date, invoice_date, invoice_number, source, category_id, amount_eur,
@@ -659,6 +669,7 @@ def update_income(
         or amount_eur is not None
         or payment_date is not None
         or invoice_date is not None
+        or invoice_number is not None
     ):
         check_fuzzy_duplicate(
             conn,
@@ -666,6 +677,9 @@ def update_income(
             name=new_source,
             amount_eur=new_amount,
             date_val=new_payment_date or new_invoice_date,
+            invoice_number=new_invoice_number,
+            invoice_date=new_invoice_date,
+            receipt_name=new_receipt,
             allow_duplicate=allow_duplicate,
             force=force,
             exclude_id=record_id,
@@ -676,6 +690,7 @@ def update_income(
         new_source,
         new_amount,
         new_receipt or "",
+        new_invoice_number,
     )
 
     conn.execute(

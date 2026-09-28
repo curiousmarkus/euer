@@ -10,10 +10,16 @@ PUBLIC_RC_TYPES = {
 
 
 def compute_hash(
-    date: str, vendor_or_source: str, amount_eur: float, receipt_name: str = ""
+    date: str,
+    vendor_or_source: str,
+    amount_eur: float,
+    receipt_name: str = "",
+    invoice_number: str | None = None,
 ) -> str:
     """Erzeugt einen eindeutigen Hash für eine Transaktion."""
     data = f"{date}|{vendor_or_source}|{amount_eur:.2f}|{receipt_name or ''}"
+    if invoice_number:
+        data += f"|{invoice_number}"
     return hashlib.sha256(data.encode("utf-8")).hexdigest()
 
 

@@ -7,6 +7,150 @@ from tests.cli_test_base import BaseCLITestCase
 
 
 class InvoiceNumberTestCase(BaseCLITestCase):
+    def test_invoice_number_duplicate_guardrail(self):
+        for kind, party_flag, category, amount in (
+            ("expense", "--vendor", "Arbeitsmittel", "-25"),
+            ("income", "--source", "Umsatzsteuerpflichtige Betriebseinnahmen", "25"),
+        ):
+
+            def add(date, party, value, number, *extra):
+                return self.run_cli(
+                    [
+                        "add",
+                        kind,
+                        "--date",
+                        date,
+                        party_flag,
+                        party,
+                        "--category",
+                        category,
+                        "--amount",
+                        value,
+                        "--invoice-number",
+                        number,
+                        *extra,
+                    ]
+                )
+
+            self.assertEqual(add("2026-01-10", "Anbieter", amount, "RE-7").returncode, 0)
+            duplicate = add("2026-03-10", "Anbieter", amount, "RE-7")
+            self.assertNotEqual(duplicate.returncode, 0)
+            self.assertIn("Rechnungsnummer RE-7", duplicate.stderr)
+            self.assertEqual(
+                add(
+                    "2026-03-10", "Anbieter", "-10" if kind == "expense" else "10", "RE-7"
+                ).returncode,
+                0,
+            )
+            self.assertEqual(add("2026-03-10", "Anderer Anbieter", amount, "RE-7").returncode, 0)
+            self.assertEqual(add("2026-06-10", "Anbieter", amount, "RE-8").returncode, 0)
+
+            changed = self.run_cli(["update", kind, "4", "--invoice-number", "RE-7"])
+            self.assertNotEqual(changed.returncode, 0)
+            self.assertIn("Rechnungsnummer RE-7", changed.stderr)
+            self.assertEqual(
+                add("2026-03-10", "Anbieter", amount, "RE-7", "--allow-duplicate").returncode,
+                0,
+            )
+            self.assertEqual(
+                add("2026-03-10", "Anbieter", amount, "RE-9", "--allow-duplicate").returncode,
+                0,
+            )
+            self.assertEqual(
+                self.run_cli(
+                    [
+                        "add",
+                        kind,
+                        "--date",
+                        "2026-04-10",
+                        party_flag,
+                        "Altbestand",
+                        "--category",
+                        category,
+                        "--amount",
+                        amount,
+                    ]
+                ).returncode,
+                0,
+            )
+            legacy_duplicate = add("2026-04-10", "Altbestand", amount, "RE-10")
+            self.assertEqual(legacy_duplicate.returncode, 0)
+            self.assertIn("Duplikat erkannt", legacy_duplicate.stderr)
+            self.assertIn("überspringe", legacy_duplicate.stderr)
+
+    def test_duplicate_when_only_one_booking_has_invoice_number(self):
+        for kind, party_flag, category, amount in (
+            ("expense", "--vendor", "Arbeitsmittel", "-31"),
+            ("income", "--source", "Umsatzsteuerpflichtige Betriebseinnahmen", "31"),
+        ):
+
+            def add(payment, invoice, party, number=None):
+                args = [
+                    "add",
+                    kind,
+                    "--payment-date",
+                    payment,
+                    "--invoice-date",
+                    invoice,
+                    party_flag,
+                    party,
+                    "--category",
+                    category,
+                    "--amount",
+                    amount,
+                ]
+                if number:
+                    args += ["--invoice-number", number]
+                return self.run_cli(args)
+
+            self.assertEqual(add("2026-01-10", "2026-01-02", "Ohne Nummer").returncode, 0)
+            result = add("2026-04-10", "2026-01-02", "Ohne Nummer", "R-31")
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("Mögliches Duplikat", result.stderr)
+
+            self.assertEqual(add("2026-01-12", "2026-01-03", "Mit Nummer", "R-32").returncode, 0)
+            result = add("2026-04-12", "2026-01-03", "Mit Nummer")
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("Mögliches Duplikat", result.stderr)
+
+            first = self.run_cli(
+                [
+                    "add",
+                    kind,
+                    "--date",
+                    "2026-01-14",
+                    party_flag,
+                    "Gleicher Beleg",
+                    "--category",
+                    category,
+                    "--amount",
+                    amount,
+                    "--receipt",
+                    "rechnung-31.pdf",
+                    "--invoice-number",
+                    "R-33",
+                ]
+            )
+            self.assertEqual(first.returncode, 0, first.stderr)
+            second = self.run_cli(
+                [
+                    "add",
+                    kind,
+                    "--date",
+                    "2026-04-14",
+                    party_flag,
+                    "Gleicher Beleg",
+                    "--category",
+                    category,
+                    "--amount",
+                    amount,
+                    "--receipt",
+                    "rechnung-31.pdf",
+                ]
+            )
+            self.assertNotEqual(second.returncode, 0)
+            self.assertIn("Mögliches Duplikat", second.stderr)
+
     def test_add_update_list_and_export(self):
         for kind, party_flag, party, amount, category in (
             ("expense", "--vendor", "Lieferant", "-20", "Arbeitsmittel"),
@@ -65,8 +209,8 @@ class InvoiceNumberTestCase(BaseCLITestCase):
         for suffix in ("Ausgaben", "Einnahmen"):
             with (output / f"EÜR_{suffix}.csv").open(encoding="utf-8-sig", newline="") as file:
                 rows = list(csv.reader(file))
-            self.assertEqual(rows[0][-1], "Rechnungsnummer")
-            self.assertEqual(rows[1][-1], "R-18")
+            self.assertEqual(rows[0][3], "Rechnungsnummer")
+            self.assertEqual(rows[1][3], "R-18")
 
         self.run_cli(["update", "expense", "1", "--invoice-number", ""], check=True)
         with closing(sqlite3.connect(self.db_path)) as conn:

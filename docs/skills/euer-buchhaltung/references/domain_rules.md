@@ -42,6 +42,13 @@ Liegt ein Betrag über dem konfigurierten `[safety].amount_threshold`
 (Standard: 5.000 EUR), fordert sie `--force`. Ein gleicher Betrag bei ähnlicher
 Gegenpartei innerhalb von zwei Tagen vor oder nach einer bestehenden Buchung
 gilt als mögliches Duplikat; `--allow-duplicate` kann diese Prüfung übergehen.
+Bei vorhandener Rechnungsnummer meldet die CLI auch über größere Datumsabstände
+ein mögliches Duplikat, wenn Nummer, Gegenpartei und Betrag übereinstimmen.
+Teilzahlungen mit abweichendem Betrag werden dadurch nicht allein wegen der
+Rechnungsnummer abgewiesen.
+Hat nur eine der Buchungen eine Nummer, prüft `euer` bei gleichem Aussteller
+und Betrag auch Rechnungsdatum und Belegname über größere Abstände zwischen
+den Zahlungsdaten hinweg.
 Bei gemeinsam übergebenem Steuersatz und Steuerbetrag prüft sie deren
 rechnerische Übereinstimmung mit 0,02 EUR Toleranz.
 

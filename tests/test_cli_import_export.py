@@ -75,10 +75,10 @@ account_number = "8400"
 
         exp_rows = list(csv.reader(exp_file.read_text(encoding="utf-8-sig").splitlines()))
         inc_rows = list(csv.reader(inc_file.read_text(encoding="utf-8-sig").splitlines()))
-        self.assertEqual(exp_rows[1][7], "hosting")
-        self.assertEqual(exp_rows[1][8], "4940")
-        self.assertEqual(inc_rows[1][6], "erloese-19")
-        self.assertEqual(inc_rows[1][7], "8400")
+        self.assertEqual(exp_rows[1][8], "hosting")
+        self.assertEqual(exp_rows[1][9], "4940")
+        self.assertEqual(inc_rows[1][7], "erloese-19")
+        self.assertEqual(inc_rows[1][8], "8400")
 
     def test_export_csv_includes_rc_type(self):
         self.add_expense(
@@ -111,7 +111,7 @@ account_number = "8400"
         )
         rows = list(csv.reader(exp_file.read_text(encoding="utf-8-sig").splitlines()))
         self.assertIn("RC", rows[0])
-        self.assertEqual(rows[1][11], "third-country")
+        self.assertEqual(rows[1][12], "third-country")
 
     def test_export_csv_all_years_default(self):
         self.add_expense(date="2025-12-31", vendor="Alt")

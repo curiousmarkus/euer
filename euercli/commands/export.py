@@ -224,6 +224,7 @@ def cmd_export(args):
                         "Belegname",
                         "Wertstellung",
                         "Rechnungsdatum",
+                        "Rechnungsnummer",
                         "Lieferant",
                         "Kategorie",
                         "EUR",
@@ -242,7 +243,6 @@ def cmd_export(args):
                         "Bewirtung Kostenbasis",
                         "Bewirtung abziehbar",
                         "Bewirtung nicht abziehbar",
-                        "Rechnungsnummer",
                     ]
                 )
                 for r in expenses:
@@ -253,6 +253,7 @@ def cmd_export(args):
                             r["receipt_name"] or "",
                             r["payment_date"] or "",
                             r["invoice_date"] or "",
+                            r["invoice_number"] or "",
                             r["vendor"],
                             cat,
                             f"{r['amount_eur']:.2f}",
@@ -267,7 +268,6 @@ def cmd_export(args):
                             f"{r['vat_rate']:g}" if r["vat_rate"] is not None else "",
                             r["vat_code"] or "",
                             *entertainment_values,
-                            r["invoice_number"] or "",
                         ]
                     )
 
@@ -280,6 +280,7 @@ def cmd_export(args):
                         "Belegname",
                         "Wertstellung",
                         "Rechnungsdatum",
+                        "Rechnungsnummer",
                         "Quelle",
                         "Kategorie",
                         "EUR",
@@ -290,7 +291,6 @@ def cmd_export(args):
                         "Umsatzsteuer",
                         "Steuersatz",
                         "Steuerklasse",
-                        "Rechnungsnummer",
                     ]
                 )
                 for r in income:
@@ -300,6 +300,7 @@ def cmd_export(args):
                             r["receipt_name"] or "",
                             r["payment_date"] or "",
                             r["invoice_date"] or "",
+                            r["invoice_number"] or "",
                             r["source"],
                             cat,
                             f"{r['amount_eur']:.2f}",
@@ -310,7 +311,6 @@ def cmd_export(args):
                             f"{r['vat_output']:.2f}" if r["vat_output"] else "",
                             f"{r['vat_rate']:g}" if r["vat_rate"] is not None else "",
                             r["vat_code"] or "",
-                            r["invoice_number"] or "",
                         ]
                     )
 
@@ -393,6 +393,7 @@ def cmd_export(args):
                     "Belegname",
                     "Wertstellung",
                     "Rechnungsdatum",
+                    "Rechnungsnummer",
                     "Lieferant",
                     "Kategorie",
                     "EUR",
@@ -411,7 +412,6 @@ def cmd_export(args):
                     "Bewirtung Kostenbasis",
                     "Bewirtung abziehbar",
                     "Bewirtung nicht abziehbar",
-                    "Rechnungsnummer",
                 ]
             )
             for r in expenses:
@@ -422,6 +422,7 @@ def cmd_export(args):
                         r["receipt_name"] or "",
                         r["payment_date"] or "",
                         r["invoice_date"] or "",
+                        r["invoice_number"] or "",
                         r["vendor"],
                         cat,
                         r["amount_eur"],
@@ -439,7 +440,6 @@ def cmd_export(args):
                             (value if index == 1 else float(value)) if value else None
                             for index, value in enumerate(entertainment_values)
                         ],
-                        r["invoice_number"] or "",
                     ]
                 )
             wb.save(exp_tmp)
@@ -455,6 +455,7 @@ def cmd_export(args):
                     "Belegname",
                     "Wertstellung",
                     "Rechnungsdatum",
+                    "Rechnungsnummer",
                     "Quelle",
                     "Kategorie",
                     "EUR",
@@ -465,7 +466,6 @@ def cmd_export(args):
                     "Umsatzsteuer",
                     "Steuersatz",
                     "Steuerklasse",
-                    "Rechnungsnummer",
                 ]
             )
             for r in income:
@@ -475,6 +475,7 @@ def cmd_export(args):
                         r["receipt_name"] or "",
                         r["payment_date"] or "",
                         r["invoice_date"] or "",
+                        r["invoice_number"] or "",
                         r["source"],
                         cat,
                         r["amount_eur"],
@@ -485,7 +486,6 @@ def cmd_export(args):
                         r["vat_output"] if r["vat_output"] else None,
                         r["vat_rate"] if r["vat_rate"] is not None else None,
                         r["vat_code"] or "",
-                        r["invoice_number"] or "",
                     ]
                 )
             wb.save(inc_tmp)
