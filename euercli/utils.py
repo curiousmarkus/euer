@@ -19,7 +19,13 @@ def compute_hash(
     """Erzeugt einen eindeutigen Hash für eine Transaktion."""
     data = f"{date}|{vendor_or_source}|{amount_eur:.2f}|{receipt_name or ''}"
     if invoice_number:
-        data += f"|{invoice_number}"
+        # Länge und Trennzeichen werden als strukturierte Felder kodiert. So kann
+        # ein "|" im Belegnamen keine Rechnungsnummer vortäuschen.
+        data = json.dumps(
+            [date, vendor_or_source, f"{amount_eur:.2f}", receipt_name or "", invoice_number],
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
     return hashlib.sha256(data.encode("utf-8")).hexdigest()
 
 

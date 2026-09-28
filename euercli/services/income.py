@@ -6,7 +6,7 @@ import uuid
 from ..db import log_audit, row_to_dict
 from ..utils import compute_hash
 from .categories import get_category_by_name, resolve_ledger_account
-from .duplicates import DuplicateAction
+from .duplicates import DuplicateAction, find_exact_duplicate
 from .errors import RecordNotFoundError, ValidationError
 from .eur import category_key_for_name, is_small_business_subset
 from .models import Income, LedgerAccount
@@ -292,26 +292,38 @@ def create_income(
         receipt_name or "",
         invoice_number,
     )
-    legacy_hash = compute_hash(
-        hash_date(resolved_payment_date, resolved_invoice_date),
-        source,
-        amount_eur,
-        receipt_name or "",
+    existing_id = find_exact_duplicate(
+        conn,
+        table_name="income",
+        payment_date=resolved_payment_date,
+        invoice_date=resolved_invoice_date,
+        party=source,
+        amount_eur=amount_eur,
+        receipt_name=receipt_name,
+        invoice_number=invoice_number,
     )
-    existing = conn.execute(
-        "SELECT id FROM income WHERE hash = ? OR (hash = ? AND invoice_number IS NULL)",
-        (tx_hash, legacy_hash),
-    ).fetchone()
-    if existing:
+    if existing_id is not None:
         if on_duplicate == DuplicateAction.SKIP:
             return None
         raise ValidationError(
-            f"Duplikat erkannt (ID {existing['id']})",
+            f"Duplikat erkannt (ID {existing_id})",
             code="duplicate",
-            details={"existing_id": existing["id"]},
+            details={"existing_id": existing_id},
         )
 
-    if on_duplicate != DuplicateAction.SKIP:
+    if on_duplicate == DuplicateAction.SKIP:
+        check_fuzzy_duplicate(
+            conn,
+            table_name="income",
+            name=source,
+            amount_eur=amount_eur,
+            date_val=resolved_payment_date or resolved_invoice_date,
+            invoice_number=invoice_number,
+            invoice_date=resolved_invoice_date,
+            receipt_name=receipt_name,
+            invoice_only=True,
+        )
+    else:
         check_fuzzy_duplicate(
             conn,
             table_name="income",

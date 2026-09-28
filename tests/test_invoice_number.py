@@ -1,4 +1,5 @@
 import csv
+import hashlib
 import json
 import sqlite3
 from contextlib import closing
@@ -7,6 +8,58 @@ from tests.cli_test_base import BaseCLITestCase
 
 
 class InvoiceNumberTestCase(BaseCLITestCase):
+    def test_import_rolls_back_on_suspicious_invoice_number(self):
+        self.run_cli(
+            [
+                "add", "expense", "--date", "2026-01-10", "--vendor", "Anbieter",
+                "--category", "Arbeitsmittel", "--amount", "-25",
+                "--invoice-number", "RE-7",
+            ],
+            check=True,
+        )
+        source = self.root / "suspicious.csv"
+        source.write_text(
+            "type,date,party,category,amount_eur,invoice_number\n"
+            "expense,2026-02-10,Neu,Arbeitsmittel,-10,NEU-1\n"
+            "expense,2026-03-10,Anbieter,Arbeitsmittel,-25,RE-7\n",
+            encoding="utf-8",
+        )
+        result = self.run_cli(["import", "--file", str(source), "--format", "csv"])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Zeile 2", result.stderr)
+        self.assertIn("Rechnungsnummer RE-7", result.stderr)
+        with closing(sqlite3.connect(self.db_path)) as conn:
+            self.assertEqual(conn.execute("SELECT COUNT(*) FROM expenses").fetchone()[0], 1)
+
+    def test_hash_distinguishes_receipt_delimiter_and_legacy_numbered_rows(self):
+        base = [
+            "add", "expense", "--date", "2026-01-10", "--vendor", "Anbieter",
+            "--category", "Arbeitsmittel", "--amount", "-25",
+        ]
+        self.run_cli(base + ["--receipt", "beleg|R-1"], check=True)
+        self.run_cli(
+            base + ["--receipt", "beleg", "--invoice-number", "R-1", "--allow-duplicate"],
+            check=True,
+        )
+        old_base = [
+            "add", "expense", "--date", "2026-02-10", "--vendor", "Anbieter",
+            "--category", "Arbeitsmittel", "--amount", "-25",
+            "--receipt", "alt", "--invoice-number", "R-2",
+        ]
+        self.run_cli(old_base, check=True)
+        with closing(sqlite3.connect(self.db_path)) as conn:
+            legacy_hash = hashlib.sha256(
+                "2026-02-10|Anbieter|-25.00|alt|R-2".encode("utf-8")
+            ).hexdigest()
+            # Ein bestehender Datensatz aus der ersten Umsetzung behält seinen Hash.
+            conn.execute("UPDATE expenses SET hash = ? WHERE id = 3", (legacy_hash,))
+            conn.commit()
+        duplicate = self.run_cli(old_base)
+        self.assertEqual(duplicate.returncode, 0)
+        self.assertIn("Duplikat erkannt", duplicate.stderr)
+        with closing(sqlite3.connect(self.db_path)) as conn:
+            self.assertEqual(conn.execute("SELECT COUNT(*) FROM expenses").fetchone()[0], 3)
+
     def test_invoice_number_duplicate_guardrail(self):
         for kind, party_flag, category, amount in (
             ("expense", "--vendor", "Arbeitsmittel", "-25"),

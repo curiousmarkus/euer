@@ -49,6 +49,8 @@ Rechnungsnummer abgewiesen.
 Hat nur eine der Buchungen eine Nummer, prüft `euer` bei gleichem Aussteller
 und Betrag auch Rechnungsdatum und Belegname über größere Abstände zwischen
 den Zahlungsdaten hinweg.
+Beim CSV-/JSONL-Import führt ein solcher Verdachtsfall zum Abbruch des gesamten
+Laufs mit Zeilennummer; exakte Dubletten werden weiterhin übersprungen.
 Bei gemeinsam übergebenem Steuersatz und Steuerbetrag prüft sie deren
 rechnerische Übereinstimmung mit 0,02 EUR Toleranz.
 

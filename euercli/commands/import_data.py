@@ -180,7 +180,7 @@ def cmd_import(args):
         sys.exit(1)
 
     try:
-        for normalized in normalized_rows:
+        for row_idx, normalized in enumerate(normalized_rows, start=1):
             row_type = normalized["type"]
             payment_date = normalized["payment_date"]
             invoice_date = normalized["invoice_date"]
@@ -271,7 +271,7 @@ def cmd_import(args):
     except ValidationError as exc:
         conn.rollback()
         conn.close()
-        print(f"Fehler: {exc.message}", file=sys.stderr)
+        print(f"Fehler: Import abgebrochen in Zeile {row_idx}: {exc.message}", file=sys.stderr)
         sys.exit(1)
 
     if args.dry_run:

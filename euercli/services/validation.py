@@ -146,6 +146,7 @@ def check_fuzzy_duplicate(
     allow_duplicate: bool = False,
     force: bool = False,
     exclude_id: int | None = None,
+    invoice_only: bool = False,
 ) -> None:
     """Prüft ähnliche Buchungen und vorhandene Rechnungsnummern auf Duplikate."""
     if force or allow_duplicate:
@@ -218,6 +219,9 @@ def check_fuzzy_duplicate(
                     code="suspicious_duplicate",
                     details={"existing_id": row["id"], "amount": target_abs},
                 )
+
+    if invoice_only:
+        return
 
     parsed_date = _parse_date(date_val)
     if parsed_date is None or not name:

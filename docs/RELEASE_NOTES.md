@@ -49,8 +49,11 @@ Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
   eine Dublettenprüfung aus (`--allow-duplicate` für belegte Ausnahmen).
   Wenn nur eine Buchung eine Nummer hat, können auch Rechnungsdatum oder
   Belegname bei gleicher Gegenpartei und gleichem Betrag ein Duplikat anzeigen.
-  Der technische Buchungs-Hash berücksichtigt neue Rechnungsnummern; für
-  bestehende Buchungen ohne Nummer bleibt der bisherige Hash gültig.
+  Beim CSV-/JSONL-Import bricht ein solcher Verdachtsfall den gesamten Lauf mit
+  Zeilennummer ab und rollt vorbereitete Buchungen zurück; exakte Dubletten
+  werden weiter übersprungen. Der technische Buchungs-Hash kodiert neue
+  Rechnungsnummern eindeutig; bestehende Hashes bleiben gültig und werden
+  bei der Dublettenprüfung berücksichtigt.
 - **Upgrade:** Paket aktualisieren und im Buchhaltungsordner `euer init`
   ausführen (vorher bei Bedarf `euer init --dry-run`). Migration 009 ergänzt
   beide Tabellen ohne Änderung bestehender Buchungen. Alte Nummern werden
