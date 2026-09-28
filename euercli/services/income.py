@@ -43,6 +43,7 @@ def _row_to_income(row: sqlite3.Row) -> Income:
         category_eur_key=get_optional(row, "category_eur_key"),
         ledger_account=get_optional(row, "ledger_account"),
         receipt_name=get_optional(row, "receipt_name"),
+        invoice_number=get_optional(row, "invoice_number"),
         foreign_amount=get_optional(row, "foreign_amount"),
         notes=get_optional(row, "notes"),
         vat_output=get_optional(row, "vat_output"),
@@ -203,6 +204,7 @@ def create_income(
     ledger_accounts: list[LedgerAccount] | None = None,
     foreign_amount: str | None = None,
     receipt_name: str | None = None,
+    invoice_number: str | None = None,
     notes: str | None = None,
     vat: float | None = None,
     vat_output: float | None = None,
@@ -314,16 +316,18 @@ def create_income(
 
     record_uuid = str(uuid.uuid4())
 
+    invoice_number = invoice_number.strip() or None if invoice_number is not None else None
     cursor = conn.execute(
         """INSERT INTO income
-           (uuid, receipt_name, payment_date, invoice_date, source, category_id, amount_eur,
+           (uuid, receipt_name, payment_date, invoice_date, invoice_number, source, category_id, amount_eur,
             ledger_account, foreign_amount, notes, vat_output, vat_rate, vat_code, hash)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             record_uuid,
             receipt_name,
             resolved_payment_date,
             resolved_invoice_date,
+            invoice_number,
             source,
             category_id,
             amount_eur,
@@ -344,6 +348,7 @@ def create_income(
         "receipt_name": receipt_name,
         "payment_date": resolved_payment_date,
         "invoice_date": resolved_invoice_date,
+        "invoice_number": invoice_number,
         "source": source,
         "category_id": category_id,
         "amount_eur": amount_eur,
@@ -379,6 +384,7 @@ def create_income(
         category_eur_key=resolved_category_key,
         ledger_account=resolved_ledger_account_key,
         receipt_name=receipt_name,
+        invoice_number=invoice_number,
         foreign_amount=foreign_amount,
         notes=notes,
         vat_output=resolved_vat_output,
@@ -401,7 +407,7 @@ def list_income(
         SELECT i.id, i.uuid, i.payment_date, i.invoice_date, i.source, i.category_id,
                c.name as category_name,
                c.eur_key as category_eur_key,
-               i.amount_eur, i.ledger_account, i.receipt_name,
+               i.amount_eur, i.ledger_account, i.receipt_name, i.invoice_number,
                i.foreign_amount, i.notes, i.vat_output, i.vat_rate, i.vat_code, i.hash,
                i.deleted_at
         FROM income i
@@ -439,7 +445,7 @@ def get_income_detail(
     query = """SELECT i.id, i.uuid, i.payment_date, i.invoice_date, i.source, i.category_id,
                   c.name as category_name,
                   c.eur_key as category_eur_key,
-                  i.amount_eur, i.ledger_account, i.receipt_name,
+                  i.amount_eur, i.ledger_account, i.receipt_name, i.invoice_number,
                   i.foreign_amount, i.notes, i.vat_output, i.vat_rate, i.vat_code, i.hash,
                   i.deleted_at
            FROM income i
@@ -472,6 +478,7 @@ def update_income(
     amount_eur: float | None = None,
     foreign_amount: str | None = None,
     receipt_name: str | None = None,
+    invoice_number: str | None = None,
     notes: str | None = None,
     vat: float | None = None,
     vat_rate: float | None = None,
@@ -498,6 +505,9 @@ def update_income(
     old_data = row_to_dict(row)
 
     new_receipt = receipt_name if receipt_name is not None else row["receipt_name"]
+    new_invoice_number = (
+        invoice_number.strip() or None if invoice_number is not None else row["invoice_number"]
+    )
     new_payment_date = (
         payment_date
         if payment_date is not None
@@ -670,7 +680,7 @@ def update_income(
 
     conn.execute(
         """UPDATE income SET
-           receipt_name = ?, payment_date = ?, invoice_date = ?, source = ?,
+           receipt_name = ?, payment_date = ?, invoice_date = ?, invoice_number = ?, source = ?,
            category_id = ?, amount_eur = ?,
            ledger_account = ?, foreign_amount = ?, notes = ?,
            vat_output = ?, vat_rate = ?, vat_code = ?, hash = ?
@@ -679,6 +689,7 @@ def update_income(
             new_receipt,
             new_payment_date,
             new_invoice_date,
+            new_invoice_number,
             new_source,
             category_id,
             new_amount,
@@ -700,6 +711,7 @@ def update_income(
         "receipt_name": new_receipt,
         "payment_date": new_payment_date,
         "invoice_date": new_invoice_date,
+        "invoice_number": new_invoice_number,
         "source": new_source,
         "category_id": category_id,
         "amount_eur": new_amount,
@@ -736,6 +748,7 @@ def update_income(
         category_eur_key=resolved_category_key,
         ledger_account=resolved_ledger_account_key,
         receipt_name=new_receipt,
+        invoice_number=new_invoice_number,
         foreign_amount=new_foreign,
         notes=new_notes,
         vat_output=new_vat_output,

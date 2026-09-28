@@ -45,9 +45,12 @@ Ersteinrichtung (interaktiv oder --set KEY VALUE)
 |---|---|
 | `--set` | Setzt einen Config-Wert direkt (z.B. tax.mode small_business) |
 
-**Beispiel:** `euer setup --set skill.version "1.1.1"`
+**Beispiel:** `euer setup --set skill.version "1.1.2"`
 
 ### euer import
+
+Optionale Rechnungsnummern können im CSV-/JSONL-Import als `invoice_number`
+oder `Rechnungsnummer` übergeben werden.
 
 Bulk-Import von Transaktionen
 
@@ -96,7 +99,8 @@ Ausgabe hinzufügen
                      [--invoice-date INVOICE_DATE] --vendor VENDOR
                      [--category CATEGORY] [--ledger-account LEDGER_ACCOUNT]
                      --amount AMOUNT [--account ACCOUNT] [--foreign FOREIGN]
-                     [--receipt RECEIPT] [--notes NOTES] [--vat VAT]
+                     [--receipt RECEIPT] [--invoice-number INVOICE_NUMBER]
+                     [--notes NOTES] [--vat VAT]
                      [--vat-rate {0.0,7.0,19.0}] [--tip ENTERTAINMENT_TIP_EUR]
                      [--entertainment-vat-status {deductible,no_deduction,needs_review}]
                      [--private-paid] [--rc {eu,third-country}] [--force]
@@ -116,6 +120,7 @@ Ausgabe hinzufügen
 | `--account` | Bankkonto |
 | `--foreign` | Fremdwährungsbetrag |
 | `--receipt` | Belegname |
+| `--invoice-number` | Optionale Rechnungsnummer |
 | `--notes` | Bemerkung |
 | `--vat` | Belegter abziehbarer Vorsteuerbetrag in EUR (bei Bewirtung ausdrücklich geprüft) |
 | `--vat-rate` | Vorsteuer-Steuersatz (0, 7, 19) |
@@ -136,6 +141,7 @@ Einnahme hinzufügen
                     [--invoice-date INVOICE_DATE] --source SOURCE
                     [--category CATEGORY] [--ledger-account LEDGER_ACCOUNT]
                     --amount AMOUNT [--foreign FOREIGN] [--receipt RECEIPT]
+                    [--invoice-number INVOICE_NUMBER]
                     [--notes NOTES] [--vat VAT] [--vat-rate {0.0,7.0,19.0}]
                     [--tax-free] [--force] [--allow-duplicate]`
 
@@ -152,6 +158,7 @@ Einnahme hinzufügen
 | `--amount` | Betrag in EUR |
 | `--foreign` | Fremdwährungsbetrag |
 | `--receipt` | Belegname |
+| `--invoice-number` | Optionale Rechnungsnummer |
 | `--notes` | Bemerkung |
 | `--vat` | Umsatzsteuer-Betrag (für Regelb.) |
 | `--vat-rate` | USt-Satz für Ausgangsumsätze (0, 7, 19) |
@@ -364,7 +371,8 @@ Ausgabe aktualisieren
                         [--category CATEGORY]
                         [--ledger-account LEDGER_ACCOUNT] [--amount AMOUNT]
                         [--account ACCOUNT] [--foreign FOREIGN]
-                        [--receipt RECEIPT] [--notes NOTES] [--vat VAT]
+                        [--receipt RECEIPT] [--invoice-number INVOICE_NUMBER]
+                        [--notes NOTES] [--vat VAT]
                         [--vat-rate {0.0,7.0,19.0}]
                         [--tip ENTERTAINMENT_TIP_EUR]
                         [--entertainment-vat-status {deductible,no_deduction,needs_review}]
@@ -388,6 +396,7 @@ Ausgabe aktualisieren
 | `--account` | Neues Konto |
 | `--foreign` | Neuer Fremdwährungsbetrag |
 | `--receipt` | Neuer Belegname |
+| `--invoice-number` | Neue Rechnungsnummer; leerer Wert entfernt sie |
 | `--notes` | Neue Bemerkung |
 | `--vat` | Belegter abziehbarer Vorsteuerbetrag in EUR |
 | `--vat-rate` | Neuer Vorsteuer-Steuersatz (0, 7, 19) |
@@ -410,7 +419,8 @@ Einnahme aktualisieren
                        [--invoice-date INVOICE_DATE] [--source SOURCE]
                        [--category CATEGORY] [--ledger-account LEDGER_ACCOUNT]
                        [--amount AMOUNT] [--foreign FOREIGN]
-                       [--receipt RECEIPT] [--notes NOTES] [--vat VAT]
+                       [--receipt RECEIPT] [--invoice-number INVOICE_NUMBER]
+                       [--notes NOTES] [--vat VAT]
                        [--vat-rate {0.0,7.0,19.0}] [--tax-free] [--force]
                        [--allow-duplicate]
                        id`
@@ -429,6 +439,7 @@ Einnahme aktualisieren
 | `--amount` | Neuer Betrag |
 | `--foreign` | Neuer Fremdwährungsbetrag |
 | `--receipt` | Neuer Belegname |
+| `--invoice-number` | Neue Rechnungsnummer; leerer Wert entfernt sie |
 | `--notes` | Neue Bemerkung |
 | `--vat` | Neue Umsatzsteuer |
 | `--vat-rate` | Neuer USt-Satz für Ausgangsumsätze (0, 7, 19) |

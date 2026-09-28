@@ -117,7 +117,7 @@ def cmd_export(args):
 
     # Ausgaben laden
     expenses = conn.execute(
-        f"""SELECT e.receipt_name, e.payment_date, e.invoice_date, e.vendor,
+        f"""SELECT e.receipt_name, e.payment_date, e.invoice_date, e.invoice_number, e.vendor,
                   c.name as category, c.eur_key,
                   e.amount_eur, e.account, e.ledger_account, e.foreign_amount, e.notes,
                   e.rc_type, e.vat_input, e.vat_output, e.vat_rate, e.vat_code,
@@ -131,7 +131,7 @@ def cmd_export(args):
 
     # Einnahmen laden
     income = conn.execute(
-        f"""SELECT i.receipt_name, i.payment_date, i.invoice_date, i.source,
+        f"""SELECT i.receipt_name, i.payment_date, i.invoice_date, i.invoice_number, i.source,
                   c.name as category, c.eur_key,
                   i.amount_eur, i.ledger_account, i.foreign_amount, i.notes,
                   i.vat_output, i.vat_rate, i.vat_code
@@ -242,6 +242,7 @@ def cmd_export(args):
                         "Bewirtung Kostenbasis",
                         "Bewirtung abziehbar",
                         "Bewirtung nicht abziehbar",
+                        "Rechnungsnummer",
                     ]
                 )
                 for r in expenses:
@@ -266,6 +267,7 @@ def cmd_export(args):
                             f"{r['vat_rate']:g}" if r["vat_rate"] is not None else "",
                             r["vat_code"] or "",
                             *entertainment_values,
+                            r["invoice_number"] or "",
                         ]
                     )
 
@@ -288,6 +290,7 @@ def cmd_export(args):
                         "Umsatzsteuer",
                         "Steuersatz",
                         "Steuerklasse",
+                        "Rechnungsnummer",
                     ]
                 )
                 for r in income:
@@ -307,6 +310,7 @@ def cmd_export(args):
                             f"{r['vat_output']:.2f}" if r["vat_output"] else "",
                             f"{r['vat_rate']:g}" if r["vat_rate"] is not None else "",
                             r["vat_code"] or "",
+                            r["invoice_number"] or "",
                         ]
                     )
 
@@ -407,6 +411,7 @@ def cmd_export(args):
                     "Bewirtung Kostenbasis",
                     "Bewirtung abziehbar",
                     "Bewirtung nicht abziehbar",
+                    "Rechnungsnummer",
                 ]
             )
             for r in expenses:
@@ -434,6 +439,7 @@ def cmd_export(args):
                             (value if index == 1 else float(value)) if value else None
                             for index, value in enumerate(entertainment_values)
                         ],
+                        r["invoice_number"] or "",
                     ]
                 )
             wb.save(exp_tmp)
@@ -459,6 +465,7 @@ def cmd_export(args):
                     "Umsatzsteuer",
                     "Steuersatz",
                     "Steuerklasse",
+                    "Rechnungsnummer",
                 ]
             )
             for r in income:
@@ -478,6 +485,7 @@ def cmd_export(args):
                         r["vat_output"] if r["vat_output"] else None,
                         r["vat_rate"] if r["vat_rate"] is not None else None,
                         r["vat_code"] or "",
+                        r["invoice_number"] or "",
                     ]
                 )
             wb.save(inc_tmp)

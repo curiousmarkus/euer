@@ -36,6 +36,7 @@ class Expense:
     account: str | None = None
     ledger_account: str | None = None
     receipt_name: str | None = None
+    invoice_number: str | None = None
     foreign_amount: str | None = None
     notes: str | None = None
     rc_type: str = "none"
@@ -75,6 +76,7 @@ class Income:
     category_eur_key: str | None = None
     ledger_account: str | None = None
     receipt_name: str | None = None
+    invoice_number: str | None = None
     foreign_amount: str | None = None
     notes: str | None = None
     vat_output: float | None = None

@@ -181,6 +181,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_expense_parser.add_argument("--account", help="Bankkonto")
     add_expense_parser.add_argument("--foreign", help="Fremdwährungsbetrag")
     add_expense_parser.add_argument("--receipt", help="Belegname")
+    add_expense_parser.add_argument("--invoice-number", help="Rechnungsnummer")
     add_expense_parser.add_argument("--notes", help="Bemerkung")
     add_expense_parser.add_argument(
         "--vat",
@@ -248,6 +249,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_income_parser.add_argument("--amount", required=True, type=float, help="Betrag in EUR")
     add_income_parser.add_argument("--foreign", help="Fremdwährungsbetrag")
     add_income_parser.add_argument("--receipt", help="Belegname")
+    add_income_parser.add_argument("--invoice-number", help="Rechnungsnummer")
     add_income_parser.add_argument("--notes", help="Bemerkung")
     add_income_parser.add_argument("--vat", type=float, help="Umsatzsteuer-Betrag (für Regelb.)")
     add_income_parser.add_argument(
@@ -423,6 +425,9 @@ def build_parser() -> argparse.ArgumentParser:
     upd_exp_parser.add_argument("--account", help="Neues Konto")
     upd_exp_parser.add_argument("--foreign", help="Neuer Fremdwährungsbetrag")
     upd_exp_parser.add_argument("--receipt", help="Neuer Belegname")
+    upd_exp_parser.add_argument(
+        "--invoice-number", help="Neue Rechnungsnummer (leer zum Entfernen)"
+    )
     upd_exp_parser.add_argument("--notes", help="Neue Bemerkung")
     upd_exp_parser.add_argument(
         "--vat",
@@ -505,6 +510,9 @@ def build_parser() -> argparse.ArgumentParser:
     upd_inc_parser.add_argument("--amount", type=float, help="Neuer Betrag")
     upd_inc_parser.add_argument("--foreign", help="Neuer Fremdwährungsbetrag")
     upd_inc_parser.add_argument("--receipt", help="Neuer Belegname")
+    upd_inc_parser.add_argument(
+        "--invoice-number", help="Neue Rechnungsnummer (leer zum Entfernen)"
+    )
     upd_inc_parser.add_argument("--notes", help="Neue Bemerkung")
     upd_inc_parser.add_argument("--vat", type=float, help="Neue Umsatzsteuer")
     upd_inc_parser.add_argument(

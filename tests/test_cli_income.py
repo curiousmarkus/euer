@@ -24,6 +24,7 @@ class CLIIncomeTestCase(BaseCLITestCase):
             foreign,
             notes,
             vat_output,
+            invoice_number,
         ) = rows[1]
         self.assertEqual(payment_date, "2026-01-20")
         self.assertEqual(invoice_date, "")
@@ -35,6 +36,7 @@ class CLIIncomeTestCase(BaseCLITestCase):
         self.assertEqual(foreign, "")
         self.assertEqual(notes, "")
         self.assertEqual(vat_output, "")
+        self.assertEqual(invoice_number, "")
 
     def test_update_income(self):
         self.add_income()

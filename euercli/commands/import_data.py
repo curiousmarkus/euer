@@ -25,7 +25,7 @@ def print_import_schema() -> None:
     print()
     print("Optionale Felder:")
     print(
-        "  category, account, ledger_account, foreign_amount, receipt_name, notes, rc, "
+        "  category, account, ledger_account, foreign_amount, receipt_name, invoice_number, notes, rc, "
         "private_paid, vat_input, vat_output, vat_rate, vat_code, tax_free"
         ", entertainment_tip_eur, entertainment_vat_status"
     )
@@ -46,6 +46,7 @@ def print_import_schema() -> None:
     print("  category: category, category_name, Kategorie")
     print("  amount_eur: amount_eur, amount, EUR, Betrag, Betrag in EUR")
     print("  receipt_name: receipt_name, receipt, Belegname, Beleg")
+    print("  invoice_number: invoice_number, Rechnungsnummer")
     print("  rc: rc, rc_type, is_rc, RC")
     print("  rc_jurisdiction (Legacy): rc_jurisdiction, rc-jurisdiction, RC-Jurisdiktion")
     print("  private_paid: private_paid, Privat bezahlt")
@@ -190,6 +191,7 @@ def cmd_import(args):
             ledger_account = normalized["ledger_account"]
             foreign_amount = normalized["foreign_amount"]
             receipt_name = normalized["receipt_name"]
+            invoice_number = normalized["invoice_number"]
             notes = normalized["notes"]
             rc_type = normalized["rc_type"]
             private_paid = normalized["private_paid"]
@@ -216,6 +218,7 @@ def cmd_import(args):
                     ledger_accounts=ledger_accounts,
                     foreign_amount=str(foreign_amount) if foreign_amount is not None else None,
                     receipt_name=str(receipt_name) if receipt_name is not None else None,
+                    invoice_number=str(invoice_number) if invoice_number is not None else None,
                     notes=str(notes) if notes is not None else None,
                     rc_type=str(rc_type),
                     vat_input=vat_input,
@@ -250,6 +253,7 @@ def cmd_import(args):
                     ledger_accounts=ledger_accounts,
                     foreign_amount=str(foreign_amount) if foreign_amount is not None else None,
                     receipt_name=str(receipt_name) if receipt_name is not None else None,
+                    invoice_number=str(invoice_number) if invoice_number is not None else None,
                     notes=str(notes) if notes is not None else None,
                     vat_output=vat_output,
                     vat_rate=vat_rate,

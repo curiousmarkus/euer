@@ -535,6 +535,25 @@ def _apply_008(conn: sqlite3.Connection) -> None:
             )
 
 
+def _preflight_009(conn: sqlite3.Connection) -> MigrationImpact:
+    tables = _get_tables(conn)
+    missing = [
+        table
+        for table in ("expenses", "income")
+        if table in tables and "invoice_number" not in _get_table_columns(conn, table)
+    ]
+    return MigrationImpact(
+        affected_count=len(missing),
+        description="Ergänzt optionale Rechnungsnummern für Ausgaben und Einnahmen",
+    )
+
+
+def _apply_009(conn: sqlite3.Connection) -> None:
+    for table in ("expenses", "income"):
+        if table in _get_tables(conn) and "invoice_number" not in _get_table_columns(conn, table):
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN invoice_number TEXT")
+
+
 # Registrierte Migrationen in sequentieller Reihenfolge
 MIGRATIONS: list[Migration] = [
     Migration(
@@ -575,6 +594,12 @@ MIGRATIONS: list[Migration] = [
         "Soft-Delete Unterstützung für Ausgaben, Einnahmen und Privatvorgänge (Spec 016)",
         _preflight_008,
         _apply_008,
+    ),
+    Migration(
+        "009_invoice_number",
+        "Optionale Rechnungsnummer (Spec 025)",
+        _preflight_009,
+        _apply_009,
     ),
 ]
 
@@ -654,6 +679,8 @@ def detect_legacy_schema_state(conn: sqlite3.Connection) -> tuple[str, list[str]
         and ("private_transfers" not in tables or "deleted_at" in private_cols)
     ):
         satisfied.append("008_soft_delete")
+    if "invoice_number" in exp_cols and "invoice_number" in inc_cols:
+        satisfied.append("009_invoice_number")
 
     current_version = satisfied[-1] if satisfied else "unbekannt"
     return (f"{current_version} (abgeleitet)", satisfied)

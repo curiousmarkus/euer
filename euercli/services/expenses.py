@@ -57,6 +57,7 @@ def row_to_expense(row: sqlite3.Row) -> Expense:
         account=get_optional(row, "account"),
         ledger_account=get_optional(row, "ledger_account"),
         receipt_name=get_optional(row, "receipt_name"),
+        invoice_number=get_optional(row, "invoice_number"),
         foreign_amount=get_optional(row, "foreign_amount"),
         notes=get_optional(row, "notes"),
         rc_type=rc_type,
@@ -318,6 +319,7 @@ def create_expense(
     account: str | None = None,
     foreign_amount: str | None = None,
     receipt_name: str | None = None,
+    invoice_number: str | None = None,
     notes: str | None = None,
     rc_type: str = "none",
     vat: float | None = None,
@@ -463,19 +465,21 @@ def create_expense(
         manual_override=private_paid,
     )
 
+    invoice_number = invoice_number.strip() or None if invoice_number is not None else None
     cursor = conn.execute(
         """INSERT INTO expenses
-           (uuid, receipt_name, payment_date, invoice_date, vendor, category_id,
+           (uuid, receipt_name, payment_date, invoice_date, invoice_number, vendor, category_id,
             amount_eur, account, ledger_account, foreign_amount, notes, rc_type,
             vat_input, vat_output, vat_rate, vat_code,
             entertainment_tip_eur, entertainment_vat_status,
             is_private_paid, private_classification, hash)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             record_uuid,
             receipt_name,
             resolved_payment_date,
             resolved_invoice_date,
+            invoice_number,
             vendor,
             category_id,
             amount_eur,
@@ -503,6 +507,7 @@ def create_expense(
         "receipt_name": receipt_name,
         "payment_date": resolved_payment_date,
         "invoice_date": resolved_invoice_date,
+        "invoice_number": invoice_number,
         "vendor": vendor,
         "category_id": category_id,
         "amount_eur": amount_eur,
@@ -546,6 +551,7 @@ def create_expense(
         account=account,
         ledger_account=resolved_ledger_account_key,
         receipt_name=receipt_name,
+        invoice_number=invoice_number,
         foreign_amount=foreign_amount,
         notes=notes,
         rc_type=resolved_rc_type,
@@ -575,7 +581,7 @@ def list_expenses(
                c.name as category_name,
                c.eur_key as category_eur_key,
                e.amount_eur, e.account, e.ledger_account,
-               e.receipt_name,
+               e.receipt_name, e.invoice_number,
                e.foreign_amount, e.notes, e.rc_type, e.vat_input, e.vat_output,
                e.vat_rate, e.vat_code,
                e.entertainment_tip_eur, e.entertainment_vat_status,
@@ -617,7 +623,7 @@ def get_expense_detail(
                   c.name as category_name,
                   c.eur_key as category_eur_key,
                   e.amount_eur, e.account, e.ledger_account,
-                  e.receipt_name,
+                  e.receipt_name, e.invoice_number,
                   e.foreign_amount, e.notes, e.rc_type, e.vat_input, e.vat_output,
                   e.vat_rate, e.vat_code,
                   e.entertainment_tip_eur, e.entertainment_vat_status,
@@ -654,6 +660,7 @@ def update_expense(
     account: str | None = None,
     foreign_amount: str | None = None,
     receipt_name: str | None = None,
+    invoice_number: str | None = None,
     notes: str | None = None,
     vat: float | None = None,
     vat_rate: float | None = None,
@@ -684,6 +691,9 @@ def update_expense(
     old_data = row_to_dict(row)
 
     new_receipt = receipt_name if receipt_name is not None else row["receipt_name"]
+    new_invoice_number = (
+        invoice_number.strip() or None if invoice_number is not None else row["invoice_number"]
+    )
     new_payment_date = (
         payment_date
         if payment_date is not None
@@ -949,7 +959,7 @@ def update_expense(
 
     conn.execute(
         """UPDATE expenses SET
-           receipt_name = ?, payment_date = ?, invoice_date = ?, vendor = ?,
+           receipt_name = ?, payment_date = ?, invoice_date = ?, invoice_number = ?, vendor = ?,
            category_id = ?, amount_eur = ?,
            account = ?, ledger_account = ?, foreign_amount = ?, notes = ?, rc_type = ?,
            vat_input = ?, vat_output = ?, vat_rate = ?, vat_code = ?,
@@ -960,6 +970,7 @@ def update_expense(
             new_receipt,
             new_payment_date,
             new_invoice_date,
+            new_invoice_number,
             new_vendor,
             category_id,
             new_amount,
@@ -988,6 +999,7 @@ def update_expense(
         "receipt_name": new_receipt,
         "payment_date": new_payment_date,
         "invoice_date": new_invoice_date,
+        "invoice_number": new_invoice_number,
         "vendor": new_vendor,
         "category_id": category_id,
         "amount_eur": new_amount,
@@ -1032,6 +1044,7 @@ def update_expense(
         account=new_account,
         ledger_account=resolved_ledger_account_key,
         receipt_name=new_receipt,
+        invoice_number=new_invoice_number,
         foreign_amount=new_foreign,
         notes=new_notes,
         rc_type=new_rc_type,

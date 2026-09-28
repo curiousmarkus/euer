@@ -190,6 +190,7 @@ def normalize_import_row(row: dict) -> dict:
             row, "foreign_amount", "foreign", "Fremdwährung", "Fremdwaehrung"
         ),
         "receipt_name": get_row_value(row, "receipt_name", "receipt", "Belegname", "Beleg"),
+        "invoice_number": get_row_value(row, "invoice_number", "Rechnungsnummer"),
         "notes": get_row_value(row, "notes", "Bemerkung", "Notiz"),
         "rc_type": rc_type,
         "rc_raw": rc_value,

@@ -168,9 +168,10 @@ Dossier und Belegdateien.
 > Zahlungsnachweis fehlt, halte das offen und sage mir, was du noch brauchst.
 
 Der Agent prüft zuerst vorhandene und unvollständige Buchungen. Dann liest er
-Lieferant, Rechnungsdatum, Betrag, Währung, Leistungsbeschreibung und Steuerangaben
-aus dem Beleg. Er ordnet die Kategorie zu und prüft gegebenenfalls Reverse Charge,
-private Zahlung oder einen betrieblichen Anteil. Unklare Angaben fragt er nach.
+Lieferant, Rechnungsdatum, eine vorhandene Rechnungsnummer, Betrag, Währung,
+Leistungsbeschreibung und Steuerangaben aus dem Beleg. Er ordnet die Kategorie zu
+und prüft gegebenenfalls Reverse Charge, private Zahlung oder einen
+betrieblichen Anteil. Unklare Angaben fragt er nach.
 
 **Rechnung vorhanden, Zahlung noch nicht nachgewiesen:** Eine Erfassung mit
 `invoice_date` ohne `payment_date` ist möglich. Sie bleibt unvollständig und fließt
@@ -183,7 +184,7 @@ Beispiel für eine inländische Ausgabe bei Regelbesteuerung:
 ```bash
 euer add expense --invoice-date 2026-09-18 --vendor "Beispiel Hosting GmbH" \
   --category "Laufende EDV-Kosten" --amount -119.00 --vat 19.00 \
-  --receipt "2026-09-18_Beispiel-Hosting.pdf"
+  --receipt "2026-09-18_Beispiel-Hosting.pdf" --invoice-number "BH-2026-0918"
 ```
 
 Ist die Zahlung nachgewiesen, trägt der Agent das Zahlungsdatum und bei Ausgaben

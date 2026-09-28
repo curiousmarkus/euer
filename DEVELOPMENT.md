@@ -179,9 +179,9 @@ damit Erweiterungen konsistent und risikoarm umgesetzt werden können.
 Die vollständigen DDLs stehen in `euercli/schema.py`.
 
 - **categories**: UUID, Name, Legacy-Zeilenfeld, stabiler fachlicher `eur_key`, Typ (expense/income).
-- **expenses**: UUID, Ausgaben inkl. Beleg, Konto, Fremdwährung, RC‑Typ,
+- **expenses**: UUID, Ausgaben inkl. Beleg und optionaler Rechnungsnummer, Konto, Fremdwährung, RC‑Typ,
   Steuern, USt-Klassifikation, Private Klassifikation.
-- **income**: UUID, Einnahmen inkl. Beleg, Fremdwährung, Umsatzsteuer,
+- **income**: UUID, Einnahmen inkl. Beleg und optionaler Rechnungsnummer, Fremdwährung, Umsatzsteuer,
   USt-Klassifikation.
 - **private_transfers**: UUID, Privateinlagen/-entnahmen, Betrag, optionale Referenz auf Expense.
 - **audit_log**: Protokolliert INSERT/UPDATE/DELETE inkl. Vorher/Nachher + `record_uuid`.
@@ -353,6 +353,7 @@ Offene Change Requests werden innerhalb der jeweiligen Spec dokumentiert.
 | 022 | Versionierter Skill als primäre Dokumentation und Bestätigung in der Config | Implementiert |
 | 023 | Nachvollziehbarer Entscheidungsnachweis für Buchungen | Offen |
 | 024 | Versionierter Regelkatalog für Entscheidungsnachweise | Offen |
+| 025 | Optionale Rechnungsnummer | Implementiert |
 
 ### Agenten-Dateien und Mandantendaten
 

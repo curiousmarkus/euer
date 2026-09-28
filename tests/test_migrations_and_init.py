@@ -32,6 +32,30 @@ class MigrationsAndInitTestCase(unittest.TestCase):
             os.environ["HOME"] = self.orig_home
         self.temp_dir.cleanup()
 
+    def test_invoice_number_migration_preserves_existing_rows(self):
+        from euercli.schema import SCHEMA
+
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        try:
+            conn.executescript(SCHEMA.replace("    invoice_number TEXT,\n", ""))
+            conn.execute(
+                "INSERT INTO expenses (uuid, payment_date, vendor, amount_eur, hash) "
+                "VALUES ('old-expense', '2026-01-01', 'Anbieter', -12, 'hash-expense')"
+            )
+            conn.execute(
+                "INSERT INTO income (uuid, payment_date, source, amount_eur, hash) "
+                "VALUES ('old-income', '2026-01-01', 'Kunde', 12, 'hash-income')"
+            )
+            MIGRATIONS[-1].apply(conn)
+            for table in ("expenses", "income"):
+                row = conn.execute(f"SELECT amount_eur, invoice_number FROM {table}").fetchone()
+                self.assertEqual(abs(row["amount_eur"]), 12)
+                self.assertIsNone(row["invoice_number"])
+            MIGRATIONS[-1].apply(conn)
+        finally:
+            conn.close()
+
     def test_explicit_nonexistent_db_fails_without_create(self):
         # Pfad existiert nicht, kein --create
         with self.assertRaises(SystemExit) as cm:
@@ -100,10 +124,11 @@ class MigrationsAndInitTestCase(unittest.TestCase):
         conn = sqlite3.connect(self.db_path)
         desc, satisfied = detect_legacy_schema_state(conn)
         conn.close()
-        self.assertIn("008_soft_delete", desc)
+        self.assertIn("009_invoice_number", desc)
         self.assertIn("001_initial_schema", satisfied)
         self.assertIn("007_category_eur_key", satisfied)
         self.assertIn("008_soft_delete", satisfied)
+        self.assertIn("009_invoice_number", satisfied)
 
         # Führe init aus -> registriert Legacy-Stempel ohne Fehler
         import io

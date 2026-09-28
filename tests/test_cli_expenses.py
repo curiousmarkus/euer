@@ -30,7 +30,7 @@ class CLIExpensesTestCase(BaseCLITestCase):
             vat_output,
             *entertainment_fields,
         ) = rows[1]
-        self.assertEqual(entertainment_fields, [""] * 5)
+        self.assertEqual(entertainment_fields, [""] * 6)
         self.assertEqual(payment_date, "2026-01-15")
         self.assertEqual(invoice_date, "")
         self.assertEqual(vendor, "TestVendor")

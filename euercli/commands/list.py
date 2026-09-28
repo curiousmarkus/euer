@@ -97,6 +97,7 @@ def cmd_list_expenses(args):
                 "Bewirtung Kostenbasis",
                 "Bewirtung abziehbar",
                 "Bewirtung nicht abziehbar",
+                "Rechnungsnummer",
             ]
         )
         for r in rows:
@@ -144,6 +145,7 @@ def cmd_list_expenses(args):
                         if entertainment and entertainment.non_deductible_eur is not None
                         else ""
                     ),
+                    r.invoice_number or "",
                 ]
             )
     else:
@@ -455,6 +457,7 @@ def cmd_list_income(args):
                 "Fremdwährung",
                 "Bemerkung",
                 "Umsatzsteuer",
+                "Rechnungsnummer",
             ]
         )
         for r in rows:
@@ -472,6 +475,7 @@ def cmd_list_income(args):
                     r.foreign_amount or "",
                     r.notes or "",
                     f"{r.vat_output:.2f}" if r.vat_output else "",
+                    r.invoice_number or "",
                 ]
             )
     else:

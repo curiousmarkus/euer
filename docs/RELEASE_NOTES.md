@@ -8,7 +8,7 @@ Für Installationen ab 0.8.1 ergänzen sie die normale Update-Sequenz aus der
 pipx upgrade euer
 euer doctor
 # Skill vollständig aus dem Bundle-Pfad installieren und neu laden
-euer setup --set skill.version "1.1.1"
+euer setup --set skill.version "1.1.2"
 euer init
 euer incomplete list
 euer summary --year 2026
@@ -38,6 +38,20 @@ Bei jedem neuen Release steht der konkrete Handlungsbedarf für Skill, Rolle,
 Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
 „Agenten-Dateien“. Die wiederkehrende Prozedur beschreibt der
 [Installationsreferenz](skills/euer-buchhaltung/references/installation_and_setup.md#agenten-dateien-aktualisieren).
+
+## Unveröffentlicht
+
+- Ausgaben und Einnahmen können eine optionale Rechnungsnummer speichern.
+  `add`/`update` verwenden `--invoice-number`; CSV-/JSONL-Import erkennt
+  `invoice_number` und `Rechnungsnummer`. Listen-CSV und CSV-/XLSX-Exporte
+  ergänzen die Spalte am Ende, ohne bestehende Spalten zu verschieben.
+- **Upgrade:** Paket aktualisieren und im Buchhaltungsordner `euer init`
+  ausführen (vorher bei Bedarf `euer init --dry-run`). Migration 009 ergänzt
+  beide Tabellen ohne Änderung bestehender Buchungen. Alte Nummern werden
+  nicht automatisch aus Belegdateien übernommen. Keine Config-Migration.
+- **Agenten-Dateien:** Skill und Referenzen auf 1.1.2 aktualisieren, neu laden
+  und mit `euer setup --set skill.version "1.1.2"` bestätigen. Das persönliche
+  Mandanten-Dossier bleibt unverändert.
 
 ## 0.11.1
 
