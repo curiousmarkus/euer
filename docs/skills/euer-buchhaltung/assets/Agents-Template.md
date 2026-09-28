@@ -5,12 +5,14 @@ Dieses Dokument enthält die bestätigten Angaben für die Buchhaltung von
 sichtbar. Allgemeine Buchungsregeln und CLI-Befehle stehen im
 `euer-buchhaltung`-Skill.
 
+Die euer zugrunde liegende Datenbank wird niemals direkt gelesen, geschrieben, geöffnet oder durchsucht. Keine direkten Zugriffe mit SQLite, Python, Dateivorschauen, Datenbank-Editoren oder anderen Werkzeugen. Der Zugriff erfolgt ausschließlich über die CLI, die die Datenbank in einem konsistenten Zustand hält und auch für Abfragen und Export die nötigen Befehle bereitstellt. 
+Status und effektiven Pfad der Datenbank bei Bedarf ausschließlich mit `euer doctor` prüfen.
+
 ## Mandant und Arbeitsbereich
 
 - **Name und Geschäftsform:** {{NAME_UND_GESCHAEFTSFORM}}
 - **EÜR-Nutzung:** {{GEKLAERTER_STATUS_ODER_OFFEN}}
 - **Buchhaltungsordner:** {{ARBEITSORDNER}}
-- **Datenbankpfad:** {{DATENBANKPFAD}}
 - **Beginn und bereits erfasste Zeiträume:** {{ZEITRAEUME}}
 
 ## Steuerlicher Kontext
