@@ -351,6 +351,8 @@ Offene Change Requests werden innerhalb der jeweiligen Spec dokumentiert.
 | 020 | Transparente und sichere DB-Migrationen | Implementiert |
 | 021 | Versionierte Exportläufe mit Manifest | Offen |
 | 022 | Versionierter Skill als primäre Dokumentation und Bestätigung in der Config | Implementiert |
+| 023 | Nachvollziehbarer Entscheidungsnachweis für Buchungen | Offen |
+| 024 | Versionierter Regelkatalog für Entscheidungsnachweise | Offen |
 
 ### Agenten-Dateien und Mandantendaten
 
