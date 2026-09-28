@@ -51,6 +51,9 @@ Ersteinrichtung (interaktiv oder --set KEY VALUE)
 
 Optionale Rechnungsnummern können im CSV-/JSONL-Import als `invoice_number`
 oder `Rechnungsnummer` übergeben werden.
+Verdächtige Duplikate anhand der Rechnungsnummer brechen den gesamten Import
+mit Zeilennummer ab und rollen bereits vorbereitete Buchungen zurück. Exakte
+Duplikate werden wie bisher übersprungen.
 
 Bulk-Import von Transaktionen
 
