@@ -6,9 +6,12 @@ from typing import Optional
 from .constants import DEFAULT_USER
 
 
-def get_db_connection(db_path: Path) -> sqlite3.Connection:
+def get_db_connection(db_path: Path, *, read_only: bool = False) -> sqlite3.Connection:
     """Erstellt eine Datenbankverbindung mit Row-Factory."""
-    conn = sqlite3.connect(db_path)
+    if read_only:
+        conn = sqlite3.connect(f"{db_path.absolute().as_uri()}?mode=ro", uri=True)
+    else:
+        conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn

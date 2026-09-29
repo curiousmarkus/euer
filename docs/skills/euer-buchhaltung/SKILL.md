@@ -2,7 +2,7 @@
 name: euer-buchhaltung
 description: "Nutze diesen Skill für deutsche EÜR-Buchhaltung mit euer: Rechnungen und Belege buchen, Kontoauszüge einlesen und abgleichen, Einnahmen, Ausgaben und Privatvorgänge erfassen, Buchungen korrigieren, Belege prüfen, EÜR und UStVA auswerten oder die Buchhaltung einrichten. Gilt auch für allgemeine Agenten ohne separate Buchhalter-Rolle."
 metadata:
-  version: "1.1.2"
+  version: "1.1.3"
 ---
 
 # EÜR Buchhaltung
@@ -24,7 +24,7 @@ gehören in das persönliche Mandanten-Dossier (`AGENTS.md`), nicht in den Skill
 
 Nach einem Update lies die neue `SKILL.md` und benötigte Referenzen oder beginne
 eine neue Sitzung. Bestätige **erst danach** die Version aus deiner tatsächlich
-geladenen `SKILL.md` mit `euer setup --set skill.version "1.1.2"`.
+geladenen `SKILL.md` mit `euer setup --set skill.version "1.1.3"`.
 Die Bestätigung ist eine Selbstauskunft. Bei fehlenden Update-Rechten informiere
 den Nutzer; `--ignore-skill-version` ermöglicht einen einzelnen CLI-Aufruf.
 
@@ -82,8 +82,12 @@ den Nutzer; `--ignore-skill-version` ermöglicht einen einzelnen CLI-Aufruf.
 
 ### Nachkontrolle und Rückmeldung
 
-1. Prüfe `euer incomplete list` und `euer receipt check --year YYYY`. Ergänze
-   nur gesicherte Angaben und lass ungeklärte Fälle sichtbar.
+1. Prüfe `euer incomplete list`, `euer receipt check --year YYYY` und
+   `euer receipt unbooked --year YYYY --format json`. Prüfe bei jedem Treffer
+   zuerst bestehende Buchungen und die Ablage im Zahlungsjahr. Ordne vorhandene
+   Vorgänge zu; buche nur nach belegter Prüfung noch nicht erfasste Vorgänge.
+   Werte Warnungen und Exit-Code 2 als offenen Prüfbedarf aus. Ergänze nur
+   gesicherte Angaben und lass ungeklärte Fälle sichtbar.
 2. Vergleiche Buchungen erneut mit dem Kontoauszug. Prüfe bei Bedarf `summary`,
    `private-summary` und `vat-report`; letzterer ist ein Arbeitsbericht und
    keine automatische Steuerabgabe.

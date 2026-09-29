@@ -77,6 +77,8 @@ Der Agent nutzt dafür die CLI:
    den jeweiligen Beleg verknüpft er über `--receipt`.
 3. Mit `euer incomplete list` prüft er, welche Angaben noch fehlen, und fragt bei
    Unklarheiten nach.
+   `euer receipt unbooked --year 2026 --format json` findet Belegdateien ohne
+   Buchungszuordnung; vor einer Neubuchung prüft er bestehende Vorgänge.
 4. Mit `euer summary --year 2026` zeigt er dir die Jahresübersicht. Bei Bedarf
    erstellt `euer vat-report --year 2026` einen UStVA-Arbeitsbericht.
 

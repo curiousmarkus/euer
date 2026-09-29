@@ -8,7 +8,7 @@ steuerliche Einordnung nicht selbst.
 
 ## Geltung und Quellen der wichtigsten Wenn-Dann-Regeln
 
-Die CLI-Regeln dieser Referenz beschreiben Skill 1.1.2. Bei älteren Buchungen
+Die CLI-Regeln dieser Referenz beschreiben Skill 1.1.3. Bei älteren Buchungen
 gelten Beleg, Zahlungsjahr und damaliger Steuerstatus; eine spätere Änderung der
 globalen Config ersetzt deren ursprüngliche Behandlung nicht.
 
@@ -261,6 +261,11 @@ Jahresordner sicher ableiten.
 
 Hinweis: Fehlt die Dateiendung, prüft `euer receipt check` automatisch
 `.pdf`, `.jpg`, `.jpeg` und `.png`.
+`euer receipt unbooked --year YYYY --format json` prüft die Gegenrichtung:
+Welche Dateien im Zahlungsjahresordner haben keine auflösbare Referenz in einer
+aktiven Buchung? Vor einer Neubuchung zuerst vorhandene Buchungen und eine
+falsche Jahresablage prüfen. Ohne Zahlungsdatum ist eine Zuordnung zum
+gewählten Scan-Jahr vorläufig und wird als Warnung ausgegeben.
 
 ## Häufige Sonderfälle und Fehlerbehebung
 

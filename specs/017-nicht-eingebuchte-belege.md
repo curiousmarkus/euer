@@ -2,7 +2,7 @@
 
 ## Status
 
-Offen
+Implementiert
 
 ## Ziel und Aussagegrenze
 
@@ -136,8 +136,7 @@ Kein `COALESCE(payment_date, invoice_date)` als Jahresfilter. Leere bzw. nur aus
 Leerzeichen bestehende Referenzen stellen keine Zuordnung her. Nicht leere
 Dateinamen dürfen nicht durch pauschales Trimmen verändert werden.
 
-Bis zur Umsetzung von Spec 016 gelten alle vorhandenen Datensätze als aktiv.
-Der spätere Soft-Delete-Filter ist im Abschnitt „Abhängigkeit zu Spec 016“ geregelt.
+Da Spec 016 bereits implementiert ist, werden nur aktive Datensätze berücksichtigt.
 
 ### 4. Dateien eindeutig zuordnen
 
@@ -169,9 +168,9 @@ Der neue Command meldet die dadurch nicht zugeordneten vorhandenen Dateien.
 
 ## Abhängigkeit zu Spec 016: keine Implementierungsblockade
 
-[Spec 016](016-agent-safety-und-guardrails.md) plant Soft-Delete über `deleted_at`,
-ist aber noch offen. Spec 017 benötigt weder diese Spalte noch eine eigene
-Schema-Migration und kann davor implementiert und veröffentlicht werden.
+[Spec 016](016-agent-safety-und-guardrails.md) hat Soft-Delete über `deleted_at`
+bereits eingeführt. Spec 017 nutzt den Aktivfilter und benötigt keine eigene
+Schema-Migration.
 
 Sobald Soft-Delete verfügbar ist:
 
@@ -182,10 +181,8 @@ Sobald Soft-Delete verfügbar ist:
 - Eine Referenz ausschließlich in gelöschten Buchungen berechtigt den Agenten
   nicht zur ungeprüften Neubuchung; der bestehende Prüfworkflow gilt weiterhin.
 
-Die Integration und entsprechenden Tests gehören zur Umsetzung von Spec 016,
-falls Spec 017 zuerst umgesetzt wird. Falls 016 bereits implementiert ist, nutzt
-017 direkt deren Aktivfilter. Keine SQL-Abfrage darf vor Einführung der Spalte
-`deleted_at` voraussetzen; keine spekulative Migration durch diesen Lese-Command.
+Tests decken verbleibende aktive Mehrfachreferenzen und das Löschen der letzten
+aktiven Referenz ab.
 
 ## Ausgabe und Exit-Codes
 
@@ -359,16 +356,17 @@ Schema-Migrationen. Eine fehlende DB als Fehler melden und nicht neu anlegen.
     Zeitstempeln, Zählern, Warnungen und Laufzeitfehlern. CSV quotiert Sonderzeichen
     und enthält keine Diagnosezeilen. Reihenfolge bleibt stabil.
 11. Exit-Codes 0/1/2 entsprechen dem Vertrag; Fehler haben Vorrang vor Treffern.
-12. Scan verändert weder Dateien noch Buchungen und funktioniert vor Spec 016
-    ohne `deleted_at`. Nach deren Integration: letzte Referenz löschen,
-    wiederherstellen und verbleibende aktive Mehrfachreferenz prüfen.
+12. Scan verändert weder Dateien noch Buchungen. Bei Soft-Delete die letzte
+    aktive Referenz löschen, wiederherstellen und verbleibende aktive
+    Mehrfachreferenz prüfen.
 13. Regressionstests für `receipt check/open` und endungslose Referenzen bleiben grün.
 
 ## Dokumentation und Veröffentlichung
 
 Bei Implementierung prüfen und aktualisieren:
 
-- `docs/USER_GUIDE.md`: Command, Scanumfang, Zahlungsjahr, Exit-Codes und Ausgabeformate.
+- `docs/skills/euer-buchhaltung/references/cli_reference.md`: Command,
+  Scanumfang, Zahlungsjahr, Exit-Codes und Ausgabeformate.
 - `docs/skills/euer-buchhaltung/SKILL.md`: zuerst bestehende Buchungen und Ablage
   prüfen, danach zuordnen oder neu buchen; Fehler und Warnungen auswerten.
 - `docs/templates/onboarding-prompt.md` sowie betroffene Agenten-Templates:
@@ -379,6 +377,5 @@ Bei Implementierung prüfen und aktualisieren:
 
 Der neue Command ist ein abwärtskompatibles Feature und benötigt bei
 Veröffentlichung einen MINOR-Release. Für Spec 017 allein sind keine DB- oder
-Konfigurationsmigrationen erforderlich. Eine spätere Soft-Delete-Migration wird
-separat durch Spec 016 beschrieben. Diese reine Spec-Überarbeitung erfordert
-keinen Versionsbump und keinen eigenen Release.
+Konfigurationsmigrationen erforderlich. Der Aktivfilter nutzt die bereits
+implementierte Soft-Delete-Spalte aus Spec 016.

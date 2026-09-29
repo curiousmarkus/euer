@@ -45,7 +45,7 @@ Ersteinrichtung (interaktiv oder --set KEY VALUE)
 |---|---|
 | `--set` | Setzt einen Config-Wert direkt (z.B. tax.mode small_business) |
 
-**Beispiel:** `euer setup --set skill.version "1.1.2"`
+**Beispiel:** `euer setup --set skill.version "1.1.3"`
 
 ### euer import
 
@@ -793,7 +793,7 @@ Zeigt aktuelle Konfiguration
 
 Beleg-Verwaltung
 
-**Syntax:** `euer receipt [-h] {check,open} ...`
+**Syntax:** `euer receipt [-h] {check,unbooked,open} ...`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
 **Ausgabe:** Prüfbericht oder Bestätigung; Fehler auf stderr.
@@ -818,6 +818,28 @@ Prüft Transaktionen auf fehlende Belege
 | `--type` | Nur diesen Typ prüfen |
 
 **Beispiel:** `euer receipt check --year 2026`
+
+### euer receipt unbooked
+
+Findet unterstützte Belegdateien im Zahlungsjahr ohne zugeordnete aktive Buchung.
+Der Befehl scannt rekursiv die konfigurierten Ausgaben- und Einnahmenordner.
+Ein Treffer kann bereits gebucht sein, wenn die Belegreferenz fehlt oder falsch ist.
+Prüfe deshalb zuerst bestehende Buchungen und die Ablage im Zahlungsjahr; ordne
+einen vorhandenen Vorgang per `update ... --receipt ...` zu. Buche nur einen
+tatsächlich noch nicht erfassten Vorgang neu.
+
+**Syntax:** `euer receipt unbooked [--year JAHR] [--type {expense,income}] [--format {table,csv,json}]`
+
+`--year` wählt das Ablagejahr (Standard: aktuelles Kalenderjahr), `--type`
+begrenzt den Scan auf einen Typordner. `--format` wählt Tabelle, CSV oder JSON;
+JSON gibt Zähler, Treffer,
+Warnungen, übersprungene Einträge und Fehler strukturiert aus. CSV enthält nur
+Treffer; Diagnosen stehen auf stderr. Exit-Code 0 bedeutet vollständiger Scan
+ohne Treffer, 1 vollständiger Scan mit Treffern und 2 fehlgeschlagene oder
+unvollständige Prüfung. Warnungen, besonders `missing_payment_date`, auswerten.
+Ein Scan ohne Treffer beweist weder Vollständigkeit noch fachliche Richtigkeit.
+
+**Beispiel:** `euer receipt unbooked --year 2026 --format json`
 
 ### euer receipt open
 

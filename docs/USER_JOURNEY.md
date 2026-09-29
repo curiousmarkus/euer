@@ -195,8 +195,9 @@ Das Rechnungsdatum bleibt separat erhalten.
 Der Agent legt den Beleg nach deinen Regeln ab und verknüpft ihn über seinen
 Dateinamen. Im Standardlayout lautet der Pfad
 `<Beleg-Root>/<Zahlungsjahr>/Ausgaben/<Dateiname>`, für Einnahmen entsprechend
-`Einnahmen`. Ohne Zahlungsdatum wird bei der Belegprüfung das Rechnungsjahr als
-Ersatz verwendet. Erfolgt die Zahlung im Folgejahr, muss der Agent auch die
+`Einnahmen`. Ohne Zahlungsdatum ist die Jahreszuordnung vorläufig;
+`receipt unbooked --year YYYY` gleicht solche Referenzen im gewählten Scan-Jahr
+ab und gibt eine Warnung aus. Erfolgt die Zahlung im Folgejahr, muss der Agent auch die
 Belegablage prüfen und gegebenenfalls ins Zahlungsjahr verschieben.
 
 **Dein Ergebnis:** Eine Rückmeldung mit Buchungs-ID, Betrag, Kategorie, Belegpfad
@@ -303,12 +304,16 @@ euer list expenses --year 2026 --month 9 --full
 euer list income --year 2026 --month 9 --full
 euer incomplete list
 euer receipt check --year 2026
+euer receipt unbooked --year 2026 --format json
 ```
 
 Der Import hat einen Duplikatschutz, ersetzt aber nicht den fachlichen Abgleich
 mit einer schon angelegten Rechnung. Auch eine leere Incomplete-Liste beweist
 nicht, dass jede Kontobewegung erfasst wurde. Der Agent sollte deshalb berichten,
 welche Konten und Zeiträume vollständig abgeglichen sind und welche noch fehlen.
+Treffer aus `receipt unbooked` sind zunächst Dateien ohne Zuordnung: Der Agent
+prüft vorhandene Buchungen und das Zahlungsjahr, bevor er einen neuen Vorgang
+erfasst. Warnungen und ein Exit-Code 2 halten den Belegabgleich offen.
 
 **Ergebnis:** Der Monatsbestand ist abgeglichen oder ausdrücklich vorläufig.
 Offene Punkte nennen jeweils Vorgang/Buchungs-ID, fehlende Information und deinen
@@ -404,10 +409,15 @@ fachliche Prüfung. Das tatsächliche Zahlungsdatum sollte dafür nicht verfäls
 ```bash
 euer incomplete list
 euer receipt check --year 2026
+euer receipt unbooked --year 2026 --format json
 euer summary --year 2026 --include-private
 euer private-summary --year 2026
 euer export --year 2026 --format csv --output exports/2026
 ```
+
+Auch beim Jahresabschluss ist ein leerer `receipt unbooked`-Scan nur ein
+Zuordnungscheck der berücksichtigten Dateien, kein Nachweis für vollständige
+oder fachlich richtige Buchungen.
 
 Bei Bedarf kommt `euer vat-report --year 2026` als jährliche Kontrollauswertung
 hinzu. Es ersetzt weder die Umsatzsteuer-Jahreserklärung noch die einzelnen UStVA.

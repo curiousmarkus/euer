@@ -8,7 +8,7 @@ Für Installationen ab 0.8.1 ergänzen sie die normale Update-Sequenz aus der
 pipx upgrade euer
 euer doctor
 # Skill vollständig aus dem Bundle-Pfad installieren und neu laden
-euer setup --set skill.version "1.1.2"
+euer setup --set skill.version "1.1.3"
 euer init
 euer incomplete list
 euer summary --year 2026
@@ -41,6 +41,15 @@ Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
 
 ## Unveröffentlicht
 
+- **Belegdateien ohne zugeordnete Buchung (Spec 017):** Neuer lesender Befehl
+  `euer receipt unbooked --year JAHR [--type expense|income] [--format table|csv|json]`.
+  Er scannt die konfigurierten Jahresordner, gleicht aktive Buchungen über die
+  tatsächliche Belegpfadauflösung ab und meldet Warnungen sowie unvollständige
+  Prüfungen ausdrücklich. Exit-Code 0: vollständig ohne Treffer; 1: Treffer;
+  2: Prüfung fehlgeschlagen. Treffer vor einer Neubuchung mit bestehenden
+  Buchungen und der Ablage im Zahlungsjahr abgleichen. Ein leerer Scan belegt
+  keine vollständige Buchhaltung. Keine DB- oder Config-Migration erforderlich.
+  Das Feature erfordert beim Veröffentlichen einen MINOR-Release.
 - Ausgaben und Einnahmen können eine optionale Rechnungsnummer speichern.
   `add`/`update` verwenden `--invoice-number`; CSV-/JSONL-Import erkennt
   `invoice_number` und `Rechnungsnummer`. Listen-CSV und CSV-/XLSX-Exporte
@@ -58,8 +67,8 @@ Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
   ausführen (vorher bei Bedarf `euer init --dry-run`). Migration 009 ergänzt
   beide Tabellen ohne Änderung bestehender Buchungen. Alte Nummern werden
   nicht automatisch aus Belegdateien übernommen. Keine Config-Migration.
-- **Agenten-Dateien:** Skill und Referenzen auf 1.1.2 aktualisieren, neu laden
-  und mit `euer setup --set skill.version "1.1.2"` bestätigen. Das persönliche
+- **Agenten-Dateien:** Skill und Referenzen auf 1.1.3 aktualisieren, neu laden
+  und mit `euer setup --set skill.version "1.1.3"` bestätigen. Das persönliche
   Mandanten-Dossier bleibt unverändert.
 
 ## 0.11.1

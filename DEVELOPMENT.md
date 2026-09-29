@@ -160,8 +160,8 @@ damit Erweiterungen konsistent und risikoarm umgesetzt werden können.
 - **Export**: CSV (immer), XLSX optional via `openpyxl`.
 - **Kontenrahmen**: Optionaler `[[ledger_accounts]]`-Kontenrahmen in der Config mit
   automatischer Kategorieauflösung bei `add`/`update`/`import`.
-- **Receipts**: Jahrzentrierte Belegpfade (`root/{year}/Typ`), `receipt check`
-  und `receipt open`.
+- **Receipts**: Jahrzentrierte Belegpfade (`root/{year}/Typ`), `receipt check`,
+  `receipt unbooked` und `receipt open`.
 - **Steuermodi**: `small_business` und `standard` (RC Handling inkl. USt/VoSt).
 - **Persistierte USt-Klassifikation**: `vat_rate` und `vat_code` an
   Ausgaben/Einnahmen für auditierbare UStVA-Reports.
@@ -345,7 +345,7 @@ Offene Change Requests werden innerhalb der jeweiligen Spec dokumentiert.
 | 014 | HTML-Prüfbericht für Buchungen | Offen |
 | 015 | Multi-Channel-Distribution (PyPI, GitHub Releases, Homebrew) | Implementiert |
 | 016 | Agent-Safety & Guardrails (Schutz vor destruktiven Aktionen & Plausibilität) | Implementiert |
-| 017 | Nicht eingebuchte Belege erkennen (`receipt unbooked`) | Offen |
+| 017 | Nicht eingebuchte Belege erkennen (`receipt unbooked`) | Implementiert |
 | 018 | Bewirtungsaufwendungen, Vorsteuer und EÜR-Zuordnung (inkl. Review-Korrekturen) | Implementiert |
 | 019 | `euer doctor` (Umgebungs- und Pre-Flight-Diagnose) | Implementiert |
 | 020 | Transparente und sichere DB-Migrationen | Implementiert |

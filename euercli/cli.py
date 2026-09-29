@@ -34,6 +34,7 @@ from .commands import (
     cmd_query,
     cmd_receipt_check,
     cmd_receipt_open,
+    cmd_receipt_unbooked,
     cmd_reconcile_private,
     cmd_restore,
     cmd_setup,
@@ -49,6 +50,16 @@ from .commands import (
 from .constants import DEFAULT_DB_PATH, DEFAULT_EXPORT_DIR
 from .project_config import get_project_db_path, project_config_path
 from .skill import skill_status
+
+
+def _receipt_year(value: str) -> int:
+    try:
+        year = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("Jahr muss eine Zahl zwischen 1 und 9999 sein") from exc
+    if not 1 <= year <= 9999:
+        raise argparse.ArgumentTypeError("Jahr muss zwischen 1 und 9999 liegen")
+    return year
 
 
 def load_plugins(subparsers: argparse._SubParsersAction) -> None:
@@ -758,6 +769,20 @@ def build_parser() -> argparse.ArgumentParser:
     )
     receipt_check_parser.set_defaults(func=cmd_receipt_check)
 
+    receipt_unbooked_parser = receipt_subparsers.add_parser(
+        "unbooked", help="Findet Belegdateien ohne zugeordnete Buchung"
+    )
+    receipt_unbooked_parser.add_argument(
+        "--year", type=_receipt_year, default=None, help="Ablagejahr (default: aktuelles Jahr)"
+    )
+    receipt_unbooked_parser.add_argument(
+        "--type", choices=["expense", "income"], help="Nur diesen Typ prüfen"
+    )
+    receipt_unbooked_parser.add_argument(
+        "--format", choices=["table", "csv", "json"], default="table", help="Ausgabeformat"
+    )
+    receipt_unbooked_parser.set_defaults(func=cmd_receipt_unbooked)
+
     # receipt open
     receipt_open_parser = receipt_subparsers.add_parser(
         "open", help="Öffnet Beleg einer Transaktion"
@@ -868,7 +893,11 @@ def main(argv: list[str] | None = None) -> None:
         or (args.command == "setup" and args.set is not None)
         or (args.command == "import" and args.schema)
     )
-    if not db_independent and not Path(args.db).is_file():
+    if (
+        not db_independent
+        and not Path(args.db).is_file()
+        and not (args.command == "receipt" and args.action == "unbooked")
+    ):
         parser.exit(
             1,
             f"Fehler: Datenbank nicht gefunden: {Path(args.db).resolve()}. "

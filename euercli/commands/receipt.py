@@ -1,13 +1,17 @@
+import csv
+import json
 import os
 import platform
 import subprocess
 import sys
+import tomllib
 from datetime import datetime
 from pathlib import Path
 
 from ..config import get_receipt_config, load_config, resolve_receipt_path
 from ..db import get_db_connection
 from ..services.errors import ValidationError
+from ..services.receipts import ScanError, UnbookedResult, find_unbooked_receipts
 
 
 def _load_receipt_config(config: dict):
@@ -29,6 +33,72 @@ def _load_receipt_config(config: dict):
 def _print_checked_paths(paths: list[Path]) -> None:
     for path in paths:
         print(f"      - {path}")
+
+
+def cmd_receipt_unbooked(args):
+    """Zeigt Belegdateien ohne zugeordnete aktive Buchung."""
+    try:
+        result = find_unbooked_receipts(
+            Path(args.db), load_config(), args.year or datetime.now().year, args.type
+        )
+    except (OSError, tomllib.TOMLDecodeError) as exc:
+        result = UnbookedResult(
+            year=args.year or datetime.now().year,
+            types=[args.type] if args.type else ["expense", "income"],
+            errors=[ScanError("invalid_config", str(exc))],
+        )
+    if args.format == "json":
+        print(json.dumps(result.to_dict(), ensure_ascii=False))
+    elif args.format == "csv":
+        if result.scan_complete:
+            writer = csv.writer(sys.stdout)
+            writer.writerow(["type", "path", "receipt_name", "size_bytes", "modified_at"])
+            for item in result.unbooked_files:
+                writer.writerow(
+                    [item.type, item.path, item.receipt_name, item.size_bytes, item.modified_at]
+                )
+        _print_unbooked_diagnostics(result, sys.stderr)
+    elif result.scan_complete:
+        labels = {"expense": "Ausgaben", "income": "Einnahmen"}
+        kinds = ", ".join(labels[kind] for kind in result.types)
+        print(f"Belegdateien ohne zugeordnete Buchung {result.year} ({kinds})")
+        print("=" * 50)
+        for item in result.unbooked_files:
+            print(f"{item.path:<60} {item.size_bytes} Bytes")
+        print(f"\nBerücksichtigte Belegdateien: {result.total_files}")
+        print(f"Davon referenziert:          {result.referenced_files}")
+        print(f"Ohne Zuordnung:              {result.unbooked_count}")
+        print(f"Übersprungene Einträge:      {result.skipped_count}")
+        print("Prüfstatus: vollständig")
+        _print_unbooked_diagnostics(result, sys.stdout)
+        print("\nPrüfe zuerst bestehende Buchungen und die Ablage im Zahlungsjahr.")
+        print("Ordne vorhandenen Buchungen den Beleg mit 'update ... --receipt ...' zu.")
+        print("Lege nur für noch nicht erfasste Vorgänge eine neue Buchung an.")
+    else:
+        print("Prüfstatus: unvollständig", file=sys.stderr)
+        _print_unbooked_diagnostics(result, sys.stderr)
+    if not result.scan_complete:
+        sys.exit(2)
+    if result.unbooked_count:
+        sys.exit(1)
+
+
+def _print_unbooked_diagnostics(result, stream):
+    for item in result.skipped_entries:
+        print(f"Übersprungen ({item.reason}): {item.path}", file=stream)
+    for item in result.warnings:
+        print(
+            f"Warnung ({item.code}, {item.type} #{item.record_id}): {item.message} {item.path or ''}",
+            file=stream,
+        )
+    for item in result.errors:
+        print(f"Fehler ({item.code}): {item.message} {item.path or ''}", file=stream)
+    if result.scan_complete and stream is sys.stderr:
+        print(
+            f"Belegdateien: {result.total_files}; referenziert: {result.referenced_files}; "
+            f"ohne Zuordnung: {result.unbooked_count}; übersprungen: {result.skipped_count}",
+            file=stream,
+        )
 
 
 def cmd_receipt_check(args):

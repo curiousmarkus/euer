@@ -23,7 +23,7 @@ from .list import (
 )
 from .private_summary import cmd_private_summary
 from .query import cmd_query
-from .receipt import cmd_receipt_check, cmd_receipt_open
+from .receipt import cmd_receipt_check, cmd_receipt_open, cmd_receipt_unbooked
 from .reconcile import cmd_reconcile_private
 from .restore import cmd_restore
 from .setup import cmd_setup
@@ -60,6 +60,7 @@ __all__ = [
     "cmd_reconcile_private",
     "cmd_receipt_check",
     "cmd_receipt_open",
+    "cmd_receipt_unbooked",
     "cmd_restore",
     "cmd_setup",
     "cmd_summary",
