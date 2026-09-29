@@ -8,7 +8,7 @@ Für Installationen ab 0.8.1 ergänzen sie die normale Update-Sequenz aus der
 pipx upgrade euer
 euer doctor
 # Skill vollständig aus dem Bundle-Pfad installieren und neu laden
-euer setup --set skill.version "1.1.3"
+euer setup --set skill.version "1.1.4"
 euer init
 euer incomplete list
 euer summary --year 2026
@@ -39,8 +39,13 @@ Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
 „Agenten-Dateien“. Die wiederkehrende Prozedur beschreibt der
 [Installationsreferenz](skills/euer-buchhaltung/references/installation_and_setup.md#agenten-dateien-aktualisieren).
 
-## Unveröffentlicht
+## 0.12.0
 
+- **DATEV-Export und Kanzlei-Übergabe:** Offizielle Unterstützung und Dokumentation
+  des Add-ons `euer-datev` (EXTF-700 Format / Kategorie 21 für SKR 03 und SKR 04)
+  über den Befehl `euer datev`. Der Skill enthält ab Version 1.1.4 die neue Referenz
+  `references/datev_export.md` sowie Arbeitsanweisungen für Agenten zur Vorab-Validierung
+  und Kanzleiübergabe.
 - **Belegdateien ohne zugeordnete Buchung (Spec 017):** Neuer lesender Befehl
   `euer receipt unbooked --year JAHR [--type expense|income] [--format table|csv|json]`.
   Er scannt die konfigurierten Jahresordner, gleicht aktive Buchungen über die
@@ -49,13 +54,12 @@ Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
   2: Prüfung fehlgeschlagen. Treffer vor einer Neubuchung mit bestehenden
   Buchungen und der Ablage im Zahlungsjahr abgleichen. Ein leerer Scan belegt
   keine vollständige Buchhaltung. Keine DB- oder Config-Migration erforderlich.
-  Das Feature erfordert beim Veröffentlichen einen MINOR-Release.
-- Ausgaben und Einnahmen können eine optionale Rechnungsnummer speichern.
-  `add`/`update` verwenden `--invoice-number`; CSV-/JSONL-Import erkennt
-  `invoice_number` und `Rechnungsnummer`. Listen-CSV und CSV-/XLSX-Exporte
-  ergänzen die Spalte; im Export steht sie direkt hinter dem Rechnungsdatum.
-  Gleiche Nummer, Gegenpartei und Betrag lösen auch über größere Datumsabstände
-  eine Dublettenprüfung aus (`--allow-duplicate` für belegte Ausnahmen).
+- **Optionale Rechnungsnummer (Spec 025):** Ausgaben und Einnahmen können eine
+  optionale Rechnungsnummer speichern. `add`/`update` verwenden `--invoice-number`;
+  CSV-/JSONL-Import erkennt `invoice_number` und `Rechnungsnummer`. Listen-CSV und
+  CSV-/XLSX-Exporte ergänzen die Spalte; im Export steht sie direkt hinter dem
+  Rechnungsdatum. Gleiche Nummer, Gegenpartei und Betrag lösen auch über größere
+  Datumsabstände eine Dublettenprüfung aus (`--allow-duplicate` für belegte Ausnahmen).
   Wenn nur eine Buchung eine Nummer hat, können auch Rechnungsdatum oder
   Belegname bei gleicher Gegenpartei und gleichem Betrag ein Duplikat anzeigen.
   Beim CSV-/JSONL-Import bricht ein solcher Verdachtsfall den gesamten Lauf mit
@@ -67,8 +71,8 @@ Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
   ausführen (vorher bei Bedarf `euer init --dry-run`). Migration 009 ergänzt
   beide Tabellen ohne Änderung bestehender Buchungen. Alte Nummern werden
   nicht automatisch aus Belegdateien übernommen. Keine Config-Migration.
-- **Agenten-Dateien:** Skill und Referenzen auf 1.1.3 aktualisieren, neu laden
-  und mit `euer setup --set skill.version "1.1.3"` bestätigen. Das persönliche
+- **Agenten-Dateien:** Skill und Referenzen auf 1.1.4 aktualisieren, neu laden
+  und mit `euer setup --set skill.version "1.1.4"` bestätigen. Das persönliche
   Mandanten-Dossier bleibt unverändert.
 
 ## 0.11.1

@@ -2,7 +2,7 @@
 name: euer-buchhaltung
 description: "Nutze diesen Skill für deutsche EÜR-Buchhaltung mit euer: Rechnungen und Belege buchen, Kontoauszüge einlesen und abgleichen, Einnahmen, Ausgaben und Privatvorgänge erfassen, Buchungen korrigieren, Belege prüfen, EÜR und UStVA auswerten oder die Buchhaltung einrichten. Gilt auch für allgemeine Agenten ohne separate Buchhalter-Rolle."
 metadata:
-  version: "1.1.3"
+  version: "1.1.4"
 ---
 
 # EÜR Buchhaltung
@@ -24,7 +24,7 @@ gehören in das persönliche Mandanten-Dossier (`AGENTS.md`), nicht in den Skill
 
 Nach einem Update lies die neue `SKILL.md` und benötigte Referenzen oder beginne
 eine neue Sitzung. Bestätige **erst danach** die Version aus deiner tatsächlich
-geladenen `SKILL.md` mit `euer setup --set skill.version "1.1.3"`.
+geladenen `SKILL.md` mit `euer setup --set skill.version "1.1.4"`.
 Die Bestätigung ist eine Selbstauskunft. Bei fehlenden Update-Rechten informiere
 den Nutzer; `--ignore-skill-version` ermöglicht einen einzelnen CLI-Aufruf.
 
