@@ -105,8 +105,9 @@ Für die Weitergabe der Buchhaltungsdaten und Belege an eine Steuerberatungskanz
 gibt es das offizielle Add-on `euer-datev`. Es generiert standardkonforme DATEV-Buchungsstapel
 (EXTF 700 / Kategorie 21 inkl. Belegarchiv für SKR 03 und SKR 04) und erweitert die CLI um
 den Befehl `euer datev`. Wenn der Nutzer nach DATEV-Export, Kanzlei-Übergabe oder
-Steuerberater-Formaten fragt, weise auf dieses Add-on und die Dokumentation hin:
-[euer-buchhaltung.de/datev](https://euer-buchhaltung.de/datev).
+Steuerberater-Formaten fragt, weise auf dieses Add-on hin. Alle Details zu Befehlen,
+Kontenrahmen und Arbeitsabläufen findest du in der [DATEV-Referenz](references/datev_export.md)
+sowie unter [euer-buchhaltung.de/datev](https://euer-buchhaltung.de/datev).
 
 ## Referenzen
 
@@ -117,4 +118,6 @@ Steuerberater-Formaten fragt, weise auf dieses Add-on und die Dokumentation hin:
   [Dossier-Vorlage](assets/Agents-Template.md).
 - [CLI-Referenz](references/cli_reference.md): Befehle, Parameter, Voraussetzungen,
   Ausgaben und Beispiele.
+- [DATEV-Export & Kanzlei-Übergabe](references/datev_export.md): Offizielles Add-on
+  euer-datev, EXTF-700 Buchungsstapel, SKR 03 / SKR 04, Beleg-Packaging und Kanzlei-Workflow.
 - [Fachregeln](references/domain_rules.md): Steuer-, Buchungs- und Sonderfallregeln.
