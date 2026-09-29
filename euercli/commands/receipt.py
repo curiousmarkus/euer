@@ -51,7 +51,7 @@ def cmd_receipt_unbooked(args):
         print(json.dumps(result.to_dict(), ensure_ascii=False))
     elif args.format == "csv":
         if result.scan_complete:
-            writer = csv.writer(sys.stdout)
+            writer = csv.writer(sys.stdout, lineterminator="\n")
             writer.writerow(["type", "path", "receipt_name", "size_bytes", "modified_at"])
             for item in result.unbooked_files:
                 writer.writerow(

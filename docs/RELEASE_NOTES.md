@@ -39,7 +39,7 @@ Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
 „Agenten-Dateien“. Die wiederkehrende Prozedur beschreibt der
 [Installationsreferenz](skills/euer-buchhaltung/references/installation_and_setup.md#agenten-dateien-aktualisieren).
 
-## 0.12.2
+## 0.12.3
 
 - **DATEV-Export und Kanzlei-Übergabe:** Offizielle Unterstützung und Dokumentation
   des Add-ons `euer-datev` (EXTF-700 Format / Kategorie 21 für SKR 03 und SKR 04)

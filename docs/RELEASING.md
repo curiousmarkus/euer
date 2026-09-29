@@ -47,7 +47,11 @@ Dieses Dokument beschreibt den verbindlichen Release-Prozess für `euer`. Es ric
 - **Problem:** Unter Linux und macOS sind Zeichen wie `"` in Dateinamen erlaubt (z. B. `a,"b.pdf`). Unter Windows (NTFS) ist `"` streng verboten und führt zu `OSError: [Errno 22] Invalid argument`.
 - **Lösung:** In Testfällen (z. B. für CSV-Escaping) unter Windows auf erlaubte Sonderzeichen wie Kommas (`a,b.pdf`) ausweichen oder plattformabhängig verzweigen (`if platform.system() == "Windows"`).
 
-### D. Skill-Versionen synchron halten
+### D. CSV-Zeilenenden unter Windows (`lineterminator="\n"`)
+- **Problem:** Python's `csv.writer` verwendet standardmäßig `\r\n`. Schreibt dieser auf `sys.stdout` unter Windows, übersetzt die Windows-Laufzeitumgebung das `\n` nochmals zu `\r\n`, was zu doppelten Wagenrückläufen (`\r\r\n`) und leeren Zeilen führt.
+- **Lösung:** Bei allen CSV-Ausgaben auf die Standardausgabe immer explizit `csv.writer(sys.stdout, lineterminator="\n")` verwenden.
+
+### E. Skill-Versionen synchron halten
 - Bei Änderungen am AI-Agent-Skill (`docs/skills/euer-buchhaltung/`) muss die Skill-Version synchron in folgenden Dateien erhöht werden:
   1. `docs/skills/euer-buchhaltung/SKILL.md` (YAML-Frontmatter `version` und Hinweistext)
   2. `docs/skills/euer-buchhaltung/references/cli_reference.md`

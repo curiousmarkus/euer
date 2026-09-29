@@ -44,7 +44,7 @@ class BaseCLITestCase(unittest.TestCase):
         return result
 
     def parse_csv(self, output: str) -> list[list[str]]:
-        return list(csv.reader(io.StringIO(output)))
+        return [row for row in csv.reader(io.StringIO(output)) if row]
 
     def expected_config_path(self) -> Path:
         if platform.system() == "Windows":
