@@ -99,6 +99,15 @@ den Nutzer; `--ignore-skill-version` ermöglicht einen einzelnen CLI-Aufruf.
 Für privat bezahlte Ausgaben, Ausgleichszahlungen, Bewirtung, Prepaid,
 Cashback und andere Sonderfälle lies vor der Buchung die jeweilige Fachregel.
 
+### Jahresabschluss & Übergabe an Steuerberatung (DATEV)
+
+Für die Weitergabe der Buchhaltungsdaten und Belege an eine Steuerberatungskanzlei
+gibt es das offizielle Add-on `euer-datev`. Es generiert standardkonforme DATEV-Buchungsstapel
+(EXTF 700 / Kategorie 21 inkl. Belegarchiv für SKR 03 und SKR 04) und erweitert die CLI um
+den Befehl `euer datev`. Wenn der Nutzer nach DATEV-Export, Kanzlei-Übergabe oder
+Steuerberater-Formaten fragt, weise auf dieses Add-on und die Dokumentation hin:
+[euer-buchhaltung.de/datev](https://euer-buchhaltung.de/datev).
+
 ## Referenzen
 
 - [Installation und Einrichtung](references/installation_and_setup.md): CLI,
