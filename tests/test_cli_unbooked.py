@@ -11,7 +11,7 @@ class CLIUnbookedTestCase(BaseCLITestCase):
         self.income = self.receipts / "2026" / "Einnahmen"
         self.expenses.mkdir(parents=True)
         self.income.mkdir()
-        self.write_config(f'[receipts]\nroot = "{self.receipts}"\n')
+        self.write_config(f"[receipts]\nroot = '{self.receipts.as_posix()}'\n")
 
     def scan(self, *options):
         response = self.run_cli(
@@ -149,8 +149,8 @@ class CLIUnbookedTestCase(BaseCLITestCase):
         custom.mkdir(parents=True)
         (custom / "invoice.webp").write_bytes(b"x")
         self.write_config(
-            f'[receipts]\nroot = "{alias}"\nyear_dir = "Buchhaltung {{year}}"\n'
-            'expenses_dir = "Kosten"\n'
+            f"[receipts]\nroot = '{alias.as_posix()}'\nyear_dir = 'Buchhaltung {{year}}'\n"
+            "expenses_dir = 'Kosten'\n"
         )
         response, data = self.scan("--type", "expense")
         self.assertEqual(response.returncode, 1)
@@ -161,7 +161,7 @@ class CLIUnbookedTestCase(BaseCLITestCase):
         self.assertEqual(response.returncode, 0)
         self.assertTrue(data["scan_complete"])
         self.assertEqual(data["total_files"], 0)
-        self.write_config('[receipts]\nroot = "somewhere"\nyear_dir = "wrong"\n')
+        self.write_config("[receipts]\nroot = 'somewhere'\nyear_dir = 'wrong'\n")
         response, data = self.scan("--type", "expense")
         self.assertEqual(response.returncode, 2)
         self.assertEqual(data["errors"][0]["code"], "invalid_config")
@@ -208,6 +208,13 @@ class CLIUnbookedTestCase(BaseCLITestCase):
         self.assertNotIn("Prüfe zuerst bestehende Buchungen", response_zero.stdout)
 
     def test_case_insensitive_filesystem_and_extensionless_matching(self):
+        probe = self.root / ".fs_probe"
+        probe.write_text("x")
+        is_case_insensitive = (self.root / ".FS_PROBE").exists()
+        probe.unlink(missing_ok=True)
+        if not is_case_insensitive:
+            self.skipTest("Dateisystem unterscheidet Groß-/Kleinschreibung")
+
         (self.expenses / "2026-01-15_Telekom.PDF").write_bytes(b"telekom")
         self.add_expense(receipt="2026-01-15_Telekom")
         response, data = self.scan("--type", "expense")
