@@ -66,7 +66,8 @@ Weitere Informationen zur Teststrategie stehen in [`TESTING.md`](TESTING.md).
 - Datenbankabfragen sind parametrisiert und jede Änderung wird im Audit-Log erfasst.
 - Bei implementierten Specs wird ihr Status aktualisiert, ebenso die Spec-Tabelle in
   `DEVELOPMENT.md`.
-- Prüfe bei jeder Änderung die betroffene Nutzer-, Entwickler- und Release-Dokumentation.
+- Prüfe bei jeder Änderung die betroffene Nutzer-, Entwickler- und Release-Dokumentation
+  (siehe [`docs/RELEASING.md`](docs/RELEASING.md)).
 
 Die vollständigen verbindlichen Regeln und die Checkliste stehen in
 [`DEVELOPMENT.md`](DEVELOPMENT.md).

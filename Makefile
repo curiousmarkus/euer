@@ -1,4 +1,4 @@
-.PHONY: build bump-major bump-minor bump-patch clean coverage format install install-pipx lint release-check test
+.PHONY: build bump-major bump-minor bump-patch clean coverage format install install-pipx lint release-check release-verify test
 
 VENV := .venv
 PYTHON := $(VENV)/bin/python
@@ -47,6 +47,11 @@ build:
 # Validate the tag, canonical version, main ancestry and release notes.
 release-check:
 	$(PYTHON) -m scripts.release_check --tag v$(VERSION) --main-ref main
+
+# Full pre-flight verification before tagging (lint, test, build, verify-artifacts, release-check against HEAD)
+release-verify: lint test build
+	$(PYTHON) -m scripts.verify_artifacts dist
+	$(PYTHON) -m scripts.release_check --tag v$(VERSION) --main-ref HEAD
 
 # Versioning
 bump-patch:

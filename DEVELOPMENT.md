@@ -430,24 +430,45 @@ Es kann auch bequem über `make bump-patch` (bzw. `bump-minor`, `bump-major`) au
 
 ### Pflicht vor jedem Release
 
+> [!IMPORTANT]
+> Der vollständige, verbindliche Leitfaden inklusive aller Best Practices, Plattform-Besonderheiten
+> und Recovery-Schritte ist in [`docs/RELEASING.md`](docs/RELEASING.md) dokumentiert.
+
 1. Passenden SemVer-Bump festlegen.
-2. Version ausschließlich in `euercli/__init__.py` erhöhen (bevorzugt via Script/Make).
+2. Version ausschließlich in `euercli/__init__.py` erhöhen (bevorzugt via `make bump-patch` / `bump-minor` / `bump-major`).
 3. Sicherstellen, dass die gebauten Paketmetadaten diese kanonische Version übernehmen.
 4. Einen neuen Abschnitt in `docs/RELEASE_NOTES.md` anlegen; niemals einen bereits
    veröffentlichten Abschnitt um neue Änderungen ergänzen.
 5. Bei Nutzer-, Schema-, CLI-, Import-/Export-, Steuerlogik- oder Agenten-Änderungen
    konkrete Upgrade- und Migrationsschritte ergänzen.
-6. `make test`, `make lint` und `make build` erfolgreich ausführen; anschließend den
-   Artefakt-Smoke-Test mit `.venv/bin/python -m scripts.verify_artifacts dist` ausführen.
-7. Den Release-Commit auf `main` bringen, einen annotierten Tag passend zur
-   kanonischen Version erstellen und lokal mit `make release-check` prüfen:
+6. Vorab-Prüfung lokal mit einem einzigen Befehl ausführen:
+
+   ```bash
+   make release-verify
+   ```
+
+   Dies führt Linting, Tests, Build, `verify_artifacts` und `release_check` auf `HEAD` aus.
+7. Den Release-Commit auf `main` bringen:
 
    ```bash
    release_version=$(.venv/bin/python -c 'from euercli import VERSION; print(VERSION)')
+   git commit -am "chore(release): prepare v${release_version}"
+   ```
+
+8. **Zuerst `main` pushen, dann den Tag:**
+
+   ```bash
+   git push origin main
    git tag -a "v${release_version}" -m "Release v${release_version}"
-   make release-check
    git push origin "v${release_version}"
    ```
+
+   > [!WARNING]
+   > Das Pushen von `main` vor dem Tag ist zwingend erforderlich, da GitHub Actions
+   > prüft, ob der Tag-Commit bereits Teil von `origin/main` ist (`validate_main_ancestry`).
+   > Da GitHub-Tags (`refs/tags/v*`) geschützt sind, kann ein einmal gepushter Tag weder
+   > gelöscht noch force-gepusht werden. Ein Fehlschlag nach Tag-Erstellung erfordert
+   > einen neuen PATCH-Bump!
 
    Das Pushen des geschützten Tags ist die einzige reguläre manuelle Veröffentlichung.
    Die Pipeline validiert den Tag, baut Wheel und sdist genau einmal, prüft dieselben
@@ -457,9 +478,11 @@ Es kann auch bequem über `make bump-patch` (bzw. `bump-minor`, `bump-major`) au
 
 ### Recovery-Runbook
 
+Details stehen im [Recovery-Runbook in `docs/RELEASING.md`](docs/RELEASING.md#6-recovery-runbook-was-tun-bei-fehlern).
+Kurzüberblick:
 - Schlägt `validate`, `test`, `build` oder `verify-artifacts` fehl, gibt es noch
-  keinen externen Upload. Ursache beheben und Release-Prozess mit korrigierter
-  Version bzw. korrigiertem Tag erneut vorbereiten.
+  keinen externen Upload. Ursache beheben und Release-Prozess mit neuem PATCH-Tag
+  vorbereiten (da `v*`-Tags auf GitHub geschützt sind und nicht überschrieben werden können).
 - Schlägt `github-draft` fehl, darf der Job desselben Laufs wiederholt werden. Ein
   vorhandener Draft wird aktualisiert; ein bereits veröffentlichtes Release wird nie
   überschrieben.

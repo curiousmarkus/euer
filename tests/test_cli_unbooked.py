@@ -1,4 +1,5 @@
 import json
+import platform
 
 from tests.cli_test_base import BaseCLITestCase
 
@@ -132,14 +133,15 @@ class CLIUnbookedTestCase(BaseCLITestCase):
         self.assertFalse(self.db_path.exists())
 
     def test_csv_only_contains_rows_and_diagnostics_use_stderr(self):
-        (self.expenses / 'a,"b.pdf').write_bytes(b"x")
+        filename = "a,b.pdf" if platform.system() == "Windows" else 'a,"b.pdf'
+        (self.expenses / filename).write_bytes(b"x")
         response = self.run_cli(
             ["receipt", "unbooked", "--year", "2026", "--type", "expense", "--format", "csv"]
         )
         self.assertEqual(response.returncode, 1)
         rows = self.parse_csv(response.stdout)
         self.assertEqual(rows[0], ["type", "path", "receipt_name", "size_bytes", "modified_at"])
-        self.assertEqual(rows[1][2], 'a,"b.pdf')
+        self.assertEqual(rows[1][2], filename)
         self.assertIn("ohne Zuordnung: 1", response.stderr)
 
     def test_custom_year_dir_and_root_symlink(self):
