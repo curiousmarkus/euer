@@ -41,7 +41,7 @@ def cmd_receipt_unbooked(args):
         result = find_unbooked_receipts(
             Path(args.db), load_config(), args.year or datetime.now().year, args.type
         )
-    except (OSError, tomllib.TOMLDecodeError) as exc:
+    except (ValidationError, OSError, tomllib.TOMLDecodeError) as exc:
         result = UnbookedResult(
             year=args.year or datetime.now().year,
             types=[args.type] if args.type else ["expense", "income"],
@@ -64,16 +64,18 @@ def cmd_receipt_unbooked(args):
         print(f"Belegdateien ohne zugeordnete Buchung {result.year} ({kinds})")
         print("=" * 50)
         for item in result.unbooked_files:
-            print(f"{item.path:<60} {item.size_bytes} Bytes")
+            size_kb = max(1, round(item.size_bytes / 1024)) if item.size_bytes > 0 else 0
+            print(f"{item.path:<48} {size_kb:>6} KB")
         print(f"\nBerücksichtigte Belegdateien: {result.total_files}")
         print(f"Davon referenziert:          {result.referenced_files}")
         print(f"Ohne Zuordnung:              {result.unbooked_count}")
         print(f"Übersprungene Einträge:      {result.skipped_count}")
         print("Prüfstatus: vollständig")
         _print_unbooked_diagnostics(result, sys.stdout)
-        print("\nPrüfe zuerst bestehende Buchungen und die Ablage im Zahlungsjahr.")
-        print("Ordne vorhandenen Buchungen den Beleg mit 'update ... --receipt ...' zu.")
-        print("Lege nur für noch nicht erfasste Vorgänge eine neue Buchung an.")
+        if result.unbooked_count:
+            print("\nPrüfe zuerst bestehende Buchungen und die Ablage im Zahlungsjahr.")
+            print("Ordne vorhandenen Buchungen den Beleg mit 'update ... --receipt ...' zu.")
+            print("Lege nur für noch nicht erfasste Vorgänge eine neue Buchung an.")
     else:
         print("Prüfstatus: unvollständig", file=sys.stderr)
         _print_unbooked_diagnostics(result, sys.stderr)
@@ -87,12 +89,14 @@ def _print_unbooked_diagnostics(result, stream):
     for item in result.skipped_entries:
         print(f"Übersprungen ({item.reason}): {item.path}", file=stream)
     for item in result.warnings:
+        suffix = f" {item.path}" if item.path else ""
         print(
-            f"Warnung ({item.code}, {item.type} #{item.record_id}): {item.message} {item.path or ''}",
+            f"Warnung ({item.code}, {item.type} #{item.record_id}): {item.message}{suffix}",
             file=stream,
         )
     for item in result.errors:
-        print(f"Fehler ({item.code}): {item.message} {item.path or ''}", file=stream)
+        suffix = f" {item.path}" if item.path else ""
+        print(f"Fehler ({item.code}): {item.message}{suffix}", file=stream)
     if result.scan_complete and stream is sys.stderr:
         print(
             f"Belegdateien: {result.total_files}; referenziert: {result.referenced_files}; "

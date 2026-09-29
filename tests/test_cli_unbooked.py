@@ -183,6 +183,50 @@ class CLIUnbookedTestCase(BaseCLITestCase):
         self.assertEqual(data["total_files"], 0)
         self.assertEqual(data["skipped_entries"][0]["reason"], "symlink")
 
+    def test_table_format_output_with_hits_and_zero_hits(self):
+        (self.expenses / "test_doc.pdf").write_bytes(b"x" * 2048)
+        response = self.run_cli(
+            ["receipt", "unbooked", "--year", "2026", "--type", "expense", "--format", "table"]
+        )
+        self.assertEqual(response.returncode, 1)
+        self.assertIn("Belegdateien ohne zugeordnete Buchung 2026 (Ausgaben)", response.stdout)
+        self.assertIn("2026/Ausgaben/test_doc.pdf", response.stdout)
+        self.assertIn("2 KB", response.stdout)
+        self.assertIn("Berücksichtigte Belegdateien: 1", response.stdout)
+        self.assertIn("Ohne Zuordnung:              1", response.stdout)
+        self.assertIn("Prüfe zuerst bestehende Buchungen", response.stdout)
+
+        # Buchung hinzufügen -> 0 Treffer
+        self.add_expense(receipt="test_doc.pdf")
+        response_zero = self.run_cli(
+            ["receipt", "unbooked", "--year", "2026", "--type", "expense", "--format", "table"]
+        )
+        self.assertEqual(response_zero.returncode, 0)
+        self.assertIn("Berücksichtigte Belegdateien: 1", response_zero.stdout)
+        self.assertIn("Davon referenziert:          1", response_zero.stdout)
+        self.assertIn("Ohne Zuordnung:              0", response_zero.stdout)
+        self.assertNotIn("Prüfe zuerst bestehende Buchungen", response_zero.stdout)
+
+    def test_case_insensitive_filesystem_and_extensionless_matching(self):
+        (self.expenses / "2026-01-15_Telekom.PDF").write_bytes(b"telekom")
+        self.add_expense(receipt="2026-01-15_Telekom")
+        response, data = self.scan("--type", "expense")
+        self.assertEqual(response.returncode, 0)
+        self.assertEqual(data["referenced_files"], 1)
+        self.assertEqual(data["unbooked_count"], 0)
+
+    def test_reference_over_symlink_warns(self):
+        outside = self.root / "outside"
+        outside.mkdir()
+        (outside / "invoice.pdf").write_bytes(b"content")
+        (self.expenses / "sublink").symlink_to(outside, target_is_directory=True)
+        self.add_expense(receipt="sublink/invoice.pdf")
+        response, data = self.scan("--type", "expense")
+        self.assertEqual(response.returncode, 0)
+        self.assertEqual(data["total_files"], 0)
+        warning_codes = [w["code"] for w in data["warnings"]]
+        self.assertIn("invalid_receipt_reference", warning_codes)
+
 
 if __name__ == "__main__":
     import unittest

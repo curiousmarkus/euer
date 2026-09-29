@@ -149,6 +149,8 @@ def find_unbooked_receipts(
             result.errors.append(
                 ScanError(code, f"Beleg-Root nicht als Ordner verfügbar: {root}", path=str(root))
             )
+            _sort_diagnostics(result)
+            result.skipped_count = len(result.skipped_entries)
             return result
         year_dir = root / receipt_config.year_dir.format(year=year)
         directories = {}
@@ -163,6 +165,8 @@ def find_unbooked_receipts(
             directories[kind] = directory
     except (ValidationError, OSError, ValueError, TypeError, AttributeError) as exc:
         result.errors.append(ScanError("invalid_config", str(exc)))
+        _sort_diagnostics(result)
+        result.skipped_count = len(result.skipped_entries)
         return result
 
     files: dict[str, dict[Path, ReceiptFile]] = {kind: {} for kind in types}
@@ -198,6 +202,12 @@ def find_unbooked_receipts(
         result.skipped_count = len(result.skipped_entries)
         return result
 
+    case_map: dict[str, dict[str, list[Path]]] = {kind: {} for kind in types}
+    for kind in types:
+        for p in files[kind]:
+            rel_lower = p.relative_to(root).as_posix().lower()
+            case_map[kind].setdefault(rel_lower, []).append(p)
+
     referenced: dict[str, set[Path]] = {kind: set() for kind in types}
     try:
         with closing(get_db_connection(db_path, read_only=True)) as conn:
@@ -214,7 +224,13 @@ def find_unbooked_receipts(
                 for row in rows:
                     name = row["receipt_name"]
                     parts = Path(name).parts
-                    invalid = Path(name).is_absolute() or ".." in parts or "\\" in name
+                    invalid = (
+                        Path(name).is_absolute()
+                        or name.startswith(("/", "\\"))
+                        or (len(name) > 1 and name[1] == ":")
+                        or ".." in parts
+                        or "\\" in name
+                    )
                     if invalid:
                         result.warnings.append(
                             ScanWarning(
@@ -254,8 +270,21 @@ def find_unbooked_receipts(
                         )
                         continue
                     normalized_found = found.resolve()
+                    target_path: Path | None = None
                     if normalized_found in files[kind]:
-                        referenced[kind].add(normalized_found)
+                        target_path = normalized_found
+                    else:
+                        try:
+                            rel_lower = normalized_found.relative_to(root).as_posix().lower()
+                            for cand in case_map[kind].get(rel_lower, []):
+                                if cand.samefile(normalized_found):
+                                    target_path = cand
+                                    break
+                        except (ValueError, OSError):
+                            pass
+
+                    if target_path is not None:
+                        referenced[kind].add(target_path)
                         if not row["payment_date"]:
                             result.warnings.append(
                                 ScanWarning(
@@ -263,7 +292,7 @@ def find_unbooked_receipts(
                                     "Zahlungsjahr vorläufig: Wertstellungsdatum fehlt.",
                                     kind,
                                     row["id"],
-                                    files[kind][normalized_found].path,
+                                    files[kind][target_path].path,
                                 )
                             )
     except (sqlite3.Error, OSError, ValidationError) as exc:
