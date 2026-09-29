@@ -39,13 +39,15 @@ Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
 „Agenten-Dateien“. Die wiederkehrende Prozedur beschreibt der
 [Installationsreferenz](skills/euer-buchhaltung/references/installation_and_setup.md#agenten-dateien-aktualisieren).
 
-## 0.12.0
+## 0.12.1
 
 - **DATEV-Export und Kanzlei-Übergabe:** Offizielle Unterstützung und Dokumentation
   des Add-ons `euer-datev` (EXTF-700 Format / Kategorie 21 für SKR 03 und SKR 04)
   über den Befehl `euer datev`. Der Skill enthält ab Version 1.1.4 die neue Referenz
   `references/datev_export.md` sowie Arbeitsanweisungen für Agenten zur Vorab-Validierung
   und Kanzleiübergabe.
+- **Plattform- und Testkompatibilität:** Robuste Pfadmaskierung in der TOML-Konfiguration
+  unter Windows und Prüfung der Dateisystem-Semantik beim Belegabgleich.
 - **Belegdateien ohne zugeordnete Buchung (Spec 017):** Neuer lesender Befehl
   `euer receipt unbooked --year JAHR [--type expense|income] [--format table|csv|json]`.
   Er scannt die konfigurierten Jahresordner, gleicht aktive Buchungen über die
