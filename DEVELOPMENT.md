@@ -354,7 +354,7 @@ Offene Change Requests werden innerhalb der jeweiligen Spec dokumentiert.
 | 023 | Nachvollziehbarer Entscheidungsnachweis für Buchungen | Offen |
 | 024 | Versionierter Regelkatalog für Entscheidungsnachweise | Offen |
 | 025 | Optionale Rechnungsnummer | Implementiert |
-| 026 | Innergemeinschaftlicher Warenerwerb (§ 1a UStG) und erweiterte Steuersachverhalte | Offen |
+| 026 | Innergemeinschaftlicher Warenerwerb und OSS-Erlöse | Offen |
 
 ### Agenten-Dateien und Mandantendaten
 

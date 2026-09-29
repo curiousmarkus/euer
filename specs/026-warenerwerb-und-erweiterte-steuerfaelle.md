@@ -1,166 +1,196 @@
-# Spec 026: Innergemeinschaftlicher Warenerwerb (§ 1a UStG) und erweiterte Steuersachverhalte
+# Spec 026: Innergemeinschaftlicher Warenerwerb und OSS-Erlöse
 
 ## Status
 
 Offen
 
-## Ziel
+## Ziel und Umfang
 
-`euer` soll den **innergemeinschaftlichen Erwerb von Gegenständen (physische Waren, Hardware, Arbeitsmittel aus der EU)** nach § 1a UStG formal, rechnerisch und melderechtlich sauber von grenzüberschreitenden Dienstleistungen (Reverse Charge nach § 13b UStG) trennen.
+`euer` trennt den innergemeinschaftlichen Erwerb von Gegenständen nach § 1a UStG
+von bezogenen Dienstleistungen nach § 13b UStG. Es erfasst außerdem Erlöse, die
+über die EU-Regelung des One-Stop-Shop (OSS) nach § 18j UStG erklärt werden,
+ohne sie als deutsche Umsatzsteuer in der UStVA auszuweisen.
 
-Zusätzlich definiert dieser Spec die Erweiterbarkeit des Datenmodells für weitere steuerliche Sonderfälle (wie Bauleistungen nach § 13b Abs. 2 Nr. 4 UStG und One-Stop-Shop/OSS-Erlöse).
+Die EÜR-Buchung bleibt eine Abbildung des tatsächlichen EUR-Zahlungsflusses.
+Umsatzsteuerliche Ereignisse werden mit eigener Bemessungsgrundlage, Periode und
+Klassifikation nachvollziehbar erfasst. Dieser Spec ist unabhängig von Spec 024
+(Regelkatalog). Die fachliche Einordnung erfolgt anhand von Beleg,
+Mandantenstatus und Zeitraum; die CLI prüft Widersprüche und fehlende Angaben.
 
-Dieser Spec ist **vollständig unabhängig von Spec 024 (Regelkatalog)** und bildet die fachliche und technische Grundlage im Kern von `euer`.
+## Fachliche Grundlagen
 
----
+### EÜR und Umsatzsteuer verwenden unterschiedliche Zeitpunkte
 
-## Motivation & Rechtliche Grundlagen
+Für die EÜR gilt grundsätzlich der Abfluss im Jahr der Zahlung (§ 11 Abs. 2 EStG),
+vorbehaltlich gesetzlicher Ausnahmen und der Behandlung von Anlagevermögen. Bei
+einem innergemeinschaftlichen Erwerb entsteht die Erwerbsteuer dagegen mit
+Ausstellung der Rechnung, spätestens mit Ablauf des Kalendermonats nach dem
+Erwerb (§ 13 Abs. 1 Nr. 6 UStG). Anzahlungen werden in der UStVA noch nicht als
+Erwerb eingetragen; die volle Bemessungsgrundlage folgt nach dem Erwerb. Ein
+Zahlungsdatum allein bestimmt die UStVA-Periode daher nicht. Bei Teilzahlungen
+werden mehrere EÜR-Zahlungen mit einem steuerlichen Erwerb verknüpft, statt
+die Erwerbsteuer mehrfach zu melden.
 
-### Das Problem der bisherigen Vereinfachung
-Bislang kennt `euer` für grenzüberschreitende Ausgaben aus der EU lediglich:
-* `rc_type = 'eu'`
-* `vat_code = 'reverse_charge_eu'`
+Das Erwerbsdatum bezeichnet den für den Erwerb maßgeblichen Warenübergang.
+`invoice_date` bezeichnet die Rechnungsausstellung, `payment_date` weiterhin
+den Geldabfluss. Die umsatzsteuerliche Periode wird aus fachlich belegten Daten
+bestimmt und gespeichert. Unklare oder widersprüchliche Angaben erscheinen als
+Prüfbedarf und werden nicht stillschweigend der Zahlungsperiode zugeordnet.
 
-In der Umsatzsteuer-Voranmeldung (Spec 012 `vat-report`) fließen diese Buchungen ausnahmslos in:
-* **Kennziffer 46:** *„Sonstige Leistungen eines im übrigen Gemeinschaftsgebiet ansässigen Unternehmers (§ 13b Abs. 1 UStG)“*
-* **Kennziffer 67:** *„Vorsteuerbeträge aus Leistungen im Sinne des § 13b UStG“*
+### Innergemeinschaftlicher Warenerwerb
 
-### Gesetzliche Notwendigkeit der Differenzierung
-Wenn ein deutscher Unternehmer oder Freiberufler jedoch **physische Gegenstände** (z. B. einen Monitor, Server-Hardware, Bürostühle, Messtechnik oder Werkzeuge) von einem Händler aus einem anderen EU-Land (z. B. Niederlande, Frankreich, Polen) mit seiner deutschen USt-IdNr. umsatzsteuerfrei einkauft, liegt rechtlich **keine sonstige Leistung nach § 13b UStG** vor, sondern ein **Innergemeinschaftlicher Erwerb nach § 1a UStG**.
+Voraussetzungen sind unter anderem die Warenbewegung zwischen Mitgliedstaaten,
+ein Erwerb für das Unternehmen und eine Lieferung durch einen entsprechend
+handelnden Unternehmer (§ 1a Abs. 1 UStG). USt-IdNrn. und ein Hinweis auf eine
+innergemeinschaftliche Lieferung sind wichtige Belege, aber die CLI darf aus
+einem einzelnen Merkmal keine automatische Einordnung ableiten. Ausnahmen,
+etwa die Erwerbsschwelle, neue Fahrzeuge oder verbrauchsteuerpflichtige Waren,
+brauchen eine gesonderte Prüfung.
 
-Das deutsche Umsatzsteuerrecht schreibt dafür separate Zeilen und Kennziffern im UStVA-Vordruck zwingend vor:
+Der EUR-Zahlungsbetrag einer Ausgabe ist wie bisher negativ. Die
+Bemessungsgrundlage des Erwerbs wird separat als positiver Nettobetrag erfasst;
+sie kann bei An-, Teil- oder Restzahlungen vom einzelnen Zahlungsbetrag
+abweichen. Für unterstützte Fälle sind 19 % und 7 % vorgesehen. Der Steuersatz
+muss zum Gegenstand belegt sein und wird nicht allein aus einer EÜR-Kategorie
+abgeleitet.
 
-| Steuerfall | Rechtsnorm | UStVA Bemessungsgrundlage | UStVA Steuer | UStVA Vorsteuer | DATEV SKR03 / SKR04 |
-|---|---|:---:|:---:|:---:|:---:|
-| **B2B-Dienstleistung EU** (Software, Hosting, Lizenzen, Beratung) | § 13b Abs. 1 UStG | **KZ 46** | **KZ 47** | **KZ 67** | Konto `3100` / `5900` (BU `94`) |
-| **Innergemeinschaftlicher Warenerwerb** (Hardware, Gegenstände, Waren) | § 1a UStG | **KZ 89** (19 %) / **KZ 95** (7 %) | **KZ 93** (19 %) / **KZ 98** (7 %) | **KZ 61** | Konto `3425` / `5425` (BU `19`) |
-| **Bauleistungen** (Handwerker/Bau-Subunternehmer) | § 13b Abs. 2 Nr. 4 UStG | **KZ 84** | **KZ 85** | **KZ 67** | Konto `3120` / `5920` (BU `84`) |
+Die Erwerbsteuer wird aus der Bemessungsgrundlage berechnet. Bei
+Regelbesteuerung kann sie nach § 15 Abs. 1 Satz 1 Nr. 3 UStG als Vorsteuer
+abziehbar sein. Der Agent begründet die Abziehbarkeit und Höhe aus Beleg und
+bestätigten Mandantenregeln; bei fehlender Grundlage bleibt Prüfbedarf. Bei
+Kleinunternehmern ist keine Vorsteuer nach § 15 UStG abziehbar. `tax.mode`
+allein beschreibt die steuerliche Behandlung eines früheren Erwerbs nicht
+verlässlich. Eine spätere Config-Änderung darf gespeicherte Buchungen und
+Berichte nicht rückwirkend verändern.
 
-Wird der Wareneinkauf in Kennziffer 46 deklariert, führt dies bei einer Umsatzsteuer-Sonderprüfung oder beim automatisierten Abgleich des Bundeszentralamts für Steuern (VIES/MIAS-Datenabgleich) zu Beanstandungen und Rückfragen des Finanzamts.
+Für die Erwerbsschwelle von 12.500 EUR gelten die Voraussetzungen des
+§ 1a Abs. 3 UStG. Die Verwendung einer erteilten USt-IdNr. gegenüber dem
+Lieferer gilt als Verzicht auf die Schwelle und bindet mindestens zwei
+Kalenderjahre (§ 1a Abs. 4 UStG); der bloße Besitz der Nummer reicht nicht.
+Die Software entscheidet die Schwelle nicht allein aus möglicherweise
+unvollständigen Buchungen.
 
----
+### UStVA 2026
 
-## Fachliche Spezifikation
+Das amtliche Formular verwendet **KZ 89** als Bemessungsgrundlage für 19 % und
+**KZ 93** als Bemessungsgrundlage für 7 %. **KZ 95/98** betreffen andere
+Steuersätze und werden hier nicht verwendet. Der Bericht zeigt die berechnete
+Erwerbsteuer nachvollziehbar; KZ 93 ist kein Steuerfeld zum 19-%-Erwerb und
+KZ 98 gehört nur zur Zeile für andere Steuersätze. Abziehbare Vorsteuer gehört
+in **KZ 61**, nicht KZ 67. Bezogene EU-Dienstleistungen bleiben bei
+**KZ 46/47** und gegebenenfalls **KZ 67**. Der UStVA-Bericht wählt Erwerbe
+nach ihrer gespeicherten Steuerperiode aus, die EÜR nach Zahlungsfluss.
 
-### 1. Innergemeinschaftlicher Warenerwerb (§ 1a UStG)
+Die Auswertung unterstützt **2025 und 2026**. Die Kennziffern und
+Formularzeilen werden für jedes Jahr anhand seines amtlichen UStVA-Vordrucks
+getrennt verifiziert und im Code als jahresbezogene Metadaten hinterlegt.
+Die oben genannten Kennziffern sind für 2026 geprüft; sie werden nicht ohne
+Abgleich auf 2025 übertragen. Eine Buchung mit einer Steuerperiode außerhalb
+der unterstützten Jahre bleibt gespeichert, erscheint aber nicht mit einer
+erfundenen Formularzuordnung.
 
-#### A. Voraussetzungen
-1. Physische Beförderung oder Versendung eines Gegenstands aus einem EU-Mitgliedstaat nach Deutschland.
-2. Der liefernde Unternehmer tritt mit ausländischer EU-USt-IdNr. auf.
-3. Der Leistungsempfänger tritt mit deutscher USt-IdNr. auf (Rechnung weist 0 % USt mit Hinweis auf steuerfreie innergemeinschaftliche Lieferung / Intra-Community Supply aus).
+### OSS-Erlöse
 
-#### B. Steuerliche Wirkung
-* **Steuersatz:** In der Regel 19 % (bzw. ermäßigt 7 % bei Büchern/Druckerzeugnissen) bezogen auf den Rechnungsbetrag.
-* **Modus `standard` (Regelbesteuerung):**  
-  Der Erwerber schuldet die Steuer (Erwerbsteuer 19 % in KZ 93) und zieht gleichzeitig denselben Betrag als Vorsteuer nach § 15 Abs. 1 Satz 1 Nr. 3 UStG in **KZ 61** ab. Die Zahllast ist per Saldo 0 EUR.
-* **Modus `small_business` (Kleinunternehmer):**  
-  Sofern die Erwerbsschwelle von 12.500 EUR (§ 1a Abs. 3 Nr. 2 UStG) überschritten wird oder der Kleinunternehmer zur USt-IdNr. optiert hat, entsteht die Erwerbsteuer in KZ 93. Es besteht **kein** Vorsteuerabzug (KZ 61 bleibt 0 EUR).
+Die EU-Regelung nach § 18j UStG unterstützt **beide** vom Mandanten explizit
+als OSS-pflichtig eingeordneten Umsatzarten: innergemeinschaftliche
+Fernverkäufe von Waren an Privatkunden und im Verbrauchsmitgliedstaat
+steuerbare digitale B2C-Leistungen. Die Umsatzart wird pro Steuerereignis
+gespeichert. Die EU-weite 10.000-EUR-Regel und ein möglicher Verzicht auf ihre
+Anwendung beeinflussen den Leistungsort; Kundenland und Betrag allein reichen
+für die Einordnung nicht. Die OSS-Teilnahme muss für den Zeitraum bestätigt
+sein.
 
----
+Ein OSS-Erlös bleibt mit seinem tatsächlichen EUR-Zufluss Teil der EÜR. Für
+die OSS-Auswertung werden mindestens Verbrauchsmitgliedstaat, Umsatzart,
+Steuerperiode, Netto-Bemessungsgrundlage, ausländischer Steuersatz, Steuerbetrag
+und verwendete Währung beziehungsweise EUR-Umrechnung benötigt. OSS-Steuer
+wird nicht als deutsche Umsatzsteuer in `vat-report` oder KZ 83 summiert.
+Ein **eigener quartalsweiser OSS-Arbeitsbericht für 2025 und 2026** gruppiert
+Bemessungsgrundlage und Steuer nach Verbrauchsmitgliedstaat, Umsatzart und
+Steuersatz. Er zeigt
+auch Quartale ohne Umsätze als mögliche Nullmeldung und liefert einen
+nachvollziehbaren CSV-Export zur manuellen Übergabe. Die Anwendung übermittelt
+keine OSS-Erklärung. Korrekturen und Erstattungen verweisen auf das
+ursprüngliche Steuerereignis und zeigen im Bericht sowohl das betroffene
+Ursprungsquartal als auch das Quartal der Berichtigung. Eine bereits
+übermittelte Erklärung wird nicht stillschweigend überschrieben.
 
-## Technische Anforderungen
+Für die EÜR werden vereinnahmter EUR-Zahlungsbetrag und spätere Zahlung der
+ausländischen Steuer als getrennte Geldflüsse erfasst. Die OSS-Steuerschuld
+allein erzeugt keine zweite EÜR-Ausgabe; ihre Zahlung darf nicht zusätzlich
+zur bereits erfassten Bankausgabe als Aufwand gezählt werden. Die
+EÜR-Auswertung und der Export weisen diese Trennung aus, damit ausländische
+Steuer weder als deutsche USt noch doppelt als Ertrag oder Aufwand erscheint.
 
-### A1: Datenmodell (`schema.py`)
+## Technische Leitplanken
 
-Die Spalten `rc_type` und `vat_code` in der Tabelle `expenses` werden erweitert:
+1. `rc_type` bleibt §-13b-Fällen vorbehalten. Innergemeinschaftliche Erwerbe
+   und OSS erhalten eigene Steuerfall-Klassifikationen; `eu_goods` wird nicht
+   als Reverse-Charge-Typ gespeichert.
+2. Ein steuerlicher Erwerb kann mehreren Ausgaben zugeordnet werden. Seine
+   Steuerbasis wird nicht aus einer einzelnen Teilzahlung abgeleitet. Ein
+   eigenes, auditierbares Steuerereignis-Modell wird vor Implementierung gegen
+   das vorhandene Schema entworfen.
+3. Steuerfall, Satz, Basis, Periode, Vorsteuerabzug und Prüfstatus werden
+   gespeichert. Der Report berechnet sie nicht aus dem aktuellen `tax.mode` neu.
+4. CLI, CSV/JSONL-Import, Listen, Exporte, Audit-Log und `incomplete` bilden
+   die Angaben konsistent ab. Keine automatische Umklassifizierung bestehender
+   `rc_type = 'eu'`-Buchungen.
+5. `vat-report` trennt deutsche UStVA, EU-Warenerwerb und OSS. Ein separater
+   OSS-Bericht dient als Übergabehilfe. Ungeklärte Fälle werden gewarnt und
+   nicht stillschweigend eingerechnet.
+   Zahlungen ausländischer OSS-Steuer erhalten eine eigene Kennzeichnung und
+   werden weder als deutsche Umsatzsteuer noch als Vorsteuer klassifiziert.
+6. Schema-Änderungen erfolgen versioniert über `euer init` mit Dry-Run.
+   Bestehende Buchungen, UUIDs, Audit-Historie, Fremdschlüssel, Indizes und
+   Hashes bleiben erhalten. Die Migrationsnummer folgt der dann aktuellen Liste.
+7. Amtliche Kennziffern werden je Formularjahr geprüft und nicht ungeprüft
+   aus 2026 fortgeschrieben.
 
-```sql
--- In expenses:
-rc_type TEXT NOT NULL DEFAULT 'none'
-    CHECK(rc_type IN (
-        'none', 
-        'eu', 
-        'third_country', 
-        'eu_goods',          -- NEU: Innergemeinschaftlicher Warenerwerb § 1a UStG
-        'construction',      -- NEU: Bauleistungen § 13b Abs. 2 Nr. 4 UStG
-        'unclassified'
-    ))
+## Akzeptanzfälle
 
-vat_code TEXT CHECK(vat_code IS NULL OR vat_code IN (
-    'input_invoice',
-    'reverse_charge_eu',
-    'reverse_charge_third_country',
-    'intra_community_goods_19',      -- NEU: Warenerwerb 19%
-    'intra_community_goods_7',       -- NEU: Warenerwerb 7%
-    'reverse_charge_construction'    -- NEU: Bauleistungen 19%
-))
-```
+1. **Jahreswechsel und Teilzahlungen:** Waren für 1.000 EUR netto gelangen
+   im Dezember 2025 nach Deutschland. Eine Anzahlung von 200 EUR fließt im
+   Dezember 2025 ab, die Rechnung wird im Januar 2026 ausgestellt und die
+   Restzahlung von 800 EUR erfolgt im Februar 2026. Die EÜR zeigt die beiden
+   Zahlungen in ihren jeweiligen Jahren. Die UStVA zeigt den Erwerb einmal
+   mit 1.000 EUR Bemessungsgrundlage und 190 EUR Erwerbsteuer im Januar 2026.
+   Die Anzahlung löst keinen zweiten Erwerb aus.
+2. **Späte Rechnung:** Bei Erwerb im Dezember 2025 und Rechnung nach Ablauf
+   des Januar 2026 ist die Erwerbsteuer spätestens der Periode Januar 2026
+   zugeordnet. Die spätere Rechnung verschiebt den Erwerb nicht erneut.
+3. **Steuerstatus und Vorsteuer:** Derselbe steuerpflichtige Erwerb erzeugt
+   bei einem regelbesteuerten Mandanten mit vollem Vorsteuerrecht 190 EUR
+   Vorsteuer in KZ 61. Bei fehlendem oder teilweisem Vorsteuerrecht wird nur
+   der belegte Betrag ausgewiesen; bei einem Kleinunternehmer 0 EUR.
+   Ein späterer Wechsel von `tax.mode` ändert diese gespeicherten Werte nicht.
+4. **OSS-Umsatzarten:** Ein Warenfernverkauf und eine digitale B2C-Leistung
+   in einem anderen EU-Staat werden mit eigener Umsatzart, Verbrauchsstaat,
+   dortigem Steuersatz und Steuerperiode erfasst. Der OSS-Bericht gruppiert
+   beide im passenden Quartal; die deutsche UStVA enthält ihre ausländische
+   Steuer nicht.
+5. **OSS-Zahlungsfluss:** Ein vereinnahmter Bruttobetrag erscheint im
+   EÜR-Zahlungsjahr. Die später gezahlte ausländische OSS-Steuer erscheint
+   nur einmal als Ausgabe im Zahlungsjahr. Der OSS-Bericht führt den
+   steuerlichen Umsatz unabhängig von diesen Zahlungstagen im passenden
+   Quartal.
+6. **Korrektur und Nullmeldung:** Eine Erstattung verweist auf den
+   ursprünglichen OSS-Umsatz; der Bericht zeigt Ursprungs- und
+   Korrekturquartal getrennt. Für ein registriertes Quartal ohne Umsatz
+   zeigt er ausdrücklich eine mögliche Nullmeldung. Unvollständige Angaben
+   führen zu einer konkreten Warnung statt zu stiller Zuordnung.
+7. **Bestand und Migration:** Bestehende EU-Dienstleistungen bleiben
+   unverändert, Altbuchungen werden nicht automatisch als Warenerwerb oder
+   OSS umgedeutet. Nach Migration liefern 2025er und 2026er Erwerbe nur
+   die für ihr Formularjahr verifizierten Kennziffern.
 
-### A2: Service Layer & Modelle (`euercli/services/`)
+## Amtliche Quellen
 
-1. **`euercli/services/models.py`:**  
-   `Expense` Dataclass unterstützt `rc_type = "eu_goods"`.
-2. **`euercli/services/expenses.py`:**  
-   * Wenn `rc_type == "eu_goods"`:
-     * Bei `vat_rate == 7.0`: `vat_code = "intra_community_goods_7"`
-     * Sonst (Default 19.0): `vat_code = "intra_community_goods_19"`
-     * Berechnung von `vat_output` (19 % bzw. 7 % des Bruttobetrags).
-     * Im Modus `standard`: `vat_input = vat_output`.
-     * Im Modus `small_business`: `vat_input = 0.0`.
-
-### A3: CLI-Schnittstelle (`euercli/commands/`)
-
-Die Erfassung erfolgt über ein intuitives Flag bei `add expense` und `update expense`:
-
-```bash
-# Explizite Angabe als Warenerwerb:
-euer add expense --vendor "Hardware Direct NL" --amount 850.00 --rc eu-goods --category "Arbeitsmittel"
-
-# ODER als semantische Kombination (--rc eu mit --goods):
-euer add expense --vendor "Hardware Direct NL" --amount 850.00 --rc eu --goods --category "Arbeitsmittel"
-```
-
-#### Validierungsregeln der CLI:
-* `--goods` darf nur angegeben werden, wenn `--rc eu` gesetzt ist. Bei Inlandsausgaben oder Drittland (Import unterliegt der Einfuhrumsatzsteuer) bricht die CLI mit einem Validierungsfehler ab.
-* Standard-Steuersatz bei `eu-goods` ist `19 %`, außer `--vat-rate 7` wird explizit angegeben.
-
-### A4: USt-Voranmeldungs-Report (`euer vat-report`)
-
-Im Report (Spec 012) werden die amtlichen UStVA-Kennziffern für das Wirtschaftsjahr 2026 ergänzt:
-
-#### 1. Ausgangs-Umsatzsteuer / Erwerbsteuer:
-* **Kennziffer 89 (Zeile 33):**  
-  *Bezeichnung:* Steuerpflichtige innergemeinschaftliche Erwerbe zum Steuersatz von 19 % (Bemessungsgrundlage / Netto)  
-  *Datenquelle:* Summe `amount_eur` aller Ausgaben mit `vat_code = 'intra_community_goods_19'`.
-* **Kennziffer 93:**  
-  *Bezeichnung:* Steuerbetrag zu Kennziffer 89 (19 %).
-* **Kennziffer 95 (Zeile 34):**  
-  *Bezeichnung:* Steuerpflichtige innergemeinschaftliche Erwerbe zum Steuersatz von 7 % (Bemessungsgrundlage).
-* **Kennziffer 98:**  
-  *Bezeichnung:* Steuerbetrag zu Kennziffer 95 (7 %).
-
-#### 2. Vorsteuer:
-* **Kennziffer 61 (Zeile 40):**  
-  *Bezeichnung:* Abziehbare Vorsteuerbeträge aus dem innergemeinschaftlichen Erwerb von Gegenständen (§ 15 Abs. 1 Satz 1 Nr. 3 UStG)  
-  *Datenquelle:* Summe `vat_input` aller Ausgaben mit `vat_code` in (`intra_community_goods_19`, `intra_community_goods_7`) im Modus `standard`.
-
----
-
-### A5: DATEV-Export & Kanzlei-Schnittstelle (`euer-datev`)
-
-Beim Export im DATEV EXTF-700 Format (Spec 07) wird der Buchungssatz automatisch auf die offiziellen DATEV-Standardkonten für den Warenerwerb geleitet:
-
-| Kontenrahmen | Konto (Aufwand/Warenerwerb) | Gegenkonto | BU-Schlüssel | Bedeutung |
-|---|:---:|:---:|:---:|---|
-| **SKR 03** | `3425` | `1200` (Bank) | `19` | Innergemeinschaftlicher Erwerb 19 % Vorsteuer und 19 % USt |
-| **SKR 03 (7 %)** | `3420` | `1200` (Bank) | `18` | Innergemeinschaftlicher Erwerb 7 % Vorsteuer und 7 % USt |
-| **SKR 04** | `5425` | `1800` (Bank) | `19` | Innergemeinschaftlicher Erwerb 19 % Vorsteuer und 19 % USt |
-| **SKR 04 (7 %)** | `5420` | `1800` (Bank) | `18` | Innergemeinschaftlicher Erwerb 7 % Vorsteuer und 7 % USt |
-
----
-
-## DB-Migration (Migration 010)
-
-Bestehende SQLite-Datenbanken erhalten ein Schema-Upgrade:
-1. `expenses`-Tabelle mit neuem `CHECK`-Constraint neu aufbauen (`rc_type` und `vat_code`).
-2. Bestehende Daten (`rc_type = 'eu'`, etc.) 1:1 beibehalten.
-3. Schema-Version in `schema_migrations` auf 10 erhöhen.
-
----
-
-## Ausblick: Anbindung an den Regelkatalog (Spec 024)
-
-Sobald Spec 024 (Regelkatalog) implementiert wird, erhält der Katalog eine entsprechende Regeldefinition:
-* **Regel-ID:** `EUER-R-ACQUISITION-EU-GOODS-01`
-* **Voraussetzungen:** `supplier_region == "eu"` AND `transaction_nature == "goods"` AND `invoice_has_zero_vat == true`.
-* **Ergebnis:** `rc_type = "eu_goods"`, `vat_code = "intra_community_goods_19"`.
+- [§ 11 Abs. 2 EStG: Abflussprinzip](https://www.gesetze-im-internet.de/estg/__11.html)
+- [§ 1a UStG: Erwerb und Erwerbsschwelle](https://www.gesetze-im-internet.de/ustg_1980/__1a.html)
+- [§ 13 Abs. 1 Nr. 6 UStG: Erwerbsteuer](https://www.gesetze-im-internet.de/ustg_1980/__13.html)
+- [§ 15 UStG: Vorsteuerabzug](https://www.gesetze-im-internet.de/ustg_1980/__15.html)
+- [§§ 16 Abs. 1d, 18j UStG: OSS-EU-Regelung](https://www.gesetze-im-internet.de/ustg_1980/__18j.html)
+- [BZSt: One-Stop-Shop, EU-Regelung](https://www.bzst.de/DE/Unternehmen/Umsatzsteuer/One-Stop-Shop_EU/one_stop_shop_eu.html)
+- [BMF: UStVA-Vordruck und Anleitung 2025](https://www.bundesfinanzministerium.de/Content/DE/Downloads/BMF_Schreiben/Steuerarten/Umsatzsteuer/2024-12-09-voranmeldungs-vorauszahlungsverf-2025.pdf?__blob=publicationFile&v=4)
+- [BMF: UStVA-Vordruck und Anleitung 2026](https://www.bundesfinanzministerium.de/Content/DE/Downloads/BMF_Schreiben/Steuerarten/Umsatzsteuer/2025-12-29-vordruckmuster-USt-voranmeldung-2026.pdf?__blob=publicationFile&v=7)
