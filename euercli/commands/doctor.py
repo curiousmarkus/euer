@@ -1,6 +1,8 @@
 """CLI-Command für 'euer doctor' (Spec 019)."""
 
 import json
+import importlib.metadata
+import shutil
 import sys
 from pathlib import Path
 
@@ -21,6 +23,21 @@ def cmd_doctor(args) -> None:
     db_path = Path(args.db)
 
     report = run_doctor(project_root=project_root, db_path=db_path, source=source)
+    plugin_present = any(
+        item.name == "datev" for item in importlib.metadata.entry_points(group="euer.commands")
+    )
+    external_binary = shutil.which("euer-datev")
+    try:
+        datev_version = importlib.metadata.version("euer-datev") if plugin_present else None
+    except importlib.metadata.PackageNotFoundError:
+        datev_version = None
+    report["datev"] = {
+        "available": plugin_present or external_binary is not None,
+        "mode": "plugin" if plugin_present else "external" if external_binary else "missing",
+        "version": datev_version,
+        "binary": external_binary if not plugin_present else None,
+        "next_step": "euer datev doctor --year YYYY" if plugin_present or external_binary else None,
+    }
 
     if getattr(args, "json", False):
         print(json.dumps(report, indent=2, ensure_ascii=False))
@@ -143,6 +160,12 @@ def cmd_doctor(args) -> None:
         print(f"  Excel-Export (XLSX): [✓] Verfügbar (openpyxl {xl['version']})")
     else:
         print("  Excel-Export (XLSX): [⚠] Nicht verfügbar (openpyxl fehlt)")
+    datev = report["datev"]
+    if datev["available"]:
+        print(f"  DATEV-Add-on:        [✓] {datev['mode']} {datev['version'] or ''}".rstrip())
+        print(f"  DATEV-Diagnose:     {datev['next_step']}")
+    else:
+        print("  DATEV-Add-on:        [–] Optional, nicht installiert")
     print()
 
     # 5. Empfehlungen
