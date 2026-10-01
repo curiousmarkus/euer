@@ -53,6 +53,11 @@ Prüfe die Installation mit `euer --version`. Die [Installationsreferenz](docs/s
 erklärt Updates, Entwicklungsversionen und den Wechsel zwischen pipx und Homebrew.
 Die [Entwicklungsinstallation unter Windows](DEVELOPMENT.md#windows-powershell) ist im Developer Guide beschrieben.
 
+Für den optionalen DATEV-Export installierst du zusätzlich `euer-datev`, etwa
+mit `brew install curiousmarkus/euer/euer-datev` oder `pipx install euer-datev`.
+Der Aufruf lautet in beiden Fällen `euer datev --help`. Weitere Wege stehen in
+der [DATEV-Referenz](docs/skills/euer-buchhaltung/references/datev_export.md).
+
 ### 2. KI-Agenten einrichten
 
 Installiere den vollständigen [Skill-Ordner `euer-buchhaltung`](docs/skills/euer-buchhaltung)

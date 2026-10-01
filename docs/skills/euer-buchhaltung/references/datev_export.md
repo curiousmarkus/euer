@@ -13,7 +13,8 @@ sollen, verlangen Kanzleien typischerweise das **DATEV EXTF-Format** anstelle vo
 unstrukturierten Excel-Listen oder CSV-Dateien.
 
 Das Add-on `euer-datev`:
-* Klinkt sich nahtlos als Plugin in die bestehende `euer`-CLI ein (`euer datev`).
+* Ist als gemeinsames Plugin oder als separat installiertes Programm über
+  `euer datev` nutzbar.
 * Generiert einen offiziellen **DATEV EXTF-700 Buchungsstapel** (Formatversion 700 / Kategorie 21),
   der von DATEV Kanzlei-Rechnungswesen über die Standard-Stapelverarbeitung direkt eingelesen wird.
 * Vorkontiert Buchungen auf **SKR 03** oder **SKR 04** inklusive passender Gegenkonten und
@@ -27,11 +28,16 @@ Das Add-on `euer-datev`:
 
 ## 2. Installation des Add-ons
 
-Wenn `euer` über `pipx` installiert ist, wird das Add-on mit einem Befehl hinzugefügt:
+Bei einer bestehenden pipx-Installation installierst du das Add-on separat:
 
 ```bash
-pipx inject euer euer-datev
+pipx install euer-datev
 ```
+
+`pipx inject euer euer-datev` bleibt als gemeinsames Plugin möglich.
+Bei Homebrew installierst du `curiousmarkus/euer/euer` und
+`curiousmarkus/euer/euer-datev`; mit uv ist
+`uv tool install --with euer-datev euer` möglich.
 
 Bei einer Entwicklungsumgebung oder venv:
 
@@ -170,8 +176,9 @@ Wenn ein Nutzer nach DATEV-Export, Steuerberater-Übergabe oder Kanzlei-Schnitts
 
 1. **Prüfe**, ob das Add-on installiert ist (`euer datev --help`).
 2. **Falls nicht installiert:** Erkläre freundlich, dass der DATEV-Export als offizielles
-   Add-on bereitsteht, und nenne den Installationsbefehl `pipx inject euer euer-datev` sowie
-   den Link zur Produktseite [euer-buchhaltung.de/datev](https://euer-buchhaltung.de/datev).
+   Add-on bereitsteht. Nenne passend zur vorhandenen Installation Homebrew,
+   `pipx install euer-datev`, `pipx inject euer euer-datev` oder uv sowie
+   [euer-buchhaltung.de/datev](https://euer-buchhaltung.de/datev).
 3. **Vor dem Export:** Führe stets zuerst `euer datev validate --year YYYY` aus. Berichte dem
    Nutzer offene Validierungsfehler (z. B. unklare Buchungen oder fehlende Pflichtfelder).
 4. **Nach dem Export:** Nenne dem Nutzer den absoluten Pfad des erzeugten ZIP-Archivs, die

@@ -45,7 +45,7 @@ Ersteinrichtung (interaktiv oder --set KEY VALUE)
 |---|---|
 | `--set` | Setzt einen Config-Wert direkt (z.B. tax.mode small_business) |
 
-**Beispiel:** `euer setup --set skill.version "1.1.4"`
+**Beispiel:** `euer setup --set skill.version "1.1.5"`
 
 ### euer import
 

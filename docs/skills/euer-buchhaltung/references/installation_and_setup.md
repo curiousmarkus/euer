@@ -61,19 +61,24 @@ Für den optionalen XLSX-Export installierst du das Extra direkt mit:
 pipx install "euer[xlsx]"
 ```
 
-Für den standardkonformen DATEV-Export an Steuerberatungskanzleien (EXTF-700) bindest du das
-offizielle Add-on `euer-datev` mit einem Befehl ein:
+Für den DATEV-Export installierst du das offizielle Add-on `euer-datev`. Mit pipx
+kann es in einer eigenen Umgebung oder gemeinsam mit `euer` installiert werden:
 
 ```bash
-pipx inject euer euer-datev
+pipx install euer-datev
+# Bei einer bestehenden pipx-Installation alternativ: pipx inject euer euer-datev
 ```
 
-Danach steht dir der Befehl `euer datev` zur Verfügung. Weitere Infos: [euer-buchhaltung.de/datev](https://euer-buchhaltung.de/datev).
+Bei getrennter Installation müssen `euer` und `euer-datev` im `PATH` liegen.
+Mit uv ist `uv tool install --with euer-datev euer` möglich. Danach steht in
+allen Varianten `euer datev` zur Verfügung. Weitere Infos:
+[euer-buchhaltung.de/datev](https://euer-buchhaltung.de/datev).
 
 Alternativ ist auf macOS und Linux der Homebrew-Tap verfügbar:
 
 ```bash
 brew install curiousmarkus/euer/euer
+brew install curiousmarkus/euer/euer-datev
 ```
 
 Der GitHub-Checkout bleibt als Fallback für Entwicklungsversionen möglich:

@@ -4,7 +4,7 @@ Mit einem lokalen KI-Agenten genügt der vollständig installierte Skill
 [`euer-buchhaltung`](../skills/euer-buchhaltung/SKILL.md), einschließlich seines
 Ordners `references/`. Ermittle mit `euer doctor` den Bundle-Pfad der
 aktiven CLI, lies den Skill neu und bestätige erst dann seine Version mit
-`euer setup --set skill.version "1.1.4"`. Starte den Agenten im
+`euer setup --set skill.version "1.1.5"`. Starte den Agenten im
 Buchhaltungsordner und sage:
 
 > Richte meine Buchhaltung mit euer ein. Prüfe zuerst, was schon vorhanden ist,

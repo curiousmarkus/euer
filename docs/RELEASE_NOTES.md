@@ -8,7 +8,7 @@ Für Installationen ab 0.8.1 ergänzen sie die normale Update-Sequenz aus der
 pipx upgrade euer
 euer doctor
 # Skill vollständig aus dem Bundle-Pfad installieren und neu laden
-euer setup --set skill.version "1.1.4"
+euer setup --set skill.version "1.1.5"
 euer init
 euer incomplete list
 euer summary --year 2026
@@ -47,7 +47,9 @@ Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
   ein explizites DATEV-`--db` hat Vorrang. Für bisherige pipx-Installationen mit
   `pipx inject` ist keine Umstellung erforderlich. Bei getrennter Installation
   müssen beide ausführbaren Programme im `PATH` liegen.
-- **Agenten-Dateien:** Keine Aktualisierung erforderlich; Skill-Version bleibt 1.1.4.
+- **Agenten-Dateien:** Den vollständigen Skill samt Referenzen auf 1.1.5 aktualisieren,
+  neu laden und danach mit `euer setup --set skill.version "1.1.5"` bestätigen.
+  Das persönliche Mandanten-Dossier bleibt erhalten.
 
 ## 0.12.3
 
