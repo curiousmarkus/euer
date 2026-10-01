@@ -1,185 +1,65 @@
-# DATEV-Export & Kanzlei-Übergabe (`euer-datev`)
+# DATEV-Export und Kanzleiübergabe (`euer-datev`)
 
-Diese Referenz beschreibt das offizielle Add-on `euer-datev` für den standardkonformen
-Jahresabschluss- und Buchungsdatenexport an Steuerberatungskanzleien im DATEV-Format.
+Das optionale Add-on erzeugt einen EXTF-700-Buchungsstapel für SKR 03 oder 04 und auf Wunsch ein ZIP mit Belegen und `PRUEFPROTOKOLL.txt`. Import und steuerliche Wirkung sind in der Zielversion der Kanzlei zu prüfen.
 
----
+## Installation und Diagnose
 
-## 1. Übersicht & Zweck
-
-`euer` führt die laufende EÜR-Buchhaltung lokal auf der Maschine des Nutzers. Wenn die
-Daten am Jahresende oder unterjährig an eine Steuerberatungskanzlei übergeben werden
-sollen, verlangen Kanzleien typischerweise das **DATEV EXTF-Format** anstelle von
-unstrukturierten Excel-Listen oder CSV-Dateien.
-
-Das Add-on `euer-datev`:
-* Ist als gemeinsames Plugin oder als separat installiertes Programm über
-  `euer datev` nutzbar.
-* Generiert einen offiziellen **DATEV EXTF-700 Buchungsstapel** (Formatversion 700 / Kategorie 21),
-  der von DATEV Kanzlei-Rechnungswesen über die Standard-Stapelverarbeitung direkt eingelesen wird.
-* Vorkontiert Buchungen auf **SKR 03** oder **SKR 04** inklusive passender Gegenkonten und
-  DATEV-Berichtigungsschlüssel (z. B. für Umsatzsteuer, Vorsteuer und § 13b Reverse Charge).
-* Packt alle zugehörigen Beleg-PDFs in ein **ZIP-Archiv** und verknüpft sie über das offizielle
-  DATEV-Feld `Beleglink`.
-* Bietet eine **Pre-Flight-Validierung** (`validate`), um Kontierungsfehler oder fehlende Pflichtangaben
-  vor der Kanzleiübergabe lokal zu erkennen.
-
----
-
-## 2. Installation des Add-ons
-
-Bei einer bestehenden pipx-Installation installierst du das Add-on separat:
+Bei getrennter pipx-Installation müssen beide Programme im `PATH` liegen:
 
 ```bash
+pipx install euer
 pipx install euer-datev
-```
-
-`pipx inject euer euer-datev` bleibt als gemeinsames Plugin möglich.
-Bei Homebrew installierst du `curiousmarkus/euer/euer` und
-`curiousmarkus/euer/euer-datev`; mit uv ist
-`uv tool install --with euer-datev euer` möglich.
-
-Bei einer Entwicklungsumgebung oder venv:
-
-```bash
-pip install euer-datev
-```
-
-Prüfe die Verfügbarkeit im Terminal:
-
-```bash
 euer datev --help
+euer datev doctor --year 2026 --format json
 ```
 
----
+Eine gemeinsame pipx-Installation per `pipx inject euer euer-datev` nutzt das Plugin. Das Plugin hat Vorrang, wenn zusätzlich ein externes `euer-datev` im `PATH` liegt. Homebrew verwendet `curiousmarkus/euer/euer` und `curiousmarkus/euer/euer-datev`. Bei uv lautet der gemeinsame Weg `uv tool install --with euer-datev euer`. `uv` ist ein Installationswerkzeug, kein eigenes DATEV-Programm.
 
-## 3. Befehlsübersicht (`euer datev`)
+`euer doctor` meldet die Erkennung des optionalen Add-ons. Die fachliche Diagnose liefert `euer datev doctor`; sie zeigt Config-Herkunft, DB und Schema, Steuermodus, Belegroot, fehlende Stammdaten, Kontenzuordnungen und Lizenzabdeckung für das angefragte Jahr. Sie gibt keinen Lizenzschlüssel aus. Informationsbefehle benötigen keine eingerichtete DB.
 
-### `euer datev validate`
-Prüft die Buchungsdaten für ein Steuerjahr auf DATEV-Konformität, ohne Dateien zu schreiben:
+## Einrichtung
 
-```bash
-euer datev validate --year 2026 --skr 03
-```
-
-Wichtige Parameter:
-* `--year YYYY`: Steuerjahr (DATEV unterstützt pro Stapel genau ein Wirtschaftsjahr).
-* `--skr <03|04>`: Kontenrahmen (Standard: `03`).
-* `--quarter <1-4>` oder `--month <1-12>`: Unterjährige Prüfung.
-
-### `euer datev export`
-Erzeugt das vollständige Übergabepaket für die Steuerberatung:
-
-```bash
-euer datev export --year 2026 --skr 03
-```
-
-Wichtige Parameter:
-* `--year YYYY`: Steuerjahr für den Export.
-* `--skr <03|04>`: SKR 03 oder SKR 04.
-* `--format <zip|csv>`: Standard ist `zip` (Buchungsstapel + Beleg-PDFs + Prüfprotokoll). `csv` erzeugt nur die EXTF-Datei.
-* `-o, --output <PFAD>`: Zielverzeichnis oder Zieldatei (Standard: Export-Verzeichnis laut Konfiguration).
-* `--berater <NR>`: Beraternummer der Kanzlei (überschreibt Konfiguration).
-* `--mandant <NR>`: Mandantennummer der Kanzlei (überschreibt Konfiguration).
-* `--force`: Export trotz Validierungswarnungen erzwingen.
-
-### `euer datev init-skr`
-Gibt eine Vorlage für die Kontenrahmen-Konfiguration aus:
-
-```bash
-euer datev init-skr --skr 03
-# Oder direkt an die Konfiguration anhängen:
-euer datev init-skr --skr 03 --write ~/.config/euer/config.toml
-```
-
-### `euer datev license status`
-Zeigt den aktuellen Lizenzstatus und die freigeschalteten Steuerjahre an:
-
-```bash
-euer datev license status
-```
-
-### `euer datev license activate`
-Aktiviert einen erworbenen Steuerjahr-Lizenzschlüssel:
-
-```bash
-euer datev license activate EUER-LIC-1...
-```
-
----
-
-## 4. Konfiguration
-
-In der globalen `~/.config/euer/config.toml` (oder projektspezifischen `.euer/config.toml`):
+`euer datev init-skr --skr 03` zeigt eine Vorlage. Nach Prüfung übernimmt `euer datev init-skr --skr 03 --write PFAD` sie atomar in eine Config. Wiederholtes Schreiben erhält individuelle Zuordnungen und fremde Tabellen. Beispiel für **eigene, bestätigte** Werte:
 
 ```toml
 [datev]
-berater_nummer = "1001"      # Beraternummer der Steuerkanzlei
-mandanten_nummer = "10001"   # Mandantennummer der Kanzlei
-skr = "03"                   # "03" oder "04"
-mandanten_name = "Agentur"
+berater_nummer = "2222"
+mandanten_nummer = "33333"
+mandanten_name = "Beispielbetrieb"
+skr = "03"
 
-# Zuordnung von Finanz-/Zahlungskonten zu DATEV-Sachkonten
 [datev.accounts]
-"g-n26" = "1200"             # Geschäftskonto (SKR 03: 1200 / SKR 04: 1800)
-"barkasse" = "1000"          # Kasse (SKR 03: 1000 / SKR 04: 1600)
-"privat" = "1890"            # Privateinlagen/-entnahmen (SKR 03: 1890 / SKR 04: 2180)
+"Geschäftskonto" = "1200"
+"Barkasse" = "1000"
 ```
 
----
+Nummern und Namen sind Beispiele. Die tatsächlichen Daten stammen von der Kanzlei und aus dem Mandantenkontext. `[datev.accounts]` ist der kanonische Abschnitt für Zahlungskonten. Bestands-Aliase werden gelesen und Konflikte gemeldet. Ohne `--config` werden globale Einstellungen und Projektwerte feldweise zusammengeführt; Projektwerte haben Vorrang. Ein explizites `--config PFAD` ist eine vollständige alternative Config. Befehlsargumente haben die höchste Priorität. Globale relative Belegpfade beziehen sich weiterhin auf den Arbeitsordner, Projektpfade auf den Projektroot, Pfade einer expliziten Datei auf deren Dateiordner. `doctor` zeigt die absoluten Resultate.
 
-## 5. Das Exportpaket & Kanzlei-Übergabe
+## Prüfen und exportieren
 
-Der Standardexport (`--format zip`) erzeugt ein Archiv mit folgendem Inhalt:
+1. `euer datev doctor --year 2026 --format json` ausführen und fehlende Stammdaten, Konto- und Belegpfade klären.
+2. `euer datev validate --year 2026 --format json` ausführen. Unterjährig sind `--month`, `--quarter`, `--from-date` und `--to-date` verfügbar. Dieselben Filter und Overrides anschließend beim Export verwenden. `--db` und `--config` sind vor oder nach dem Unterbefehl möglich; Pfade mit Leerzeichen als ein Argument übergeben.
+3. Bei `ready` mit `euer datev export --year 2026 --format zip --report-format json -o DATEV_EXTF_2026.zip` exportieren.
+4. JSON-Bericht, CSV-Zeilen und tatsächliche ZIP-Mitglieder prüfen. Kanzleidaten, Konten, Soll/Haben, Steuerfälle, Beträge und Belege mit den Quelldaten abgleichen und offene Punkte benennen.
 
-```text
-DATEV_EXTF_2026.zip
-├── EXTF_Buchungsstapel.csv   (Offizieller DATEV EXTF-700 Stapel, ANSI/Windows-1252)
-├── belege/                   (Alle verknüpften Beleg-PDFs)
-│   ├── 2026-01-15_rechnung.pdf
-│   └── ...
-└── PRUEFPROTOKOLL.txt        (Summenabgleich, Kontenübersicht und Validierungsbericht)
-```
+`validate` schreibt keine Exportdatei. `export --format csv` erzeugt nur den Buchungsstapel. `export --format zip` erzeugt zusätzlich gefundene Belege und `PRUEFPROTOKOLL.txt`. `--berater`, `--mandant`, `--skr` und `--year` überschreiben die Config für den Aufruf. `--demo` nutzt markierte Beispiel-Kanzleidaten für einen Testexport und macht problematische Vorgänge nicht fachlich gültig. `--force` wird abgewiesen. `--allow-incomplete` akzeptiert ausschließlich dokumentierte Warnungen zu fehlenden Belegen, markiert das Paket als unvollständig und gibt Exit 2. Andere Warnungen und Fehler verhindern den Export.
 
-### Textvorlage für die E-Mail an die Steuerberatungskanzlei:
+| Exit | Status | Bedeutung |
+| --- | --- | --- |
+| 0 | `ready` | Freigegebenes Prüfergebnis oder Export |
+| 1 | `invalid` | Fehler; kein freigegebener Export |
+| 2 | `needs_review`/`empty` | Offener Prüfbedarf, Teilpaket oder keine Buchungen |
 
-```text
-Sehr geehrte Damen und Herren,
+Bei `--format json` für `validate`/`doctor` beziehungsweise `--report-format json` für `export` steht genau ein JSON-Dokument auf stdout. Es enthält `schema_version`, Status, Config-Herkunft, Zeitraum, Quell-IDs, Anzahl Quellvorgänge und DATEV-Zeilen, Summen, Belegstatus, Ausschlüsse, Issues mit Quell-ID und gegebenenfalls Artefaktpfade. Laufzeitfehler haben `error_code` und Exit 1. Falsche CLI-Syntax behandelt `argparse` mit Exit 2 und einer Meldung auf stderr; dann gibt es kein JSON-Dokument. Lizenzhinweise und menschliche Meldungen stehen bei JSON-Ausgabe auf stderr.
 
-anbei erhalten Sie die Buchhaltungsdaten und Belege für das Wirtschaftsjahr 2026
-im offiziellen DATEV EXTF-700 Format (Kategorie 21 Buchungsstapel):
+Fehlen viele Belege, zuerst `doctor` und den effektiven Belegroot prüfen. Dann die Core-Auflösung im Zahlungsjahr mit `euer receipt check --year 2026` vergleichen. Warnungen sind kein Beweis für verlorene Dateien. Vorgänge ohne Zahlungsdatum werden mit Ausschlussgrund gezeigt; gelöschte und außerhalb des Zeitraums liegende Vorgänge ebenfalls.
 
-1. EXTF_Buchungsstapel.csv: In DATEV Kanzlei-Rechnungswesen über
-   "Bestand ➔ Importieren ➔ Stapelverarbeitung" einlesen.
-2. belege/: Enthält alle zugehörigen Belege, referenziert über das DATEV-Feld Beleglink.
-3. PRUEFPROTOKOLL.txt: Zusammenfassung und Saldenabgleich.
+## Bericht und Belegübergabe
 
-Die Buchungssätze sind vorkontiert auf SKR 03 inklusive DATEV-Berichtigungsschlüsseln.
-```
+Ein Quellvorgang kann mehrere DATEV-Zeilen erzeugen, etwa eine Bewirtung mit abziehbarem und nicht abziehbarem Anteil. Der Bericht unterscheidet deshalb Quellvorgänge, DATEV-Zeilen, Quellvolumen, DATEV-Zeilenvolumen und EÜR-Ergebnis. Im synthetischen Kleinunternehmer-Beispiel stehen 56 Quellvorgänge mit 1.240,93 EUR absolutem Quellvolumen 57 DATEV-Zeilen gegenüber: 735,02 EUR Ausgaben, 0,42 EUR Einnahmen, 500,00 EUR Einlage, 5,49 EUR Entnahme. Die 187,96 EUR privat bezahlten Ausgaben sind Teil der 735,02 EUR. Nach 9,39 EUR nicht abziehbarer Bewirtung ergeben sich 725,63 EUR EÜR-Ausgaben und −725,21 EUR Ergebnis. Für nicht vollständig geprüfte Steuerfälle steht ausdrücklich „nicht berechnet“.
 
----
+Die ZIP enthält `EXTF_Buchungsstapel.csv`, `PRUEFPROTOKOLL.txt` und vorhandene Dateien unter `belege/`. Das Feld `Beleglink` enthält relative ZIP-Pfade als Zuordnungshilfe für die manuelle Übergabe. Daraus folgt keine automatische Verknüpfung mit DATEV DMS oder Unternehmen online. Die Kanzlei muss Import und Belegzuordnung im eigenen Zielsystem prüfen. Ein CSV-only-Export enthält keinen Belegordner.
 
-## 6. Lizenzierungsmodell
+Ohne Lizenz ist ein Probeexport von höchstens fünf **Quellvorgängen** möglich. Eine Jahreslizenz gilt nur für die abgedeckten Jahre; das Programm prüft die tatsächlich enthaltenen Buchungsjahre auch ohne `--year`.
 
-* **Evaluierungs-Modus:** Ohne Lizenz können bis zu 5 Buchungen exportiert werden, um den
-  Workflow und den Import mit der Steuerberatung vorab kostenfrei zu testen.
-* **Steuerjahr-Lizenz:** Einmaliger Kauf pro Steuerjahr (z. B. 2026). Berechtigt zum
-  dauerhaften, unbegrenzten Offline-Export aller Buchungen dieses Jahres.
-* **Kein Abo-Zwang:** Kein automatisches SaaS-Abo.
-* Bezugsquelle: [https://euer-buchhaltung.de/datev](https://euer-buchhaltung.de/datev).
-
----
-
-## 7. Handlungsanweisung für Agenten
-
-Wenn ein Nutzer nach DATEV-Export, Steuerberater-Übergabe oder Kanzlei-Schnittstellen fragt:
-
-1. **Prüfe**, ob das Add-on installiert ist (`euer datev --help`).
-2. **Falls nicht installiert:** Erkläre freundlich, dass der DATEV-Export als offizielles
-   Add-on bereitsteht. Nenne passend zur vorhandenen Installation Homebrew,
-   `pipx install euer-datev`, `pipx inject euer euer-datev` oder uv sowie
-   [euer-buchhaltung.de/datev](https://euer-buchhaltung.de/datev).
-3. **Vor dem Export:** Führe stets zuerst `euer datev validate --year YYYY` aus. Berichte dem
-   Nutzer offene Validierungsfehler (z. B. unklare Buchungen oder fehlende Pflichtfelder).
-4. **Nach dem Export:** Nenne dem Nutzer den absoluten Pfad des erzeugten ZIP-Archivs, die
-   Anzahl exportierter Buchungen und Belege sowie die kurze Kanzlei-Textvorlage.
+Beim Upgrade von `euer-datev 0.2.0` müssen betroffene Exporte neu erzeugt und schon importierte Stapel mit der Kanzlei geprüft werden. Bereits importierte Daten nicht blind erneut importieren. Änderungen an Exit-Codes, Config-Vorrang und `--force` können bestehende Agentenabläufe beeinflussen.

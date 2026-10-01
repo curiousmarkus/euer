@@ -458,6 +458,19 @@ oder Zurücksetzen ist nicht nötig. Neue Belege kommen in die passenden
 Jahresordner. Für Exporte setzt du einen konkreten Jahrespfad: `exports.directory`
 unterstützt keinen `{year}`-Platzhalter.
 
+### Optional: DATEV-Paket für eine Kanzlei vorbereiten
+
+Wenn du mit einer Kanzlei arbeitest, kann der Agent das optionale Add-on
+`euer-datev` verwenden. Nach `euer datev doctor --year 2026 --format json`
+klärt ihr fehlende Kanzleidaten, Konten und Belegpfade. Der Agent validiert
+den gewünschten Zeitraum mit `euer datev validate --year 2026 --format json`.
+Nur bei `ready` erzeugt er regulär das ZIP und prüft Bericht, CSV und
+Archivmitglieder. Fehlende Belege können mit `--allow-incomplete` nur in
+einem ausdrücklich markierten Teilpaket mit Exit 2 übergeben werden.
+Relative `Beleglink`-Pfade dienen der manuellen Zuordnung; die Kanzlei prüft
+Import und Belegverknüpfung in ihrem DATEV-System. Die vollständigen Optionen
+und Upgrade-Hinweise stehen in der [DATEV-Referenz](skills/euer-buchhaltung/references/datev_export.md).
+
 ## 10. Sichern, aktualisieren und Regeln pflegen
 
 Sichere regelmäßig die Datenbank sowie Belege, Kontoauszüge, Config, persönliche

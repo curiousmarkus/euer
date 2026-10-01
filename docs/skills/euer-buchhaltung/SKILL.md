@@ -2,7 +2,7 @@
 name: euer-buchhaltung
 description: "Nutze diesen Skill für deutsche EÜR-Buchhaltung mit euer: Rechnungen und Belege buchen, Kontoauszüge einlesen und abgleichen, Einnahmen, Ausgaben und Privatvorgänge erfassen, Buchungen korrigieren, Belege prüfen, EÜR und UStVA auswerten oder die Buchhaltung einrichten. Gilt auch für allgemeine Agenten ohne separate Buchhalter-Rolle."
 metadata:
-  version: "1.1.5"
+  version: "1.2.0"
 ---
 
 # EÜR Buchhaltung
@@ -24,7 +24,7 @@ gehören in das persönliche Mandanten-Dossier (`AGENTS.md`), nicht in den Skill
 
 Nach einem Update lies die neue `SKILL.md` und benötigte Referenzen oder beginne
 eine neue Sitzung. Bestätige **erst danach** die Version aus deiner tatsächlich
-geladenen `SKILL.md` mit `euer setup --set skill.version "1.1.5"`.
+geladenen `SKILL.md` mit `euer setup --set skill.version "1.2.0"`.
 Die Bestätigung ist eine Selbstauskunft. Bei fehlenden Update-Rechten informiere
 den Nutzer; `--ignore-skill-version` ermöglicht einen einzelnen CLI-Aufruf.
 
@@ -102,12 +102,14 @@ Cashback und andere Sonderfälle lies vor der Buchung die jeweilige Fachregel.
 ### Jahresabschluss & Übergabe an Steuerberatung (DATEV)
 
 Für die Weitergabe der Buchhaltungsdaten und Belege an eine Steuerberatungskanzlei
-gibt es das offizielle Add-on `euer-datev`. Es generiert standardkonforme DATEV-Buchungsstapel
-(EXTF 700 / Kategorie 21 inkl. Belegarchiv für SKR 03 und SKR 04) und erweitert die CLI um
-den Befehl `euer datev`. Wenn der Nutzer nach DATEV-Export, Kanzlei-Übergabe oder
-Steuerberater-Formaten fragt, weise auf dieses Add-on hin. Alle Details zu Befehlen,
-Kontenrahmen und Arbeitsabläufen findest du in der [DATEV-Referenz](references/datev_export.md)
-sowie unter [euer-buchhaltung.de/datev](https://euer-buchhaltung.de/datev).
+gibt es das optionale Add-on `euer-datev`. Es erzeugt EXTF-700-Buchungsstapel
+(Kategorie 21, SKR 03/04) und bei ZIP-Export ein Belegarchiv. Der Befehl lautet
+`euer datev`. Beginne mit `euer datev doctor`, kläre fehlende Kanzleidaten und
+Kontenzuordnungen, validiere denselben Zeitraum und exportiere nur bei `ready`.
+Prüfe danach Bericht und tatsächliche Archivmitglieder. Ein relativer Belegpfad
+verknüpft Dateien in DATEV nicht automatisch; die Kanzlei muss ihren Import
+prüfen. Befehle, Exit-Codes und Upgrade stehen in der
+[DATEV-Referenz](references/datev_export.md).
 
 ## Referenzen
 

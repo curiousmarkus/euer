@@ -8,7 +8,7 @@ steuerliche Einordnung nicht selbst.
 
 ## Geltung und Quellen der wichtigsten Wenn-Dann-Regeln
 
-Die CLI-Regeln dieser Referenz beschreiben Skill 1.1.5. Bei älteren Buchungen
+Die CLI-Regeln dieser Referenz beschreiben Skill 1.2.0. Bei älteren Buchungen
 gelten Beleg, Zahlungsjahr und damaliger Steuerstatus; eine spätere Änderung der
 globalen Config ersetzt deren ursprüngliche Behandlung nicht.
 

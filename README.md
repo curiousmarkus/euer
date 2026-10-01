@@ -57,6 +57,10 @@ Für den optionalen DATEV-Export installierst du zusätzlich `euer-datev`, etwa
 mit `brew install curiousmarkus/euer/euer-datev` oder `pipx install euer-datev`.
 Der Aufruf lautet in beiden Fällen `euer datev --help`. Weitere Wege stehen in
 der [DATEV-Referenz](docs/skills/euer-buchhaltung/references/datev_export.md).
+Vor der Kanzleiübergabe mit `euer datev doctor --year 2026` die Einrichtung
+prüfen und mit `euer datev validate --year 2026 --format json` denselben
+Zeitraum validieren. Nur der Status `ready` erlaubt den regulären Export;
+der tatsächliche DATEV-Import bleibt von der Kanzlei zu prüfen.
 
 ### 2. KI-Agenten einrichten
 
