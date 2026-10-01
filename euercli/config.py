@@ -1,4 +1,5 @@
 import math
+import re
 import sys
 import tomllib
 from dataclasses import dataclass
@@ -49,23 +50,37 @@ def toml_format_value(value: object) -> str:
     return f'"{toml_escape(str(value))}"'
 
 
+def _toml_key(value: str) -> str:
+    return value if re.fullmatch(r"[A-Za-z0-9_-]+", value) else f'"{toml_escape(value)}"'
+
+
 def dump_toml(config: dict) -> str:
-    """Erzeugt TOML aus einer flachen Config-Struktur."""
-    lines = []
-    for section, value in config.items():
-        if isinstance(value, dict):
-            lines.append(f"[{section}]")
-            for key, val in value.items():
-                lines.append(f"{key} = {toml_format_value(val)}")
+    """Erzeugt TOML auch für verschachtelte Tabellen und Tabellenlisten."""
+    lines: list[str] = []
+
+    def write_table(data: dict, path: tuple[str, ...] = ()) -> None:
+        if path:
+            lines.append(f"[{'.'.join(_toml_key(part) for part in path)}]")
+        for key, value in data.items():
+            if not isinstance(value, dict) and not (
+                isinstance(value, list) and value and all(isinstance(item, dict) for item in value)
+            ):
+                lines.append(f"{_toml_key(str(key))} = {toml_format_value(value)}")
+        if path:
             lines.append("")
-        elif isinstance(value, list) and all(isinstance(item, dict) for item in value):
-            for item in value:
-                lines.append(f"[[{section}]]")
-                for key, val in item.items():
-                    lines.append(f"{key} = {toml_format_value(val)}")
-                lines.append("")
-        else:
-            lines.append(f"{section} = {toml_format_value(value)}")
+        for key, value in data.items():
+            child_path = (*path, str(key))
+            if isinstance(value, dict):
+                write_table(value, child_path)
+            elif isinstance(value, list) and value and all(isinstance(item, dict) for item in value):
+                table_name = ".".join(_toml_key(part) for part in child_path)
+                for item in value:
+                    lines.append(f"[[{table_name}]]")
+                    for field, field_value in item.items():
+                        lines.append(f"{_toml_key(str(field))} = {toml_format_value(field_value)}")
+                    lines.append("")
+
+    write_table(config)
     return "\n".join(lines).rstrip() + "\n"
 
 

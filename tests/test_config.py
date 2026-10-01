@@ -6,6 +6,13 @@ from euercli.services.errors import ValidationError
 
 
 class ConfigTestCase(unittest.TestCase):
+    def test_nested_datev_tables_round_trip(self) -> None:
+        data = {
+            "database": {"path": "euer.db"},
+            "datev": {"skr": "03", "accounts": {"Bank Privat": "1210", "bank": "1200"}},
+        }
+        self.assertEqual(tomllib.loads(dump_toml(data)), data)
+
     def test_get_ledger_accounts_parses_valid_entries(self) -> None:
         accounts = get_ledger_accounts(
             {
