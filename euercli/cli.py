@@ -98,9 +98,9 @@ def _datev_position(argv: list[str]) -> int | None:
     index = 0
     while index < len(argv):
         value = argv[index]
-        if value == "--db":
+        if value in {"--db", "--config"}:
             index += 2
-        elif value.startswith("--db=") or value == "--ignore-skill-version":
+        elif value.startswith(("--db=", "--config=")) or value == "--ignore-skill-version":
             index += 1
         elif value.startswith("-"):
             return None
@@ -141,6 +141,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help=f"Pfad zur Datenbank (default: {DEFAULT_DB_PATH})",
     )
+    parser.add_argument("--config", default=None, help="Alternative Config für DATEV-Befehle")
     parser.add_argument(
         "--ignore-skill-version",
         action="store_true",
@@ -939,9 +940,18 @@ def main(argv: list[str] | None = None) -> None:
             parser.exit(1, message + "\n")
     if datev_info_only:
         if external:
-            _run_external_datev(args.external_binary, list(external_args or []))
+            forwarded = list(external_args or [])
+            if (
+                args.config is not None
+                and "--config" not in forwarded
+                and not any(value.startswith("--config=") for value in forwarded)
+            ):
+                forwarded[1:1] = ["--config", args.config]
+            _run_external_datev(args.external_binary, forwarded)
         else:
-            args.func(args)
+            result = args.func(args)
+            if isinstance(result, int):
+                raise SystemExit(result)
         return
     args.is_explicit_db = args.db is not None
     args.project_root = Path.cwd()
@@ -968,7 +978,7 @@ def main(argv: list[str] | None = None) -> None:
     else:
         args.db_from_project_config = False
     db_independent = (
-        args.command in {"init", "config", "doctor"}
+        args.command in {"init", "config", "doctor", "datev"}
         or (args.command == "setup" and args.set is not None)
         or (args.command == "import" and args.schema)
         or datev_info_only
@@ -995,12 +1005,20 @@ def main(argv: list[str] | None = None) -> None:
             parser.exit(1, f"Fehler: Sicherheits-Backup fehlgeschlagen: {exc}\n")
     if external:
         forwarded = list(external_args or [])
+        if (
+            args.config is not None
+            and "--config" not in forwarded
+            and not any(value.startswith("--config=") for value in forwarded)
+        ):
+            forwarded[1:1] = ["--config", args.config]
         if args.datev_command in {"export", "validate"} and _datev_db_option(forwarded) is None:
             forwarded.insert(1, "--db")
             forwarded.insert(2, args.db)
         _run_external_datev(args.external_binary, forwarded)
     else:
-        args.func(args)
+        result = args.func(args)
+        if isinstance(result, int):
+            raise SystemExit(result)
 
 
 if __name__ == "__main__":

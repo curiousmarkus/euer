@@ -12,6 +12,7 @@ die CLI-Syntax und Ausgabe, nicht die Buchungsentscheidung.
 |---|---|
 | `--version` | Zeigt die installierte Version an |
 | `--db` | Pfad zur Datenbank (Standard: ./euer.db oder Projekt-Config) |
+| `--config` | Alternative Config für `datev`-Befehle (auch vor `datev` möglich) |
 | `--ignore-skill-version` | Umgeht die Skill-Versionssperre für diesen Aufruf |
 
 ### euer init
