@@ -39,7 +39,7 @@ Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
 „Agenten-Dateien“. Die wiederkehrende Prozedur beschreibt der
 [Installationsreferenz](skills/euer-buchhaltung/references/installation_and_setup.md#agenten-dateien-aktualisieren).
 
-## 0.13.0 (unveröffentlicht)
+## 0.13.0
 
 - **DATEV-Integration (Spec 027):** `euer datev` erkennt ein separat installiertes
   `euer-datev` im `PATH`. Ein gemeinsam installiertes Entry-Point-Plugin bleibt
