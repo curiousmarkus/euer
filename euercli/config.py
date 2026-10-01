@@ -72,7 +72,9 @@ def dump_toml(config: dict) -> str:
             child_path = (*path, str(key))
             if isinstance(value, dict):
                 write_table(value, child_path)
-            elif isinstance(value, list) and value and all(isinstance(item, dict) for item in value):
+            elif (
+                isinstance(value, list) and value and all(isinstance(item, dict) for item in value)
+            ):
                 table_name = ".".join(_toml_key(part) for part in child_path)
                 for item in value:
                     lines.append(f"[[{table_name}]]")

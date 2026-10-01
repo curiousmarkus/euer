@@ -1,7 +1,7 @@
 """CLI-Command für 'euer doctor' (Spec 019)."""
 
-import json
 import importlib.metadata
+import json
 import shutil
 import sys
 from pathlib import Path
