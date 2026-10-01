@@ -39,6 +39,16 @@ Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
 „Agenten-Dateien“. Die wiederkehrende Prozedur beschreibt der
 [Installationsreferenz](skills/euer-buchhaltung/references/installation_and_setup.md#agenten-dateien-aktualisieren).
 
+## 0.13.0 (unveröffentlicht)
+
+- **DATEV-Integration (Spec 027):** `euer datev` erkennt ein separat installiertes
+  `euer-datev` im `PATH`. Ein gemeinsam installiertes Entry-Point-Plugin bleibt
+  vorrangig. `export` und `validate` verwenden den konfigurierten Projekt-DB-Pfad;
+  ein explizites DATEV-`--db` hat Vorrang. Für bisherige pipx-Installationen mit
+  `pipx inject` ist keine Umstellung erforderlich. Bei getrennter Installation
+  müssen beide ausführbaren Programme im `PATH` liegen.
+- **Agenten-Dateien:** Keine Aktualisierung erforderlich; Skill-Version bleibt 1.1.4.
+
 ## 0.12.3
 
 - **DATEV-Export und Kanzlei-Übergabe:** Offizielle Unterstützung und Dokumentation

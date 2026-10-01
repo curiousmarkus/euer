@@ -110,6 +110,8 @@ technische Sperre in der CLI. Änderungen daran gehören in die Release Notes.
   auf einen Aufruf beschränkt.
 - **Import**: `euercli/importers.py` (CSV/JSONL Normalisierung).
 - **Plugins**: CLI lädt Entry Points `euer.commands` und ruft `setup(subparsers)`.
+  Für `datev` nutzt sie andernfalls ein separat installiertes `euer-datev` aus dem
+  `PATH`. Datenbefehle erhalten den aufgelösten Projekt-DB-Pfad.
 
 ### Service Layer: Pflichtregeln
 
@@ -244,6 +246,11 @@ Der Import akzeptiert zusätzlich UStVA-Klassifikationsfelder (`vat_rate`,
 
 Plugins registrieren Commands über `euer.commands`. Der Entry Point muss entweder
 eine callable sein oder ein Objekt mit `setup(subparsers)`.
+Der Entry Point `datev` hat Vorrang vor dem externen Programm `euer-datev` im
+`PATH`. Ein defekter Entry Point wird als Fehler angezeigt und nicht still durch
+eine andere Installation ersetzt. Beim externen Aufruf werden die DATEV-Argumente
+unverändert weitergegeben; nur für `export` und `validate` ergänzt der Core den
+aufgelösten `--db`-Pfad, wenn das Add-on keinen eigenen `--db`-Wert erhielt.
 
 ## Code- und Sprachkonventionen
 
@@ -355,6 +362,7 @@ Offene Change Requests werden innerhalb der jeweiligen Spec dokumentiert.
 | 024 | Versionierter Regelkatalog für Entscheidungsnachweise | Offen |
 | 025 | Optionale Rechnungsnummer | Implementiert |
 | 026 | Innergemeinschaftlicher Warenerwerb und OSS-Erlöse | Offen |
+| 027 | Separat installiertes DATEV-Subcommand | Implementiert |
 
 ### Agenten-Dateien und Mandantendaten
 

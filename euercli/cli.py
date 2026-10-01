@@ -1,6 +1,9 @@
 import argparse
 import importlib.metadata
 import json
+import os
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -80,6 +83,46 @@ def load_plugins(subparsers: argparse._SubParsersAction) -> None:
                 f"Warnung: Plugin '{entry_point.name}' konnte nicht geladen werden: {exc}",
                 file=sys.stderr,
             )
+
+    if not any(entry_point.name == "datev" for entry_point in entry_points):
+        binary = shutil.which("euer-datev")
+        if binary:
+            external = subparsers.add_parser(
+                "datev", help="DATEV-Export und Kanzlei-Werkzeuge (euer-datev)", add_help=False
+            )
+            external.set_defaults(external_binary=binary)
+
+
+def _datev_position(argv: list[str]) -> int | None:
+    """Findet den ersten Core-Unterbefehl, ohne Plugin-Optionen zu parsen."""
+    index = 0
+    while index < len(argv):
+        value = argv[index]
+        if value == "--db":
+            index += 2
+        elif value.startswith("--db=") or value == "--ignore-skill-version":
+            index += 1
+        elif value.startswith("-"):
+            return None
+        else:
+            return index if value == "datev" else None
+    return None
+
+
+def _datev_db_option(argv: list[str]) -> str | None:
+    """Liest nur die explizite DB-Option des externen DATEV-Befehls."""
+    for index, value in enumerate(argv):
+        if value == "--db" and index + 1 < len(argv):
+            return argv[index + 1]
+        if value.startswith("--db="):
+            return value.partition("=")[2]
+    return None
+
+
+def _run_external_datev(binary: str, arguments: list[str]) -> None:
+    if sys.platform == "win32":
+        raise SystemExit(subprocess.call([binary, *arguments]))
+    os.execv(binary, [binary, *arguments])
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -823,10 +866,40 @@ def main(argv: list[str] | None = None) -> None:
     # Das globale Notfall-Flag darf auch hinter dem letzten Unterbefehl stehen.
     ignored = "--ignore-skill-version" in argv
     argv = [item for item in argv if item != "--ignore-skill-version"]
-    args = parser.parse_args(argv)
+    datev_position = _datev_position(argv)
+    external_args: list[str] | None = None
+    if datev_position is not None:
+        external_args = argv[datev_position + 1 :]
+    datev_entry_point_exists = any(
+        entry_point.name == "datev"
+        for entry_point in importlib.metadata.entry_points(group="euer.commands")
+    )
+    external_binary = None if datev_entry_point_exists else shutil.which("euer-datev")
+    if datev_position is not None and not datev_entry_point_exists and not external_binary:
+        parser.exit(
+            2,
+            "Fehler: 'datev' ist nicht installiert. Installiere euer-datev mit "
+            "'brew install curiousmarkus/euer/euer-datev' oder 'pipx install euer-datev'.\n",
+        )
+    external = datev_position is not None and external_binary is not None
+    args = parser.parse_args(argv[: datev_position + 1] if external else argv)
+    if external:
+        args.datev_command = external_args[0] if external_args else None
+        datev_db = _datev_db_option(external_args or [])
+        if datev_db is not None:
+            args.db = datev_db
     args.ignore_skill_version = ignored
-    exempt = args.command in {"doctor", "config"} or (
-        args.command == "setup" and args.set is not None and args.set[0] == "skill.version"
+    datev_info_only = args.command == "datev" and (
+        getattr(args, "datev_command", None) not in {"export", "validate"}
+        or (
+            external
+            and any(option in (external_args or []) for option in {"-h", "--help", "--version"})
+        )
+    )
+    exempt = (
+        args.command in {"doctor", "config"}
+        or (args.command == "setup" and args.set is not None and args.set[0] == "skill.version")
+        or datev_info_only
     )
     if not exempt:
         skill = skill_status()
@@ -864,6 +937,12 @@ def main(argv: list[str] | None = None) -> None:
                 )
                 parser.exit(1)
             parser.exit(1, message + "\n")
+    if datev_info_only:
+        if external:
+            _run_external_datev(args.external_binary, list(external_args or []))
+        else:
+            args.func(args)
+        return
     args.is_explicit_db = args.db is not None
     args.project_root = Path.cwd()
     if getattr(args, "save_db_path", False) and not args.is_explicit_db:
@@ -892,6 +971,7 @@ def main(argv: list[str] | None = None) -> None:
         args.command in {"init", "config", "doctor"}
         or (args.command == "setup" and args.set is not None)
         or (args.command == "import" and args.schema)
+        or datev_info_only
     )
     if (
         not db_independent
@@ -913,7 +993,14 @@ def main(argv: list[str] | None = None) -> None:
             ensure_daily_backup(Path(args.db))
         except Exception as exc:
             parser.exit(1, f"Fehler: Sicherheits-Backup fehlgeschlagen: {exc}\n")
-    args.func(args)
+    if external:
+        forwarded = list(external_args or [])
+        if args.datev_command in {"export", "validate"} and _datev_db_option(forwarded) is None:
+            forwarded.insert(1, "--db")
+            forwarded.insert(2, args.db)
+        _run_external_datev(args.external_binary, forwarded)
+    else:
+        args.func(args)
 
 
 if __name__ == "__main__":
