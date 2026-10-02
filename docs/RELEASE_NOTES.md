@@ -8,7 +8,7 @@ Für Installationen ab 0.8.1 ergänzen sie die normale Update-Sequenz aus der
 pipx upgrade euer
 euer doctor
 # Skill vollständig aus dem Bundle-Pfad installieren und neu laden
-euer setup --set skill.version "1.1.5"
+euer setup --set skill.version "1.2.0"
 euer init
 euer incomplete list
 euer summary --year 2026
@@ -38,6 +38,22 @@ Bei jedem neuen Release steht der konkrete Handlungsbedarf für Skill, Rolle,
 Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
 „Agenten-Dateien“. Die wiederkehrende Prozedur beschreibt der
 [Installationsreferenz](skills/euer-buchhaltung/references/installation_and_setup.md#agenten-dateien-aktualisieren).
+
+## 0.14.0
+
+- **DATEV-Integration:** Core übernimmt die Exit-Codes des gemeinsamen Plugins.
+  `euer datev doctor` und `euer doctor` zeigen getrennt den DATEV-Status und die
+  Erkennung des optionalen Add-ons. `--db` und `--config` können vor oder nach
+  dem DATEV-Unterbefehl stehen. Bei getrennter Installation bleibt die externe
+  Weiterleitung erhalten; ein gemeinsames Plugin hat Vorrang.
+- **Agenten-Dateien:** Den vollständigen Skill samt Referenzen auf 1.2.0
+  aktualisieren, neu laden, lesen und erst danach mit
+  `euer setup --set skill.version "1.2.0"` bestätigen. Das persönliche
+  Mandanten-Dossier bleibt erhalten.
+- **DATEV-Upgrade:** Für `euer-datev 0.3.0` auch dessen Release-Hinweise lesen.
+  Ein tatsächlich geprüfter Import in die DATEV-Zielversion ist noch offen;
+  keine Veröffentlichung oder Kanzleiübergabe ist durch diese lokale
+  Vorbereitung erfolgt.
 
 ## 0.13.0
 
