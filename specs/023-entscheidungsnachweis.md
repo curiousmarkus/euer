@@ -56,7 +56,9 @@ Der Nachweis gliedert sich in vier strikt getrennte Ebenen:
 4. **Buchung (Booking & Audit):** Transaktionale Verknüpfung mit der erzeugten
    Buchung (`record_uuid`) und dem auslösenden Eintrag im Änderungsprotokoll
    (`audit_log.id`). Nachträgliche Buchungsänderungen erzeugen neue Nachweise und
-   überschreiben ältere nicht.
+   überschreiben ältere nicht. Die kryptografische Verkettung des Änderungsprotokolls
+   zur Erkennung nachträglicher Manipulationen (Tamper-Evidence) wird in [Spec 028](028-tamper-evident-audit-chain.md)
+   spezifiziert und sichert die Integrität der verknüpften Nachweise mathematisch ab.
 
 ### Beispiel: Kategorieentscheidung ohne Katalogregel
 
