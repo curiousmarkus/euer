@@ -39,6 +39,10 @@ Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
 „Agenten-Dateien“. Die wiederkehrende Prozedur beschreibt der
 [Installationsreferenz](skills/euer-buchhaltung/references/installation_and_setup.md#agenten-dateien-aktualisieren).
 
+Für das optionale DATEV-Add-on gibt es eigene öffentliche
+[Versionshinweise](https://euer-buchhaltung.de/datev/versionshinweise), insbesondere
+für Upgrades bestehender Installationen.
+
 ## 0.14.0
 
 - **DATEV-Integration:** Core übernimmt die Exit-Codes des gemeinsamen Plugins.
