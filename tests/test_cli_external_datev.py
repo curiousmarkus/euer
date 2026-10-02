@@ -65,6 +65,22 @@ class TestExternalDatev(unittest.TestCase):
                 "/bin/euer-datev", ["doctor", "--config", "file with spaces.toml"]
             )
 
+    def test_root_db_is_forwarded_to_external_doctor(self):
+        with tempfile.TemporaryDirectory() as directory:
+            db = str(Path(directory) / "mandant.db")
+            with mock.patch.object(cli.Path, "cwd", return_value=Path(directory)):
+                cli.main(["--db", db, "datev", "doctor"])
+            cli._run_external_datev.assert_called_with("/bin/euer-datev", ["doctor", "--db", db])
+
+    def test_root_db_is_not_forwarded_to_init_skr(self):
+        with tempfile.TemporaryDirectory() as directory:
+            db = str(Path(directory) / "mandant.db")
+            with mock.patch.object(cli.Path, "cwd", return_value=Path(directory)):
+                cli.main(["--db", db, "datev", "init-skr", "--skr", "03"])
+            cli._run_external_datev.assert_called_with(
+                "/bin/euer-datev", ["init-skr", "--skr", "03"]
+            )
+
     def test_missing_datev_has_installation_hint(self):
         cli.shutil.which.return_value = None
         with self.assertRaises(SystemExit) as result:

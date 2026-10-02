@@ -46,6 +46,8 @@ Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
   Erkennung des optionalen Add-ons. `--db` und `--config` können vor oder nach
   dem DATEV-Unterbefehl stehen. Bei getrennter Installation bleibt die externe
   Weiterleitung erhalten; ein gemeinsames Plugin hat Vorrang.
+  Bei getrennter Installation erhält auch `euer --db PFAD datev doctor` den
+  ausdrücklich gewählten Datenbankpfad.
 - **Agenten-Dateien:** Den vollständigen Skill samt Referenzen auf 1.2.0
   aktualisieren, neu laden, lesen und erst danach mit
   `euer setup --set skill.version "1.2.0"` bestätigen. Das persönliche

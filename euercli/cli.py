@@ -947,6 +947,13 @@ def main(argv: list[str] | None = None) -> None:
                 and not any(value.startswith("--config=") for value in forwarded)
             ):
                 forwarded[1:1] = ["--config", args.config]
+            if (
+                args.datev_command == "doctor"
+                and args.db is not None
+                and not any(option in forwarded for option in {"-h", "--help", "--version"})
+                and _datev_db_option(forwarded) is None
+            ):
+                forwarded[1:1] = ["--db", args.db]
             _run_external_datev(args.external_binary, forwarded)
         else:
             result = args.func(args)
