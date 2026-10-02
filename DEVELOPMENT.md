@@ -430,11 +430,16 @@ Es kann auch bequem über `make bump-patch` (bzw. `bump-minor`, `bump-major`) au
    neuen Abschnitt `## X.Y.Z` verschieben.
 4. Bei einem unmittelbar geplanten Release kann direkt ein Abschnitt für die nächste
    Version angelegt werden.
-5. Release Notes beschreiben primär nutzerrelevante Änderungen. Interne Test- oder
-   CI-Details nur erwähnen, wenn sie eine relevante Plattform- oder Qualitätsgarantie
-   dokumentieren.
+5. Release Notes an Nutzer:innen bereits installierter Versionen richten:
+   Änderungen, konkrete Upgrade-Schritte und dauerhafte Produktgrenzen beschreiben.
+   Flüchtige Stände der lokalen Vorbereitung, CI, Veröffentlichung oder Abnahme
+   im Implementierungsplan bzw. der internen Release-Dokumentation festhalten.
 6. Immer angeben, ob bestehende Installationen Datenbank-, Konfigurations- oder andere
    Migrationsschritte benötigen. Falls nicht, dies ausdrücklich festhalten.
+7. Redaktionell jeden Satz prüfen: „Ist er auch nach der Veröffentlichung noch
+   sinnvoll und für Nutzer:innen handlungsrelevant?“ Eine ausstehende
+   DATEV-Importabnahme beispielsweise als konkrete Empfehlung zum Testimport vor
+   produktiver Übergabe formulieren, nicht als Status der Release-Vorbereitung.
 
 ### Pflicht vor jedem Release
 

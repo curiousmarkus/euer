@@ -53,9 +53,9 @@ Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
   `euer setup --set skill.version "1.2.0"` bestätigen. Das persönliche
   Mandanten-Dossier bleibt erhalten.
 - **DATEV-Upgrade:** Für `euer-datev 0.3.0` auch dessen Release-Hinweise lesen.
-  Ein tatsächlich geprüfter Import in die DATEV-Zielversion ist noch offen;
-  keine Veröffentlichung oder Kanzleiübergabe ist durch diese lokale
-  Vorbereitung erfolgt.
+  Vor der produktiven Übergabe mit der Kanzlei einen Testimport in der verwendeten
+  DATEV-Version durchführen und Buchungsrichtung, Steuerwirkung und
+  Belegzuordnung prüfen.
 
 ## 0.13.0
 

@@ -112,6 +112,12 @@ Agenten-Template oder Onboarding/`AGENTS.md` ändern, `docs/RELEASE_NOTES.md` mi
 konkreten Upgrade- und Migrationsschritten aktualisieren. Vor einem Release muss die
 kanonische Version aus `euercli/__init__.py` in den gebauten Metadaten erscheinen.
 
+`docs/RELEASE_NOTES.md` richtet sich an Nutzer:innen, die die Version bereits
+installiert haben. Änderungen, nötige Schritte und dauerhafte Einschränkungen aus
+dieser Perspektive formulieren. Bei
+jedem Satz prüfen: Ist er auch nach der Veröffentlichung noch sinnvoll und für
+Nutzer:innen handlungsrelevant?
+
 Vor einer Veröffentlichung müssen Tests, Linting, Build und der
 Artefakt-Smoke-Test grün sein. Veröffentlicht wird ausschließlich durch einen
 annotierten, geschützten Tag `vMAJOR.MINOR.PATCH` auf `main`. Dieser Tag startet die
