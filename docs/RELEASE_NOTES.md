@@ -57,6 +57,9 @@ Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
   Vor der produktiven Übergabe mit der Kanzlei einen Testimport in der verwendeten
   DATEV-Version durchführen und Buchungsrichtung, Steuerwirkung und
   Belegzuordnung prüfen.
+- **Konfiguration:** Beim Schreiben bleiben auch verschachtelte Einstellungen
+  wie DATEV-Zahlungskonten erhalten. Eine Datenbank- oder Konfigurationsmigration
+  ist für dieses Update nicht erforderlich.
 
 ## 0.13.0
 

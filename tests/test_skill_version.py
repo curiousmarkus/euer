@@ -110,6 +110,20 @@ class SkillVersionCLITestCase(BaseCLITestCase):
 
 
 class SkillReferenceTestCase(unittest.TestCase):
+    def test_current_setup_examples_use_bundled_skill_version(self) -> None:
+        for relative_path in (
+            "docs/skills/euer-buchhaltung/SKILL.md",
+            "docs/skills/euer-buchhaltung/references/cli_reference.md",
+            "docs/templates/onboarding-prompt.md",
+        ):
+            with self.subTest(document=relative_path):
+                document = (REPO_ROOT / relative_path).read_text()
+                versions = re.findall(
+                    r'euer setup --set skill\.version "(\d+\.\d+\.\d+)"', document
+                )
+                self.assertTrue(versions, relative_path)
+                self.assertEqual({expected_version()}, set(versions))
+
     def test_skill_links_resolve_inside_bundle(self) -> None:
         bundle = REPO_ROOT / "docs/skills/euer-buchhaltung"
         for document in bundle.rglob("*.md"):
