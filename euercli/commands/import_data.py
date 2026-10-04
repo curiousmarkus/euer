@@ -12,7 +12,7 @@ from ..config import (
 from ..db import get_db_connection
 from ..importers import get_tax_config, iter_import_rows, normalize_import_row
 from ..services.categories import get_category_by_name
-from ..services.duplicates import DuplicateAction, find_all_exact_duplicates
+from ..services.duplicates import DuplicateAction
 from ..services.errors import ValidationError
 from ..services.expenses import create_expense
 from ..services.income import create_income
@@ -193,6 +193,7 @@ def cmd_import(args):
     max_income_id = conn.execute("SELECT COALESCE(MAX(id), 0) FROM income").fetchone()[0]
     consumed_pre_existing_expense_ids: set[int] = set()
     consumed_pre_existing_income_ids: set[int] = set()
+    duplicate_cache: dict[tuple, list[int]] = {}
 
     try:
         for row_idx, normalized in enumerate(normalized_rows, start=1):
@@ -218,34 +219,8 @@ def cmd_import(args):
             entertainment_tip_eur = normalized["entertainment_tip_eur"]
             entertainment_vat_status = normalized["entertainment_vat_status"]
 
-            if not allow_duplicate_import:
-                table_name = "expenses" if row_type == "expense" else "income"
-                matches = find_all_exact_duplicates(
-                    conn,
-                    table_name=table_name,
-                    payment_date=str(payment_date) if payment_date is not None else None,
-                    invoice_date=str(invoice_date) if invoice_date is not None else None,
-                    party=str(party),
-                    amount_eur=float(amount),
-                    receipt_name=str(receipt_name) if receipt_name is not None else None,
-                    invoice_number=(
-                        str(invoice_number).strip() or None if invoice_number is not None else None
-                    ),
-                )
-                max_id = max_expense_id if row_type == "expense" else max_income_id
-                consumed_ids = (
-                    consumed_pre_existing_expense_ids
-                    if row_type == "expense"
-                    else consumed_pre_existing_income_ids
-                )
-                pre_existing_matches = [m for m in matches if m <= max_id and m not in consumed_ids]
-                if pre_existing_matches:
-                    consumed_ids.add(pre_existing_matches[0])
-                    duplicates += 1
-                    continue
-
             if row_type == "expense":
-                create_expense(
+                created = create_expense(
                     conn,
                     payment_date=str(payment_date) if payment_date is not None else None,
                     invoice_date=str(invoice_date) if invoice_date is not None else None,
@@ -275,13 +250,23 @@ def cmd_import(args):
                     audit_user=audit_user,
                     tax_mode=tax_mode,
                     allow_duplicate=allow_duplicate_import,
-                    allow_exact_duplicate=True,
-                    on_duplicate=DuplicateAction.SKIP,
+                    allow_exact_duplicate=False,
+                    on_duplicate=(
+                        DuplicateAction.SKIP
+                        if not allow_duplicate_import
+                        else DuplicateAction.RAISE
+                    ),
+                    max_id=max_expense_id,
+                    consumed_ids=consumed_pre_existing_expense_ids,
+                    duplicate_cache=duplicate_cache,
                     auto_commit=False,
                 )
-                inserted_expenses += 1
+                if created is None:
+                    duplicates += 1
+                else:
+                    inserted_expenses += 1
             else:
-                create_income(
+                created = create_income(
                     conn,
                     payment_date=str(payment_date) if payment_date is not None else None,
                     invoice_date=str(invoice_date) if invoice_date is not None else None,
@@ -306,11 +291,21 @@ def cmd_import(args):
                     audit_user=audit_user,
                     tax_mode=tax_mode,
                     allow_duplicate=allow_duplicate_import,
-                    allow_exact_duplicate=True,
-                    on_duplicate=DuplicateAction.SKIP,
+                    allow_exact_duplicate=False,
+                    on_duplicate=(
+                        DuplicateAction.SKIP
+                        if not allow_duplicate_import
+                        else DuplicateAction.RAISE
+                    ),
+                    max_id=max_income_id,
+                    consumed_ids=consumed_pre_existing_income_ids,
+                    duplicate_cache=duplicate_cache,
                     auto_commit=False,
                 )
-                inserted_income += 1
+                if created is None:
+                    duplicates += 1
+                else:
+                    inserted_income += 1
     except ValidationError as exc:
         conn.rollback()
         conn.close()

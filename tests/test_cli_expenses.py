@@ -171,6 +171,39 @@ category = "Laufende EDV-Kosten"
         self.assertEqual(rows[1][5], "-15.50")
         self.assertEqual(rows[1][10], "Korrigiert")
 
+    def test_update_expense_receipt_name_duplicate_requires_allow_duplicate(self):
+        res1 = self.add_expense(
+            vendor="Telekom",
+            amount="-50.00",
+            category="Arbeitsmittel",
+            receipt="beleg1.pdf",
+            date="2026-02-01",
+        )
+        self.assertEqual(res1.returncode, 0, msg=res1.stderr)
+        res2 = self.add_expense(
+            vendor="Telekom",
+            amount="-50.00",
+            category="Arbeitsmittel",
+            receipt="beleg2.pdf",
+            date="2026-02-01",
+            extra_args=["--allow-duplicate"],
+        )
+        self.assertEqual(res2.returncode, 0, msg=res2.stderr)
+        res = self.run_cli(["update", "expense", "2", "--receipt", "beleg1.pdf"])
+        self.assertNotEqual(res.returncode, 0)
+        self.assertIn("Duplikat erkannt", res.stderr)
+
+        res_ok = self.run_cli(
+            ["update", "expense", "2", "--receipt", "beleg1.pdf", "--allow-duplicate"],
+            check=True,
+        )
+        self.assertIn("Ausgabe #2 aktualisiert", res_ok.stdout)
+        q = self.run_cli(["query", "SELECT hash FROM expenses WHERE id = 2"], check=True)
+        hash_val = self.parse_csv(q.stdout)[1][0]
+        self.assertTrue(
+            hash_val.endswith("#2"), msg=f"Expected hash to end with #2, got {hash_val}"
+        )
+
     def test_update_expense_can_clear_private_paid(self):
         self.add_expense(private_paid=True)
         before = self.run_cli(["list", "private-deposits", "--year", "2026"], check=True)

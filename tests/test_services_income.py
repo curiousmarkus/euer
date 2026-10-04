@@ -121,6 +121,49 @@ class IncomeServiceTestCase(unittest.TestCase):
         )
         self.assertIsNone(duplicate)
 
+    def test_update_income_duplicate_collision_requires_allow_duplicate(self) -> None:
+        i1 = create_income(
+            self.conn,
+            date="2026-01-20",
+            source="TestClient",
+            amount_eur=1500.0,
+            category_name="Umsatzsteuerpflichtige Betriebseinnahmen",
+            receipt_name="beleg1.pdf",
+            tax_mode="standard",
+            audit_user="tester",
+        )
+        self.assertIsNotNone(i1)
+        i2 = create_income(
+            self.conn,
+            date="2026-01-20",
+            source="TestClient",
+            amount_eur=1500.0,
+            category_name="Umsatzsteuerpflichtige Betriebseinnahmen",
+            receipt_name="beleg2.pdf",
+            allow_duplicate=True,
+            tax_mode="standard",
+            audit_user="tester",
+        )
+        with self.assertRaises(ValidationError) as ctx:
+            update_income(
+                self.conn,
+                record_id=i2.id,
+                receipt_name="beleg1.pdf",
+                tax_mode="standard",
+                audit_user="tester",
+            )
+        self.assertEqual(ctx.exception.code, "duplicate")
+
+        updated = update_income(
+            self.conn,
+            record_id=i2.id,
+            receipt_name="beleg1.pdf",
+            allow_duplicate=True,
+            tax_mode="standard",
+            audit_user="tester",
+        )
+        self.assertTrue(updated.hash.endswith("#2"))
+
     def test_create_income_auto_commit_false_rolls_back(self) -> None:
         create_income(
             self.conn,

@@ -72,6 +72,37 @@ class CLIIncomeTestCase(BaseCLITestCase):
         self.assertEqual(rows[1][5], "1750.00")
         self.assertEqual(rows[1][10], "Korrigiert")
 
+    def test_update_income_receipt_name_duplicate_requires_allow_duplicate(self):
+        self.add_income(
+            source="Kunde",
+            amount="100.00",
+            category="Umsatzsteuerpflichtige Betriebseinnahmen",
+            receipt="beleg1.pdf",
+            date="2026-02-01",
+        )
+        self.add_income(
+            source="Kunde",
+            amount="100.00",
+            category="Umsatzsteuerpflichtige Betriebseinnahmen",
+            receipt="beleg2.pdf",
+            date="2026-02-01",
+            extra_args=["--allow-duplicate"],
+        )
+        res = self.run_cli(["update", "income", "2", "--receipt", "beleg1.pdf"])
+        self.assertNotEqual(res.returncode, 0)
+        self.assertIn("Duplikat erkannt", res.stderr)
+
+        res_ok = self.run_cli(
+            ["update", "income", "2", "--receipt", "beleg1.pdf", "--allow-duplicate"],
+            check=True,
+        )
+        self.assertIn("Einnahme #2 aktualisiert", res_ok.stdout)
+        q = self.run_cli(["query", "SELECT hash FROM income WHERE id = 2"], check=True)
+        hash_val = self.parse_csv(q.stdout)[1][0]
+        self.assertTrue(
+            hash_val.endswith("#2"), msg=f"Expected hash to end with #2, got {hash_val}"
+        )
+
     def test_update_income_with_ledger_account_updates_category(self):
         self.write_config(
             """

@@ -6,7 +6,7 @@ import uuid
 from ..db import log_audit, row_to_dict
 from ..utils import compute_hash
 from .categories import get_category_by_name, resolve_ledger_account
-from .duplicates import DuplicateAction, find_exact_duplicate
+from .duplicates import DuplicateAction, find_all_exact_duplicates
 from .entertainment import resolve_entertainment_fields
 from .errors import RecordNotFoundError, ValidationError
 from .eur import category_key_for_name, is_entertainment_category
@@ -340,6 +340,9 @@ def create_expense(
     force: bool = False,
     allow_duplicate: bool = False,
     allow_exact_duplicate: bool = False,
+    max_id: int | None = None,
+    consumed_ids: set[int] | None = None,
+    duplicate_cache: dict[tuple, list[int]] | None = None,
     amount_threshold: float = DEFAULT_AMOUNT_THRESHOLD,
     auto_commit: bool = True,
 ) -> Expense | None:
@@ -429,6 +432,15 @@ def create_expense(
                 vat_amount=raw_vat,
             )
 
+    record_uuid = str(uuid.uuid4())
+    resolved_account = normalize_account_name(account) or normalize_account_name(default_account)
+    is_private_paid, private_classification = classify_expense_private_paid(
+        account=resolved_account,
+        category_name=resolved_category_name,
+        private_accounts=private_accounts or [],
+        manual_override=private_paid,
+    )
+
     invoice_number = invoice_number.strip() or None if invoice_number is not None else None
     tx_hash = compute_hash(
         hash_date(resolved_payment_date, resolved_invoice_date),
@@ -437,7 +449,7 @@ def create_expense(
         receipt_name or "",
         invoice_number,
     )
-    existing_id = find_exact_duplicate(
+    matching_ids = find_all_exact_duplicates(
         conn,
         table_name="expenses",
         payment_date=resolved_payment_date,
@@ -446,15 +458,30 @@ def create_expense(
         amount_eur=amount_eur,
         receipt_name=receipt_name,
         invoice_number=invoice_number,
+        account=resolved_account,
+        cache=duplicate_cache,
     )
-    if existing_id is not None:
-        if on_duplicate == DuplicateAction.SKIP and not allow_exact_duplicate:
-            return None
-        if not (allow_duplicate or allow_exact_duplicate or force):
+    if matching_ids:
+        if on_duplicate == DuplicateAction.SKIP and not (allow_duplicate or allow_exact_duplicate):
+            if max_id is not None:
+                candidates = [
+                    m
+                    for m in matching_ids
+                    if m <= max_id and (consumed_ids is None or m not in consumed_ids)
+                ]
+            else:
+                candidates = [
+                    m for m in matching_ids if (consumed_ids is None or m not in consumed_ids)
+                ]
+            if candidates:
+                if consumed_ids is not None:
+                    consumed_ids.add(candidates[0])
+                return None
+        elif not (allow_duplicate or allow_exact_duplicate or force):
             raise ValidationError(
-                f"Duplikat erkannt (ID {existing_id})",
+                f"Duplikat erkannt (ID {matching_ids[0]})",
                 code="duplicate",
-                details={"existing_id": existing_id},
+                details={"existing_id": matching_ids[0]},
             )
 
     if on_duplicate == DuplicateAction.SKIP:
@@ -485,20 +512,27 @@ def create_expense(
             force=force,
         )
 
-    record_uuid = str(uuid.uuid4())
-    resolved_account = normalize_account_name(account) or normalize_account_name(default_account)
-    is_private_paid, private_classification = classify_expense_private_paid(
-        account=resolved_account,
-        category_name=resolved_category_name,
-        private_accounts=private_accounts or [],
-        manual_override=private_paid,
-    )
-
-    base_hash = tx_hash
-    suffix_idx = 1
-    while conn.execute("SELECT 1 FROM expenses WHERE hash = ? LIMIT 1", (tx_hash,)).fetchone():
-        suffix_idx += 1
-        tx_hash = f"{base_hash}#{suffix_idx}"
+    collision = conn.execute(
+        "SELECT id FROM expenses WHERE hash = ? LIMIT 1",
+        (tx_hash,),
+    ).fetchone()
+    if collision:
+        if not (
+            allow_duplicate
+            or allow_exact_duplicate
+            or force
+            or (on_duplicate == DuplicateAction.SKIP and max_id is not None)
+        ):
+            raise ValidationError(
+                f"Duplikat erkannt (ID {collision['id']})",
+                code="duplicate",
+                details={"existing_id": collision["id"]},
+            )
+        base_hash = tx_hash
+        suffix_idx = 1
+        while conn.execute("SELECT 1 FROM expenses WHERE hash = ? LIMIT 1", (tx_hash,)).fetchone():
+            suffix_idx += 1
+            tx_hash = f"{base_hash}#{suffix_idx}"
 
     cursor = conn.execute(
         """INSERT INTO expenses
@@ -976,13 +1010,39 @@ def update_expense(
                 vat_amount=vat,
             )
 
-    if (
-        vendor is not None
-        or amount_eur is not None
-        or payment_date is not None
-        or invoice_date is not None
-        or invoice_number is not None
-    ):
+    identity_fields_changed = any(
+        x is not None
+        for x in (
+            vendor,
+            amount_eur,
+            payment_date,
+            invoice_date,
+            invoice_number,
+            receipt_name,
+            account,
+        )
+    )
+    if identity_fields_changed:
+        exact_matches = find_all_exact_duplicates(
+            conn,
+            table_name="expenses",
+            payment_date=new_payment_date,
+            invoice_date=new_invoice_date,
+            party=new_vendor,
+            amount_eur=new_amount,
+            receipt_name=new_receipt,
+            invoice_number=new_invoice_number,
+            account=new_account,
+            exclude_id=record_id,
+        )
+        if exact_matches:
+            if not (allow_duplicate or force):
+                raise ValidationError(
+                    f"Duplikat erkannt (ID {exact_matches[0]})",
+                    code="duplicate",
+                    details={"existing_id": exact_matches[0]},
+                )
+
         check_fuzzy_duplicate(
             conn,
             table_name="expenses",
@@ -997,7 +1057,14 @@ def update_expense(
             exclude_id=record_id,
         )
 
-    new_hash = compute_hash(
+    old_base_hash = compute_hash(
+        hash_date(row["payment_date"], row["invoice_date"]),
+        row["vendor"],
+        row["amount_eur"],
+        row["receipt_name"] or "",
+        row["invoice_number"],
+    )
+    new_base_hash = compute_hash(
         hash_date(new_payment_date, new_invoice_date),
         new_vendor,
         new_amount,
@@ -1005,14 +1072,29 @@ def update_expense(
         new_invoice_number,
     )
 
-    base_hash = new_hash
-    suffix_idx = 1
-    while conn.execute(
-        "SELECT 1 FROM expenses WHERE hash = ? AND id != ? LIMIT 1",
-        (new_hash, record_id),
-    ).fetchone():
-        suffix_idx += 1
-        new_hash = f"{base_hash}#{suffix_idx}"
+    if new_base_hash == old_base_hash:
+        new_hash = row["hash"]
+    else:
+        new_hash = new_base_hash
+        collision = conn.execute(
+            "SELECT id FROM expenses WHERE hash = ? AND id != ? LIMIT 1",
+            (new_hash, record_id),
+        ).fetchone()
+        if collision:
+            if not (allow_duplicate or force):
+                raise ValidationError(
+                    f"Duplikat erkannt (ID {collision['id']})",
+                    code="duplicate",
+                    details={"existing_id": collision["id"]},
+                )
+            base_hash = new_hash
+            suffix_idx = 1
+            while conn.execute(
+                "SELECT 1 FROM expenses WHERE hash = ? AND id != ? LIMIT 1",
+                (new_hash, record_id),
+            ).fetchone():
+                suffix_idx += 1
+                new_hash = f"{base_hash}#{suffix_idx}"
 
     conn.execute(
         """UPDATE expenses SET

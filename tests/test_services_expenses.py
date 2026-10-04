@@ -115,6 +115,49 @@ class ExpenseServiceTestCase(unittest.TestCase):
         )
         self.assertIsNone(duplicate)
 
+    def test_update_expense_duplicate_collision_requires_allow_duplicate(self) -> None:
+        e1 = create_expense(
+            self.conn,
+            date="2026-01-15",
+            vendor="TestVendor",
+            amount_eur=-10.0,
+            category_name="Arbeitsmittel",
+            receipt_name="beleg1.pdf",
+            tax_mode="small_business",
+            audit_user="tester",
+        )
+        self.assertIsNotNone(e1)
+        e2 = create_expense(
+            self.conn,
+            date="2026-01-15",
+            vendor="TestVendor",
+            amount_eur=-10.0,
+            category_name="Arbeitsmittel",
+            receipt_name="beleg2.pdf",
+            allow_duplicate=True,
+            tax_mode="small_business",
+            audit_user="tester",
+        )
+        with self.assertRaises(ValidationError) as ctx:
+            update_expense(
+                self.conn,
+                record_id=e2.id,
+                receipt_name="beleg1.pdf",
+                tax_mode="small_business",
+                audit_user="tester",
+            )
+        self.assertEqual(ctx.exception.code, "duplicate")
+
+        updated = update_expense(
+            self.conn,
+            record_id=e2.id,
+            receipt_name="beleg1.pdf",
+            allow_duplicate=True,
+            tax_mode="small_business",
+            audit_user="tester",
+        )
+        self.assertTrue(updated.hash.endswith("#2"))
+
     def test_create_expense_auto_commit_false_rolls_back(self) -> None:
         create_expense(
             self.conn,

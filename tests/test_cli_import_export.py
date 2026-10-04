@@ -493,6 +493,105 @@ account_number = "4940"
         q = self.run_cli(["query", "SELECT COUNT(*) FROM expenses"], check=True)
         self.assertEqual(self.parse_csv(q.stdout)[1][0], "2")
 
+    def test_import_validation_not_bypassed_by_duplicate_skip(self):
+        self.add_income(
+            source="Kunde A",
+            amount="100.00",
+            category="Umsatzsteuerpflichtige Betriebseinnahmen",
+            date="2026-02-01",
+            extra_args=["--account", "bank"],
+        )
+        self.write_config("[accounts]\nprivate = ['privat']\n")
+
+        q_inc_before = self.run_cli(["query", "SELECT COUNT(*) FROM income"], check=True)
+        self.assertEqual(self.parse_csv(q_inc_before.stdout)[1][0], "1")
+        q_audit_before = self.run_cli(["query", "SELECT COUNT(*) FROM audit_log"], check=True)
+        count_audit_before = int(self.parse_csv(q_audit_before.stdout)[1][0])
+
+        import_file = self.root / "import_invalid_priv_dup.csv"
+        import_file.write_text(
+            "\n".join(
+                [
+                    "type,date,party,category,amount_eur,account",
+                    "income,2026-02-01,Kunde A,Umsatzsteuerpflichtige Betriebseinnahmen,100.00,privat",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        result = self.run_cli(["import", "--file", str(import_file), "--format", "csv"])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Import abgebrochen in Zeile 1", result.stderr)
+        self.assertIn("Einnahmen auf Privatkonten", result.stderr)
+
+        q_inc_after = self.run_cli(["query", "SELECT COUNT(*) FROM income"], check=True)
+        self.assertEqual(self.parse_csv(q_inc_after.stdout)[1][0], "1")
+        q_audit_after = self.run_cli(["query", "SELECT COUNT(*) FROM audit_log"], check=True)
+        self.assertEqual(int(self.parse_csv(q_audit_after.stdout)[1][0]), count_audit_before)
+
+    def test_import_different_payment_accounts_not_merged(self):
+        import_file1 = self.root / "import_bank.csv"
+        import_file1.write_text(
+            "\n".join(
+                [
+                    "type,date,party,category,amount_eur,account",
+                    "income,2026-02-01,Kunde,Umsatzsteuerpflichtige Betriebseinnahmen,100.00,bank",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        res1 = self.run_cli(["import", "--file", str(import_file1), "--format", "csv"], check=True)
+        self.assertIn("Einnahmen angelegt: 1", res1.stdout)
+
+        import_file2 = self.root / "import_paypal.csv"
+        import_file2.write_text(
+            "\n".join(
+                [
+                    "type,date,party,category,amount_eur,account",
+                    "income,2026-02-01,Kunde,Umsatzsteuerpflichtige Betriebseinnahmen,100.00,paypal",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        res2 = self.run_cli(["import", "--file", str(import_file2), "--format", "csv"], check=True)
+        self.assertIn("Einnahmen angelegt: 1", res2.stdout)
+        self.assertIn("Duplikate übersprungen: 0", res2.stdout)
+
+        q = self.run_cli(["query", "SELECT COUNT(*) FROM income"], check=True)
+        self.assertEqual(self.parse_csv(q.stdout)[1][0], "2")
+
+    def test_import_contradictory_payment_accounts_on_same_invoice_fails(self):
+        import_file1 = self.root / "import_inv_bank.csv"
+        import_file1.write_text(
+            "\n".join(
+                [
+                    "type,date,party,category,amount_eur,account,invoice_number",
+                    "income,2026-02-01,Kunde,Umsatzsteuerpflichtige Betriebseinnahmen,100.00,bank,RE-100",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        self.run_cli(["import", "--file", str(import_file1), "--format", "csv"], check=True)
+
+        import_file2 = self.root / "import_inv_paypal.csv"
+        import_file2.write_text(
+            "\n".join(
+                [
+                    "type,date,party,category,amount_eur,account,invoice_number",
+                    "income,2026-02-01,Kunde,Umsatzsteuerpflichtige Betriebseinnahmen,100.00,paypal,RE-100",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        result = self.run_cli(["import", "--file", str(import_file2), "--format", "csv"])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Widersprüchliche Angaben", result.stderr)
+        self.assertIn("Prüfbedarf", result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()
