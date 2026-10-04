@@ -413,6 +413,86 @@ account_number = "4940"
         q = self.run_cli(["query", "SELECT COUNT(*) FROM income"], check=True)
         self.assertEqual(self.parse_csv(q.stdout)[1][0], "0")
 
+    def test_import_preserves_intra_file_duplicates(self):
+        import_file = self.root / "import_duplicates.csv"
+        import_file.write_text(
+            "\n".join(
+                [
+                    "type,date,party,category,amount_eur",
+                    "expense,2026-03-01,BVG,Arbeitsmittel,-3.50",
+                    "expense,2026-03-01,BVG,Arbeitsmittel,-3.50",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        res1 = self.run_cli(["import", "--file", str(import_file), "--format", "csv"], check=True)
+        self.assertIn("Ausgaben angelegt: 2", res1.stdout)
+        self.assertIn("Duplikate übersprungen: 0", res1.stdout)
+
+        q1 = self.run_cli(["query", "SELECT COUNT(*) FROM expenses"], check=True)
+        self.assertEqual(self.parse_csv(q1.stdout)[1][0], "2")
+
+        # Re-importing identical file skips both
+        res2 = self.run_cli(["import", "--file", str(import_file), "--format", "csv"], check=True)
+        self.assertIn("Ausgaben angelegt: 0", res2.stdout)
+        self.assertIn("Duplikate übersprungen: 2", res2.stdout)
+
+    def test_import_allow_duplicate_flag(self):
+        import_file = self.root / "import_duplicates.csv"
+        import_file.write_text(
+            "\n".join(
+                [
+                    "type,date,party,category,amount_eur",
+                    "expense,2026-03-01,BVG,Arbeitsmittel,-3.50",
+                    "expense,2026-03-01,BVG,Arbeitsmittel,-3.50",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        res1 = self.run_cli(["import", "--file", str(import_file), "--format", "csv"], check=True)
+        self.assertIn("Ausgaben angelegt: 2", res1.stdout)
+
+        # Re-importing with --allow-duplicate imports both again
+        res2 = self.run_cli(
+            ["import", "--file", str(import_file), "--format", "csv", "--allow-duplicate"],
+            check=True,
+        )
+        self.assertIn("Ausgaben angelegt: 2", res2.stdout)
+        self.assertIn("Duplikate übersprungen: 0", res2.stdout)
+
+        q = self.run_cli(["query", "SELECT COUNT(*) FROM expenses"], check=True)
+        self.assertEqual(self.parse_csv(q.stdout)[1][0], "4")
+
+    def test_import_retains_unbooked_occurrence_when_partial_match_exists(self):
+        # 1 manual booking exists
+        res_add = self.add_expense(
+            date="2026-03-01",
+            vendor="BVG",
+            category="Arbeitsmittel",
+            amount="-3.50",
+        )
+        self.assertEqual(res_add.returncode, 0, msg=res_add.stderr)
+        import_file = self.root / "import_duplicates.csv"
+        import_file.write_text(
+            "\n".join(
+                [
+                    "type,date,party,category,amount_eur",
+                    "expense,2026-03-01,BVG,Arbeitsmittel,-3.50",
+                    "expense,2026-03-01,BVG,Arbeitsmittel,-3.50",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        res = self.run_cli(["import", "--file", str(import_file), "--format", "csv"], check=True)
+        self.assertIn("Ausgaben angelegt: 1", res.stdout)
+        self.assertIn("Duplikate übersprungen: 1", res.stdout)
+
+        q = self.run_cli(["query", "SELECT COUNT(*) FROM expenses"], check=True)
+        self.assertEqual(self.parse_csv(q.stdout)[1][0], "2")
+
 
 if __name__ == "__main__":
     unittest.main()

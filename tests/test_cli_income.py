@@ -40,6 +40,26 @@ class CLIIncomeTestCase(BaseCLITestCase):
         self.assertEqual(vat_output, "")
         self.assertEqual(invoice_number, "")
 
+    def test_duplicate_detection(self):
+        first = self.add_income()
+        self.assertEqual(first.returncode, 0, msg=first.stderr)
+        second = self.add_income()
+        self.assertEqual(second.returncode, 0, msg=second.stderr)
+        self.assertIn("Warnung: Duplikat erkannt", second.stderr)
+
+        rows = self.list_income_csv()
+        self.assertEqual(len(rows), 2)
+
+    def test_duplicate_allowed_with_flag(self):
+        first = self.add_income()
+        self.assertEqual(first.returncode, 0, msg=first.stderr)
+        second = self.add_income(extra_args=["--allow-duplicate"])
+        self.assertEqual(second.returncode, 0, msg=second.stderr)
+        self.assertIn("Einnahme #2 hinzugefügt", second.stdout)
+
+        rows = self.list_income_csv()
+        self.assertEqual(len(rows), 3)
+
     def test_update_income(self):
         self.add_income()
         result = self.run_cli(

@@ -227,6 +227,7 @@ def create_income(
     on_duplicate: DuplicateAction = DuplicateAction.RAISE,
     force: bool = False,
     allow_duplicate: bool = False,
+    allow_exact_duplicate: bool = False,
     amount_threshold: float = DEFAULT_AMOUNT_THRESHOLD,
     auto_commit: bool = True,
 ) -> Income | None:
@@ -318,13 +319,14 @@ def create_income(
         invoice_number=invoice_number,
     )
     if existing_id is not None:
-        if on_duplicate == DuplicateAction.SKIP:
+        if on_duplicate == DuplicateAction.SKIP and not allow_exact_duplicate:
             return None
-        raise ValidationError(
-            f"Duplikat erkannt (ID {existing_id})",
-            code="duplicate",
-            details={"existing_id": existing_id},
-        )
+        if not (allow_duplicate or allow_exact_duplicate or force):
+            raise ValidationError(
+                f"Duplikat erkannt (ID {existing_id})",
+                code="duplicate",
+                details={"existing_id": existing_id},
+            )
 
     if on_duplicate == DuplicateAction.SKIP:
         check_fuzzy_duplicate(
@@ -336,6 +338,8 @@ def create_income(
             invoice_number=invoice_number,
             invoice_date=resolved_invoice_date,
             receipt_name=receipt_name,
+            allow_duplicate=allow_duplicate,
+            force=force,
             invoice_only=True,
         )
     else:
@@ -353,6 +357,12 @@ def create_income(
         )
 
     record_uuid = str(uuid.uuid4())
+
+    base_hash = tx_hash
+    suffix_idx = 1
+    while conn.execute("SELECT 1 FROM income WHERE hash = ? LIMIT 1", (tx_hash,)).fetchone():
+        suffix_idx += 1
+        tx_hash = f"{base_hash}#{suffix_idx}"
 
     cursor = conn.execute(
         """INSERT INTO income
@@ -738,6 +748,15 @@ def update_income(
         new_receipt or "",
         new_invoice_number,
     )
+
+    base_hash = new_hash
+    suffix_idx = 1
+    while conn.execute(
+        "SELECT 1 FROM income WHERE hash = ? AND id != ? LIMIT 1",
+        (new_hash, record_id),
+    ).fetchone():
+        suffix_idx += 1
+        new_hash = f"{base_hash}#{suffix_idx}"
 
     conn.execute(
         """UPDATE income SET

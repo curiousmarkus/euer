@@ -208,6 +208,13 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Zeigt Import-Schema, Beispiele und Alias-Keys",
     )
+    import_parser.add_argument(
+        "--allow-duplicate",
+        "--allow-duplicates",
+        dest="allow_duplicate",
+        action="store_true",
+        help="Erlaubt Duplikate und importiert alle Zeilen ohne Duplikatsprüfung",
+    )
     import_parser.set_defaults(func=cmd_import)
 
     # --- add ---

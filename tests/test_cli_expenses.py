@@ -149,6 +149,16 @@ category = "Laufende EDV-Kosten"
         rows = self.list_expenses_csv()
         self.assertEqual(len(rows), 2)
 
+    def test_duplicate_allowed_with_flag(self):
+        first = self.add_expense()
+        self.assertEqual(first.returncode, 0, msg=first.stderr)
+        second = self.add_expense(extra_args=["--allow-duplicate"])
+        self.assertEqual(second.returncode, 0, msg=second.stderr)
+        self.assertIn("Ausgabe #2 hinzugefügt", second.stdout)
+
+        rows = self.list_expenses_csv()
+        self.assertEqual(len(rows), 3)
+
     def test_update_expense(self):
         self.add_expense()
         result = self.run_cli(

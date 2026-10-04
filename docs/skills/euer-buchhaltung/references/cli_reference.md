@@ -59,7 +59,7 @@ Duplikate werden wie bisher übersprungen.
 Bulk-Import von Transaktionen
 
 **Syntax:** `euer import [-h] [--file FILE] [--format {csv,jsonl}] [--dry-run]
-                [--schema]`
+                [--schema] [--allow-duplicate]`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
 **Ausgabe:** Zusammenfassung des Importlaufs (importiert, Duplikate, Fehler); Fehler auf stderr.
@@ -70,6 +70,7 @@ Bulk-Import von Transaktionen
 | `--format` | Importformat |
 | `--dry-run` | Nur prüfen, nichts speichern |
 | `--schema` | Zeigt Import-Schema, Beispiele und Alias-Keys |
+| `--allow-duplicate`, `--allow-duplicates` | Erlaubt Duplikate und importiert alle Zeilen ohne Duplikatsprüfung |
 
 **Beispiel:** `euer import --schema`
 
