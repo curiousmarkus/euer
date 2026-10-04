@@ -128,7 +128,9 @@ def cmd_import(args):
         total += 1
         normalized = normalize_import_row(row)
         missing_fields = []
-        if not normalized["type"]:
+        if normalized.get("invalid_type"):
+            missing_fields.append("invalid_type")
+        elif not normalized["type"]:
             missing_fields.append("type")
         if not normalized["payment_date"] and not normalized["invoice_date"]:
             missing_fields.append("payment_date|invoice_date")

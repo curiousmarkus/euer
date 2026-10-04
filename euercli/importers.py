@@ -109,8 +109,11 @@ def normalize_import_row(row: dict) -> dict:
     amount_value = get_row_value(row, "amount_eur", "amount", "EUR", "Betrag", "Betrag in EUR")
     amount = parse_amount(amount_value)
 
-    row_type = parse_import_type(raw_type)
-    if not row_type and amount is not None:
+    has_explicit_type = raw_type is not None and str(raw_type).strip() != ""
+    row_type = parse_import_type(raw_type) if has_explicit_type else None
+    invalid_type = has_explicit_type and row_type is None
+
+    if not has_explicit_type and amount is not None:
         if amount < 0:
             row_type = "expense"
         elif amount > 0:
@@ -163,6 +166,8 @@ def normalize_import_row(row: dict) -> dict:
 
     return {
         "type": row_type,
+        "invalid_type": invalid_type,
+        "raw_type": raw_type,
         "date": payment_date,
         "payment_date": payment_date,
         "invoice_date": invoice_date,

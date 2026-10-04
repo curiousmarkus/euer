@@ -472,8 +472,13 @@ def list_income(
         query += " AND LOWER(c.name) = LOWER(?)"
         params.append(category_name)
     if account:
-        query += " AND LOWER(i.account) = LOWER(?)"
-        params.append(account.strip())
+        norm_account = normalize_account_name(account)
+        if norm_account:
+            from ..db import register_db_functions
+
+            register_db_functions(conn)
+            query += " AND py_norm_account(i.account) = ?"
+            params.append(norm_account)
 
     query += " ORDER BY COALESCE(i.payment_date, i.invoice_date) DESC, i.id DESC"
 

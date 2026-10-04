@@ -353,7 +353,9 @@ account_number = "4940"
         )
         export_dir = self.root / "exports_acc"
         export_dir.mkdir()
-        self.run_cli(["export", "--year", "2026", "--format", "csv", "--output", str(export_dir)], check=True)
+        self.run_cli(
+            ["export", "--year", "2026", "--format", "csv", "--output", str(export_dir)], check=True
+        )
         inc_file = export_dir / "EÜR_2026_Einnahmen.csv"
         inc_rows = list(csv.reader(inc_file.read_text(encoding="utf-8-sig").splitlines()))
         self.assertEqual(inc_rows[1][6], "500.00")
@@ -395,6 +397,21 @@ account_number = "4940"
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Import abgebrochen", result.stderr)
         self.assertIn("Einnahmen auf Privatkonten", result.stderr)
+
+    def test_import_rejects_explicit_unknown_type_like_transfer(self):
+        import_file = self.root / "import_transfer.jsonl"
+        import_file.write_text(
+            '{"type": "transfer", "amount_eur": 290.0, "account": "g-n26", "party": "Stripe Payout", "date": "2026-03-01"}\n',
+            encoding="utf-8",
+        )
+        result = self.run_cli(["import", "--file", str(import_file), "--format", "jsonl"])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Pflichtfelder fehlen oder Werte sind ungültig", result.stderr)
+        self.assertIn("Zeile 1: invalid_type", result.stderr)
+
+        # Ensure no income was created
+        q = self.run_cli(["query", "SELECT COUNT(*) FROM income"], check=True)
+        self.assertEqual(self.parse_csv(q.stdout)[1][0], "0")
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@ steuerliche Einordnung nicht selbst.
 
 ## Geltung und Quellen der wichtigsten Wenn-Dann-Regeln
 
-Die CLI-Regeln dieser Referenz beschreiben Skill 1.2.0. Bei älteren Buchungen
+Die CLI-Regeln dieser Referenz beschreiben Skill 1.3.0. Bei älteren Buchungen
 gelten Beleg, Zahlungsjahr und damaliger Steuerstatus; eine spätere Änderung der
 globalen Config ersetzt deren ursprüngliche Behandlung nicht.
 
@@ -410,6 +410,18 @@ Karteninhaber ab. Der
 zeigt, dass die Stellung des Zahlenden in der Leistungskette entscheidend sein
 kann; daraus folgt keine pauschale Einstufung für Bank-Cashback. Wenn die
 Bedingungen unklar bleiben, kläre den Sachverhalt vor der Buchung.
+
+### Zahlungskonten, Einnahmen und Geldtransfers
+
+- **Zahlungskonten bei Einnahmen (`--account`)**:
+  - Einnahmen fließen auf betriebliche Zahlungskonten (z. B. Geschäftskonto `giro`, Payment-Provider wie `stripe` oder `paypal`).
+  - Mit `--account <konto>` wird das Zahlungskonto explizit erfasst (z. B. `--account stripe`).
+  - Fehlt die Angabe, greift automatisch das Standard-Zahlungskonto aus `[accounts].default` in der Konfiguration.
+  - Private Konten (`[accounts].private`, standardmäßig `privat`, `privateinlage`, `privatentnahme`) sind für betriebliche Einnahmen gesperrt (`unsupported_private_income_account`).
+- **Geldtransfers & Zahlungsdienstleister-Auszahlungen**:
+  - Wenn Payment-Provider wie Stripe, PayPal oder Amazon Guthaben auf das Geschäftskonto auskehren, handelt es sich um einen **reinen Geldtransit zwischen betrieblichen Finanzkonten**.
+  - Diese Auszahlungen dürfen **keinesfalls erneut als Einnahme gebucht werden**, da der Umsatz bereits bei Entstehung (Zufluss auf dem Stripe-/PayPal-Konto) als Einnahme erfasst wurde.
+  - Beim CSV-/JSONL-Import müssen explizite Transfers (z. B. `type="transfer"`) abgefangen und abgewiesen werden; sie dürfen niemals über das positive Betragsvorzeichen automatisch zu Einnahmen umgedeutet werden.
 
 ### CLI-Schutzprüfungen und Korrekturen
 

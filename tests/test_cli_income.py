@@ -206,12 +206,16 @@ account_number = "8400"
         self.add_income(source="Kunde A", amount="100.00", extra_args=["--account", "n26"])
         self.add_income(source="Kunde B", amount="200.00", extra_args=["--account", "stripe"])
 
-        res_n26 = self.run_cli(["list", "income", "--account", "N26", "--format", "csv"], check=True)
+        res_n26 = self.run_cli(
+            ["list", "income", "--account", "N26", "--format", "csv"], check=True
+        )
         rows_n26 = self.parse_csv(res_n26.stdout)
         self.assertEqual(len(rows_n26), 2)
         self.assertEqual(rows_n26[1][3], "Kunde A")
 
-        res_stripe = self.run_cli(["list", "income", "--account", "stripe", "--format", "csv"], check=True)
+        res_stripe = self.run_cli(
+            ["list", "income", "--account", "stripe", "--format", "csv"], check=True
+        )
         rows_stripe = self.parse_csv(res_stripe.stdout)
         self.assertEqual(len(rows_stripe), 2)
         self.assertEqual(rows_stripe[1][3], "Kunde B")
@@ -221,6 +225,29 @@ account_number = "8400"
         res = self.run_cli(["list", "income", "--full"], check=True)
         self.assertIn("Konto", res.stdout)
         self.assertIn("giro", res.stdout)
+
+    def test_list_income_table_standard_shows_account(self):
+        self.add_income(source="Kunde A", extra_args=["--account", "giro"])
+        res = self.run_cli(["list", "income"], check=True)
+        self.assertIn("Konto", res.stdout)
+        self.assertIn("giro", res.stdout)
+
+    def test_list_income_filter_unicode_and_whitespace(self):
+        self.add_income(source="Kunde Ü", amount="150.00", extra_args=["--account", "  BÜROBANK  "])
+        res_upper = self.run_cli(
+            ["list", "income", "--account", "BÜROBANK", "--format", "csv"], check=True
+        )
+        rows_upper = self.parse_csv(res_upper.stdout)
+        self.assertEqual(len(rows_upper), 2)
+        self.assertEqual(rows_upper[1][3], "Kunde Ü")
+        self.assertEqual(rows_upper[1][6], "bürobank")
+
+        res_lower = self.run_cli(
+            ["list", "income", "--account", "bürobank", "--format", "csv"], check=True
+        )
+        rows_lower = self.parse_csv(res_lower.stdout)
+        self.assertEqual(len(rows_lower), 2)
+        self.assertEqual(rows_lower[1][3], "Kunde Ü")
 
 
 if __name__ == "__main__":

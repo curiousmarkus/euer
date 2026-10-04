@@ -633,8 +633,13 @@ def list_expenses(
         query += " AND LOWER(c.name) = LOWER(?)"
         params.append(category_name)
     if account:
-        query += " AND LOWER(e.account) = LOWER(?)"
-        params.append(account.strip())
+        norm_account = normalize_account_name(account)
+        if norm_account:
+            from ..db import register_db_functions
+
+            register_db_functions(conn)
+            query += " AND py_norm_account(e.account) = ?"
+            params.append(norm_account)
 
     query += " ORDER BY COALESCE(e.payment_date, e.invoice_date) DESC, e.id DESC"
 

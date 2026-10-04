@@ -42,9 +42,7 @@ def normalize_account_name(account: str | None) -> str | None:
     return val if val else None
 
 
-def validate_income_account(
-    account: str | None, private_accounts: list[str] | None = None
-) -> None:
+def validate_income_account(account: str | None, private_accounts: list[str] | None = None) -> None:
     """Weist private Konten für Einnahmen mit 'unsupported_private_income_account' ab."""
     if not account:
         return

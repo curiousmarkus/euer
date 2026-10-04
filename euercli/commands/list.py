@@ -508,7 +508,7 @@ def cmd_list_income(args):
         else:
             row_fmt = (
                 "{id:<5} {payment:<12} {invoice:<12} {source:<20} {category:<26} "
-                "{amount:>12} {status:<30} {vat:>8}"
+                "{amount:>12} {account:<12} {status:<30} {vat:>8}"
             )
             header = row_fmt.format(
                 id="ID",
@@ -517,6 +517,7 @@ def cmd_list_income(args):
                 source="Quelle",
                 category="Kategorie",
                 amount="EUR",
+                account="Konto",
                 status="Status",
                 vat="USt",
             )
@@ -555,6 +556,7 @@ def cmd_list_income(args):
                         source=r.source[:20],
                         category=cat_str[:26],
                         amount=amount_str,
+                        account=(r.account or "")[:12],
                         status=status[:30],
                         vat=vat_str,
                     )
@@ -587,6 +589,7 @@ def cmd_list_income(args):
                     source="",
                     category="",
                     amount=f"{total:.2f}",
+                    account="",
                     status="",
                     vat=f"{vat_out_total:.2f}",
                 )

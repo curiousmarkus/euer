@@ -196,7 +196,6 @@ category = "Laufende EDV-Kosten"
         self.assertIn("receipt", incomplete_result.stdout)
         self.assertIn("account", incomplete_result.stdout)
 
-
     def test_incomplete_list_income_account(self):
         # 1. Paid income without account -> missing account
         self.run_cli(
@@ -272,6 +271,42 @@ category = "Laufende EDV-Kosten"
         # Kunde With Acc should NOT be in incomplete list at all
         with_acc_rows = [r for r in rows if r[4] == "Kunde With Acc"]
         self.assertEqual(len(with_acc_rows), 0)
+
+    def test_schema_preflight_blocks_command_when_pending_migrations(self):
+        import sqlite3
+
+        from euercli.migrations import MIGRATIONS
+        from euercli.schema import SCHEMA
+
+        # Set up a database with schema 009 (missing account in income)
+        self.db_path.unlink()
+        with sqlite3.connect(self.db_path) as conn:
+            from euercli.migrations import init_migration_table
+
+            init_migration_table(conn)
+            conn.executescript(
+                SCHEMA.replace("    account TEXT,\n", "").replace(
+                    "CREATE INDEX IF NOT EXISTS idx_income_account ON income(account);\n", ""
+                )
+            )
+            for i in range(1, 10):
+                m = next(m for m in MIGRATIONS if m.id.startswith(f"{i:03d}"))
+                conn.execute(
+                    "INSERT OR REPLACE INTO _schema_migrations (version, name) VALUES (?, ?)",
+                    (m.id, m.name),
+                )
+
+        res = self.run_cli(["list", "income"])
+        self.assertNotEqual(res.returncode, 0)
+        self.assertIn(
+            "Schemastand '009_invoice_number', erforderlich ist '010_income_account'", res.stderr
+        )
+        self.assertIn("Bitte 'euer init' ausführen", res.stderr)
+
+        # After running euer init, migrations are applied and the command works
+        self.run_cli(["init"], check=True)
+        res_after = self.run_cli(["list", "income"], check=True)
+        self.assertIn("Keine Einnahmen gefunden.", res_after.stdout)
 
 
 if __name__ == "__main__":

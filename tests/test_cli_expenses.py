@@ -353,7 +353,10 @@ category = "Laufende EDV-Kosten"
         self.write_config("[accounts]\ndefault = 'privat'\n")
         self.add_expense()
         query = self.run_cli(
-            ["query", "SELECT account, is_private_paid, private_classification FROM expenses WHERE id = 1"],
+            [
+                "query",
+                "SELECT account, is_private_paid, private_classification FROM expenses WHERE id = 1",
+            ],
             check=True,
         )
         rows = self.parse_csv(query.stdout)
@@ -365,15 +368,36 @@ category = "Laufende EDV-Kosten"
         self.add_expense(vendor="Telekom", amount="-15.00", account="n26")
         self.add_expense(vendor="GitHub", amount="-25.00", account="stripe")
 
-        res_n26 = self.run_cli(["list", "expenses", "--account", "N26", "--format", "csv"], check=True)
+        res_n26 = self.run_cli(
+            ["list", "expenses", "--account", "N26", "--format", "csv"], check=True
+        )
         rows_n26 = self.parse_csv(res_n26.stdout)
         self.assertEqual(len(rows_n26), 2)
         self.assertEqual(rows_n26[1][3], "Telekom")
 
-        res_stripe = self.run_cli(["list", "expenses", "--account", "stripe", "--format", "csv"], check=True)
+        res_stripe = self.run_cli(
+            ["list", "expenses", "--account", "stripe", "--format", "csv"], check=True
+        )
         rows_stripe = self.parse_csv(res_stripe.stdout)
         self.assertEqual(len(rows_stripe), 2)
         self.assertEqual(rows_stripe[1][3], "GitHub")
+
+    def test_list_expenses_filter_unicode_and_whitespace(self):
+        self.add_expense(vendor="Büroartikel", amount="-45.00", account="  BÜROBANK  ")
+        res_upper = self.run_cli(
+            ["list", "expenses", "--account", "BÜROBANK", "--format", "csv"], check=True
+        )
+        rows_upper = self.parse_csv(res_upper.stdout)
+        self.assertEqual(len(rows_upper), 2)
+        self.assertEqual(rows_upper[1][3], "Büroartikel")
+        self.assertEqual(rows_upper[1][6], "bürobank")
+
+        res_lower = self.run_cli(
+            ["list", "expenses", "--account", "bürobank", "--format", "csv"], check=True
+        )
+        rows_lower = self.parse_csv(res_lower.stdout)
+        self.assertEqual(len(rows_lower), 2)
+        self.assertEqual(rows_lower[1][3], "Büroartikel")
 
 
 if __name__ == "__main__":

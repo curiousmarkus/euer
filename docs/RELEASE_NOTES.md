@@ -8,7 +8,7 @@ Für Installationen ab 0.8.1 ergänzen sie die normale Update-Sequenz aus der
 pipx upgrade euer
 euer doctor
 # Skill vollständig aus dem Bundle-Pfad installieren und neu laden
-euer setup --set skill.version "1.2.0"
+euer setup --set skill.version "1.3.0"
 euer init
 euer incomplete list
 euer summary --year 2026
@@ -38,6 +38,25 @@ Bei jedem neuen Release steht der konkrete Handlungsbedarf für Skill, Rolle,
 Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
 „Agenten-Dateien“. Die wiederkehrende Prozedur beschreibt der
 [Installationsreferenz](skills/euer-buchhaltung/references/installation_and_setup.md#agenten-dateien-aktualisieren).
+
+## 0.15.0
+
+- **Zahlungskonten bei Einnahmen (Spec 029):**
+  - Einnahmen besitzen nun ein optionales Kontofeld (`account`), das mit `--account` gesetzt oder per `euer update income <ID> --account` gepflegt werden kann.
+  - Standard-Zahlungskonto kann in `config.toml` unter `[accounts].default` konfiguriert werden; es greift als Erfassungsvorgabe bei neuen Einnahmen und Ausgaben.
+  - Private Konten (`[accounts].private`) sind für betriebliche Einnahmen gesperrt (`unsupported_private_income_account`).
+  - Neuer Filter `--account` für `euer list income`. Die Einnahmentabelle zeigt das Zahlungskonto nun auch in der Standardansicht an.
+  - Datenbankschema wird auf Stand `010_income_account` migriert (`euer init`).
+- **Zentraler Schema-Preflight:**
+  - Datenbefehle prüfen vor Ausführung den Datenbank-Schemastand. Befindet sich die Datenbank auf einem älteren Schema (z. B. 009), bricht der Befehl mit einem klaren Hinweis auf `euer init` ab, statt mit einem SQL-Fehler abzubrechen.
+- **Import-Schutz bei Geldtransfers:**
+  - Der CSV-/JSONL-Import leitet den Buchungstyp (`expense`/`income`) nur noch bei fehlender Typangabe aus dem Betragsvorzeichen ab.
+  - Explizit übergebene unbekannte Typen (wie `type="transfer"` bei Stripe-/PayPal-Auszahlungen) brechen den Import mit Zeilenbezug ab, um eine versehentliche Doppelbuchung von Umsätzen zu verhindern.
+- **Konsistente Unicode- und Whitespace-Normalisierung:**
+  - Kontonamen und Filter (z. B. `BÜROBANK` / `bürobank`) werden für Einnahmen und Ausgaben einheitlich über dieselbe Normalisierungslogik in SQLite verglichen.
+- **Agenten-Dateien (Skill 1.3.0):**
+  - Das Skill-Bundle wurde auf Version `1.3.0` aktualisiert. Nach dem Austausch aus dem Bundle-Pfad mit `euer setup --set skill.version "1.3.0"` bestätigen.
+  - Mandanten-Dossier (`AGENTS.md`) um Standard-Zahlungskonto und Provider-Auszahlungen ergänzen.
 
 ## 0.14.0
 

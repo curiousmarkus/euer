@@ -46,7 +46,7 @@ Ersteinrichtung (interaktiv oder --set KEY VALUE)
 |---|---|
 | `--set` | Setzt einen Config-Wert direkt (z.B. tax.mode small_business) |
 
-**Beispiel:** `euer setup --set skill.version "1.2.0"`
+**Beispiel:** `euer setup --set skill.version "1.3.0"`
 
 ### euer import
 
@@ -77,6 +77,8 @@ Bulk-Import von Transaktionen
 Feldnamen. Für CSV/JSONL werden `party`, `amount_eur` und mindestens
 `payment_date` oder `invoice_date` benötigt. Ohne `type` wird der Buchungstyp
 aus dem Vorzeichen abgeleitet; `date` ist ein Alias für `payment_date`.
+Explizit übergebene unbekannte Typen (z. B. `type="transfer"`) brechen den
+Import mit Zeilenbezug ab und werden keinesfalls automatisch als Einnahme gebucht.
 Exportierte Ausgaben und Einnahmen sind als Importquelle vorgesehen,
 `PrivateTransfers` und `Sacheinlagen` nicht. Bankdateien vor dem Import auf
 das Schema normalisieren und den Lauf zuerst mit `--dry-run` prüfen.

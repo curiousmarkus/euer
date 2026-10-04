@@ -566,9 +566,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Neues Buchungskonto aus dem Kontenrahmen",
     )
     upd_inc_parser.add_argument("--amount", type=float, help="Neuer Betrag")
-    upd_inc_parser.add_argument(
-        "--account", help="Neues Zahlungskonto (leer zum Entfernen)"
-    )
+    upd_inc_parser.add_argument("--account", help="Neues Zahlungskonto (leer zum Entfernen)")
     upd_inc_parser.add_argument("--foreign", help="Neuer Fremdwährungsbetrag")
     upd_inc_parser.add_argument("--receipt", help="Neuer Belegname")
     upd_inc_parser.add_argument(
@@ -1007,6 +1005,39 @@ def main(argv: list[str] | None = None) -> None:
             "Vorhandene DB mit 'euer --db PFAD init --save-db-path' verbinden "
             "oder mit 'euer init --create' eine neue DB anlegen.\n",
         )
+    if (
+        not db_independent
+        and Path(args.db).is_file()
+        and not (args.command == "receipt" and args.action == "unbooked")
+    ):
+        import sqlite3
+
+        from .db import get_db_connection
+        from .migrations import get_migration_plan
+
+        try:
+            conn_check = get_db_connection(Path(args.db))
+        except sqlite3.Error:
+            conn_check = None
+
+        if conn_check is not None:
+            pending_plan = None
+            try:
+                current_schema, target_schema, pending, _ = get_migration_plan(conn_check)
+                if pending:
+                    pending_plan = (current_schema, target_schema)
+            except (ValueError, sqlite3.Error):
+                pass
+            finally:
+                conn_check.close()
+
+            if pending_plan:
+                current_schema, target_schema = pending_plan
+                parser.exit(
+                    1,
+                    f"Fehler: Die Datenbank ist auf Schemastand '{current_schema}', erforderlich ist '{target_schema}'. "
+                    "Bitte 'euer init' ausführen, um die ausstehenden Migrationen anzuwenden.\n",
+                )
     mutating_commands = {"add", "update", "delete", "restore", "undo", "import", "reconcile"}
     needs_backup = args.command in mutating_commands or (
         args.command == "trash" and args.action == "empty"

@@ -39,6 +39,10 @@ Status und effektiven Pfad der Datenbank bei Bedarf ausschließlich mit `euer do
 
 ## Konten und private Vorgänge
 
+- **Standard-Zahlungskonto (`accounts.default`):** {{STANDARD_KONTO_ODER_KEINES}}
+- **Private Konten (`accounts.private`):** {{PRIVATE_KONTEN_LISTE_ODER_STANDARD}} (keine Einnahmen auf Privatkonten)
+- **Provider-Auszahlungen / Geldtransit (z. B. Stripe/PayPal -> Bank):** Reine Geldtransfers zwischen Finanzkonten, keine erneuten Einnahmen.
+
 | Kennung | Geschäftlich oder privat | Konto/Zahlungsart | Besonderheiten |
 |---|---|---|---|
 | {{KENNUNG}} | {{TYP}} | {{KONTO_ODER_ZAHLUNGSART}} | {{BESONDERHEIT}} |

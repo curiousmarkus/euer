@@ -95,11 +95,17 @@ offen; optionale Lieferanten-Mappings oder SKR-Nummern blockieren keine erste Bu
 ### Konten und private Vorgänge
 
 - Geschäftliche Konten/Karten und Zahlungsdienstleister mit eindeutigen Kennungen
-  erfassen, beispielsweise `g-geschaeftskonto`. Bankname und bei Bedarf letzte vier
-  Ziffern genügen zur Unterscheidung; keine Zugangsdaten erfragen.
+  erfassen, beispielsweise `g-geschaeftskonto`, `stripe`, `paypal`.
+  Erfassungsvorgabe für das Hauptkonto in `[accounts].default` hinterlegen.
+- Bei Einnahmen das jeweilige Zahlungskonto erfassen (`--account`); fehlt die
+  Angabe, greift `accounts.default`.
+- Provider-Auszahlungen (z. B. Stripe-Auszahlung auf das Girokonto) als reine
+  Geldtransfers zwischen betrieblichen Finanzkonten behandeln — keinesfalls erneut als Einnahmen erfassen.
 - Privat bezahlte Betriebsausgaben und dafür verwendete Kennungen erfassen,
-  beispielsweise `p-giro`. Nur tatsächlich private Kennungen in `accounts.private`
-  aufnehmen. Nach Ausgleichsüberweisungen fragen, um doppelte Kosten zu vermeiden.
+  beispielsweise `p-giro`. Ausschließlich echte private Kennungen in
+  `accounts.private` (strikt als Liste von Strings) konfigurieren. Einnahmen
+  auf Privatkonten werden von `euer` abgewiesen. Nach Ausgleichsüberweisungen
+  fragen, um doppelte Kosten zu vermeiden.
 - Bei gemischter Nutzung vereinbarte betriebliche Anteile und ihre Grundlage
   dokumentieren. Keine pauschalen Prozentsätze als bestätigte Regeln übernehmen.
 

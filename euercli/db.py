@@ -6,6 +6,17 @@ from typing import Optional
 from .constants import DEFAULT_USER
 
 
+def register_db_functions(conn: sqlite3.Connection) -> None:
+    """Registriert benutzerdefinierte SQLite-Funktionen."""
+    from .services.utils import normalize_account_name
+
+    conn.create_function(
+        "py_norm_account",
+        1,
+        lambda val: normalize_account_name(val) if val is not None else None,
+    )
+
+
 def get_db_connection(db_path: Path, *, read_only: bool = False) -> sqlite3.Connection:
     """Erstellt eine Datenbankverbindung mit Row-Factory."""
     if read_only:
@@ -14,6 +25,7 @@ def get_db_connection(db_path: Path, *, read_only: bool = False) -> sqlite3.Conn
         conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    register_db_functions(conn)
     return conn
 
 

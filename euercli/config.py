@@ -208,14 +208,29 @@ def get_private_accounts(config: dict) -> list[str]:
     if not isinstance(accounts, dict):
         return ["privat"]
     private_val = accounts.get("private")
-    if not private_val:
+    if private_val is None:
         return ["privat"]
+    if not isinstance(private_val, list):
+        raise ValidationError(
+            "Ungültige Config: 'accounts.private' muss eine Liste von Strings sein.",
+            code="invalid_private_accounts",
+        )
     result: list[str] = []
     for item in private_val:
-        text = str(item).strip().lower()
-        if text:
+        if not isinstance(item, str) or not item.strip():
+            raise ValidationError(
+                "Ungültige Config: 'accounts.private' darf nur nicht-leere Strings enthalten.",
+                code="invalid_private_accounts",
+            )
+        text = item.strip().lower()
+        if text not in result:
             result.append(text)
-    return result or ["privat"]
+    if not result:
+        raise ValidationError(
+            "Ungültige Config: 'accounts.private' darf nicht leer sein.",
+            code="invalid_private_accounts",
+        )
+    return result
 
 
 def get_default_account(config: dict) -> str | None:
@@ -258,8 +273,11 @@ def get_known_accounts(config: dict) -> list[str]:
         pass
 
     # 2. Privatkonten
-    for priv in get_private_accounts(config):
-        add_name(priv)
+    try:
+        for priv in get_private_accounts(config):
+            add_name(priv)
+    except ValidationError:
+        pass
 
     # 3. [datev.accounts]
     datev_accs = config.get("datev", {}).get("accounts", {})
@@ -267,16 +285,27 @@ def get_known_accounts(config: dict) -> list[str]:
         for key in datev_accs.keys():
             add_name(key)
 
-    # 4. [accounts.mapping] & alte flache [accounts]-Einträge
+    # 4. [accounts.mapping] & alte flache [accounts]-Einträge (nur Finanzkonten)
+    skr = str(config.get("datev", {}).get("skr", "03")).strip()
     accounts = config.get("accounts", {})
     if isinstance(accounts, dict):
         mapping = accounts.get("mapping", {})
         if isinstance(mapping, dict):
-            for key in mapping.keys():
-                add_name(key)
+            for key, val in mapping.items():
+                acc_val = str(val).strip()
+                is_fin = (skr == "03" and acc_val.startswith("1")) or (
+                    skr == "04" and acc_val[:1] in ("1", "2")
+                )
+                if is_fin:
+                    add_name(key)
         for key, val in accounts.items():
             if key not in {"default", "private", "mapping"} and isinstance(val, (str, int)):
-                add_name(key)
+                acc_val = str(val).strip()
+                is_fin = (skr == "03" and acc_val.startswith("1")) or (
+                    skr == "04" and acc_val[:1] in ("1", "2")
+                )
+                if is_fin:
+                    add_name(key)
 
     return known
 
