@@ -37,6 +37,11 @@ befüllte Exporte, Steuerfälle und Belegpakete.
 
 Die [öffentlichen Upgrade-Hinweise](https://euer-buchhaltung.de/datev/versionshinweise)
 sind veröffentlicht; Website-Lint und Production-Build waren erfolgreich.
+Die [Homebrew-Pipeline](https://github.com/curiousmarkus/homebrew-euer/actions/runs/37199033423)
+hat beide Formeln auf macOS und Linux installiert und getestet. Die geprüften
+Formeln wurden gemeinsam als Tap-Commit
+`5bc827985b06935bf1e520223b2093f9ada45b98` veröffentlicht; Versionen und
+Quellarchiv-Prüfsummen stimmen mit den obigen PyPI-Artefakten überein.
 Beide Pakete müssen vor der Migration aktualisiert werden. Datenbank sichern,
 `euer init --dry-run` prüfen, dann migrieren und den vollständigen Skill 1.3.0
 aktualisieren. Keine automatische Zuordnung alter Einnahmen zu neuen Defaults.
