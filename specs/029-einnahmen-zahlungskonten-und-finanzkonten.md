@@ -4,6 +4,9 @@
 
 Implementiert
 
+Veröffentlicht mit Core 0.15.0 und DATEV 0.4.0 am 2026-10-04.
+Technischer Nachweis: [Release-Abnahme](../docs/RELEASE_VALIDATION_0.15.0.md).
+
 ## Ziel und gemeinsamer Release
 
 Einnahmen speichern ihr tatsächliches Zahlungskonto durchgängig von der Erfassung
