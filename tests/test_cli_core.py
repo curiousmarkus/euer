@@ -296,6 +296,7 @@ category = "Laufende EDV-Kosten"
                     (m.id, m.name),
                 )
 
+        conn.close()
         res = self.run_cli(["list", "income"])
         self.assertNotEqual(res.returncode, 0)
         self.assertIn(
@@ -325,6 +326,7 @@ category = "Laufende EDV-Kosten"
                 with sqlite3.connect(self.db_path) as conn:
                     before = conn.execute("SELECT version, name FROM _schema_migrations").fetchall()
                     conn.execute(mutation)
+                conn.close()
                 result = self.add_income(account="bank")
                 self.assertEqual(result.returncode, 1)
                 self.assertIn(expected, result.stderr)
@@ -338,6 +340,7 @@ category = "Laufende EDV-Kosten"
                     conn.executemany(
                         "INSERT INTO _schema_migrations(version, name) VALUES (?, ?)", before
                     )
+                conn.close()
 
     def test_invalid_private_config_is_reported_by_all_affected_commands(self):
         self.add_income(account="bank")
