@@ -36,7 +36,7 @@ class CLIExpensesTestCase(BaseCLITestCase):
         self.assertEqual(vendor, "TestVendor")
         self.assertEqual(category, "(52) Arbeitsmittel")
         self.assertEqual(amount, "-10.00")
-        self.assertEqual(account, "Bank")
+        self.assertEqual(account, "bank")
         self.assertEqual(receipt, "receipt.pdf")
         self.assertIn("Zahlung erfolgt", status)
         self.assertEqual(foreign, "")
@@ -341,6 +341,39 @@ category = "Laufende EDV-Kosten"
         rows = self.parse_csv(query.stdout)
         self.assertEqual(rows[1][0], "1")
         self.assertEqual(rows[1][1], "manual")
+
+    def test_add_expense_uses_default_account(self):
+        self.write_config("[accounts]\ndefault = 'Girokonto'\n")
+        self.add_expense()
+        query = self.run_cli(["query", "SELECT account FROM expenses WHERE id = 1"], check=True)
+        rows = self.parse_csv(query.stdout)
+        self.assertEqual(rows[1][0], "girokonto")
+
+    def test_add_expense_default_account_triggers_private_classification(self):
+        self.write_config("[accounts]\ndefault = 'privat'\n")
+        self.add_expense()
+        query = self.run_cli(
+            ["query", "SELECT account, is_private_paid, private_classification FROM expenses WHERE id = 1"],
+            check=True,
+        )
+        rows = self.parse_csv(query.stdout)
+        self.assertEqual(rows[1][0], "privat")
+        self.assertEqual(rows[1][1], "1")
+        self.assertEqual(rows[1][2], "account_rule")
+
+    def test_list_expenses_filter_by_account(self):
+        self.add_expense(vendor="Telekom", amount="-15.00", account="n26")
+        self.add_expense(vendor="GitHub", amount="-25.00", account="stripe")
+
+        res_n26 = self.run_cli(["list", "expenses", "--account", "N26", "--format", "csv"], check=True)
+        rows_n26 = self.parse_csv(res_n26.stdout)
+        self.assertEqual(len(rows_n26), 2)
+        self.assertEqual(rows_n26[1][3], "Telekom")
+
+        res_stripe = self.run_cli(["list", "expenses", "--account", "stripe", "--format", "csv"], check=True)
+        rows_stripe = self.parse_csv(res_stripe.stdout)
+        self.assertEqual(len(rows_stripe), 2)
+        self.assertEqual(rows_stripe[1][3], "GitHub")
 
 
 if __name__ == "__main__":

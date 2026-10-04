@@ -197,5 +197,82 @@ category = "Laufende EDV-Kosten"
         self.assertIn("account", incomplete_result.stdout)
 
 
+    def test_incomplete_list_income_account(self):
+        # 1. Paid income without account -> missing account
+        self.run_cli(
+            [
+                "add",
+                "income",
+                "--date",
+                "2026-01-10",
+                "--source",
+                "Kunde Paid",
+                "--amount",
+                "100.00",
+                "--category",
+                "Umsatzsteuerpflichtige Betriebseinnahmen",
+                "--receipt",
+                "rec.pdf",
+            ],
+            check=True,
+        )
+        # 2. Unpaid invoice income without account -> does NOT miss account
+        self.run_cli(
+            [
+                "add",
+                "income",
+                "--invoice-date",
+                "2026-01-12",
+                "--source",
+                "Kunde Unpaid",
+                "--amount",
+                "200.00",
+                "--category",
+                "Umsatzsteuerpflichtige Betriebseinnahmen",
+                "--receipt",
+                "rec.pdf",
+            ],
+            check=True,
+        )
+        # 3. Paid income WITH account -> does NOT miss account
+        self.run_cli(
+            [
+                "add",
+                "income",
+                "--date",
+                "2026-01-15",
+                "--invoice-date",
+                "2026-01-15",
+                "--source",
+                "Kunde With Acc",
+                "--amount",
+                "300.00",
+                "--category",
+                "Umsatzsteuerpflichtige Betriebseinnahmen",
+                "--receipt",
+                "rec.pdf",
+                "--account",
+                "n26",
+            ],
+            check=True,
+        )
+
+        res = self.run_cli(["incomplete", "list", "--format", "csv"], check=True)
+        rows = self.parse_csv(res.stdout)
+        # Row 1 is header
+        # Kunde Paid should be incomplete with "account"
+        paid_row = next(r for r in rows if r[4] == "Kunde Paid")
+        self.assertIn("account", paid_row[9])
+
+        # Kunde Unpaid has payment_date missing, but NOT account missing
+        unpaid_row = next(r for r in rows if r[4] == "Kunde Unpaid")
+        self.assertIn("payment_date", unpaid_row[9])
+        self.assertNotIn("account", unpaid_row[9])
+
+        # Kunde With Acc should NOT be in incomplete list at all
+        with_acc_rows = [r for r in rows if r[4] == "Kunde With Acc"]
+        self.assertEqual(len(with_acc_rows), 0)
+
+
 if __name__ == "__main__":
     unittest.main()

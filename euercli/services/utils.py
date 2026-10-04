@@ -29,3 +29,33 @@ def resolve_dates(
 def hash_date(payment_date: str | None, invoice_date: str | None) -> str:
     """Gibt das für die Hash-Berechnung relevante Datum zurück (payment > invoice)."""
     return payment_date or invoice_date or ""
+
+
+RESERVED_PRIVATE_ACCOUNTS = {"privat", "privateinlage", "privatentnahme"}
+
+
+def normalize_account_name(account: str | None) -> str | None:
+    """Normalisiert Kontonamen: trimmt Leerzeichen und wandelt in Kleinbuchstaben."""
+    if account is None:
+        return None
+    val = str(account).strip().lower()
+    return val if val else None
+
+
+def validate_income_account(
+    account: str | None, private_accounts: list[str] | None = None
+) -> None:
+    """Weist private Konten für Einnahmen mit 'unsupported_private_income_account' ab."""
+    if not account:
+        return
+    norm = str(account).strip().lower()
+    all_private = set(RESERVED_PRIVATE_ACCOUNTS)
+    if private_accounts:
+        all_private.update(p.strip().lower() for p in private_accounts if p)
+    if norm in all_private:
+        raise ValidationError(
+            f"Einnahmen auf Privatkonten ('{account}') werden nicht unterstützt. "
+            "Bitte betriebliches Zahlungskonto verwenden oder Sachverhalt klären.",
+            code="unsupported_private_income_account",
+            details={"account": account},
+        )

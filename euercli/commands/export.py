@@ -133,7 +133,7 @@ def cmd_export(args):
     income = conn.execute(
         f"""SELECT i.receipt_name, i.payment_date, i.invoice_date, i.invoice_number, i.source,
                   c.name as category, c.eur_key,
-                  i.amount_eur, i.ledger_account, i.foreign_amount, i.notes,
+                  i.amount_eur, i.account, i.ledger_account, i.foreign_amount, i.notes,
                   i.vat_output, i.vat_rate, i.vat_code
            FROM income i
            LEFT JOIN categories c ON i.category_id = c.id
@@ -284,6 +284,7 @@ def cmd_export(args):
                         "Quelle",
                         "Kategorie",
                         "EUR",
+                        "Konto",
                         "Buchungskonto",
                         "Kontonummer",
                         "Fremdwährung",
@@ -304,6 +305,7 @@ def cmd_export(args):
                             r["source"],
                             cat,
                             f"{r['amount_eur']:.2f}",
+                            r["account"] or "",
                             r["ledger_account"] or "",
                             ledger_account_numbers.get((r["ledger_account"] or "").lower(), ""),
                             r["foreign_amount"] or "",
@@ -459,6 +461,7 @@ def cmd_export(args):
                     "Quelle",
                     "Kategorie",
                     "EUR",
+                    "Konto",
                     "Buchungskonto",
                     "Kontonummer",
                     "Fremdwährung",
@@ -479,6 +482,7 @@ def cmd_export(args):
                         r["source"],
                         cat,
                         r["amount_eur"],
+                        r["account"] or "",
                         r["ledger_account"] or "",
                         ledger_account_numbers.get((r["ledger_account"] or "").lower(), ""),
                         r["foreign_amount"] or "",

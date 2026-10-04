@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS income (
     source TEXT NOT NULL,
     category_id INTEGER REFERENCES categories(id),
     amount_eur REAL NOT NULL,
+    account TEXT,
     ledger_account TEXT,
     foreign_amount TEXT,
     notes TEXT,
@@ -81,6 +82,7 @@ CREATE TABLE IF NOT EXISTS income (
 CREATE INDEX IF NOT EXISTS idx_income_payment_date ON income(payment_date);
 CREATE INDEX IF NOT EXISTS idx_income_category ON income(category_id);
 CREATE INDEX IF NOT EXISTS idx_income_deleted_at ON income(deleted_at);
+CREATE INDEX IF NOT EXISTS idx_income_account ON income(account);
 
 CREATE TABLE IF NOT EXISTS private_transfers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

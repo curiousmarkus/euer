@@ -4,6 +4,7 @@ from pathlib import Path
 from ..config import (
     get_amount_threshold,
     get_audit_user,
+    get_default_account,
     get_ledger_accounts,
     get_private_accounts,
     load_config,
@@ -47,6 +48,7 @@ def cmd_add_expense(args):
     private_accounts = get_private_accounts(config)
     tax_mode = get_tax_config(config)
     try:
+        default_account = get_default_account(config)
         ledger_accounts = get_ledger_accounts(config)
     except ValidationError as exc:
         print(f"Fehler: {exc.message}", file=sys.stderr)
@@ -83,6 +85,7 @@ def cmd_add_expense(args):
             ledger_account_key=args.ledger_account,
             ledger_accounts=ledger_accounts,
             account=args.account,
+            default_account=default_account,
             foreign_amount=args.foreign,
             receipt_name=args.receipt,
             invoice_number=args.invoice_number,
@@ -180,7 +183,9 @@ def cmd_add_income(args):
     config = load_config()
     audit_user = get_audit_user(config)
     tax_mode = get_tax_config(config)
+    private_accounts = get_private_accounts(config)
     try:
+        default_account = get_default_account(config)
         ledger_accounts = get_ledger_accounts(config)
     except ValidationError as exc:
         print(f"Fehler: {exc.message}", file=sys.stderr)
@@ -202,6 +207,9 @@ def cmd_add_income(args):
             category_name=args.category,
             ledger_account_key=args.ledger_account,
             ledger_accounts=ledger_accounts,
+            account=getattr(args, "account", None),
+            default_account=default_account,
+            private_accounts=private_accounts,
             foreign_amount=args.foreign,
             receipt_name=args.receipt,
             invoice_number=args.invoice_number,

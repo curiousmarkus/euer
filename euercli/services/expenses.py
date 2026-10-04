@@ -12,7 +12,7 @@ from .errors import RecordNotFoundError, ValidationError
 from .eur import category_key_for_name, is_entertainment_category
 from .models import Expense, LedgerAccount
 from .private_classification import classify_expense_private_paid
-from .utils import get_optional, hash_date, resolve_dates
+from .utils import get_optional, hash_date, normalize_account_name, resolve_dates
 from .validation import (
     DEFAULT_AMOUNT_THRESHOLD,
     check_fuzzy_duplicate,
@@ -317,6 +317,7 @@ def create_expense(
     ledger_account_key: str | None = None,
     ledger_accounts: list[LedgerAccount] | None = None,
     account: str | None = None,
+    default_account: str | None = None,
     foreign_amount: str | None = None,
     receipt_name: str | None = None,
     invoice_number: str | None = None,
@@ -481,8 +482,9 @@ def create_expense(
         )
 
     record_uuid = str(uuid.uuid4())
+    resolved_account = normalize_account_name(account) or normalize_account_name(default_account)
     is_private_paid, private_classification = classify_expense_private_paid(
-        account=account,
+        account=resolved_account,
         category_name=resolved_category_name,
         private_accounts=private_accounts or [],
         manual_override=private_paid,
@@ -505,7 +507,7 @@ def create_expense(
             vendor,
             category_id,
             amount_eur,
-            account,
+            resolved_account,
             resolved_ledger_account_key,
             foreign_amount,
             notes,
@@ -533,7 +535,7 @@ def create_expense(
         "vendor": vendor,
         "category_id": category_id,
         "amount_eur": amount_eur,
-        "account": account,
+        "account": resolved_account,
         "ledger_account": resolved_ledger_account_key,
         "foreign_amount": foreign_amount,
         "notes": notes,
@@ -570,7 +572,7 @@ def create_expense(
         category_id=category_id,
         category_name=resolved_category_name,
         category_eur_key=resolved_category_key,
-        account=account,
+        account=resolved_account,
         ledger_account=resolved_ledger_account_key,
         receipt_name=receipt_name,
         invoice_number=invoice_number,
@@ -595,6 +597,7 @@ def list_expenses(
     year: int | None = None,
     month: int | None = None,
     category_name: str | None = None,
+    account: str | None = None,
     include_deleted: bool = False,
     trash_only: bool = False,
 ) -> list[Expense]:
@@ -629,6 +632,9 @@ def list_expenses(
     if category_name:
         query += " AND LOWER(c.name) = LOWER(?)"
         params.append(category_name)
+    if account:
+        query += " AND LOWER(e.account) = LOWER(?)"
+        params.append(account.strip())
 
     query += " ORDER BY COALESCE(e.payment_date, e.invoice_date) DESC, e.id DESC"
 
@@ -740,7 +746,7 @@ def update_expense(
 
     new_vendor = vendor if vendor else row["vendor"]
     new_amount = amount_eur if amount_eur is not None else row["amount_eur"]
-    new_account = account if account is not None else row["account"]
+    new_account = normalize_account_name(account) if account is not None else row["account"]
     new_foreign = foreign_amount if foreign_amount is not None else row["foreign_amount"]
     new_notes = notes if notes is not None else row["notes"]
 

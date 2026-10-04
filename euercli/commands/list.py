@@ -70,6 +70,7 @@ def cmd_list_expenses(args):
         year=year,
         month=args.month,
         category_name=args.category,
+        account=getattr(args, "account", None),
         trash_only=trash,
     )
     conn.close()
@@ -438,6 +439,7 @@ def cmd_list_income(args):
         year=year,
         month=args.month,
         category_name=args.category,
+        account=getattr(args, "account", None),
         trash_only=trash,
     )
     conn.close()
@@ -452,6 +454,7 @@ def cmd_list_income(args):
                 "Quelle",
                 "Kategorie",
                 "EUR",
+                "Konto",
                 "Beleg",
                 "Status",
                 "Fremdwährung",
@@ -470,6 +473,7 @@ def cmd_list_income(args):
                     r.source,
                     cat_str,
                     f"{r.amount_eur:.2f}",
+                    r.account or "",
                     r.receipt_name or "",
                     infer_booking_status(r.payment_date, r.invoice_date, r.receipt_name),
                     r.foreign_amount or "",
@@ -487,7 +491,7 @@ def cmd_list_income(args):
         if full_view:
             row_fmt = (
                 "{id:<5} {payment:<12} {invoice:<12} {source:<20} {category:<26} "
-                "{amount:>12} {status:<30} {vat:>8} {notes:<24}"
+                "{amount:>12} {account:<12} {status:<30} {vat:>8} {notes:<24}"
             )
             header = row_fmt.format(
                 id="ID",
@@ -496,6 +500,7 @@ def cmd_list_income(args):
                 source="Quelle",
                 category="Kategorie",
                 amount="EUR",
+                account="Konto",
                 status="Status",
                 vat="USt",
                 notes="Notiz",
@@ -535,6 +540,7 @@ def cmd_list_income(args):
                         source=r.source[:20],
                         category=cat_str[:26],
                         amount=amount_str,
+                        account=(r.account or "")[:12],
                         status=status[:30],
                         vat=vat_str,
                         notes=(r.notes or "")[:24],
@@ -566,6 +572,7 @@ def cmd_list_income(args):
                     source="",
                     category="",
                     amount=f"{total:.2f}",
+                    account="",
                     status="",
                     vat=f"{vat_out_total:.2f}",
                     notes="",

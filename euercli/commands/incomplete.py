@@ -66,6 +66,9 @@ def collect_income_missing(row: dict, tax_mode: str) -> list[str]:
     if not row["receipt_name"]:
         missing.append("receipt")
 
+    if row["payment_date"] and not row["account"]:
+        missing.append("account")
+
     if tax_mode == "standard" and row["vat_output"] is None:
         missing.append("vat")
 
@@ -121,7 +124,7 @@ def cmd_incomplete_list(args):
         query = """
             SELECT i.id, i.payment_date, i.invoice_date, i.source AS party,
                    i.category_id, c.name AS category_name,
-                   i.amount_eur, i.receipt_name, i.notes, i.vat_output
+                   i.amount_eur, i.account, i.receipt_name, i.notes, i.vat_output
             FROM income i
             LEFT JOIN categories c ON i.category_id = c.id
             WHERE i.deleted_at IS NULL
@@ -145,7 +148,7 @@ def cmd_incomplete_list(args):
                         "party": row["party"],
                         "category_name": row["category_name"],
                         "amount_eur": row["amount_eur"],
-                        "account": None,
+                        "account": row["account"],
                         "receipt_name": row["receipt_name"],
                         "missing_fields": missing,
                         "notes": row["notes"],

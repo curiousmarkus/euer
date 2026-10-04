@@ -131,6 +131,7 @@ def cmd_update_income(args):
     conn = get_db_connection(db_path)
     config = load_config()
     audit_user = get_audit_user(config)
+    private_accounts = get_private_accounts(config)
     tax_mode = get_tax_config(config)
     try:
         ledger_accounts = get_ledger_accounts(config)
@@ -150,6 +151,8 @@ def cmd_update_income(args):
             ledger_account_key=args.ledger_account,
             ledger_accounts=ledger_accounts,
             amount_eur=args.amount,
+            account=getattr(args, "account", None),
+            private_accounts=private_accounts,
             foreign_amount=args.foreign,
             receipt_name=args.receipt,
             invoice_number=args.invoice_number,

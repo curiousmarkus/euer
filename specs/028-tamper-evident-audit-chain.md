@@ -162,6 +162,9 @@ Bevor offizielle Exporte (CSV, XLSX, EÜR-HTML-Bericht oder DATEV-Buchungsstapel
 
 ## Migration bestehender Installationen
 
-1. Migration `010_audit_hash_chain.py` legt die Trigger an und ergänzt `prev_hash` und `entry_hash`.
+1. Eine eigene Migration legt die Trigger an und ergänzt `prev_hash` und `entry_hash`.
+   Die Nummer folgt der bei Implementierung aktuellen Registry; `010_income_account`
+   ist für [Spec 029](029-einnahmen-zahlungskonten-und-finanzkonten.md) vorgesehen.
+   Spec 028 gehört nicht zu deren gemeinsamem Release mit dem DATEV-Add-on.
 2. Für bestehende Altdaten wird die Hash-Kette deterministisch nachberechnet (Backfill).
 3. Ein abschließender Audit-Eintrag vom Typ `MIGRATE` schließt die Kette für künftige Buchungen.

@@ -363,6 +363,8 @@ Offene Change Requests werden innerhalb der jeweiligen Spec dokumentiert.
 | 025 | Optionale Rechnungsnummer | Implementiert |
 | 026 | Innergemeinschaftlicher Warenerwerb und OSS-Erlöse | Offen |
 | 027 | Separat installiertes DATEV-Subcommand | Implementiert |
+| 028 | Integritätsschutz für SQLite und Audit-Hash-Kette | Offen |
+| 029 | Zahlungskonten für Einnahmen und konsistente Kontovorgaben (gemeinsam mit DATEV Spec 001) | Implementiert |
 
 ### Agenten-Dateien und Mandantendaten
 

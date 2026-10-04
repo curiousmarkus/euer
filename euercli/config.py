@@ -204,15 +204,81 @@ def get_audit_user(config: dict) -> str:
 
 def get_private_accounts(config: dict) -> list[str]:
     """Liest private Kontobezeichner aus der Config."""
-    accounts = config.get("accounts", {}).get("private")
-    if not accounts:
+    accounts = config.get("accounts", {})
+    if not isinstance(accounts, dict):
+        return ["privat"]
+    private_val = accounts.get("private")
+    if not private_val:
         return ["privat"]
     result: list[str] = []
-    for item in accounts:
-        text = str(item).strip()
+    for item in private_val:
+        text = str(item).strip().lower()
         if text:
             result.append(text)
     return result or ["privat"]
+
+
+def get_default_account(config: dict) -> str | None:
+    """Liest das Standard-Zahlungskonto (Erfassungsvorgabe) aus der Config."""
+    accounts = config.get("accounts", {})
+    if not isinstance(accounts, dict):
+        raise ValidationError(
+            "Ungültige Config: [accounts] muss eine Tabelle sein.",
+            code="invalid_accounts_config",
+        )
+    raw = accounts.get("default")
+    if raw is None:
+        return None
+    if not isinstance(raw, str):
+        raise ValidationError(
+            "Ungültige Config: 'accounts.default' muss ein String sein.",
+            code="invalid_default_account",
+        )
+    clean = raw.strip().lower()
+    return clean or None
+
+
+def get_known_accounts(config: dict) -> list[str]:
+    """Liefert normalisierte, deduplizierte bekannte Konten zur Orientierung."""
+    known: list[str] = []
+    seen: set[str] = set()
+
+    def add_name(name: object | None) -> None:
+        if name is None:
+            return
+        cleaned = str(name).strip().lower()
+        if cleaned and cleaned not in seen and cleaned not in {"default", "private", "mapping"}:
+            seen.add(cleaned)
+            known.append(cleaned)
+
+    # 1. Default-Konto
+    try:
+        add_name(get_default_account(config))
+    except ValidationError:
+        pass
+
+    # 2. Privatkonten
+    for priv in get_private_accounts(config):
+        add_name(priv)
+
+    # 3. [datev.accounts]
+    datev_accs = config.get("datev", {}).get("accounts", {})
+    if isinstance(datev_accs, dict):
+        for key in datev_accs.keys():
+            add_name(key)
+
+    # 4. [accounts.mapping] & alte flache [accounts]-Einträge
+    accounts = config.get("accounts", {})
+    if isinstance(accounts, dict):
+        mapping = accounts.get("mapping", {})
+        if isinstance(mapping, dict):
+            for key in mapping.keys():
+                add_name(key)
+        for key, val in accounts.items():
+            if key not in {"default", "private", "mapping"} and isinstance(val, (str, int)):
+                add_name(key)
+
+    return known
 
 
 def get_ledger_accounts(config: dict) -> list[LedgerAccount]:

@@ -10,7 +10,13 @@ from .duplicates import DuplicateAction, find_exact_duplicate
 from .errors import RecordNotFoundError, ValidationError
 from .eur import category_key_for_name, is_small_business_subset
 from .models import Income, LedgerAccount
-from .utils import get_optional, hash_date, resolve_dates
+from .utils import (
+    get_optional,
+    hash_date,
+    normalize_account_name,
+    resolve_dates,
+    validate_income_account,
+)
 from .validation import (
     DEFAULT_AMOUNT_THRESHOLD,
     check_fuzzy_duplicate,
@@ -41,6 +47,7 @@ def _row_to_income(row: sqlite3.Row) -> Income:
         category_name=get_optional(row, "category_name"),
         category_eur_line=None,
         category_eur_key=get_optional(row, "category_eur_key"),
+        account=get_optional(row, "account"),
         ledger_account=get_optional(row, "ledger_account"),
         receipt_name=get_optional(row, "receipt_name"),
         invoice_number=get_optional(row, "invoice_number"),
@@ -202,6 +209,9 @@ def create_income(
     category_name: str | None = None,
     ledger_account_key: str | None = None,
     ledger_accounts: list[LedgerAccount] | None = None,
+    account: str | None = None,
+    default_account: str | None = None,
+    private_accounts: list[str] | None = None,
     foreign_amount: str | None = None,
     receipt_name: str | None = None,
     invoice_number: str | None = None,
@@ -225,6 +235,11 @@ def create_income(
         invoice_date=invoice_date,
         legacy_date=date,
     )
+
+    resolved_account = normalize_account_name(account)
+    if resolved_account is None and default_account:
+        resolved_account = normalize_account_name(default_account)
+    validate_income_account(resolved_account, private_accounts)
 
     validate_date_plausibility(
         payment_date=resolved_payment_date,
@@ -342,8 +357,8 @@ def create_income(
     cursor = conn.execute(
         """INSERT INTO income
            (uuid, receipt_name, payment_date, invoice_date, invoice_number, source, category_id, amount_eur,
-            ledger_account, foreign_amount, notes, vat_output, vat_rate, vat_code, hash)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            account, ledger_account, foreign_amount, notes, vat_output, vat_rate, vat_code, hash)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             record_uuid,
             receipt_name,
@@ -353,6 +368,7 @@ def create_income(
             source,
             category_id,
             amount_eur,
+            resolved_account,
             resolved_ledger_account_key,
             foreign_amount,
             notes,
@@ -374,6 +390,7 @@ def create_income(
         "source": source,
         "category_id": category_id,
         "amount_eur": amount_eur,
+        "account": resolved_account,
         "ledger_account": resolved_ledger_account_key,
         "foreign_amount": foreign_amount,
         "notes": notes,
@@ -404,6 +421,7 @@ def create_income(
         category_id=category_id,
         category_name=resolved_category_name,
         category_eur_key=resolved_category_key,
+        account=resolved_account,
         ledger_account=resolved_ledger_account_key,
         receipt_name=receipt_name,
         invoice_number=invoice_number,
@@ -422,6 +440,7 @@ def list_income(
     year: int | None = None,
     month: int | None = None,
     category_name: str | None = None,
+    account: str | None = None,
     include_deleted: bool = False,
     trash_only: bool = False,
 ) -> list[Income]:
@@ -429,7 +448,7 @@ def list_income(
         SELECT i.id, i.uuid, i.payment_date, i.invoice_date, i.source, i.category_id,
                c.name as category_name,
                c.eur_key as category_eur_key,
-               i.amount_eur, i.ledger_account, i.receipt_name, i.invoice_number,
+               i.amount_eur, i.account, i.ledger_account, i.receipt_name, i.invoice_number,
                i.foreign_amount, i.notes, i.vat_output, i.vat_rate, i.vat_code, i.hash,
                i.deleted_at
         FROM income i
@@ -452,6 +471,9 @@ def list_income(
     if category_name:
         query += " AND LOWER(c.name) = LOWER(?)"
         params.append(category_name)
+    if account:
+        query += " AND LOWER(i.account) = LOWER(?)"
+        params.append(account.strip())
 
     query += " ORDER BY COALESCE(i.payment_date, i.invoice_date) DESC, i.id DESC"
 
@@ -467,7 +489,7 @@ def get_income_detail(
     query = """SELECT i.id, i.uuid, i.payment_date, i.invoice_date, i.source, i.category_id,
                   c.name as category_name,
                   c.eur_key as category_eur_key,
-                  i.amount_eur, i.ledger_account, i.receipt_name, i.invoice_number,
+                  i.amount_eur, i.account, i.ledger_account, i.receipt_name, i.invoice_number,
                   i.foreign_amount, i.notes, i.vat_output, i.vat_rate, i.vat_code, i.hash,
                   i.deleted_at
            FROM income i
@@ -498,6 +520,8 @@ def update_income(
     ledger_account_key: str | None = None,
     ledger_accounts: list[LedgerAccount] | None = None,
     amount_eur: float | None = None,
+    account: str | None = None,
+    private_accounts: list[str] | None = None,
     foreign_amount: str | None = None,
     receipt_name: str | None = None,
     invoice_number: str | None = None,
@@ -556,6 +580,11 @@ def update_income(
     new_amount = amount_eur if amount_eur is not None else row["amount_eur"]
     new_foreign = foreign_amount if foreign_amount is not None else row["foreign_amount"]
     new_notes = notes if notes is not None else row["notes"]
+    if account is not None:
+        new_account = normalize_account_name(account)
+        validate_income_account(new_account, private_accounts)
+    else:
+        new_account = get_optional(row, "account")
     new_vat_output = row["vat_output"]
     new_vat_rate = get_optional(row, "vat_rate")
     new_vat_code = get_optional(row, "vat_code")
@@ -708,7 +737,7 @@ def update_income(
     conn.execute(
         """UPDATE income SET
            receipt_name = ?, payment_date = ?, invoice_date = ?, invoice_number = ?, source = ?,
-           category_id = ?, amount_eur = ?,
+           category_id = ?, amount_eur = ?, account = ?,
            ledger_account = ?, foreign_amount = ?, notes = ?,
            vat_output = ?, vat_rate = ?, vat_code = ?, hash = ?
            WHERE id = ?""",
@@ -720,6 +749,7 @@ def update_income(
             new_source,
             category_id,
             new_amount,
+            new_account,
             resolved_ledger_account_key,
             new_foreign,
             new_notes,
@@ -742,6 +772,7 @@ def update_income(
         "source": new_source,
         "category_id": category_id,
         "amount_eur": new_amount,
+        "account": new_account,
         "ledger_account": resolved_ledger_account_key,
         "foreign_amount": new_foreign,
         "notes": new_notes,
@@ -773,6 +804,7 @@ def update_income(
         category_id=category_id,
         category_name=resolved_category_name,
         category_eur_key=resolved_category_key,
+        account=new_account,
         ledger_account=resolved_ledger_account_key,
         receipt_name=new_receipt,
         invoice_number=new_invoice_number,

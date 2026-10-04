@@ -74,6 +74,7 @@ class Income:
     category_name: str | None = None
     category_eur_line: int | None = None
     category_eur_key: str | None = None
+    account: str | None = None
     ledger_account: str | None = None
     receipt_name: str | None = None
     invoice_number: str | None = None

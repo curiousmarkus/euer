@@ -554,6 +554,35 @@ def _apply_009(conn: sqlite3.Connection) -> None:
             conn.execute(f"ALTER TABLE {table} ADD COLUMN invoice_number TEXT")
 
 
+def _preflight_010(conn: sqlite3.Connection) -> MigrationImpact:
+    tables = _get_tables(conn)
+    if "income" not in tables:
+        return MigrationImpact(
+            affected_count=0,
+            description="Ergänzt Zahlungskonto (account) für Einnahmen (Spec 029)",
+        )
+    inc_cols = _get_table_columns(conn, "income")
+    if "account" in inc_cols:
+        return MigrationImpact(
+            affected_count=0,
+            description="Ergänzt Zahlungskonto (account) für Einnahmen (bereits vorhanden)",
+        )
+    count = conn.execute("SELECT COUNT(*) FROM income").fetchone()[0]
+    return MigrationImpact(
+        affected_count=count,
+        description=f"Ergänzt Zahlungskonto (account) für {count} Einnahmen (bleiben initial NULL)",
+    )
+
+
+def _apply_010(conn: sqlite3.Connection) -> None:
+    tables = _get_tables(conn)
+    if "income" in tables:
+        inc_cols = _get_table_columns(conn, "income")
+        if "account" not in inc_cols:
+            conn.execute("ALTER TABLE income ADD COLUMN account TEXT")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_income_account ON income(account)")
+
+
 # Registrierte Migrationen in sequentieller Reihenfolge
 MIGRATIONS: list[Migration] = [
     Migration(
@@ -600,6 +629,12 @@ MIGRATIONS: list[Migration] = [
         "Optionale Rechnungsnummer (Spec 025)",
         _preflight_009,
         _apply_009,
+    ),
+    Migration(
+        "010_income_account",
+        "Zahlungskonto für Einnahmen (Spec 029)",
+        _preflight_010,
+        _apply_010,
     ),
 ]
 
@@ -681,6 +716,8 @@ def detect_legacy_schema_state(conn: sqlite3.Connection) -> tuple[str, list[str]
         satisfied.append("008_soft_delete")
     if "invoice_number" in exp_cols and "invoice_number" in inc_cols:
         satisfied.append("009_invoice_number")
+    if "account" in inc_cols:
+        satisfied.append("010_income_account")
 
     current_version = satisfied[-1] if satisfied else "unbekannt"
     return (f"{current_version} (abgeleitet)", satisfied)

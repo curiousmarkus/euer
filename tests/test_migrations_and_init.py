@@ -47,12 +47,38 @@ class MigrationsAndInitTestCase(unittest.TestCase):
                 "INSERT INTO income (uuid, payment_date, source, amount_eur, hash) "
                 "VALUES ('old-income', '2026-01-01', 'Kunde', 12, 'hash-income')"
             )
-            MIGRATIONS[-1].apply(conn)
+            migration = next(m for m in MIGRATIONS if m.id == "009_invoice_number")
+            migration.apply(conn)
             for table in ("expenses", "income"):
                 row = conn.execute(f"SELECT amount_eur, invoice_number FROM {table}").fetchone()
                 self.assertEqual(abs(row["amount_eur"]), 12)
                 self.assertIsNone(row["invoice_number"])
-            MIGRATIONS[-1].apply(conn)
+            migration.apply(conn)
+        finally:
+            conn.close()
+
+    def test_income_account_migration_preserves_existing_rows(self):
+        from euercli.schema import SCHEMA
+
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        try:
+            conn.executescript(
+                SCHEMA.replace("    account TEXT,\n", "").replace(
+                    "CREATE INDEX IF NOT EXISTS idx_income_account ON income(account);\n", ""
+                )
+            )
+            conn.execute(
+                "INSERT INTO income (uuid, payment_date, source, amount_eur, hash) "
+                "VALUES ('old-income', '2026-01-01', 'Kunde', 12, 'hash-income')"
+            )
+            migration = next(m for m in MIGRATIONS if m.id == "010_income_account")
+            migration.apply(conn)
+            row = conn.execute("SELECT amount_eur, account FROM income").fetchone()
+            self.assertEqual(row["amount_eur"], 12)
+            self.assertIsNone(row["account"])
+            # Idempotent apply
+            migration.apply(conn)
         finally:
             conn.close()
 
@@ -124,11 +150,12 @@ class MigrationsAndInitTestCase(unittest.TestCase):
         conn = sqlite3.connect(self.db_path)
         desc, satisfied = detect_legacy_schema_state(conn)
         conn.close()
-        self.assertIn("009_invoice_number", desc)
+        self.assertIn("010_income_account", desc)
         self.assertIn("001_initial_schema", satisfied)
         self.assertIn("007_category_eur_key", satisfied)
         self.assertIn("008_soft_delete", satisfied)
         self.assertIn("009_invoice_number", satisfied)
+        self.assertIn("010_income_account", satisfied)
 
         # Führe init aus -> registriert Legacy-Stempel ohne Fehler
         import io

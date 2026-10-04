@@ -68,6 +68,7 @@ account_number = "8400"
         self.assertIn("Buchungskonto", exp_header)
         self.assertIn("Kontonummer", exp_header)
         self.assertIn("Belegname", inc_header)
+        self.assertIn("Konto", inc_header)
         self.assertIn("Buchungskonto", inc_header)
         self.assertIn("Kontonummer", inc_header)
         self.assertIn("Typ", private_header)
@@ -77,8 +78,9 @@ account_number = "8400"
         inc_rows = list(csv.reader(inc_file.read_text(encoding="utf-8-sig").splitlines()))
         self.assertEqual(exp_rows[1][8], "hosting")
         self.assertEqual(exp_rows[1][9], "4940")
-        self.assertEqual(inc_rows[1][7], "erloese-19")
-        self.assertEqual(inc_rows[1][8], "8400")
+        self.assertEqual(inc_rows[1][7], "")
+        self.assertEqual(inc_rows[1][8], "erloese-19")
+        self.assertEqual(inc_rows[1][9], "8400")
 
     def test_export_csv_includes_rc_type(self):
         self.add_expense(
@@ -341,6 +343,58 @@ account_number = "4940"
         result = self.run_cli(["import", "--file", str(import_file), "--format", "csv"])
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Pflichtfelder fehlen", result.stderr)
+
+    def test_export_csv_income_with_account(self):
+        self.add_income(
+            source="Kunde Stripe",
+            amount="500.00",
+            category="Umsatzsteuerpflichtige Betriebseinnahmen",
+            extra_args=["--account", "Stripe"],
+        )
+        export_dir = self.root / "exports_acc"
+        export_dir.mkdir()
+        self.run_cli(["export", "--year", "2026", "--format", "csv", "--output", str(export_dir)], check=True)
+        inc_file = export_dir / "EÜR_2026_Einnahmen.csv"
+        inc_rows = list(csv.reader(inc_file.read_text(encoding="utf-8-sig").splitlines()))
+        self.assertEqual(inc_rows[1][6], "500.00")
+        self.assertEqual(inc_rows[1][7], "stripe")
+
+    def test_import_income_with_account_and_default(self):
+        self.write_config("[accounts]\ndefault = 'girokonto'\n")
+        import_file = self.root / "import_income_acc.csv"
+        import_file.write_text(
+            "\n".join(
+                [
+                    "type,date,party,category,amount_eur,account",
+                    "income,2026-02-01,Kunde 1,Umsatzsteuerpflichtige Betriebseinnahmen,100.00,paypal",
+                    "income,2026-02-02,Kunde 2,Umsatzsteuerpflichtige Betriebseinnahmen,200.00,",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        self.run_cli(["import", "--file", str(import_file), "--format", "csv"], check=True)
+        q1 = self.run_cli(["query", "SELECT account FROM income WHERE id = 1"], check=True)
+        self.assertEqual(self.parse_csv(q1.stdout)[1][0], "paypal")
+        q2 = self.run_cli(["query", "SELECT account FROM income WHERE id = 2"], check=True)
+        self.assertEqual(self.parse_csv(q2.stdout)[1][0], "girokonto")
+
+    def test_import_income_rejects_private_account(self):
+        import_file = self.root / "import_income_priv.csv"
+        import_file.write_text(
+            "\n".join(
+                [
+                    "type,date,party,category,amount_eur,account",
+                    "income,2026-02-01,Kunde 1,Umsatzsteuerpflichtige Betriebseinnahmen,100.00,privat",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        result = self.run_cli(["import", "--file", str(import_file), "--format", "csv"])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Import abgebrochen", result.stderr)
+        self.assertIn("Einnahmen auf Privatkonten", result.stderr)
 
 
 if __name__ == "__main__":

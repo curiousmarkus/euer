@@ -11,7 +11,7 @@ class CLIIncomeTestCase(BaseCLITestCase):
 
         rows = self.list_income_csv()
         self.assertEqual(len(rows), 2)
-        # ID, Wertstellung, Rechnung, Quelle, Kategorie, EUR, Beleg, Status, Fremdwährung, Bemerkung, Umsatzsteuer
+        # ID, Wertstellung, Rechnung, Quelle, Kategorie, EUR, Konto, Beleg, Status, Fremdwährung, Bemerkung, Umsatzsteuer, Rechnungsnummer
         (
             rec_id,
             payment_date,
@@ -19,6 +19,7 @@ class CLIIncomeTestCase(BaseCLITestCase):
             source,
             category,
             amount,
+            account,
             receipt,
             status,
             foreign,
@@ -31,6 +32,7 @@ class CLIIncomeTestCase(BaseCLITestCase):
         self.assertEqual(source, "TestClient")
         self.assertEqual(category, "(15) Umsatzsteuerpflichtige Betriebseinnahmen")
         self.assertEqual(amount, "1500.00")
+        self.assertEqual(account, "")
         self.assertEqual(receipt, "invoice.pdf")
         self.assertIn("Zahlung erfolgt", status)
         self.assertEqual(foreign, "")
@@ -48,7 +50,7 @@ class CLIIncomeTestCase(BaseCLITestCase):
 
         rows = self.list_income_csv()
         self.assertEqual(rows[1][5], "1750.00")
-        self.assertEqual(rows[1][9], "Korrigiert")
+        self.assertEqual(rows[1][10], "Korrigiert")
 
     def test_update_income_with_ledger_account_updates_category(self):
         self.write_config(
@@ -144,6 +146,81 @@ account_number = "8400"
         result = self.add_income(vat="10.00", tax_free=True)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("--tax-free", result.stderr)
+
+    def test_add_income_with_account(self):
+        result = self.add_income(extra_args=["--account", "N26-Giro"])
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        rows = self.list_income_csv()
+        self.assertEqual(rows[1][6], "n26-giro")
+
+        query = self.run_cli(["query", "SELECT account FROM income WHERE id = 1"], check=True)
+        q_rows = self.parse_csv(query.stdout)
+        self.assertEqual(q_rows[1][0], "n26-giro")
+
+    def test_add_income_uses_default_account(self):
+        self.write_config("[accounts]\ndefault = 'Girokonto'\n")
+        result = self.add_income()
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        query = self.run_cli(["query", "SELECT account FROM income WHERE id = 1"], check=True)
+        q_rows = self.parse_csv(query.stdout)
+        self.assertEqual(q_rows[1][0], "girokonto")
+
+    def test_add_income_explicit_account_overrides_default(self):
+        self.write_config("[accounts]\ndefault = 'Girokonto'\n")
+        result = self.add_income(extra_args=["--account", "Stripe"])
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        query = self.run_cli(["query", "SELECT account FROM income WHERE id = 1"], check=True)
+        q_rows = self.parse_csv(query.stdout)
+        self.assertEqual(q_rows[1][0], "stripe")
+
+    def test_add_income_rejects_reserved_private_account(self):
+        result = self.add_income(extra_args=["--account", "privat"])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Einnahmen auf Privatkonten", result.stderr)
+
+    def test_add_income_rejects_configured_private_account(self):
+        self.write_config("[accounts]\nprivate = ['cc-private']\n")
+        result = self.add_income(extra_args=["--account", "CC-Private"])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Einnahmen auf Privatkonten", result.stderr)
+
+    def test_update_income_account_and_clear(self):
+        self.add_income(extra_args=["--account", "Bank"])
+        # Update to another account
+        self.run_cli(["update", "income", "1", "--account", "PayPal"], check=True)
+        query = self.run_cli(["query", "SELECT account FROM income WHERE id = 1"], check=True)
+        self.assertEqual(self.parse_csv(query.stdout)[1][0], "paypal")
+
+        # Clear account with empty string
+        self.run_cli(["update", "income", "1", "--account", ""], check=True)
+        query = self.run_cli(["query", "SELECT account FROM income WHERE id = 1"], check=True)
+        self.assertEqual(self.parse_csv(query.stdout)[1][0], "")
+
+    def test_update_income_rejects_private_account(self):
+        self.add_income(extra_args=["--account", "Bank"])
+        result = self.run_cli(["update", "income", "1", "--account", "privatentnahme"])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Einnahmen auf Privatkonten", result.stderr)
+
+    def test_list_income_filter_by_account(self):
+        self.add_income(source="Kunde A", amount="100.00", extra_args=["--account", "n26"])
+        self.add_income(source="Kunde B", amount="200.00", extra_args=["--account", "stripe"])
+
+        res_n26 = self.run_cli(["list", "income", "--account", "N26", "--format", "csv"], check=True)
+        rows_n26 = self.parse_csv(res_n26.stdout)
+        self.assertEqual(len(rows_n26), 2)
+        self.assertEqual(rows_n26[1][3], "Kunde A")
+
+        res_stripe = self.run_cli(["list", "income", "--account", "stripe", "--format", "csv"], check=True)
+        rows_stripe = self.parse_csv(res_stripe.stdout)
+        self.assertEqual(len(rows_stripe), 2)
+        self.assertEqual(rows_stripe[1][3], "Kunde B")
+
+    def test_list_income_table_full_shows_account(self):
+        self.add_income(source="Kunde A", extra_args=["--account", "giro"])
+        res = self.run_cli(["list", "income", "--full"], check=True)
+        self.assertIn("Konto", res.stdout)
+        self.assertIn("giro", res.stdout)
 
 
 if __name__ == "__main__":

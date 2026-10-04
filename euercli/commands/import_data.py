@@ -2,7 +2,13 @@ import json
 import sys
 from pathlib import Path
 
-from ..config import get_audit_user, get_ledger_accounts, get_private_accounts, load_config
+from ..config import (
+    get_audit_user,
+    get_default_account,
+    get_ledger_accounts,
+    get_private_accounts,
+    load_config,
+)
 from ..db import get_db_connection
 from ..importers import get_tax_config, iter_import_rows, normalize_import_row
 from ..services.categories import get_category_by_name
@@ -96,6 +102,7 @@ def cmd_import(args):
     private_accounts = get_private_accounts(config)
     tax_mode = get_tax_config(config)
     try:
+        default_account = get_default_account(config)
         ledger_accounts = get_ledger_accounts(config)
     except ValidationError as exc:
         conn.close()
@@ -212,6 +219,7 @@ def cmd_import(args):
                     category_name=str(category_name) if category_name is not None else None,
                     amount_eur=float(amount),
                     account=str(account) if account is not None else None,
+                    default_account=default_account,
                     ledger_account_key=(
                         str(ledger_account) if ledger_account is not None else None
                     ),
@@ -247,6 +255,9 @@ def cmd_import(args):
                     source=str(party),
                     category_name=str(category_name) if category_name is not None else None,
                     amount_eur=float(amount),
+                    account=str(account) if account is not None else None,
+                    default_account=default_account,
+                    private_accounts=private_accounts,
                     ledger_account_key=(
                         str(ledger_account) if ledger_account is not None else None
                     ),

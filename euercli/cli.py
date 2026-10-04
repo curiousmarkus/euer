@@ -302,6 +302,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Buchungskonto aus dem Kontenrahmen (setzt Kategorie automatisch)",
     )
     add_income_parser.add_argument("--amount", required=True, type=float, help="Betrag in EUR")
+    add_income_parser.add_argument("--account", help="Bankkonto/Zahlungskonto")
     add_income_parser.add_argument("--foreign", help="Fremdwährungsbetrag")
     add_income_parser.add_argument("--receipt", help="Belegname")
     add_income_parser.add_argument("--invoice-number", help="Rechnungsnummer")
@@ -387,6 +388,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     list_exp_parser.add_argument("--month", type=int, help="Monat filtern (1-12)")
     list_exp_parser.add_argument("--category", help="Kategorie filtern")
+    list_exp_parser.add_argument("--account", help="Konto filtern")
     list_exp_parser.add_argument("--format", choices=["table", "csv"], default="table")
     list_exp_parser.add_argument(
         "--full",
@@ -409,11 +411,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     list_inc_parser.add_argument("--month", type=int, help="Monat filtern (1-12)")
     list_inc_parser.add_argument("--category", help="Kategorie filtern")
+    list_inc_parser.add_argument("--account", help="Konto filtern")
     list_inc_parser.add_argument("--format", choices=["table", "csv"], default="table")
     list_inc_parser.add_argument(
         "--full",
         action="store_true",
-        help="Tabellenansicht mit zusätzlicher Spalte (Notiz)",
+        help="Tabellenansicht mit zusätzlichen Spalten (Konto, Beleg, Fremdwährung, Notiz)",
     )
     list_inc_parser.add_argument(
         "--trash",
@@ -563,6 +566,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="Neues Buchungskonto aus dem Kontenrahmen",
     )
     upd_inc_parser.add_argument("--amount", type=float, help="Neuer Betrag")
+    upd_inc_parser.add_argument(
+        "--account", help="Neues Zahlungskonto (leer zum Entfernen)"
+    )
     upd_inc_parser.add_argument("--foreign", help="Neuer Fremdwährungsbetrag")
     upd_inc_parser.add_argument("--receipt", help="Neuer Belegname")
     upd_inc_parser.add_argument(

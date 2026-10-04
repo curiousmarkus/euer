@@ -144,8 +144,8 @@ Einnahme hinzufügen
 **Syntax:** `euer add income [-h] [--payment-date PAYMENT_DATE]
                     [--invoice-date INVOICE_DATE] --source SOURCE
                     [--category CATEGORY] [--ledger-account LEDGER_ACCOUNT]
-                    --amount AMOUNT [--foreign FOREIGN] [--receipt RECEIPT]
-                    [--invoice-number INVOICE_NUMBER]
+                    --amount AMOUNT [--account ACCOUNT] [--foreign FOREIGN]
+                    [--receipt RECEIPT] [--invoice-number INVOICE_NUMBER]
                     [--notes NOTES] [--vat VAT] [--vat-rate {0.0,7.0,19.0}]
                     [--tax-free] [--force] [--allow-duplicate]`
 
@@ -160,6 +160,7 @@ Einnahme hinzufügen
 | `--category` | Kategorie |
 | `--ledger-account` | Buchungskonto aus dem Kontenrahmen (setzt Kategorie automatisch) |
 | `--amount` | Betrag in EUR |
+| `--account` | Bankkonto/Zahlungskonto |
 | `--foreign` | Fremdwährungsbetrag |
 | `--receipt` | Belegname |
 | `--invoice-number` | Optionale Rechnungsnummer |
@@ -235,8 +236,8 @@ Listet Daten
 Ausgaben anzeigen
 
 **Syntax:** `euer list expenses [-h] [--year YEAR] [--month MONTH]
-                       [--category CATEGORY] [--format {table,csv}] [--full]
-                       [--trash]`
+                       [--category CATEGORY] [--account ACCOUNT]
+                       [--format {table,csv}] [--full] [--trash]`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
 **Ausgabe:** Formatierte Tabelle oder CSV je nach Option; Fehler auf stderr.
@@ -246,6 +247,7 @@ Ausgaben anzeigen
 | `--year` | Jahr filtern (default: aktuelles) |
 | `--month` | Monat filtern (1-12) |
 | `--category` | Kategorie filtern |
+| `--account` | Konto filtern |
 | `--format` | Ausgabeformat (`table` oder `csv`) |
 | `--full` | Tabellenansicht mit zusätzlichen Spalten (Konto, Beleg, Fremdwährung, Notiz) |
 | `--trash` | Nur gelöschte Ausgaben anzeigen |
@@ -257,7 +259,7 @@ Ausgaben anzeigen
 Einnahmen anzeigen
 
 **Syntax:** `euer list income [-h] [--year YEAR] [--month MONTH] [--category CATEGORY]
-                     [--format {table,csv}] [--full] [--trash]`
+                     [--account ACCOUNT] [--format {table,csv}] [--full] [--trash]`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
 **Ausgabe:** Formatierte Tabelle oder CSV je nach Option; Fehler auf stderr.
@@ -267,8 +269,9 @@ Einnahmen anzeigen
 | `--year` | Jahr filtern (default: aktuelles) |
 | `--month` | Monat filtern (1-12) |
 | `--category` | Kategorie filtern |
+| `--account` | Konto filtern |
 | `--format` | Ausgabeformat (`table` oder `csv`) |
-| `--full` | Tabellenansicht mit zusätzlicher Spalte (Notiz) |
+| `--full` | Tabellenansicht mit zusätzlichen Spalten (Konto, Beleg, Fremdwährung, Notiz) |
 | `--trash` | Nur gelöschte Einnahmen anzeigen |
 
 **Beispiel:** `euer list income --year 2026`
@@ -422,7 +425,7 @@ Einnahme aktualisieren
 **Syntax:** `euer update income [-h] [--payment-date PAYMENT_DATE]
                        [--invoice-date INVOICE_DATE] [--source SOURCE]
                        [--category CATEGORY] [--ledger-account LEDGER_ACCOUNT]
-                       [--amount AMOUNT] [--foreign FOREIGN]
+                       [--amount AMOUNT] [--account ACCOUNT] [--foreign FOREIGN]
                        [--receipt RECEIPT] [--invoice-number INVOICE_NUMBER]
                        [--notes NOTES] [--vat VAT]
                        [--vat-rate {0.0,7.0,19.0}] [--tax-free] [--force]
@@ -441,6 +444,7 @@ Einnahme aktualisieren
 | `--category` | Neue Kategorie |
 | `--ledger-account` | Neues Buchungskonto aus dem Kontenrahmen |
 | `--amount` | Neuer Betrag |
+| `--account` | Neues Zahlungskonto (leer zum Entfernen) |
 | `--foreign` | Neuer Fremdwährungsbetrag |
 | `--receipt` | Neuer Belegname |
 | `--invoice-number` | Neue Rechnungsnummer; leerer Wert entfernt sie |

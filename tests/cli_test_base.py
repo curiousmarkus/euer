@@ -93,6 +93,8 @@ class BaseCLITestCase(unittest.TestCase):
             args.append("--private-paid")
         if "vat" in data:
             args += ["--vat", str(data["vat"])]
+        if "extra_args" in data:
+            args += list(data["extra_args"])
         return self.run_cli(args)
 
     def add_income(self, **overrides):
@@ -117,6 +119,8 @@ class BaseCLITestCase(unittest.TestCase):
             args += ["--category", data["category"]]
         if "ledger_account" in data:
             args += ["--ledger-account", data["ledger_account"]]
+        if "account" in data:
+            args += ["--account", data["account"]]
         if "foreign" in data:
             args += ["--foreign", data["foreign"]]
         if "receipt" in data:
@@ -129,6 +133,8 @@ class BaseCLITestCase(unittest.TestCase):
             args += ["--vat-rate", str(data["vat_rate"])]
         if data.get("tax_free"):
             args.append("--tax-free")
+        if "extra_args" in data:
+            args += list(data["extra_args"])
         return self.run_cli(args)
 
     def add_private_deposit(self, **overrides):
