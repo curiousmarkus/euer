@@ -308,6 +308,64 @@ category = "Laufende EDV-Kosten"
         res_after = self.run_cli(["list", "income"], check=True)
         self.assertIn("Keine Einnahmen gefunden.", res_after.stdout)
 
+    def test_schema_preflight_rejects_unknown_and_incomplete_history(self):
+        import sqlite3
+
+        for mutation, expected in (
+            (
+                "INSERT INTO _schema_migrations(version, name) VALUES ('011_future', 'future')",
+                "Unbekannte",
+            ),
+            (
+                "DELETE FROM _schema_migrations WHERE version = '005_vat_classifications'",
+                "lückenhafte",
+            ),
+        ):
+            with self.subTest(expected=expected):
+                with sqlite3.connect(self.db_path) as conn:
+                    before = conn.execute("SELECT version, name FROM _schema_migrations").fetchall()
+                    conn.execute(mutation)
+                result = self.add_income(account="bank")
+                self.assertEqual(result.returncode, 1)
+                self.assertIn(expected, result.stderr)
+                self.assertNotIn("Traceback", result.stderr)
+                with sqlite3.connect(self.db_path) as conn:
+                    self.assertEqual(conn.execute("SELECT count(*) FROM income").fetchone()[0], 0)
+                    self.assertEqual(
+                        conn.execute("SELECT count(*) FROM audit_log").fetchone()[0], 0
+                    )
+                    conn.execute("DELETE FROM _schema_migrations")
+                    conn.executemany(
+                        "INSERT INTO _schema_migrations(version, name) VALUES (?, ?)", before
+                    )
+
+    def test_invalid_private_config_is_reported_by_all_affected_commands(self):
+        self.add_income(account="bank")
+        self.add_expense(account="bank")
+        self.write_config('[accounts]\nprivate = "p-giro"\n')
+        commands = (
+            ["add", "income", "--source", "Kunde", "--amount", "12", "--date", "2026-02-01"],
+            ["add", "expense", "--vendor", "Anbieter", "--amount", "-12", "--date", "2026-02-01"],
+            ["update", "income", "1", "--account", "bank"],
+            ["update", "expense", "1", "--account", "bank"],
+            ["import", "--file", "-", "--format", "jsonl"],
+            ["reconcile", "private"],
+            ["setup"],
+        )
+        for command in commands:
+            with self.subTest(command=command):
+                result = self.run_cli(command)
+                self.assertEqual(result.returncode, 1)
+                self.assertIn("accounts.private", result.stderr)
+                self.assertNotIn("Traceback", result.stderr)
+
+    def test_empty_private_list_remains_compatible(self):
+        self.write_config("[accounts]\nprivate = []\n")
+        self.add_income(account="bank").check_returncode()
+        result = self.add_income(account="privat")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("Privatkonten", result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

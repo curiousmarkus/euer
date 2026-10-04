@@ -41,6 +41,26 @@ Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
 
 ## 0.15.0
 
+**Gemeinsames Upgrade mit `euer-datev 0.4.0`:** Vor `euer init` beide Pakete
+aktualisieren und die tatsächlich ausgeführten Versionen prüfen. Das bisherige
+DATEV-Add-on unterstützt Schema 010 nicht. Bei zeitversetzter Verfügbarkeit
+(etwa über Homebrew) mit der Migration warten, bis das neue Add-on installiert ist.
+Die Datenbank zuvor sichern, `euer init --dry-run` prüfen und erst dann migrieren.
+Nach dem Upgrade den vollständigen Skill 1.3.0 ersetzen, neu laden und bestätigen.
+
+Alte Einnahmen behalten ein leeres Zahlungskonto. Bezahlte Einnahmen ohne Konto
+erscheinen zusätzlich in `euer incomplete list`; bei belegbarer Zuordnung über
+`euer update income ID --account NAME` korrigieren. Ein neuer Default ordnet den
+Altbestand nicht nachträglich zu. Die Einnahmen-CSV und XLSX erhalten die Spalte
+`Konto` zwischen `EUR` und `Buchungskonto`; positionsabhängige CSV-Verbraucher
+anpassen. Abschließend `euer datev validate --year JAHR` ausführen.
+
+Leere Privatkontenlisten (`accounts.private = []`) behalten den bisherigen
+Fallback `privat`. Falsche Typen oder leere Listeneinträge erzeugen eine
+verständliche Fehlermeldung. Unbekannte, neuere oder lückenhafte Schemastände
+werden vor Datenbefehlen abgewiesen; die Vorprüfung verändert die Datenbank nicht.
+
+
 - **Zahlungskonten bei Einnahmen (Spec 029):**
   - Einnahmen besitzen nun ein optionales Kontofeld (`account`), das mit `--account` gesetzt oder per `euer update income <ID> --account` gepflegt werden kann.
   - Standard-Zahlungskonto kann in `config.toml` unter `[accounts].default` konfiguriert werden; es greift als Erfassungsvorgabe bei neuen Einnahmen und Ausgaben.

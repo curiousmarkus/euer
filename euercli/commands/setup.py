@@ -171,6 +171,7 @@ def cmd_setup(args):
     config = load_config()
     try:
         get_ledger_accounts(config)
+        existing_private = get_private_accounts(config)
     except ValidationError as exc:
         print(f"Fehler: {exc.message}", file=sys.stderr)
         sys.exit(1)
@@ -227,7 +228,6 @@ def cmd_setup(args):
         get_audit_user(config),
     )
 
-    existing_private = get_private_accounts(config)
     print()
     print("Private Konten (für Sacheinlagen/Privateinlagen):")
     print("  Ausgaben mit diesen Kontonamen werden automatisch als")

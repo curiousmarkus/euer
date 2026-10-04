@@ -225,12 +225,8 @@ def get_private_accounts(config: dict) -> list[str]:
         text = item.strip().lower()
         if text not in result:
             result.append(text)
-    if not result:
-        raise ValidationError(
-            "Ungültige Config: 'accounts.private' darf nicht leer sein.",
-            code="invalid_private_accounts",
-        )
-    return result
+    # Leere Listen behalten die bisherige Standardkennung.
+    return result or ["privat"]
 
 
 def get_default_account(config: dict) -> str | None:

@@ -2,7 +2,7 @@
 
 ## Status
 
-Umgesetzt
+Implementiert
 
 ## Ziel und gemeinsamer Release
 
@@ -233,5 +233,29 @@ Bei Implementierung: CLI-Referenz, User Journey, Domain-Regeln, Agenten-Skill,
 Onboarding, Dossier-Vorlage, README und DEVELOPMENT abgleichen. Release Notes
 nennen beide Paketversionen, neue CSV-Spalte, fehlende Konten im Altbestand,
 Privatkonto-/Transfergrenzen und die gemeinsame Upgrade-Sequenz. Historische
-Releaseabschnitte werden nicht ergänzt. Diese reine Spec-Änderung erhöht keine
-Paketversion und behauptet keine bereits implementierte Funktion.
+Releaseabschnitte werden nicht ergänzt. Implementierung und Release-Abnahme
+werden separat gemäß DEVELOPMENT nachgewiesen.
+
+## Präzisierungen aus der Release-Abnahme
+
+- `accounts.private` ist eine Liste nichtleerer Strings. Ein fehlender Schlüssel
+  oder eine leere Liste verwendet in beiden Paketen `privat`; die vorherige
+  Core-Kompatibilität bleibt erhalten. String-/Zahlwerte und leere Elemente
+  sind Fehler, die Controller ohne Traceback melden.
+- Core prüft vor Datenbefehlen lesend die Migrationshistorie. Ausstehende oder
+  noch nicht registrierte Migrationen verlangen `init`; unbekannte, lückenhafte
+  und nicht lesbare Stände sperren den Befehl vor Mutation und Audit.
+- Der gemeinsame Release verwendet einen vollständigen Core-Commit, keinen
+  veröffentlichungsabhängigen Core-Tag. DATEV-Test und Build verwenden denselben
+  SHA-Wert; die Artefaktprüfung erwartet 010 bei neuer DB und prüft 009 separat.
+- Implementierungsstatus und Release-Abnahme sind getrennt. Tests und endgültige
+  Commit-/Artefaktstände werden gemäß DEVELOPMENT dokumentiert. Externe DATEV-
+  Importabnahme und Veröffentlichung sind gesonderte Schritte.
+
+| Akzeptanzfall | Konkreter Nachweis |
+|---------------|-------------------|
+| Unbekannte/lückenhafte Core-Historie: keine Buchung und kein Audit | Core `test_cli_core.test_schema_preflight_rejects_unknown_and_incomplete_history` |
+| Falsche Privatkonten-Konfiguration: sauberer CLI-Fehler | Core `test_cli_core.test_invalid_private_config_is_reported_by_all_affected_commands` |
+| Leere Privatkontenliste bleibt kompatibel | Core `test_config.test_get_private_accounts_validates_list_of_strings`, DATEV `test_config.test_empty_private_list_uses_core_compatible_default` |
+| Aktuelles Artefaktpaar in Standalone, externer CLI und Plugin | DATEV `scripts/verify_cli_paths.py`, Originalskript mit beiden gebauten Wheels |
+| Schema-009-Rückwärtskompatibilität | DATEV `test_reader.test_schema_and_exclusions_are_read_only` |

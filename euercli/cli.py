@@ -1016,28 +1016,26 @@ def main(argv: list[str] | None = None) -> None:
         from .migrations import get_migration_plan
 
         try:
-            conn_check = get_db_connection(Path(args.db))
-        except sqlite3.Error:
-            conn_check = None
-
-        if conn_check is not None:
-            pending_plan = None
+            conn_check = get_db_connection(Path(args.db), read_only=True)
             try:
-                current_schema, target_schema, pending, _ = get_migration_plan(conn_check)
-                if pending:
-                    pending_plan = (current_schema, target_schema)
-            except (ValueError, sqlite3.Error):
-                pass
+                current_schema, target_schema, pending, legacy_stamps = get_migration_plan(
+                    conn_check
+                )
             finally:
                 conn_check.close()
+        except (OSError, ValueError, sqlite3.Error) as exc:
+            parser.exit(
+                1,
+                f"Fehler: Datenbankschema konnte nicht sicher geprüft werden: {exc}. "
+                "Bitte 'euer doctor' ausführen und eine zum Schemastand passende Version verwenden.\n",
+            )
 
-            if pending_plan:
-                current_schema, target_schema = pending_plan
-                parser.exit(
-                    1,
-                    f"Fehler: Die Datenbank ist auf Schemastand '{current_schema}', erforderlich ist '{target_schema}'. "
-                    "Bitte 'euer init' ausführen, um die ausstehenden Migrationen anzuwenden.\n",
-                )
+        if pending or legacy_stamps:
+            parser.exit(
+                1,
+                f"Fehler: Die Datenbank ist auf Schemastand '{current_schema}', erforderlich ist '{target_schema}'. "
+                "Bitte 'euer init' ausführen, um die Migrationen anzuwenden bzw. zu registrieren.\n",
+            )
     mutating_commands = {"add", "update", "delete", "restore", "undo", "import", "reconcile"}
     needs_backup = args.command in mutating_commands or (
         args.command == "trash" and args.action == "empty"

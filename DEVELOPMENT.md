@@ -292,6 +292,86 @@ Coverage-Bericht. Die aktuelle Matrix steht in `.github/workflows/ci.yml`.
 
 Weitere Details: `TESTING.md`.
 
+## Specs und Abnahmevertrag
+
+Vor der Implementierung muss eine Spec den fachlichen Vertrag festlegen:
+Ziel, unterstützte Fälle, Produktgrenzen, betroffene Pakete und Zuständigkeiten.
+Konkrete technische Vorschläge sind von verbindlichem Verhalten zu unterscheiden.
+Migrationen erhalten erst nach Prüfung der Registry eine eindeutige Nummer.
+
+Für jedes Eingabefeld festlegen: Typ, Normalisierung, fehlend, `NULL`, leer,
+Default, Create, Update, Import und historische Daten. Bei Config-Änderungen
+auch zuvor gültige Konfigurationen prüfen. Paketübergreifende Regeln erhalten
+identische Falltabellen; unterschiedliche Semantik muss ausdrücklich begründet
+werden. Ein Default darf historische Daten nur mit einem gesonderten,
+auditierten Migrationsauftrag ändern.
+
+Jede verbindliche Anforderung bekommt mindestens einen überprüfbaren
+Akzeptanzfall. Die Spec enthält eine Abnahmematrix, zum Beispiel:
+
+| Fall | Erwartetes Verhalten | Prüfebene / Nachweis |
+|------|----------------------|---------------------|
+| Fehlendes Feld, leerer Wert, falscher Typ | Default bzw. verständlicher Fehler gemäß Vertrag | Service und tatsächliche CLI |
+| Unbekanntes/neueres oder lückenhaftes Schema | Abbruch vor Mutation, Audit und Export | CLI-/Migrationstest mit unverändertem DB-Inhalt |
+| Altbestand und wiederholter Import | Daten, UUIDs und Historie bleiben erhalten | Migration und Roundtrip |
+| Neues Feld durch beide Pakete | Erfassung bis zur exportierten Datei konsistent | Integration und installierte Wheels |
+| Fehler in einem Batch | Keine Teilbuchungen oder abgeschlossenen Teilartefakte | CLI-/Artefakttest |
+
+Zu jeder Zeile die konkrete Testdatei/-methode oder manuelle Abnahme nennen.
+Erfolgsfälle und Fehlerpfade getrennt prüfen; Tests sollen die zugesagte Wirkung
+beobachten, nicht bloß dieselbe Berechnung wie die Implementierung wiederholen.
+Bei Review-Fixes den ursprünglich reproduzierten Fehler als Regressionstest
+auf der tatsächlich betroffenen Ebene abdecken.
+
+**Implementiert** bezeichnet abgeschlossenen Code, Tests und Dokumentation.
+**Release abgenommen** ist ein separater, belegter Zustand. In Specs und Backlog
+die vorhandenen Statuswerte `Offen` / `Implementiert` verwenden; die
+Release-Abnahme separat mit Versionspaar, Commitständen und Nachweisen festhalten.
+Eine Testanzahl oder ein sauberer Git-Status ersetzt keine Release-Abnahme.
+
+## Fehlerbehandlung und Schema-Vorprüfung
+
+Schutzprüfungen müssen bei fehlgeschlagener Prüfung abbrechen. Unbekannte,
+lückenhafte oder nicht lesbare Schemastände dürfen nicht durch ein pauschales
+`except: pass` freigegeben werden. Vorprüfungen lesen ohne Schreibzugriff;
+Schema-Reparatur und Migration erfolgen ausdrücklich über Core-`init`.
+
+Config-Validierung gehört in die Fehlerbehandlung des Controllers. Für sämtliche
+Aufrufer einer neu werfenden Hilfsfunktion prüfen: verständliche deutsche
+Fehlermeldung, Exit-Code, geschlossene Verbindung und keine Teilmutation.
+Erwartbare Eingabefehler dürfen keinen Python-Traceback ausgeben. Informations-
+und Diagnosebefehle behalten ihren ausdrücklich definierten Zugriffsumfang.
+
+## Gemeinsame Releases und belastbare Verifikation
+
+Für Änderungen an Core/Add-on zuerst die Kompatibilitätsmatrix definieren:
+alter/neuer Core, alte/neue DB, altes/neues Add-on, noch nicht migrierte DB und
+zeitversetzte Paketupdates. Ein Smoke-Test muss die neuen Artefakte installieren;
+Schema-Erwartungen und Fixtures werden bei Migrationen mitgeprüft. Der alte
+unterstützte Schemastand erhält weiterhin einen eigenen Kompatibilitätstest.
+
+Release-Abnahme umfasst Tests, Lint, Formatprüfung, Wheel/sdist-Metadaten,
+Installation aus Artefakten und CLI-/Export-Smoke-Tests. Das gleiche gebaute
+Artefakt wird geprüft und veröffentlicht. Ein temporär korrigierter Test,
+ein übersprungener Integrationstest oder ein wegen Infrastrukturfehlern nicht
+beendeter Lauf gilt nicht als grünes Gate. Plattform-/Netzwerkgrenzen mit
+konkretem verbleibendem Gate dokumentieren.
+
+Für ein gemeinsames Release die beiden Paketversionen, vollständigen Commit-SHAs,
+Artefakt-SHA-256-Prüfsummen, Prüfergebnisse und externe Abnahmen aufzeichnen.
+Test- und Buildjobs verwenden denselben unveränderlichen Partner-Commit.
+Branch-Namen und veröffentlichungsabhängige Partner-Tags dürfen die geplante
+Reihenfolge nicht erzwingen. Bei einem Wiederholungslauf das dokumentierte
+Versionspaar beibehalten; einen anderen Partnerstand neu abnehmen.
+
+DATEV wird zunächst mit dem bereits verfügbaren Core-Commit geprüft und zuerst
+veröffentlicht, danach Core; Nutzer migrieren erst nach Update beider Pakete.
+Ein Paketupdate migriert keine Nutzerdatenbank. Nutzer-Release-Notes nennen
+Versionspaar, Reihenfolge, Backup, Dry-Run, Migration, Agenten-Skill und alle
+neuen Import-/Exportfelder sowie zusätzlichen Diagnosemeldungen. Der interne
+Release-Nachweis dokumentiert Vorbereitung und Abnahme; Nutzerhinweise erklären
+die dauerhaft relevanten Handlungen.
+
 ## Checkliste vor dem Entwickeln
 
 Bevor du Code schreibst oder änderst:
@@ -462,7 +542,10 @@ Es kann auch bequem über `make bump-patch` (bzw. `bump-minor`, `bump-major`) au
    make release-verify
    ```
 
-   Dies führt Linting, Tests, Build, `verify_artifacts` und `release_check` auf `HEAD` aus.
+   Dies führt Linting, Tests, Build, `verify_artifacts` sowie die Prüfung von
+   Versionsformat und Release Notes aus. Es benötigt noch keinen Git-Tag.
+   `make release-check` prüft nach Anlegen des annotierten Tags dessen
+   Existenz, Typ und Main-Ancestry; diese Prüfung bleibt auch in der Release-CI Pflicht.
 7. Den Release-Commit auf `main` bringen:
 
    ```bash

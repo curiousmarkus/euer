@@ -101,7 +101,9 @@ Vor dem Erstellen eines Release-Tags müssen folgende Schritte vollständig durc
   ```
 
 > [!TIP]
-> Der Make-Befehl `make release-verify` führt Linting, Tests, Build, Artefaktprüfung und Release-Check in einem Durchlauf zusammen.
+> `make release-verify` führt vor dem Tag Linting, Tests, Build, Artefaktprüfung
+> sowie Versionsformat- und Release-Notes-Prüfung aus. Nach Anlegen des annotierten
+> Tags prüft `make release-check` zusätzlich dessen Existenz, Typ und Main-Ancestry.
 
 ---
 

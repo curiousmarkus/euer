@@ -28,9 +28,9 @@ def cmd_update_expense(args):
     conn = get_db_connection(db_path)
     config = load_config()
     audit_user = get_audit_user(config)
-    private_accounts = get_private_accounts(config)
     tax_mode = get_tax_config(config)
     try:
+        private_accounts = get_private_accounts(config)
         ledger_accounts = get_ledger_accounts(config)
     except ValidationError as exc:
         print(f"Fehler: {exc.message}", file=sys.stderr)
@@ -131,9 +131,9 @@ def cmd_update_income(args):
     conn = get_db_connection(db_path)
     config = load_config()
     audit_user = get_audit_user(config)
-    private_accounts = get_private_accounts(config)
     tax_mode = get_tax_config(config)
     try:
+        private_accounts = get_private_accounts(config)
         ledger_accounts = get_ledger_accounts(config)
     except ValidationError as exc:
         print(f"Fehler: {exc.message}", file=sys.stderr)

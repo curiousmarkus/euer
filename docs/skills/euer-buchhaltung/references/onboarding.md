@@ -168,7 +168,8 @@ Config-Nutzung klären.
   dokumentieren; dafür keine erfundenen CLI-Flags verwenden.
 - `accounts.private` akzeptiert eine nichtleere kommaseparierte Liste. Ohne private
   Konten keine erfundene Kennung eintragen und keinen leeren `setup --set`-Wert
-  ausführen. In einer frischen Config kann der Schlüssel entfallen (CLI-Fallback:
+  ausführen. Eine vorhandene leere TOML-Liste verwendet weiterhin `privat`.
+  In einer frischen Config kann der Schlüssel entfallen (CLI-Fallback:
   `privat`); diese Kennung dann nicht für Geschäftskonten nutzen. Soll eine vorhandene
   Liste geleert werden, die Änderung gezielt in der TOML vornehmen und den Fallback
   berücksichtigen. Bestehende Klassifikationen nicht stillschweigend ändern.

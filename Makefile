@@ -48,10 +48,10 @@ build:
 release-check:
 	$(PYTHON) -m scripts.release_check --tag v$(VERSION) --main-ref main
 
-# Full pre-flight verification before tagging (lint, test, build, verify-artifacts, release-check against HEAD)
+# Preflight vor dem Tag: Artefakte, Versionsformat und Release Notes prüfen.
 release-verify: lint test build
 	$(PYTHON) -m scripts.verify_artifacts dist
-	$(PYTHON) -m scripts.release_check --tag v$(VERSION) --main-ref HEAD
+	$(PYTHON) -c 'from pathlib import Path; from scripts.release_check import validate_tag, extract_release_notes; validate_tag("v$(VERSION)"); extract_release_notes(Path("docs/RELEASE_NOTES.md"), "$(VERSION)")'
 
 # Versioning
 bump-patch:

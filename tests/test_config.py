@@ -104,9 +104,7 @@ class ConfigTestCase(unittest.TestCase):
             get_private_accounts({"accounts": {"private": [123]}})
         self.assertEqual(ctx2.exception.code, "invalid_private_accounts")
 
-        with self.assertRaises(ValidationError) as ctx3:
-            get_private_accounts({"accounts": {"private": []}})
-        self.assertEqual(ctx3.exception.code, "invalid_private_accounts")
+        self.assertEqual(get_private_accounts({"accounts": {"private": []}}), ["privat"])
 
     def test_get_known_accounts_filters_ledger_accounts(self) -> None:
         from euercli.config import get_known_accounts

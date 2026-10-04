@@ -1,7 +1,9 @@
+import sys
 from pathlib import Path
 
 from ..config import get_audit_user, get_private_accounts, load_config
 from ..db import get_db_connection, log_audit, row_to_dict
+from ..services.errors import ValidationError
 from ..services.private_classification import classify_expense_private_paid
 
 
@@ -98,9 +100,9 @@ def cmd_reconcile_private(args):
     conn = get_db_connection(db_path)
     config = load_config()
     audit_user = get_audit_user(config)
-    private_accounts = get_private_accounts(config)
 
     try:
+        private_accounts = get_private_accounts(config)
         checked, changed, skipped_manual, changes = _reconcile_private_expenses(
             conn,
             private_accounts=private_accounts,
@@ -108,6 +110,9 @@ def cmd_reconcile_private(args):
             year=args.year,
             dry_run=bool(args.dry_run),
         )
+    except ValidationError as exc:
+        print(f"Fehler: {exc.message}", file=sys.stderr)
+        sys.exit(1)
     finally:
         conn.close()
 
