@@ -72,11 +72,6 @@ def find_all_exact_duplicates(
         params.extend([h, f"{h}#", f"{h}#~"])
     where_clause = " OR ".join(where_parts)
 
-    extra_clauses = ["deleted_at IS NULL"]
-    if exclude_id is not None:
-        extra_clauses.append("id != ?")
-        params.append(exclude_id)
-
     # Prüfen, ob Tabelle 'account'-Spalte hat
     has_account_col = True
     try:
@@ -88,17 +83,22 @@ def find_all_exact_duplicates(
 
     account_select = "account" if has_account_col else "NULL AS account"
 
+    # Nur Hash-Prädikate im SQL: Mit deleted_at IS NULL wählt SQLite sonst
+    # den wenig selektiven Löschindex und prüft sämtliche aktiven Buchungen.
+    # Löschstatus und Eigen-ID erst unter den wenigen Hash-Kandidaten filtern.
     query = f"""
         SELECT id, payment_date, invoice_date, {party_col} AS party,
-               amount_eur, receipt_name, invoice_number, {account_select}
+               amount_eur, receipt_name, invoice_number, {account_select}, deleted_at
         FROM {table_name}
-        WHERE ({where_clause}) AND {" AND ".join(extra_clauses)}
+        WHERE ({where_clause})
         ORDER BY id ASC
     """
     rows = conn.execute(query, tuple(params)).fetchall()
 
     matching_ids: list[int] = []
     for row in rows:
+        if row["deleted_at"] is not None or row["id"] == exclude_id:
+            continue
         if (
             hash_date(row["payment_date"], row["invoice_date"]) == date
             and row["party"] == party

@@ -39,6 +39,12 @@ Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
 „Agenten-Dateien“. Die wiederkehrende Prozedur beschreibt der
 [Installationsreferenz](skills/euer-buchhaltung/references/installation_and_setup.md#agenten-dateien-aktualisieren).
 
+## Unveröffentlicht
+
+- Die exakte Duplikatsuche grenzt Kandidaten über den Hash-Index ein, auch wenn
+  viele aktive Buchungen vorhanden sind. Löschstatus und ausgeschlossene Eigen-ID
+  werden anschließend geprüft; keine Datenbankmigration erforderlich.
+
 ## 0.15.0
 
 **Gemeinsames Upgrade mit `euer-datev 0.4.0`:** Vor `euer init` beide Pakete
