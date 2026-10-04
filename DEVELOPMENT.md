@@ -445,8 +445,7 @@ Offene Change Requests werden innerhalb der jeweiligen Spec dokumentiert.
 | 027 | Separat installiertes DATEV-Subcommand | Implementiert |
 | 028 | Integritätsschutz für SQLite und Audit-Hash-Kette | Offen |
 | 029 | Zahlungskonten für Einnahmen und konsistente Kontovorgaben (gemeinsam mit DATEV Spec 001) | Implementiert |
-| 030 | [Kontobewegungen, Privatkonten und Kontenabgleich](specs/030-interne-transfers-und-kontenabgleich.md) (gemeinsam mit DATEV Spec 002; enthält ehemals Spec 031) | Offen |
-| 031 | [In Spec 030 zusammengeführt](specs/031-betriebliche-einnahmen-auf-privatkonten.md); keine separate Implementierung | Offen (Verweis) |
+| 030 | [Kontobewegungen, Privatkonten und Kontenabgleich](specs/030-interne-transfers-und-kontenabgleich.md) (gemeinsam mit DATEV Spec 002) | Offen |
 
 ### Agenten-Dateien und Mandantendaten
 

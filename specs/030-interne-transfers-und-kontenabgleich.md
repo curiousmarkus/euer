@@ -4,10 +4,6 @@
 
 Offen
 
-Diese Spec enthält die bisherigen Anforderungen aus Spec 030 und Spec 031.
-[Spec 031](031-betriebliche-einnahmen-auf-privatkonten.md) bleibt ausschließlich
-als Verweis erhalten und ist keine separat zu implementierende Anforderung.
-
 ## Ziel, Zuständigkeiten und gemeinsamer Release
 
 Eine gemeinsame Anforderung umfasst interne Transfers, Provider-Auszahlungen,
@@ -346,7 +342,6 @@ Quellvorgänge und erzeugte DATEV-Zeilen werden getrennt ausgewiesen.
 
 ### Privatvorgänge
 
-
 - Bezahlte, privat klassifizierte Einnahme: Privatentnahmen (SKR03 1800 /
   SKR04 2100) gegen reguläres Erlöskonto; Steuerbehandlung unverändert.
 - Negative Korrektur: bisherige Umkehrung der Buchungsrichtung auch gegen das
@@ -354,7 +349,7 @@ Quellvorgänge und erzeugte DATEV-Zeilen werden getrennt ausgewiesen.
 - Unbezahlte Einnahme: keine Zahlungs-/Entnahmezeile, entsprechend bisherigem
   Exportvertrag. Kein Fallback auf ein betriebliches Bankkonto.
 - Direkte spätere Einlage: betriebliches Finanzkonto gegen Privateinlagen
-  (SKR03 1890 / SKR04 2180), einmal aus `private_transfers` gemäß Spec 030.
+  (SKR03 1890 / SKR04 2180), einmal aus `private_transfers` gemäß Abschnitt A.
 - Betriebliche Einnahme: bestehendes Finanzkontenmapping unverändert.
 
 Die neue zentrale Privatklassifikation ersetzt Core- und DATEV-Sperren gemeinsam;
