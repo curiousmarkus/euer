@@ -182,3 +182,10 @@ gh run watch <RUN_ID> --repo curiousmarkus/euer
 | **PyPI-Upload** | `publish-pypi` | Fehlgeschlagen. | Prüfen, ob PyPI OIDC / Trusted Publishing konfiguriert ist (`pypi` Environment in GitHub Settings). Fehler beheben, Release-Lauf wiederholen. |
 | **GitHub-Release nach PyPI** | `publish-github` | **PyPI-Paket ist bereits live!** | **Niemals dieselbe Version erneut nach PyPI pushen!** Ausschließlich den Job `publish-github` im selben Workflow wiederholen, um den GitHub-Release-Draft zu veröffentlichen. |
 | **Homebrew-Tap** | Externe Tap-Action | PyPI und GitHub sind live. | Das Tap-Repository aktualisiert sich automatisch alle 6 Stunden. Bei Bedarf kann der Workflow `update-formula.yml` im Tap-Repo manuell ausgelöst werden. |
+
+Nach dem Tap-Lauf die tatsächlich veröffentlichten Formula-Versionen und
+Quellarchiv-SHA256 prüfen. Ein erfolgreicher Workflow allein bestätigt keine
+neue Version: Der allgemeine PyPI-Endpunkt kann kurz nach dem Upload noch die
+vorherige Version liefern, während der versionsbezogene Endpunkt bereits die
+neuen Dateien ausliefert. In diesem Fall nach Aktualisierung der Metadaten den
+Tap-Workflow erneut starten. Bei gemeinsamen Releases beide Formeln prüfen.

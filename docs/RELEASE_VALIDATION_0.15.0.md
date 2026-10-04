@@ -42,9 +42,12 @@ hat DATEV 0.4.0 als Tap-Commit `5bc827985b06935bf1e520223b2093f9ada45b98`
 veröffentlicht. Dabei lieferte die allgemeine PyPI-Metadatenabfrage für Core noch
 0.14.0, obwohl der versionsbezogene Endpunkt 0.15.0 bereits auslieferte.
 Der [zweite Lauf](https://github.com/curiousmarkus/homebrew-euer/actions/runs/37199320590)
-prüft deshalb die Aktualisierung auf Core 0.15.0 separat. Die endgültige
-Übernahme wird anhand der veröffentlichten Formel bestätigt, nicht allein
-anhand eines erfolgreichen Workflow-Status.
+hat beide aktuellen Formeln auf macOS und Linux erfolgreich installiert und
+getestet. Tap-Commit `225526a6f7def341f2a1eeff063572c0f1272b6c` enthält
+Core 0.15.0 und DATEV 0.4.0. Die veröffentlichten Formeln wurden abschließend
+aus dem Remote gelesen: Versionen und Quellarchiv-SHA256 stimmen mit den obigen
+PyPI-Artefakten überein. Die Übernahme wurde damit anhand der tatsächlichen
+Formeln bestätigt, nicht allein anhand eines erfolgreichen Workflow-Status.
 Beide Pakete müssen vor der Migration aktualisiert werden. Datenbank sichern,
 `euer init --dry-run` prüfen, dann migrieren und den vollständigen Skill 1.3.0
 aktualisieren. Keine automatische Zuordnung alter Einnahmen zu neuen Defaults.
