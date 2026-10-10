@@ -445,8 +445,8 @@ Offene Change Requests werden innerhalb der jeweiligen Spec dokumentiert.
 | 020 | Transparente und sichere DB-Migrationen | Implementiert |
 | 021 | Versionierte Exportläufe mit Manifest | Offen |
 | 022 | Versionierter Skill als primäre Dokumentation und Bestätigung in der Config | Implementiert |
-| 023 | Nachvollziehbarer Entscheidungsnachweis für Buchungen | Offen |
-| 024 | Versionierter Regelkatalog für Entscheidungsnachweise | Offen |
+| 023 | Begründungen und Annahmen an Buchungen und Privatvorgängen, Audit-Historie und Vollständigkeitsfilter | Offen |
+| 024 | Versionierter Regelkatalog und `--rule` als alternative Nachweisgrundlage | Offen |
 | 025 | Optionale Rechnungsnummer | Implementiert |
 | 026 | Innergemeinschaftlicher Warenerwerb und OSS-Erlöse | Offen |
 | 027 | Separat installiertes DATEV-Subcommand | Implementiert |

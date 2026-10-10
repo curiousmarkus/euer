@@ -9,7 +9,7 @@ Offen
 Auf [Spec 023](023-entscheidungsnachweis.md) aufbauend einen versionierten,
 offline verfügbaren Regelkatalog einführen. Spec 023 kann bereits ohne
 Katalogregeln umgesetzt und genutzt werden: Der Agent erfasst dann
-fallbezogene `ad_hoc`-Begründungen. Dieser Spec ergänzt geprüfte
+fallbezogene Begründungen und Annahmen. Dieser Spec ergänzt geprüfte
 Wenn-Dann-Regeln, deren schrittweise Suche und die gezielte Analyse von
 Buchungen, die eine bestimmte Regelversion verwendet haben.
 
@@ -19,16 +19,19 @@ stehen; vorher sind solche IDs nur Beispiele.
 
 ## Abhängigkeit und Integrationsgrenze
 
-- Spec 023 liefert `booking_decisions`, Quellen, Beobachtungen,
-  `decision.reasoning`, `decision.ad_hoc_assessments`, `euer explain` und
-  die Audit-Verknüpfung.
-- Dieser Spec ergänzt Regeldateien, `rules find`/`rules show`,
-  `booking_decision_rules`, `applied_rules` im Eingabeformat und
-  `catalog_search` als optionalen Suchnachweis.
-- Eine Entscheidung kann katalogisierte Regeln und fallbezogene Ad-hoc-
-  Beurteilungen für verschiedene Themen kombinieren. `ad_hoc` bleibt eine
-  Kennung für den Entscheidungsweg und wird nicht als veröffentlichte Regel
-  versioniert.
+- Spec 023 speichert Begründung, Annahmen und Gültigkeitsstatus direkt in
+  `expenses`, `income` und `private_transfers`; deren Historie steht in den
+  bestehenden Audit-Feldern `old_data` und `new_data`. Dazu kommen `--reasoning`,
+  `--assumption`, `euer explain` und die Vollständigkeitsprüfung über `incomplete`.
+  Quellen und Fundstellen stehen im Freitext; separate Nachweis-JSONs entfallen.
+- Dieser Spec ergänzt den versionierten Regelkatalog, `rules find`/`rules show`,
+  das wiederholbare Flag `--rule ID@VERSION` sowie die Suche nach angewandten
+  Regelversionen. Ein Nachweis wird durch die zugehörige `audit_log.id` identifiziert.
+- **Ein gültiger Regelverweis ersetzt die Freitextbegründung.** `--reasoning` bleibt
+  optional als fallbezogene Ergänzung möglich; Annahmen werden weiterhin über
+  `--assumption` dokumentiert. Regeln, Freitext oder beides sind zulässige Grundlagen.
+- Es gibt keinen neuen Freigabeprozess. Die Regeln werden vom Agenten ausgewählt;
+  die Engine speichert deren Anwendung und erzwingt ihre bestehenden Buchungsregeln.
 
 ---
 
@@ -38,12 +41,18 @@ Eine **Regel** ist eine versionierte, fachlich überprüfbare Wenn-Dann-Anweisun
 Sie besteht aus Voraussetzungen, benötigten Tatsachen, einer vorgesehenen
 Einordnung oder Berechnung, Abbruch-/Rückfragebedingungen, Geltungszeitraum und
 Quellen. Die Regel-ID allein ist keine Regel und ersetzt ihre Definition nicht.
-Ein Entscheidungsnachweis hält fest, **welche Version** auf welche belegten
-Angaben angewandt wurde und welches Ergebnis daraus entstand.
+Ein Entscheidungsnachweis hält fest, **welche Version** der Agent für den
+Buchungsvorgang angewandt hat und welches Ergebnis gespeichert wurde. Den
+Sachverhalt liefern Beleg, Buchungsdaten, Mandantenkontext und gegebenenfalls
+Freitext und Annahmen; die CLI verlangt keine separate strukturierte
+Tatsachenerfassung als Voraussetzung für einen Regelverweis.
 
 ### Verbindlicher Regelvertrag
 
 Jede veröffentlichte Regeldefinition enthält mindestens:
+
+Die strukturierten Quellenangaben unten gehören zur Regeldefinition im Katalog.
+Beim Buchungsaufruf stehen zusätzliche Quellenhinweise im optionalen Freitext.
 
 | Feld | Bedeutung |
 |---|---|
@@ -52,7 +61,7 @@ Jede veröffentlichte Regeldefinition enthält mindestens:
 | `summary`, `topics`, `signals` | Kurze Suchvorschau, fachliche Themen und typische Begriffe/Synonyme aus Beleg oder Sachverhalt. |
 | `applies_to`, `related_topics` | Vorab bekannte Filtermerkmale und weitere Themen, die bei diesem Fall geprüft werden sollten. |
 | `effective_from`, `effective_until` | Zeitraum des **Sachverhalts**, für den die Regel gilt; `null` bei offenem Ende. |
-| `required_facts` | Beobachtungsschlüssel und zulässige Herkunftsstatus; eine `assumed`-Angabe erfüllt keine bestätigungspflichtige Voraussetzung. |
+| `required_facts` | Vom Agenten zu prüfende Sachverhaltsmerkmale und zulässige Herkunftsstatus. Die Herkunft wird fachlich vom Agenten beurteilt; eine bloße Annahme erfüllt keine Voraussetzung für eine belegte oder bestätigte Angabe. Keine zusätzlichen Pflichtfelder der Buchungs-CLI. |
 | `conditions` | Gemeinsam zu prüfende Voraussetzungen. |
 | `outcome` | Erwartete Behandlung und betroffene Buchungsfelder; bei Berechnungen Formel und Rundung. |
 | `stop_conditions` | Fälle, in denen Rückfrage oder Fachprüfung nötig ist statt automatischer Einordnung. |
@@ -111,8 +120,9 @@ Prüfung und Veröffentlichung im Katalog verbindlich):
 ```
 
 Katalogregeln sind deklarative Prüfanweisungen für den Agenten. Die CLI kann
-die registrierte Definition, Version und rechnerische Konsistenz prüfen, aber nicht
-alle beschriebenen Tatsachen oder die rechtliche Subsumtion selbst bestätigen.
+die registrierte Definition und Version sowie eindeutig aus Buchungsdaten
+prüfbare Einschränkungen prüfen, aber nicht alle beschriebenen Tatsachen oder die
+rechtliche Subsumtion selbst bestätigen. Rechenregeln der Engine bleiben maßgeblich.
 Die **Regeldefinition selbst** ist die Agentenanweisung; sie verweist nicht
 zurück auf eine zweite normative Fassung in `domain_rules.md`. CLI-Services
 berechnen und validieren Buchungswerte gemäß ihrem Code; sie wählen oder
@@ -123,17 +133,17 @@ Paket ausgeliefert.
 Jede zitierte Fundstelle erhält im veröffentlichten Katalog ihren geprüften
 Stand. Frühere veröffentlichte Katalogversionen bleiben im Paket als lesbare
 Regeldateien verfügbar; ein bloßer Hash ohne Regeltext genügt
-für die spätere Prüfung nicht. Dossierregeln sind **mandantenspezifisch**:
-Der Nachweis speichert Dossierpfad, Abschnitt, die nötige Regelpassage und
-deren SHA-256. Eine fallbezogene Entscheidung außerhalb des Katalogs erhält
-im Entscheidungsnachweis die Kennung `basis: "ad_hoc"`, aber **keine**
-erfundene `EUER-R-...`-ID oder Regelversion. `ad_hoc` bezeichnet den
-Entscheidungsweg, keine fachliche Regel mit eigenen Voraussetzungen.
+für die spätere Prüfung nicht. Dossierhinweise sind **mandantenspezifisch**:
+Der Agent beschreibt verwendete Abschnitte und Aussagen bei Bedarf unter
+`--reasoning`, angenommene Voraussetzungen unter `--assumption`. `--rule`
+referenziert in dieser Version ausschließlich veröffentlichte Katalogregeln.
+Eine fallbezogene Entscheidung außerhalb des Katalogs bleibt
+unter `reasoning` und `assumptions` dokumentiert, ohne zusätzliche Kennung und
+ohne erfundene `EUER-R-...`-ID oder Regelversion.
 
 Für Katalogregeln wird `rule_sha256` aus der kanonischen UTF-8-JSON-Darstellung
 der vollständigen Regeldefinition berechnet (sortierte Schlüssel, keine
-Formatierungsleerzeichen); bei Dossierregeln aus den UTF-8-Bytes der
-gespeicherten Regelpassage. Der Fingerabdruck ist ein Identifikator, keine
+Formatierungsleerzeichen). Der Fingerabdruck ist ein Identifikator, keine
 Signatur oder Manipulationssperre.
 
 ### Speicherort und Auslieferung
@@ -155,9 +165,9 @@ die CLI; deren bestätigte Version wird weiterhin nach Spec 022 geprüft.
 
 Der Suchindex wird aus diesen Dateien beim Lesen abgeleitet. Es gibt keine
 zweite manuell gepflegte Indexdatei und keine SQLite-Kopie des allgemeinen
-Katalogs. `booking_decisions` und `booking_decision_rules` speichern nur die
-**Anwendung** einer Regel auf einen konkreten Vorgang samt Version und
-Fingerabdruck. Veröffentlichte Regelversionen bleiben als Dateien erhalten,
+Katalogs. Die Relation `booking_rules` speichert nur die **aktuelle Anwendung**
+einer Regel auf eine Buchung samt Version und Fingerabdruck; frühere Zuordnungen
+stehen in deren Audit-Historie. Veröffentlichte Regelversionen bleiben als Dateien erhalten,
 damit `rules show ID --version VERSION` und alte Nachweise nach Paketupdates
 auflösbar bleiben. Der Artefakt-Smoke-Test prüft, dass Wheel und sdist diese
 Dateien vollständig enthalten.
@@ -165,9 +175,9 @@ Dateien vollständig enthalten.
 Mandantenspezifische Dossierregeln verbleiben in der persönlichen `AGENTS.md`
 im Buchhaltungsordner. Der allgemeine `rules find`-Katalog durchsucht sie
 nicht stillschweigend; der Agent liest das Dossier beim Start und kann eine
-verwendete Passage im Entscheidungsnachweis mit Quelle und Fingerabdruck
-referenzieren. Die lokale Buchhaltungs-DB ist ebenfalls kein Speicherort für
-die allgemeine Regelsammlung.
+verwendete Passage mit Pfad und Abschnitt im Freitext der Begründung nennen.
+Die lokale Buchhaltungs-DB ist ebenfalls kein Speicherort für die allgemeine
+Regelsammlung.
 
 Die Nomenklatur `EUER-R-<DOMÄNE>-<NUMMER>` ist für veröffentlichte Regeln
 reserviert. Eine ID bleibt stabil; jede fachliche Änderung an Voraussetzungen,
@@ -185,7 +195,7 @@ Eine Buchung kann mehrere Regeln verwenden. Jede angewandte Regel erhält einen
 eigenen Verweis im Nachweis; Suche und Fehleranalyse arbeiten über **alle**
 Verweise. Regeln, die lediglich geprüft und verworfen wurden, werden in der
 Begründung als Alternativen geführt und gelten nicht als angewandt. Bei einer
-reinen Ad-hoc-Entscheidung ist `applied_rules` leer; bei teilweise geregelten
+reinen fallbezogenen Freitextbegründung gibt es keine gespeicherten Regelverweise; bei teilweise geregelten
 Fällen können Regelverweise und Ad-hoc-Beurteilungen nebeneinander stehen.
 Die Geltung wird am für die konkrete Regel maßgeblichen Sachverhaltsdatum
 geprüft; Zahlungsjahr und umsatzsteuerliche Meldeperiode sind nicht pauschal
@@ -249,9 +259,12 @@ Der Agentenablauf wird im Skill beschrieben:
    dass keine Regel existiert. Der Agent erfindet keine Katalog-ID.
 
 Die Auswahl bleibt eine fachliche Aufgabe des Agenten. Die CLI validiert
-existierende ID/Version, Geltungszeitraum und übergebene Pflichtfelder; sie
-behauptet nicht, alle einschlägigen Regeln gefunden oder deren rechtliche
-Voraussetzungen selbst geprüft zu haben.
+existierende ID/Version und eindeutig aus den vorhandenen Buchungsdaten prüfbare
+Einschränkungen, etwa Buchungstyp und Steuermodus. Geltungszeitraum und weitere
+Voraussetzungen werden vom Agenten am maßgeblichen Sachverhalt geprüft; die CLI
+prüft sie nur, soweit sie daraus eindeutig bestimmbar sind. Sie leitet keine
+Tatsachen aus Freitext ab und behauptet nicht, alle einschlägigen Regeln gefunden
+oder deren rechtliche Voraussetzungen selbst geprüft zu haben.
 
 ### Verhältnis zu `domain_rules.md`
 
@@ -276,62 +289,129 @@ ausgelieferte Skill erhält gemäß Spec 022 eine neue Version.
 
 ---
 
-## Persistenz und Eingabe-Erweiterung
+## Erfassung, Vollständigkeit und Updates
 
-Die Migration dieses Specs ergänzt zur `booking_decisions`-Tabelle aus
-Spec 023 die Tabelle für **angewandte** Regeln:
+Bei den bestehenden `add`- und `update`-Befehlen für Ausgaben, Einnahmen und
+Privatvorgänge ergänzt die CLI:
+
+```text
+--rule REGEL-ID@VERSION
+```
+
+- Das Flag ist mehrfach verwendbar. ID und fachliche Version sind explizit;
+  es gibt keine stillschweigende Auflösung auf die neueste Version.
+- Die CLI löst jeden Verweis im aktiven lokalen Katalog auf. Fehlende ID/Version,
+  unbekannte Regeln, unlesbare Definitionen und eindeutig widersprüchliche
+  Buchungsdaten erzeugen `ValidationError` ohne Teilmutation. Ein unbekannter
+  Regelverweis wird nicht als Freitext übernommen.
+- Identische wiederholte Verweise werden dedupliziert. Verschiedene Versionen
+  derselben Regel im selben Nachweis werden als Konflikt abgewiesen.
+- `--rule` erzeugt auch ohne `--reasoning` einen vollständigen Regel-Nachweis.
+  Der Agent muss den Regeltext nicht nochmals als Begründung formulieren.
+  Zusätzlicher Freitext kann Quellen, Besonderheiten und Abgrenzungen erläutern.
+- `--assumption` und `--clear-assumptions` aus Spec 023 sind auch zusammen mit
+  `--rule` ohne Freitext zulässig. Annahmen allein ersetzen keinen Nachweis.
+- Quellen, geprüfte Kandidaten und relevante Sachverhaltsangaben können im
+  Freitext stehen. Es gibt keine zusätzlichen Nachweis-JSONs, `sources`-Objekte,
+  `observations` oder Pflichtfelder für einen Suchnachweis.
+
+| Aktuelle Nachweisgrundlage | Folge für `incomplete` |
+|---------------------------|-----------------------|
+| Freitext, kein Regelverweis | Nachweis vorhanden wie in Spec 023. |
+| Mindestens ein gültiger Regelverweis, kein Freitext | Nachweis vorhanden; keine Begründungslücke. |
+| Freitext und gültige Regelverweise | Nachweis vorhanden; beide Grundlagen sichtbar. |
+| Weder Freitext noch Regelverweis | Nachweis fehlt; Buchung wegen `reasoning` unvollständig. |
+| Fachlich veralteter Nachweis oder geänderte Belegreferenz | Nachweislücke wie in Spec 023, auch bei einem früheren Regelverweis. |
+
+Andere Datenlücken bleiben bestehen. Die Filter `--missing reasoning` und
+`--missing reasoning-only` erfassen weiterhin die Nachweisvollständigkeit; eine
+fehlende Freitextbegründung allein ist bei gültigem aktuellem Regelverweis keine
+Lücke. Ein Regelverweis bloß im Freitext bleibt lesbar, wird aber nicht automatisch
+als strukturierte Regelanwendung für die Regelsuche ausgewertet.
+
+Bei `update` mit `--reasoning` und/oder `--rule` entsteht ein neuer vollständiger
+Nachweis zum aktuellen Buchungsstand, auch ohne geänderte Buchungswerte.
+Regelverweise müssen dabei ausdrücklich neu angegeben werden; sie werden nicht
+stillschweigend aus der Historie übernommen. Ein Update nur mit `--rule` übernimmt
+keinen alten Freitext; `reasoning` ist dann intern `null`. Die Annahmen folgen dem
+Übernehmen-/Ersetzen-/Leeren-Vertrag aus Spec 023. Ohne Nachweisflags wird kein neuer
+Nachweis erzeugt; Änderungen können den bisherigen Stand veralten lassen.
+
+JSONL unterstützt ein optionales Feld `rules` als Liste von `ID@VERSION`-Zeichenketten;
+CSV ein optionales Feld `rule` für einen einzelnen Verweis. Fehlende Regeln,
+`rules: []` und leere CSV-Zellen bedeuten keinen Verweis; explizit leere Verweise
+oder falsche Typen sind Fehler. `reasoning` darf bei gültigen Regelverweisen fehlen;
+ein explizit leerer Begründungstext in CLI oder JSONL bleibt ein Eingabefehler.
+Validierung, Duplikate, Rollback und Dry-Run folgen Spec 023.
+
+## Persistenz und Anzeige
+
+Begründung, Annahmen und Gültigkeitsstatus bleiben in den Buchungstabellen gemäß
+Spec 023. Bei reinen Regel-Nachweisen ist `reasoning = NULL`; die Engine erzeugt
+keinen angeblich vom Agenten geschriebenen Erklärungstext. Ein gültiger aktueller
+Regelverweis setzt den Nachweisstatus auch ohne Freitext auf `current`.
+
+Die Migration ergänzt eine zunächst leere Relation; bestehende Freitextnachweise
+und deren Status werden nicht verändert. Mehrere aktuelle Regelverweise werden
+als Relation zur Buchung gespeichert:
 
 ```sql
-CREATE TABLE IF NOT EXISTS booking_decision_rules (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    decision_id INTEGER NOT NULL REFERENCES booking_decisions(id),
+CREATE TABLE IF NOT EXISTS booking_rules (
+    table_name TEXT NOT NULL
+        CHECK (table_name IN ('expenses', 'income', 'private_transfers')),
+    record_uuid TEXT NOT NULL,
     rule_key TEXT NOT NULL,
-    rule_version TEXT,
-    rule_source TEXT NOT NULL CHECK(rule_source IN ('catalog', 'dossier')),
+    rule_version TEXT NOT NULL,
     rule_sha256 TEXT NOT NULL,
-    applied_by TEXT NOT NULL CHECK(applied_by IN ('agent', 'user')),
-    UNIQUE(decision_id, rule_key, rule_sha256)
+    PRIMARY KEY (table_name, record_uuid, rule_key)
 );
 
-CREATE INDEX IF NOT EXISTS idx_decision_rules_lookup
-    ON booking_decision_rules(rule_key, rule_version);
+CREATE INDEX IF NOT EXISTS idx_booking_rules_lookup
+    ON booking_rules(rule_key, rule_version);
 ```
 
-`rule_key` ist bei gebündelten Regeln die Regel-ID, bei Dossierregeln eine
-lokale Referenz aus Dossierpfad und Abschnitt. `rule_version` ist für
-gebündelte Regeln Pflicht. Die Tabelle speichert nur tatsächlich angewandte
-Regeln; verworfene Kandidaten stehen als Alternativen im Nachweis.
-`rule_sha256` identifiziert die aufgelöste Definition oder Dossierpassage.
-`rule_source` unterscheidet die veröffentlichte Katalogdatei von einer
-mandantenspezifischen Dossierpassage. `applied_by` benennt, wer die
-fachliche Regelanwendung behauptet; die CLI verifiziert diese Subsumtion nicht.
-Bei Dossierregeln speichert `decision_data.dossier_rule_snapshots` je
-`rule_key` den Dossierpfad, Abschnitt und die tatsächlich verwendete Passage.
-Der Service prüft, dass deren SHA-256 zum Regelverweis passt. So bleibt die
-Anwendung lesbar, wenn das persönliche Dossier später geändert wird.
+`table_name` und `record_uuid` ordnen die Referenz stabil einer Ausgabe, Einnahme
+oder einem Privatvorgang zu. Die Services validieren, dass die Buchung existiert;
+ein einzelner Fremdschlüssel kann nicht auf drei Tabellen verweisen. Der Primärschlüssel
+verhindert verschiedene Versionen derselben Regel an derselben Buchung. Jeder Verweis
+enthält Katalog-ID, fachliche Version und den von der Engine ermittelten SHA-256-
+Fingerabdruck. Die Relation enthält keine Kopie der allgemeinen Regeldefinition.
 
-Das Eingabeformat aus Spec 023 erhält optional `applied_rules` und
-`catalog_search`. Beispiel eines Regelverweises:
+- Ein neuer Nachweis ersetzt die aktuelle Regelmenge durch die ausdrücklich
+  gelieferten Verweise. Ein reines `update --reasoning` entfernt daher bisherige
+  Regelzuordnungen aus dem aktuellen Stand; die Historie behält sie.
+- Ohne neue Nachweisgrundlage bleiben Regelzuordnungen, Freitext und Annahmen
+  erhalten. Eine fachliche Änderung oder ein Belegwechsel markiert den gesamten
+  Nachweis nach Spec 023 als veraltet, einschließlich seiner Regelverweise.
+- Das Buchungs-Audit sichert die vollständigen Vorher-/Nachher-Stände gemäß
+  Spec 023 und zusätzlich jeweils die Regelmenge unter `_rules` in `old_data`
+  beziehungsweise `new_data`. `_rules` ist eine Liste aufgelöster Referenzen mit
+  `rule_key`, `rule_version` und `rule_sha256`, standardmäßig `[]`. Sie dokumentiert
+  den Stand der Relation und ist kein vom Agenten zu lieferndes Nachweisobjekt.
+- Buchungswerte, Nachweisfelder, Regelrelation und Audit werden in derselben
+  Transaktion geschrieben. Das gilt auch für reine Regeländerungen und Imports;
+  frühere Audit-Stände bleiben unverändert. `audit_log.user` benennt wie bisher
+  den Erfassereintrag; zusätzliche Actor-Flags entfallen.
+- Undo restauriert Nachweisfelder und aktuelle Regelrelation gemeinsam aus dem
+  vorherigen Audit-Stand. Fehlendes `_rules` in Ereignissen vor dieser Erweiterung
+  bedeutet keine Regelzuordnung. Audit-Metadaten werden nicht als Buchungsspalten
+  restauriert. Der wiederhergestellte Status kann weiterhin veraltet sein.
+- Soft-Delete behält die aktuelle Relation für Restore; Purge entfernt sie zusammen
+  mit der Buchung, ohne historische Regelreferenzen im Audit zu löschen.
 
-```json
-{
-  "applied_rules": [
-    {
-      "rule_id": "EUER-R-RC-THIRD-COUNTRY-01",
-      "rule_version": "1.2.0",
-      "applied_by": "agent"
-    }
-  ]
-}
-```
+`euer explain` liest den aktuellen Nachweis aus der Buchung und `booking_rules`.
+Es zeigt IDs, Versionen und Regeldefinitionen beziehungsweise deren verständliche
+Zusammenfassung mit Annahmen, optionalem Freitext und Gültigkeitsstatus. Veraltete
+Regelzuordnungen bleiben sichtbar, erfüllen aber nicht die Nachweisvollständigkeit.
+Die JSON-Ausgabe ergänzt je Nachweis `rules` mit den aufgelösten Metadaten.
+Historische Zuordnungen und Buchungsstände kommen aus dem Audit und werden anhand
+der damaligen Regelversion aufgelöst. Fehlende historische Regeldateien werden als
+Auflösungsfehler sichtbar, nicht durch eine neuere Definition ersetzt.
 
-Die CLI löst gebündelte Regeln im aktiven Katalog auf, prüft ID, Version,
-Geltungszeitraum und übergebene Pflichtfelder und schreibt die kanonischen
-Werte mit Fingerabdruck in `booking_decision_rules`. `applied_rules` wird
-nicht zusätzlich in `booking_decisions.decision_data` persistiert.
-`catalog_search` speichert Suchbegriffe, Themen und geprüfte Kandidaten im
-Entscheidungsnachweis; die CLI ergänzt den aktiven Bundle-/Skill-Stand.
-Diese Angaben sind Claims des Erfassers, keine Vollständigkeitsgarantie.
+Die Suche nach aktuellen Anwendungen nutzt die Relation zur Buchung; die historische
+Suche liest die Regelmengen aus den UUID-bezogenen Audit-Ständen. Es gibt keine weitere
+Tabelle für unveränderliche Nachweisobjekte. Die Integritätsprüfung aus Spec 028
+muss sowohl aktuelle Regelzuordnungen als auch deren Audit-Snapshots einschließen.
 
 ## Beispiel für einen angewandten Katalogverweis
 
@@ -364,64 +444,21 @@ der unten als Beispiel definierten Regel `EUER-R-RC-THIRD-COUNTRY-01` fest. Die 
 nicht.
 
 
-Der folgende vollständige Eingabenachweis zeigt den geplanten Regelverweis.
-Die Beispiel-ID ist erst nach fachlicher Prüfung und Veröffentlichung
-verwendbar:
+Nach fachlicher Prüfung und Veröffentlichung der Beispielregel könnte der Agent
+sie direkt bei der Buchung referenzieren, ohne einen zusätzlichen Nachweistext oder
+eine Datei zu erzeugen. Die folgenden Parameter illustrieren nur die Schnittstelle:
 
-```json
-{
-  "schema_version": "1.0",
-  "applied_rules": [
-    {
-      "rule_id": "EUER-R-RC-THIRD-COUNTRY-01",
-      "rule_version": "1.2.0",
-      "applied_by": "agent"
-    }
-  ],
-  "sources": [
-    {
-      "id": "receipt_1",
-      "type": "receipt",
-      "reference": "receipts/2025/Cloudflare_INV-12345.pdf",
-      "locator": "Invoice Total / Vendor Address / Leistungsbeschreibung"
-    },
-    {
-      "id": "bank_1",
-      "type": "bank_statement",
-      "reference": "Kontoauszug_2025_03.csv",
-      "locator": "Zeile 142"
-    },
-    {
-      "id": "user_1",
-      "type": "user_confirmation",
-      "reference": "Bestätigung des Nutzers vom 2025-03-16",
-      "locator": "Betrieblicher Bezug und leistende Betriebsstätte"
-    }
-  ],
-  "observations": {
-    "vendor_name": { "value": "Cloudflare, Inc.", "status": "observed", "source_id": "receipt_1" },
-    "vendor_country": { "value": "US", "status": "observed", "source_id": "receipt_1" },
-    "invoice_amount_usd": { "value": 20.00, "status": "observed", "source_id": "receipt_1" },
-    "invoice_german_vat_eur": { "value": 0.00, "status": "observed", "source_id": "receipt_1" },
-    "payment_amount_eur": { "value": -18.50, "status": "observed", "source_id": "bank_1" },
-    "business_purpose": { "value": "DNS & WAF für Webprojekt", "status": "user_provided", "source_id": "user_1" },
-    "service_type": { "value": "SaaS-Dienstleistung für das Unternehmen", "status": "user_provided", "source_id": "user_1" },
-    "supplier_establishment": { "value": "Keine inländische Betriebsstätte an dieser Leistung beteiligt (Nutzerangabe)", "status": "user_provided", "source_id": "user_1" }
-  },
-  "decision": {
-    "category": "Laufende EDV-Kosten",
-    "eur_line": 50,
-    "amount_eur": -18.50,
-    "rc_type": "third_country",
-    "tax_mode_applied": "small_business",
-    "vat_output_eur": 3.52,
-    "vat_input_eur": 0.00,
-    "reasoning": "Die Rechnung nennt den US-Anbieter und einen SaaS-Dienst ohne deutsche USt. Der Nutzer bestätigt den betrieblichen B2B-Bezug und verneint eine an dieser Leistung beteiligte inländische Betriebsstätte. Die Bankzeile belegt -18,50 EUR; daraus ergeben sich 3,52 EUR bei 19 %. Deshalb wurde die referenzierte Drittland-RC-Regel angewandt. Die USt-Periode bleibt gesondert zu prüfen.",
-    "uncertainties": [],
-    "open_questions": ["Steuerperiode der §-13b-Schuld anhand Leistungs- und Rechnungsdatum prüfen"]
-  }
-}
+```bash
+euer add expense --date 2025-03-16 --vendor "Cloud-Anbieter" \
+  --amount -18.50 --category "Laufende EDV-Kosten" \
+  --receipt "receipts/2025/cloud.pdf" --rc third-country \
+  --rule EUER-R-RC-THIRD-COUNTRY-01@1.2.0
 ```
+
+Mit optionalem Freitext können beispielsweise Dossier- und Belegbezüge ergänzt
+werden. Relevante Annahmen werden separat über `--assumption` mitgegeben.
+Der aktuelle Sachverhalt bleibt vom Agenten zu prüfen; der Verweis dokumentiert
+seine Regelwahl, statt die Voraussetzungen selbst zu bestätigen.
 
 ## Umfang und Phasenplanung
 
@@ -430,15 +467,19 @@ verwendbar:
 2. `euer rules find` und `euer rules show` mit JSON-Ausgabe, Pagination und
    historischen Versionen implementieren. Der Agenten-Skill beschreibt die
    schrittweise Auswahl vor dem Buchen.
-3. Die Nachweise aus Spec 023 um `applied_rules`, `catalog_search`,
-   `booking_decision_rules` und die Anzeige in `euer explain` erweitern.
+3. `--rule`, Importfelder und `booking_rules` samt Audit-Snapshots ergänzen. Die Anzeige in
+   `euer explain` und die Vollständigkeitsprüfung in `incomplete` erweitern:
+   gültiger aktueller Regelverweis genügt auch ohne Freitext.
 4. `domain_rules.md` themenweise migrieren und weitere geprüfte Regeln
    ergänzen. Der Katalog muss nicht zu Beginn vollständig sein.
 5. Historische Suche ergänzen, z. B.
    `euer decisions find --rule-id <ID> [--rule-version <VER>] [--scope ever|current]`.
-   `ever` durchsucht alle historischen Nachweise einschließlich geänderter
-   und gelöschter Buchungen. `current` beschränkt sich auf aktive Buchungen,
-   deren letzter fachlicher Nachweis die Regel noch verwendet.
+   `ever` durchsucht alle historischen Nachweise einschließlich geänderter,
+   gelöschter und gepurgter Buchungen. Treffer werden pro Audit-Nachweis und
+   Regelverweis dedupliziert; wiederholte Snapshots desselben Nachweises zählen
+   nicht als neue Anwendung. `current` beschränkt sich auf aktive Buchungen,
+   deren gespeicherter Nachweisstatus `current` ist und deren aktuelle Regelrelation
+   die Regel verwendet. Veraltete Anwendungen werden nur unter `ever` gefunden.
 
 ## Akzeptanzfälle
 
@@ -455,17 +496,31 @@ verwendbar:
    Fingerabdrücke aus dem aktiven Skill-Bundle. Historische Versionen bleiben
    abrufbar; die Buchhaltungs-DB enthält keinen zweiten vollständigen Katalog.
 5. Ein Nachweis kann mehrere angewandte Regeln tragen. Alle sind über
-   `booking_decision_rules` auffindbar; verworfene Alternativen erscheinen
-   dort nicht. Ad-hoc-Beurteilungen können daneben bestehen.
+   `booking_rules` aktuell und im Audit historisch auffindbar; verworfene
+   Alternativen erscheinen dort nicht. Ad-hoc-Beurteilungen können daneben bestehen.
 6. Die historische Suche findet alle betroffenen Nachweise; `current` und
    `ever` liefern die jeweils dokumentierte Bedeutung.
-7. Eine Dossierregel bleibt anhand der gespeicherten Passage verständlich,
-   auch wenn der Mandant sein Dossier später ändert.
+7. Dossier- und Quellenbezüge lassen sich im optionalen Freitext dokumentieren;
+   dafür wird weder eine Datei noch ein separates Nachweisobjekt verlangt.
 8. Eine CLI-Steuerberechnung erzeugt keinen Katalogregelverweis allein wegen
    eines ausgeführten Servicepfads. Nur eine ausdrücklich angegebene
-   Regelanwendung wird mit `applied_by = agent|user` dokumentiert; die CLI
-   prüft die Referenz und die rechnerische Konsistenz, nicht die fachliche
-   Subsumtion.
+   Regelanwendung wird über `--rule` beziehungsweise die entsprechenden
+   Importfelder dokumentiert. Die CLI prüft die Referenz und eindeutig prüfbare
+   Einschränkungen, nicht die fachliche Subsumtion.
+9. Ein gültiger aktueller Regelverweis ohne `--reasoning` erzeugt einen Nachweis
+   und keine Begründungslücke. Freitext allein und die Kombination bleiben
+   möglich; Datenlücken werden durch Regelverweise nicht behoben.
+10. Update nur der Regelanwendung, neue Regelversion, fachliche Änderung ohne
+    Nachweis, Notizänderung und Undo liefern in `explain`, `incomplete` und der
+    Regelsuche denselben aktuellen Stand, für Ausgaben, Einnahmen und Privatvorgänge.
+    Veraltete Texte, Annahmen und Regelzuordnungen bleiben sichtbar; der Status wird
+    markiert. Historische Anwendungen bleiben nach Ersetzen und Purge lesbar. Undo
+    restauriert auch die Relation atomar, einschließlich fehlender früherer `_rules`.
+11. Wiederholte identische Verweise werden dedupliziert; verschiedene Versionen
+    derselben Regel, unbekannte IDs, fehlende Versionen und fehlerhafte Importfelder
+    erzeugen Fehler ohne Teilmutation, auch in späteren Importzeilen und bei
+    Duplikaten. Kein Freitext ist bei gültigen Verweisen zulässig, explizit leerer
+    Freitext bleibt ein Fehler.
 
 ## Verwandte Specs
 
