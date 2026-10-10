@@ -8,7 +8,7 @@ steuerliche Einordnung nicht selbst.
 
 ## Geltung und Quellen der wichtigsten Wenn-Dann-Regeln
 
-Die CLI-Regeln dieser Referenz beschreiben Skill 1.3.0. Bei älteren Buchungen
+Die CLI-Regeln dieser Referenz beschreiben Skill 1.4.0. Bei älteren Buchungen
 gelten Beleg, Zahlungsjahr und damaliger Steuerstatus; eine spätere Änderung der
 globalen Config ersetzt deren ursprüngliche Behandlung nicht.
 
@@ -49,8 +49,17 @@ Rechnungsnummer abgewiesen.
 Hat nur eine der Buchungen eine Nummer, prüft `euer` bei gleichem Aussteller
 und Betrag auch Rechnungsdatum und Belegname über größere Abstände zwischen
 den Zahlungsdaten hinweg.
-Beim CSV-/JSONL-Import führt ein solcher Verdachtsfall zum Abbruch des gesamten
-Laufs mit Zeilennummer; exakte Dubletten werden weiterhin übersprungen.
+Beim CSV-/JSONL-Import führt ein solcher Verdachtsfall ohne ausdrückliche
+Duplikatfreigabe zum Abbruch des gesamten Laufs mit Zeilennummer.
+Exakte Dubletten werden nach vorhandenen Vorkommen vor Laufbeginn zugeordnet:
+Eine Altbuchung deckt höchstens eine Importzeile ab; weitere identische Zeilen
+werden angelegt. Prüfe, ob jede wiederholte Zeile eine eigene Zahlung belegt.
+Ein bekanntes Zahlungskonto hat Vorrang vor Altbestand ohne Konto. Ohne
+effektives Konto bricht eine mehrdeutige Zuordnung zu unterschiedlichen Konten ab;
+ergänze die belegte Kontoangabe. Unterschiedliche bekannte Konten bei identischem
+Beleg oder identischer Rechnung bleiben auch mit `--allow-duplicate` ein Konflikt.
+Das Importflag erfasst alle Vorkommen erneut, ohne fachliche Validierung zu umgehen.
+Details und Dry-Run stehen in der [CLI-Referenz](cli_reference.md#euer-import).
 Bei gemeinsam übergebenem Steuersatz und Steuerbetrag prüft sie deren
 rechnerische Übereinstimmung mit 0,02 EUR Toleranz.
 

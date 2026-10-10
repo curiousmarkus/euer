@@ -143,6 +143,56 @@ strukturierten CLI-Tools, weisen jedoch spezifische Fehlermuster auf:
     - Agenten können die Buchung bei berechtigtem Anlass mit `--allow-duplicate` oder
       `--force` erzwingen.
 
+#### Exakte Dubletten und Importvorkommen
+
+`add` und `update` erlauben auch exakte Dubletten nur mit `--allow-duplicate`
+oder `--force`. Eine eigene Hash-Endung erhält die Eindeutigkeit ohne Migration.
+Notizänderungen behalten die gespeicherte Endung; identitätsrelevante Updates
+prüfen Dubletten ohne Eigen-ID. Soft-deleted Datensätze sind keine aktiven Treffer.
+
+Der CSV-/JSONL-Import zählt Vorkommen: Jedes vor dem Lauf vorhandene aktive
+Duplikat wird höchstens einer Importzeile zugeordnet. Zusätzliche identische
+Zeilen werden angelegt; zwei gleiche Zahlungen in einer Datei bleiben erhalten.
+Die Rechnungsnummernprüfung bleibt bestehen und kann solche Zeilen abweisen.
+Wiederimport derselben unveränderten Datei überspringt vorhandene Vorkommen.
+Übersprungene Zeilen werden fachlich validiert, verändern weder Bestand noch Audit.
+
+Zahlungskonten werden wie bei Create normalisiert; fehlt ein explizites Konto,
+gilt der konfigurierte Default. Unterschiedliche bekannte Konten sind bei sonst
+gleichen Vorgängen ohne Beleg-/Rechnungsidentität keine exakten Dubletten.
+Bei gleichem Beleg oder gleicher Rechnungsnummer sind abweichende bekannte Konten
+ein `account_conflict`, auch mit `--allow-duplicate` oder `--force`.
+
+Bei der Importzuordnung haben Treffer auf dem angegebenen Konto Vorrang vor
+Altbestand ohne Konto. Fehlt auch nach Default-Auflösung das Zahlungskonto und
+passen mehrere Altbuchungen mit unterschiedlichen Kontoangaben (einschließlich
+NULL), wird mit `ambiguous_duplicate_account`, Kandidaten-IDs und Hinweis auf
+explizite Kontoangabe abgebrochen. Bereits zugeordnete Altbuchungen bleiben für
+diese Mehrdeutigkeitsprüfung berücksichtigt. Keine automatische Rückfüllung
+historischer Konten. Gleiche Kontoangaben werden nach ID zugeordnet.
+
+`import --allow-duplicate` (Alias `--allow-duplicates`) importiert alle Vorkommen
+erneut und umgeht exakte, unscharfe sowie mehrdeutige Duplikatzuordnung. Fachliche
+Validierung und Kontokonflikte bleiben aktiv. `--dry-run` prüft dieselben Regeln
+und speichert nichts. Jeder Fehler rollt Buchungen und Audit des gesamten Laufs
+zurück. Der Import führt keine Herkunftsverwaltung für Bankdateien ein.
+
+| Fall | Verhalten | Nachweis in `tests/test_cli_import_export.py` |
+| --- | --- | --- |
+| Zwei identische Zeilen und Wiederimport | Zwei Vorkommen; Wiederimport wirkungslos | `test_import_preserves_intra_file_duplicates` |
+| Ein vorhandenes Vorkommen, zwei Importzeilen | Nur das fehlende Vorkommen anlegen | `test_import_retains_unbooked_occurrence_when_partial_match_exists` |
+| Bestätigter Wiederimport | Alle Vorkommen erneut anlegen | `test_import_allow_duplicate_flag` |
+| Ungültige Dublette | Abbruch ohne Mutation oder Audit | `test_import_validation_not_bypassed_by_duplicate_skip` |
+| Unterschiedliche bekannte Konten ohne Belegidentität | Getrennte Buchungen | `test_import_different_payment_accounts_not_merged` |
+| Gleiche Rechnung, widersprüchliche bekannte Konten | Konflikt und Rollback, auch bei Bestätigung | `test_import_contradictory_payment_accounts_on_same_invoice_fails` |
+| Fehlendes Konto bei Bank-/PayPal-Altbestand | Abbruch in beiden Reihenfolgen, CSV/JSONL und Dry-Run; vollständiger Rollback | `test_import_ambiguous_account_rolls_back_in_both_row_orders` |
+| Konto bekannt, ältester Treffer ohne Konto | Bekannten Treffer zuerst zuordnen; wiederholter Import ohne neue Buchung/Audit | `test_import_prefers_known_account_over_legacy_missing_account` |
+| Normalisierter Default / explizite Duplikatfreigabe | Default löst fehlendes Konto auf; beide Flag-Aliasse erfassen erneut | `test_import_default_account_and_duplicate_override` |
+
+Neue Importoptionen erfordern einen MINOR-Release; die Vorbereitung bleibt unter
+`Unveröffentlicht`. Keine DB-Migration; geänderte Skill-Inhalte erhalten eine neue
+Skill-Version und konkrete Upgrade-Hinweise.
+
 ### 2.4 Pfad-Guardrail für `init`
 
 **Feedback (wörtlich):** „Für falsche oder nicht existierende DB-Pfade sollte init klar unterscheiden zwischen „bestehende DB migrieren“ und „neue DB anlegen“.“

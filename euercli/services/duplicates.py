@@ -29,11 +29,15 @@ def find_all_exact_duplicates(
     account: str | None = None,
     exclude_id: int | None = None,
     cache: dict[tuple, list[int]] | None = None,
+    max_id: int | None = None,
 ) -> list[int]:
-    """Findet alle exakten Dubletten geordnet nach ID, inklusive suffigierter Hashes.
+    """Findet exakte Dubletten inklusive suffigierter Hashes.
 
-    Berücksichtigt das Zahlungskonto und meldet Prüfbedarf bei widersprüchlichen
-    Kontoangaben auf identischen Beleg-/Rechnungsvorgängen.
+    Treffer mit dem angegebenen Konto haben Vorrang vor Treffern ohne Konto;
+    innerhalb dieser Gruppen entscheidet die ID. max_id begrenzt Importtreffer
+    auf den Altbestand und weist mehrdeutige Zuordnungen ohne Zielkonto ab.
+    Kontokonflikte bei identischen Belegen/Rechnungen werden auch bei neuen
+    Buchungen im laufenden Import geprüft.
     """
     date = hash_date(payment_date, invoice_date)
     norm_target_account = normalize_account_name(account)
@@ -51,6 +55,7 @@ def find_all_exact_duplicates(
             norm_inv_num or "",
             norm_target_account or "",
             exclude_id,
+            max_id,
         )
         if cache_key in cache:
             return list(cache[cache_key])
@@ -96,6 +101,7 @@ def find_all_exact_duplicates(
     rows = conn.execute(query, tuple(params)).fetchall()
 
     matching_ids: list[int] = []
+    matching_accounts: dict[int, str | None] = {}
     for row in rows:
         if row["deleted_at"] is not None or row["id"] == exclude_id:
             continue
@@ -132,7 +138,30 @@ def find_all_exact_duplicates(
                 continue
 
             # 2. Gleiche Konten ODER fehlendes vs. bekanntes Konto -> Dublette
-            matching_ids.append(int(row["id"]))
+            if max_id is None or row["id"] <= max_id:
+                record_id = int(row["id"])
+                matching_ids.append(record_id)
+                matching_accounts[record_id] = row_acc
+
+    if (
+        max_id is not None
+        and norm_target_account is None
+        and len(set(matching_accounts.values())) > 1
+    ):
+        ids = ", ".join(f"#{record_id}" for record_id in matching_ids)
+        raise ValidationError(
+            f"Mehrdeutige Duplikatzuordnung: Buchungen {ids} haben unterschiedliche "
+            "Kontoangaben, dieser Vorgang nennt kein Zahlungskonto. "
+            "Bitte Konto und vorhandene Buchungen prüfen und das Zahlungskonto "
+            "im Import angeben.",
+            code="ambiguous_duplicate_account",
+            details={"candidate_ids": matching_ids},
+        )
+
+    if norm_target_account is not None:
+        matching_ids.sort(
+            key=lambda record_id: (matching_accounts[record_id] != norm_target_account, record_id),
+        )
 
     if cache is not None and cache_key is not None:
         cache[cache_key] = list(matching_ids)

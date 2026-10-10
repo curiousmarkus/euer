@@ -213,7 +213,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--allow-duplicates",
         dest="allow_duplicate",
         action="store_true",
-        help="Erlaubt Duplikate und importiert alle Zeilen ohne Duplikatsprüfung",
+        help="Importiert alle Vorkommen erneut; fachliche Validierung und Kontokonfliktprüfung bleiben aktiv",
     )
     import_parser.set_defaults(func=cmd_import)
 

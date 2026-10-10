@@ -460,6 +460,12 @@ def create_expense(
         invoice_number=invoice_number,
         account=resolved_account,
         cache=duplicate_cache,
+        max_id=(
+            max_id
+            if on_duplicate == DuplicateAction.SKIP
+            and not (allow_duplicate or allow_exact_duplicate)
+            else None
+        ),
     )
     if matching_ids:
         if on_duplicate == DuplicateAction.SKIP and not (allow_duplicate or allow_exact_duplicate):

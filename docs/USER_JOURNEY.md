@@ -308,7 +308,17 @@ euer receipt unbooked --year 2026 --format json
 ```
 
 Der Import hat einen Duplikatschutz, ersetzt aber nicht den fachlichen Abgleich
-mit einer schon angelegten Rechnung. Auch eine leere Incomplete-Liste beweist
+mit einer schon angelegten Rechnung. Vorhandene Buchungen werden pro Vorkommen
+zugeordnet; zusätzliche identische Zeilen in einer Datei werden angelegt.
+Der Agent muss daher vorab prüfen, ob sie getrennte Zahlungen belegen.
+Fehlt das Zahlungskonto auch nach Anwendung des Defaults und passen mehrere
+Altbuchungen mit unterschiedlichen Kontoangaben, bricht der Import ab. Der Agent
+ergänzt das belegte Konto und prüft erneut mit `--dry-run`.
+`--allow-duplicate` erfasst alle Vorkommen erneut und ist nur für ausdrücklich
+geklärte Ausnahmen vorgesehen; fachliche Fehler und Kontokonflikte bleiben gesperrt.
+Die [CLI-Referenz](skills/euer-buchhaltung/references/cli_reference.md#euer-import)
+beschreibt Zuordnung, Wiederimport und Rollback.
+Auch eine leere Incomplete-Liste beweist
 nicht, dass jede Kontobewegung erfasst wurde. Der Agent sollte deshalb berichten,
 welche Konten und Zeiträume vollständig abgeglichen sind und welche noch fehlen.
 Treffer aus `receipt unbooked` sind zunächst Dateien ohne Zuordnung: Der Agent

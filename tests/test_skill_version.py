@@ -28,6 +28,7 @@ class SkillVersionCLITestCase(BaseCLITestCase):
             ("", "unconfirmed"),
             ('[skill]\nversion = "x"\n', "invalid"),
             ('[skill]\nversion = "0.1.0"\n', "mismatch"),
+            ('[skill]\nversion = "1.3.0"\n', "mismatch"),
             ('[skill]\nversion = "99.0.0"\n', "mismatch"),
         ]:
             with self.subTest(status=status, content=content):

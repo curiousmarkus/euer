@@ -1,4 +1,5 @@
 import csv
+import json
 import sqlite3
 import unittest
 from contextlib import closing
@@ -562,6 +563,150 @@ account_number = "4940"
         q = self.run_cli(["query", "SELECT COUNT(*) FROM income"], check=True)
         self.assertEqual(self.parse_csv(q.stdout)[1][0], "2")
 
+    def test_import_ambiguous_account_rolls_back_in_both_row_orders(self):
+        self.write_config('[tax]\nmode = "small_business"\n')
+        for row_type, add in (("expense", self.add_expense), ("income", self.add_income)):
+            amount = "-100.00" if row_type == "expense" else "100.00"
+            for account in ("bank", "paypal"):
+                result = add(amount=amount, account=account, extra_args=["--allow-duplicate"])
+                self.assertEqual(result.returncode, 0, result.stderr)
+
+        def snapshot():
+            with closing(sqlite3.connect(self.db_path)) as conn:
+                return [
+                    conn.execute(f"SELECT * FROM {table} ORDER BY id").fetchall()
+                    for table in ("expenses", "income", "audit_log")
+                ]
+
+        before = snapshot()
+        for row_type in ("expense", "income"):
+            amount = -100.0 if row_type == "expense" else 100.0
+            party = "TestVendor" if row_type == "expense" else "TestClient"
+            date = "2026-01-15" if row_type == "expense" else "2026-01-20"
+            for accounts in (("", "bank"), ("bank", "")):
+                for import_format in ("csv", "jsonl"):
+                    for dry_run in (False, True):
+                        with self.subTest(
+                            type=row_type,
+                            accounts=accounts,
+                            format=import_format,
+                            dry_run=dry_run,
+                        ):
+                            rows = [
+                                {
+                                    "type": row_type,
+                                    "date": date,
+                                    "party": "Neuer Vorgang",
+                                    "amount_eur": amount,
+                                    "account": "bank",
+                                },
+                                *[
+                                    {
+                                        "type": row_type,
+                                        "date": date,
+                                        "party": party,
+                                        "amount_eur": amount,
+                                        "account": account,
+                                    }
+                                    for account in accounts
+                                ],
+                            ]
+                            import_file = self.root / f"ambiguous.{import_format}"
+                            if import_format == "csv":
+                                with import_file.open("w", newline="", encoding="utf-8") as stream:
+                                    writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
+                                    writer.writeheader()
+                                    writer.writerows(rows)
+                            else:
+                                import_file.write_text(
+                                    "\n".join(json.dumps(row) for row in rows),
+                                    encoding="utf-8",
+                                )
+                            args = ["import", "--file", str(import_file), "--format", import_format]
+                            if dry_run:
+                                args.append("--dry-run")
+                            result = self.run_cli(args)
+                            self.assertEqual(result.returncode, 1, result.stdout)
+                            self.assertIn("Mehrdeutige Duplikatzuordnung", result.stderr)
+                            self.assertIn("im Import angeben", result.stderr)
+                            self.assertNotIn("Traceback", result.stderr)
+                            self.assertEqual(snapshot(), before)
+
+    def test_import_prefers_known_account_over_legacy_missing_account(self):
+        self.write_config('[tax]\nmode = "small_business"\n')
+        for row_type, add in (("expense", self.add_expense), ("income", self.add_income)):
+            amount = "-100.00" if row_type == "expense" else "100.00"
+            for account in (None, "bank"):
+                account_args = {"account": account} if account is not None else {}
+                result = add(amount=amount, extra_args=["--allow-duplicate"], **account_args)
+                self.assertEqual(result.returncode, 0, result.stderr)
+
+        with closing(sqlite3.connect(self.db_path)) as conn:
+            audit_before = conn.execute("SELECT * FROM audit_log ORDER BY id").fetchall()
+        for row_type in ("expense", "income"):
+            amount = "-100.00" if row_type == "expense" else "100.00"
+            party = "TestVendor" if row_type == "expense" else "TestClient"
+            date = "2026-01-15" if row_type == "expense" else "2026-01-20"
+            table = "expenses" if row_type == "expense" else "income"
+            for accounts in (("bank", "paypal"), ("paypal", "bank")):
+                with self.subTest(type=row_type, accounts=accounts):
+                    import_file = self.root / "known_accounts.csv"
+                    import_file.write_text(
+                        "type,date,party,amount_eur,account\n"
+                        + "".join(f"{row_type},{date},{party},{amount},{a}\n" for a in accounts),
+                        encoding="utf-8",
+                    )
+                    result = self.run_cli(
+                        ["import", "--file", str(import_file), "--format", "csv"],
+                        check=True,
+                    )
+                    self.assertIn("Duplikate übersprungen: 2", result.stdout)
+                    with closing(sqlite3.connect(self.db_path)) as conn:
+                        self.assertEqual(
+                            conn.execute(f"SELECT id, account FROM {table} ORDER BY id").fetchall(),
+                            [(1, None), (2, "bank")],
+                        )
+                        self.assertEqual(
+                            conn.execute("SELECT * FROM audit_log ORDER BY id").fetchall(),
+                            audit_before,
+                        )
+
+    def test_import_default_account_and_duplicate_override(self):
+        self.write_config('[tax]\nmode = "small_business"\n')
+        for row_type, add in (("expense", self.add_expense), ("income", self.add_income)):
+            amount = "-100.00" if row_type == "expense" else "100.00"
+            for account in ("bank", "paypal"):
+                result = add(amount=amount, account=account, extra_args=["--allow-duplicate"])
+                self.assertEqual(result.returncode, 0, result.stderr)
+            party = "TestVendor" if row_type == "expense" else "TestClient"
+            date = "2026-01-15" if row_type == "expense" else "2026-01-20"
+            table = "expenses" if row_type == "expense" else "income"
+            import_file = self.root / "default_account.csv"
+            import_file.write_text(
+                f"type,date,party,amount_eur,account\n{row_type},{date},{party},{amount},\n",
+                encoding="utf-8",
+            )
+            for default, flags, expected_count in (
+                (" BANK ", [], 2),
+                (None, ["--allow-duplicate"], 3),
+                (None, ["--allow-duplicates"], 4),
+            ):
+                with self.subTest(type=row_type, default=default, flags=flags):
+                    config = '[tax]\nmode = "small_business"\n'
+                    if default is not None:
+                        config += f'[accounts]\ndefault = "{default}"\n'
+                    self.write_config(config)
+                    result = self.run_cli(
+                        ["import", "--file", str(import_file), "--format", "csv", *flags],
+                        check=True,
+                    )
+                    self.assertIn(f"Duplikate übersprungen: {0 if flags else 1}", result.stdout)
+                    with closing(sqlite3.connect(self.db_path)) as conn:
+                        self.assertEqual(
+                            conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0],
+                            expected_count,
+                        )
+
     def test_import_contradictory_payment_accounts_on_same_invoice_fails(self):
         import_file1 = self.root / "import_inv_bank.csv"
         import_file1.write_text(
@@ -587,10 +732,21 @@ account_number = "4940"
             + "\n",
             encoding="utf-8",
         )
-        result = self.run_cli(["import", "--file", str(import_file2), "--format", "csv"])
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("Widersprüchliche Angaben", result.stderr)
-        self.assertIn("Prüfbedarf", result.stderr)
+        with closing(sqlite3.connect(self.db_path)) as conn:
+            before = conn.execute("SELECT * FROM audit_log ORDER BY id").fetchall()
+        for flags in ([], ["--allow-duplicate"], ["--allow-duplicates"]):
+            with self.subTest(flags=flags):
+                result = self.run_cli(
+                    ["import", "--file", str(import_file2), "--format", "csv", *flags]
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("Widersprüchliche Angaben", result.stderr)
+                self.assertIn("Prüfbedarf", result.stderr)
+                with closing(sqlite3.connect(self.db_path)) as conn:
+                    self.assertEqual(conn.execute("SELECT COUNT(*) FROM income").fetchone()[0], 1)
+                    self.assertEqual(
+                        conn.execute("SELECT * FROM audit_log ORDER BY id").fetchall(), before
+                    )
 
 
 if __name__ == "__main__":

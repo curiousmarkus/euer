@@ -46,15 +46,33 @@ Ersteinrichtung (interaktiv oder --set KEY VALUE)
 |---|---|
 | `--set` | Setzt einen Config-Wert direkt (z.B. tax.mode small_business) |
 
-**Beispiel:** `euer setup --set skill.version "1.3.0"`
+**Beispiel:** `euer setup --set skill.version "1.4.0"`
 
 ### euer import
 
 Optionale Rechnungsnummern können im CSV-/JSONL-Import als `invoice_number`
 oder `Rechnungsnummer` übergeben werden.
+Ohne `--allow-duplicate` wird jedes vor Laufbeginn vorhandene aktive Duplikat
+höchstens einer Importzeile zugeordnet. Zusätzliche identische Zeilen werden
+angelegt: Zwei gleiche BVG-Zahlungen in einer Datei ergeben zwei Ausgaben;
+ein Wiederimport derselben Datei überspringt beide vorhandenen Vorkommen.
+Prüfe deshalb vor dem Import, ob wiederholte Zeilen getrennte Zahlungen belegen.
+
+Das Zahlungskonto wird normalisiert; fehlt es in der Zeile, gilt der konfigurierte
+Default. Ein Treffer auf diesem Konto hat Vorrang vor einem Treffer ohne Konto.
+Unterschiedliche bekannte Konten ohne Beleg-/Rechnungsidentität bleiben getrennte
+Vorgänge. Ohne effektives Konto führen passende Altbuchungen mit unterschiedlichen
+Kontoangaben zum Abbruch mit Kandidaten-IDs. Ergänze das belegte Konto in der Datei.
+Historische Buchungen werden dabei nicht ergänzt oder umkontiert.
+
 Verdächtige Duplikate anhand der Rechnungsnummer brechen den gesamten Import
-mit Zeilennummer ab und rollen bereits vorbereitete Buchungen zurück. Exakte
-Duplikate werden wie bisher übersprungen.
+mit Zeilennummer ab. `--allow-duplicate` beziehungsweise `--allow-duplicates`
+bestätigt die erneute Erfassung aller Zeilen und umgeht die Duplikatzuordnung
+sowie die unscharfe Prüfung. Fachliche Validierung bleibt aktiv, auch für
+übersprungene Zeilen. Abweichende bekannte Konten bei identischer Rechnung oder
+identischem Beleg bleiben ein Kontokonflikt, auch mit diesem Flag.
+Jeder Fehler rollt vorbereitete Buchungen und Audit-Einträge zurück.
+`--dry-run` führt dieselben Prüfungen aus und speichert nichts.
 
 Bulk-Import von Transaktionen
 
@@ -70,7 +88,7 @@ Bulk-Import von Transaktionen
 | `--format` | Importformat |
 | `--dry-run` | Nur prüfen, nichts speichern |
 | `--schema` | Zeigt Import-Schema, Beispiele und Alias-Keys |
-| `--allow-duplicate`, `--allow-duplicates` | Erlaubt Duplikate und importiert alle Zeilen ohne Duplikatsprüfung |
+| `--allow-duplicate`, `--allow-duplicates` | Erfasst alle Vorkommen erneut; Validierung und Kontokonfliktprüfung bleiben aktiv |
 
 **Beispiel:** `euer import --schema`
 

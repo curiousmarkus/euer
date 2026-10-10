@@ -8,7 +8,7 @@ Für Installationen ab 0.8.1 ergänzen sie die normale Update-Sequenz aus der
 pipx upgrade euer
 euer doctor
 # Skill vollständig aus dem Bundle-Pfad installieren und neu laden
-euer setup --set skill.version "1.3.0"
+euer setup --set skill.version "1.4.0"
 euer init
 euer incomplete list
 euer summary --year 2026
@@ -41,9 +41,47 @@ Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
 
 ## Unveröffentlicht
 
+- **Import zählt Vorkommen:** Zwei identische Zeilen in einer CSV-/JSONL-Datei
+  werden als zwei Vorgänge erhalten. Vorhandene aktive Buchungen decken jeweils
+  höchstens eine Importzeile ab; ein Wiederimport derselben Datei überspringt
+  vorhandene Vorkommen. Vor dem Import wiederholte Zeilen auf getrennte Zahlungen
+  prüfen und `--dry-run` verwenden. Der Import hat keine Bankdatei-Herkunftsverwaltung.
+- **Sichere Kontozuordnung:** Bekannte Zahlungskonten haben beim Wiederimport
+  Vorrang vor Altbestand ohne Konto. Fehlt das Konto auch nach Anwendung des
+  Defaults und passen Altbuchungen mit unterschiedlichen Kontoangaben, bricht
+  der Lauf mit Kandidaten-IDs ab. Das belegte Konto in der Importdatei ergänzen;
+  historische Buchungen werden nicht automatisch umkontiert. Jeder Fehler
+  rollt den gesamten Import einschließlich Audit zurück.
+- **Explizite Duplikatfreigabe:** `import --allow-duplicate` (Alias
+  `--allow-duplicates`) erfasst alle Vorkommen erneut. Nur bei geklärten,
+  getrennten Vorgängen verwenden. Fachliche Validierung bleibt aktiv;
+  widersprüchliche bekannte Konten bei identischem Beleg oder identischer
+  Rechnung bleiben gesperrt. Auch `add` und `update` erlauben exakte Dubletten
+  nun mit `--allow-duplicate` oder `--force`.
 - Die exakte Duplikatsuche grenzt Kandidaten über den Hash-Index ein, auch wenn
   viele aktive Buchungen vorhanden sind. Löschstatus und ausgeschlossene Eigen-ID
-  werden anschließend geprüft; keine Datenbankmigration erforderlich.
+  werden anschließend geprüft.
+
+**Upgrade:** Keine Datenbank- oder Kontenkonfigurationsmigration erforderlich.
+Falls frühere Wiederimporte zusätzliche Buchungen erzeugt haben, vorhandene
+Vorkommen anhand von Kontoauszug und Audit prüfen und belegte Duplikate über
+die CLI korrigieren; das Update bereinigt historische Daten nicht automatisch.
+
+### Agenten-Dateien
+
+- **Skill 1.3.0 → 1.4.0:** Vollständigen Skill einschließlich Referenzen aus dem
+  mit `euer doctor` ermittelten Bundle-Pfad ersetzen und neu laden. Die geänderten
+  Importregeln lesen und erst danach mit
+  `euer setup --set skill.version "1.4.0"` bestätigen. Alte Bestätigungen sperren
+  fachliche Befehle bis zum Skill-Update.
+- **Onboarding:** Lokal kopierte Onboarding-Prompts auf die neue
+  Versionsbestätigung aktualisieren. Die Skill-Rollenbeschreibung verwendet
+  den Begriff EÜR-Agent.
+- **Agenten-Adapter:** Keine zusätzliche Anpassung erforderlich; den Skill über
+  den bisherigen Installationsweg vollständig austauschen.
+- **Mandanten-Dossier:** Persönliche `AGENTS.md` erhalten. Kontoangaben bei
+  Importkonflikten anhand der tatsächlichen Zahlung prüfen; das Dossier nicht
+  durch Repository-Anweisungen oder Skill-Dateien ersetzen.
 
 ## 0.15.0
 

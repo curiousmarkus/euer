@@ -6,6 +6,7 @@ from pathlib import Path
 from euercli.db import get_db_connection
 from euercli.schema import SCHEMA
 from euercli.services.duplicates import find_all_exact_duplicates
+from euercli.services.errors import ValidationError
 from euercli.utils import compute_hash
 
 
@@ -19,7 +20,7 @@ class DuplicateLookupTestCase(unittest.TestCase):
         self.conn.close()
         self.temp_dir.cleanup()
 
-    def lookup(self, table: str, **kwargs) -> list[int]:
+    def lookup(self, table: str, *, account: str | None = "bank", **kwargs) -> list[int]:
         return find_all_exact_duplicates(
             self.conn,
             table_name=table,
@@ -29,7 +30,7 @@ class DuplicateLookupTestCase(unittest.TestCase):
             amount_eur=100.0,
             receipt_name="beleg.pdf",
             invoice_number="R1",
-            account="bank",
+            account=account,
             **kwargs,
         )
 
@@ -61,6 +62,38 @@ class DuplicateLookupTestCase(unittest.TestCase):
                 self.assertEqual(
                     self.lookup(table, exclude_id=excluded), [first, old, without_number]
                 )
+
+    def test_import_snapshot_account_ambiguity_is_not_hidden_by_cache(self) -> None:
+        for table in ("expenses", "income"):
+            with self.subTest(table=table):
+                base = compute_hash("2026-03-01", "Test", 100.0, "beleg.pdf", "R1")
+                first = self.insert_candidate(table, base)
+                second = self.insert_candidate(table, f"{base}#2")
+                self.conn.execute(f"UPDATE {table} SET account = 'paypal' WHERE id = ?", (second,))
+                cache = {}
+                self.assertEqual(self.lookup(table, account=None, cache=cache), [first, second])
+                self.assertEqual(
+                    self.lookup(table, account=None, cache=cache, max_id=first),
+                    [first],
+                )
+                with self.assertRaises(ValidationError) as ctx:
+                    self.lookup(table, account=None, cache=cache, max_id=second)
+                self.assertEqual(ctx.exception.code, "ambiguous_duplicate_account")
+                self.assertEqual(ctx.exception.details["candidate_ids"], [first, second])
+
+    def test_known_account_precedes_older_candidate_without_account(self) -> None:
+        for table in ("expenses", "income"):
+            with self.subTest(table=table):
+                base = compute_hash("2026-03-01", "Test", 100.0, "beleg.pdf", "R1")
+                first = self.insert_candidate(table, base)
+                second = self.insert_candidate(table, f"{base}#2")
+                self.conn.execute(f"UPDATE {table} SET account = NULL WHERE id = ?", (first,))
+                cache = {}
+                for _ in range(2):
+                    self.assertEqual(
+                        self.lookup(table, cache=cache, max_id=second),
+                        [second, first],
+                    )
 
     def test_lookup_work_does_not_scale_with_unrelated_active_rows(self) -> None:
         # Echtes Schema einschließlich konkurrierendem deleted_at-Index.

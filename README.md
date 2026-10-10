@@ -13,6 +13,7 @@ Wenn du eine EÜR erstellen musst, stehst du vor der Entscheidung: ein Software-
 ### 🤖 Built for AI Agents (Claude Code, Hermes, OpenCode, Codex, etc.)
 *   **Agent-First:** Software für die Bedienung durch KI-Agenten. Damit sie dir die manuelle Erfassung deiner Ein- und Ausgaben abnehmen können.
 *   **Basierend auf CLI Commands:** Befehle wie `euer add expense` und `euer summary` lassen sich von lokalen Agenten aufrufen. Validierungen und Sicherheitsprüfungen erkennen bestimmte fehlerhafte oder doppelte Eingaben.
+*   **Import mit Vorkommensabgleich:** Identische Zeilen bleiben als getrennte Vorgänge erhalten; vorhandene Buchungen werden pro Vorkommen zugeordnet. Unklare Kontozuordnungen erfordern eine belegte Kontoangabe. Details stehen in der [Importreferenz](docs/skills/euer-buchhaltung/references/cli_reference.md#euer-import).
 *   **Mit SQL Superpowers:** Für zusätzliche Auswertungen kann der Agent SQL-Abfragen durchführen; Änderungen laufen über die CLI.
 
 ### 🔒 Lokal und Open Source

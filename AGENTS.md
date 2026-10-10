@@ -23,6 +23,10 @@ Da moderne KI-Agenten (Claude Code, Cursor, Codex, OpenCode etc.) standardmäßi
 - **Repository-`AGENTS.md` (dieses Dokument):** Richtet sich an Coding-Agenten, die an der Weiterentwicklung der Software `euer` selbst arbeiten (Architektur, Code Style, Test- & Release-Vorgaben).
 - **Mandanten-`AGENTS.md` (im Buchhaltungsordner des Nutzers):** Im Buchhaltungsordner des Endnutzers wird ebenfalls eine `AGENTS.md` abgelegt (siehe `docs/skills/euer-buchhaltung/assets/Agents-Template.md`). Diese enthält **keine** Coding- oder Entwicklungsanweisungen, sondern spiegelt das **Mandanten-Dossier** wider. Sie liefert dem Buchhaltungs-Agenten den geschäftlichen Kontext des Mandanten (Steuerstatus, USt-Regelung, Bankkonten, Belegpfade, Zuordnungsregeln für wiederkehrende Lieferanten und Sonderfälle), damit er Vorgänge einordnen und Rückfragen gezielt stellen kann.
 
+### 3. Rechtliche Leitplanke & Wording (Die „Accountable-Falle“)
+- **Keine Personen-/Berufsbezeichnungen:** Niemals Begriffe wie *„KI-Buchhalter“* oder *„Dein Buchhalter“* in CLI-Output, Dokumentation, Prompts oder Templates verwenden (Abmahngefahr durch Steuerberaterkammern gem. § 5 UWG / § 5/6 StBerG).
+- **Prozess- & Agenten-Begriffe:** Stets *„KI-Buchhaltung“*, *„KI-Agent für die EÜR“* oder *„EÜR-Agent“* nutzen.
+
 ---
 
 ## Vor jeder Code-Änderung

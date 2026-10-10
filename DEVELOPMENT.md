@@ -229,6 +229,13 @@ Beleg, Konto, Umsatzsteuer und RC-Klassifikation. Die genaue Logik steht in
 Der Import akzeptiert zusätzlich UStVA-Klassifikationsfelder (`vat_rate`,
 `vat_code`, `tax_free`) für round-trip-fähige Exporte und Reports.
 
+Beim Duplikatabgleich zählt der Import vorhandene Vorkommen vor Laufbeginn.
+Treffer auf dem expliziten oder voreingestellten Zahlungskonto haben Vorrang vor
+Altbestand ohne Konto. Mehrdeutige Zuordnungen ohne effektives Konto führen zum
+vollständigen Rollback; `--allow-duplicate` bestätigt die erneute Erfassung aller
+Vorkommen, ohne fachliche Validierung oder Kontokonflikte zu umgehen.
+Vertrag und Regressionstests stehen in Spec 016, Abschnitt 2.3.
+
 ## Neue Commands hinzufügen
 
 1. **Service-Funktion** in `euercli/services/` implementieren (Dataclass-Return, Exceptions).
@@ -431,7 +438,7 @@ Offene Change Requests werden innerhalb der jeweiligen Spec dokumentiert.
 | 013 | Belegordner Jahr zuerst | Implementiert |
 | 014 | HTML-Prüfbericht für Buchungen | Offen |
 | 015 | Multi-Channel-Distribution (PyPI, GitHub Releases, Homebrew) | Implementiert |
-| 016 | Agent-Safety & Guardrails (Schutz vor destruktiven Aktionen & Plausibilität) | Implementiert |
+| 016 | Agent-Safety & Guardrails (inkl. Importvorkommen und sichere Kontozuordnung) | Implementiert |
 | 017 | Nicht eingebuchte Belege erkennen (`receipt unbooked`) | Implementiert |
 | 018 | Bewirtungsaufwendungen, Vorsteuer und EÜR-Zuordnung (inkl. Review-Korrekturen) | Implementiert |
 | 019 | `euer doctor` (Umgebungs- und Pre-Flight-Diagnose) | Implementiert |
