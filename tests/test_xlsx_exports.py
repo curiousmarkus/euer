@@ -18,7 +18,7 @@ CLI = [sys.executable, "-m", "euercli"]
 @unittest.skipUnless(openpyxl, "openpyxl ist nicht installiert")
 class XlsxExportTestCase(unittest.TestCase):
     def setUp(self) -> None:
-        self.temp_dir = tempfile.TemporaryDirectory()
+        self.temp_dir = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
         self.root = Path(self.temp_dir.name)
         self.db_path = self.root / "test.db"
         self.home = self.root / "home"
@@ -31,7 +31,10 @@ class XlsxExportTestCase(unittest.TestCase):
         self.run_cli(["init", "--create"])
 
     def tearDown(self) -> None:
-        self.temp_dir.cleanup()
+        try:
+            self.temp_dir.cleanup()
+        except (PermissionError, OSError):
+            pass
 
     def run_cli(self, args: list[str]) -> subprocess.CompletedProcess[str]:
         result = subprocess.run(

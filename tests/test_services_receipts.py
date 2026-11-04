@@ -2,7 +2,7 @@ import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from euercli.schema import SCHEMA
 from euercli.services.errors import ValidationError
@@ -17,8 +17,8 @@ from euercli.services.receipts import (
 
 class ServicesReceiptsTestCase(unittest.TestCase):
     def setUp(self):
-        self.temp_dir = tempfile.TemporaryDirectory()
-        self.root = Path(self.temp_dir.name)
+        self.temp_dir = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
+        self.root = Path(self.temp_dir.name).resolve()
         self.receipts = self.root / "receipts"
         self.expenses = self.receipts / "2026" / "Ausgaben"
         self.income = self.receipts / "2026" / "Einnahmen"
@@ -111,12 +111,22 @@ class ServicesReceiptsTestCase(unittest.TestCase):
 
     def test_non_regular_file_skipped(self):
         (self.expenses / "regular.pdf").write_bytes(b"regular")
+        fake_entry = MagicMock()
+        fake_entry.name = "regular.pdf"
+        fake_entry.path = str(self.expenses / "regular.pdf")
+        fake_entry.is_symlink.return_value = False
+        fake_entry.is_dir.return_value = False
+        fake_entry.is_file.return_value = False
+
+        class FakeScandir:
+            def __enter__(self):
+                return [fake_entry]
+
+            def __exit__(self, *args):
+                pass
+
         # Simuliere Nicht-Regulärdatei (z.B. FIFO oder Socket)
-        with (
-            patch("os.DirEntry.is_file", return_value=False),
-            patch("os.DirEntry.is_dir", return_value=False),
-            patch("os.DirEntry.is_symlink", return_value=False),
-        ):
+        with patch("os.scandir", return_value=FakeScandir()):
             res = find_unbooked_receipts(self.db_path, self.config, 2026, "expense")
             self.assertEqual(res.total_files, 0)
             self.assertEqual(res.skipped_entries[0].reason, "non_regular_file")

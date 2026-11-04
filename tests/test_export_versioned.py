@@ -185,7 +185,7 @@ class VersionedExportTestCase(BaseCLITestCase):
         fixed_folder = export_dir / f"export_2026_20261104T120000+0100_v{VERSION}"
         fixed_folder.mkdir()
         canary = fixed_folder / "canary.txt"
-        canary.write_text("original content")
+        canary.write_text("original content", encoding="utf-8")
 
         args = SimpleNamespace(
             db=str(self.db_path),
@@ -206,7 +206,7 @@ class VersionedExportTestCase(BaseCLITestCase):
             self.assertEqual(1, ctx.exception.code)
 
         self.assertTrue(canary.exists())
-        self.assertEqual("original content", canary.read_text())
+        self.assertEqual("original content", canary.read_text(encoding="utf-8"))
 
     def test_versioned_export_error_during_creation_leaves_no_folder(self):
         from types import SimpleNamespace
@@ -354,47 +354,59 @@ class VersionedExportTestCase(BaseCLITestCase):
         self.add_expense(vendor="Original Vendor", amount="-50.00")
         self.add_income(source="Original Client", amount="100.00")
         writer = sqlite3.connect(self.db_path)
-        self.addCleanup(writer.close)
         writer.execute("PRAGMA journal_mode=WAL")
         writer.execute("PRAGMA wal_autocheckpoint=0")
         writer.execute("UPDATE expenses SET notes='Only in WAL'")
         writer.commit()
         self.assertGreater(Path(str(self.db_path) + "-wal").stat().st_size, 0)
         reader = get_db_connection(self.db_path, read_only=True)
-        self.addCleanup(reader.close)
-        expected_hash = compute_db_snapshot_hash(reader)
-        main_hash = hashlib.sha256(self.db_path.read_bytes()).hexdigest()
-        self.assertNotEqual(main_hash, expected_hash)
-        changed = False
+        try:
+            expected_hash = compute_db_snapshot_hash(reader)
+            main_hash = hashlib.sha256(self.db_path.read_bytes()).hexdigest()
+            self.assertNotEqual(main_hash, expected_hash)
+            changed = False
 
-        def concurrent_write(query):
-            nonlocal changed
-            if "FROM income i" in query and not changed:
-                writer.execute("UPDATE expenses SET vendor='Changed Vendor'")
-                writer.execute("UPDATE income SET source='Changed Client'")
-                writer.commit()
-                changed = True
+            def concurrent_write(query):
+                nonlocal changed
+                if "FROM income i" in query and not changed:
+                    writer.execute("UPDATE expenses SET vendor='Changed Vendor'")
+                    writer.execute("UPDATE income SET source='Changed Client'")
+                    writer.commit()
+                    changed = True
 
-        reader.set_trace_callback(concurrent_write)
-        output = self.root / "consistent_wal"
-        with (
-            patch("euercli.commands.export.get_db_connection", return_value=reader),
-            patch("euercli.commands.export.load_config", return_value={}),
-        ):
-            cmd_export(self.export_args(output))
-        self.assertTrue(changed)
-        folder = next(output.iterdir())
-        expense = (folder / "EÜR_2026_Ausgaben.csv").read_text(encoding="utf-8-sig")
-        income = (folder / "EÜR_2026_Einnahmen.csv").read_text(encoding="utf-8-sig")
-        self.assertIn("Original Vendor", expense)
-        self.assertIn("Only in WAL", expense)
-        self.assertIn("Original Client", income)
-        self.assertNotIn("Changed", expense + income)
-        manifest = json.loads((folder / "manifest.json").read_text())
-        self.assertEqual(expected_hash, manifest["database"]["snapshot_sha256"])
-        self.assertEqual(
-            "Changed Vendor", writer.execute("SELECT vendor FROM expenses").fetchone()[0]
-        )
+            reader.set_trace_callback(concurrent_write)
+            output = self.root / "consistent_wal"
+            with (
+                patch("euercli.commands.export.get_db_connection", return_value=reader),
+                patch("euercli.commands.export.load_config", return_value={}),
+            ):
+                cmd_export(self.export_args(output))
+            self.assertTrue(changed)
+            folder = next(output.iterdir())
+            expense = (folder / "EÜR_2026_Ausgaben.csv").read_text(encoding="utf-8-sig")
+            income = (folder / "EÜR_2026_Einnahmen.csv").read_text(encoding="utf-8-sig")
+            self.assertIn("Original Vendor", expense)
+            self.assertIn("Only in WAL", expense)
+            self.assertIn("Original Client", income)
+            self.assertNotIn("Changed", expense + income)
+            manifest = json.loads((folder / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(expected_hash, manifest["database"]["snapshot_sha256"])
+            self.assertEqual(
+                "Changed Vendor", writer.execute("SELECT vendor FROM expenses").fetchone()[0]
+            )
+        finally:
+            try:
+                reader.set_trace_callback(None)
+            except Exception:
+                pass
+            try:
+                reader.close()
+            except Exception:
+                pass
+            try:
+                writer.close()
+            except Exception:
+                pass
 
     def test_late_collision_preserves_empty_target_and_removes_staging(self):
         output = self.root / "late_collision"
@@ -445,7 +457,7 @@ class VersionedExportTestCase(BaseCLITestCase):
         self.db_path.unlink()
         project = self.root / ".euer"
         project.mkdir()
-        (project / "config.toml").write_text("invalid = [")
+        (project / "config.toml").write_text("invalid = [", encoding="utf-8")
         self.write_config("invalid = [")
         result = subprocess.run(
             [sys.executable, "-m", "euercli", "export", "--verify", str(folder)],
@@ -453,6 +465,7 @@ class VersionedExportTestCase(BaseCLITestCase):
             env={**self.env, "PYTHONPATH": str(Path(__file__).resolve().parents[1])},
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn("Manifestprüfung erfolgreich", result.stdout)
@@ -463,7 +476,7 @@ class VersionedExportTestCase(BaseCLITestCase):
         self.run_cli(["export", "--versioned", "--output", str(output)], check=True)
         folder = next(output.iterdir())
         manifest_path = folder / "manifest.json"
-        original = json.loads(manifest_path.read_text())
+        original = json.loads(manifest_path.read_text(encoding="utf-8"))
         cases = [
             ("sha256", None),
             ("sha256", "invalid"),
@@ -481,12 +494,12 @@ class VersionedExportTestCase(BaseCLITestCase):
                     del manifest["files"][0][key]
                 else:
                     manifest["files"][0][key] = value
-                manifest_path.write_text(json.dumps(manifest))
+                manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
                 result = self.run_cli(["export", "--verify", str(folder)])
                 self.assertEqual(1, result.returncode)
                 self.assertNotIn("Traceback", result.stderr)
                 self.assertNotIn("Manifestprüfung erfolgreich", result.stdout)
-        manifest_path.write_text(json.dumps(original))
+        manifest_path.write_text(json.dumps(original), encoding="utf-8")
         target = folder / original["files"][0]["relative_path"]
         target.unlink()
         target.mkdir()
@@ -497,11 +510,11 @@ class VersionedExportTestCase(BaseCLITestCase):
 
     def test_output_file_instead_of_directory_is_a_cli_error(self):
         output = self.root / "not_a_directory"
-        output.write_text("keep")
+        output.write_text("keep", encoding="utf-8")
         result = self.run_cli(["export", "--versioned", "--output", str(output)])
         self.assertEqual(1, result.returncode)
         self.assertNotIn("Traceback", result.stderr)
-        self.assertEqual("keep", output.read_text())
+        self.assertEqual("keep", output.read_text(encoding="utf-8"))
 
     def test_verify_without_path_uses_latest_completed_run_across_years(self):
         output = self.root / "latest_run"
@@ -515,8 +528,8 @@ class VersionedExportTestCase(BaseCLITestCase):
         latest = next(path for path in output.iterdir() if path != older)
         unfinished = output / ".versioned_stage_unfinished"
         shutil.copytree(latest, unfinished)
-        (older / "EÜR_2026_Ausgaben.csv").write_text("changed")
-        (unfinished / "EÜR_2025_Ausgaben.csv").write_text("unfinished")
+        (older / "EÜR_2026_Ausgaben.csv").write_text("changed", encoding="utf-8")
+        (unfinished / "EÜR_2025_Ausgaben.csv").write_text("unfinished", encoding="utf-8")
         for folder, modified in [(older, 1), (latest, 2), (unfinished, 3)]:
             os.utime(folder / "manifest.json", (modified, modified))
         result = self.run_cli(["export", "--verify", "--output", str(output)], check=True)

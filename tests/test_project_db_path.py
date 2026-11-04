@@ -15,7 +15,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 class ProjectDbPathTestCase(unittest.TestCase):
     def setUp(self):
-        self.temp_dir = tempfile.TemporaryDirectory()
+        self.temp_dir = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
         self.root = Path(self.temp_dir.name)
         self.project = self.root / "project"
         self.project.mkdir()
@@ -26,9 +26,13 @@ class ProjectDbPathTestCase(unittest.TestCase):
         self.env["USERPROFILE"] = str(self.home)
         self.env["APPDATA"] = str(self.home / "AppData")
         self.env["PYTHONPATH"] = str(REPO_ROOT)
+        self.env["PYTHONIOENCODING"] = "utf-8"
 
     def tearDown(self):
-        self.temp_dir.cleanup()
+        try:
+            self.temp_dir.cleanup()
+        except (PermissionError, OSError):
+            pass
 
     def run_cli(self, *args: str, check: bool = False):
         result = subprocess.run(
@@ -36,6 +40,7 @@ class ProjectDbPathTestCase(unittest.TestCase):
             cwd=self.project,
             env=self.env,
             text=True,
+            encoding="utf-8",
             capture_output=True,
         )
         if check and result.returncode != 0:

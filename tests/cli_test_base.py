@@ -14,7 +14,7 @@ CLI = [sys.executable, "-m", "euercli"]
 
 class BaseCLITestCase(unittest.TestCase):
     def setUp(self) -> None:
-        self.temp_dir = tempfile.TemporaryDirectory()
+        self.temp_dir = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
         self.root = Path(self.temp_dir.name)
         self.home = self.root / "home"
         self.home.mkdir()
@@ -27,7 +27,10 @@ class BaseCLITestCase(unittest.TestCase):
         self.run_cli(["init", "--create"], check=True)
 
     def tearDown(self) -> None:
-        self.temp_dir.cleanup()
+        try:
+            self.temp_dir.cleanup()
+        except (PermissionError, OSError):
+            pass
 
     def run_cli(self, args: list[str], input: str | None = None, check: bool = False):
         result = subprocess.run(

@@ -20,6 +20,7 @@ class SkillVersionCLITestCase(BaseCLITestCase):
             cwd=REPO_ROOT,
             env=self.env,
             text=True,
+            encoding="utf-8",
             capture_output=True,
         )
 
@@ -96,12 +97,13 @@ class SkillVersionCLITestCase(BaseCLITestCase):
     def test_doctor_keeps_skill_diagnosis_with_invalid_project_config(self) -> None:
         project_config = self.root / ".euer" / "config.toml"
         project_config.parent.mkdir()
-        project_config.write_text("broken [toml")
+        project_config.write_text("broken [toml", encoding="utf-8")
         result = subprocess.run(
             [sys.executable, "-m", "euercli", "doctor", "--json"],
             cwd=self.root,
             env={**self.env, "PYTHONPATH": str(REPO_ROOT)},
             text=True,
+            encoding="utf-8",
             capture_output=True,
         )
         self.assertEqual(1, result.returncode)
