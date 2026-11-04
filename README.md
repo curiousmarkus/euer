@@ -119,12 +119,13 @@ Wenn du mitarbeiten möchtest, lies [Mitwirken](CONTRIBUTING.md) und den
 
 ## 📄 Lizenz
 
-GNU AGPLv3 License
-Copyright (c) 2026 Markus
+GNU AGPLv3 License with Plugin Exception  
+Copyright (c) 2026 Markus Keller
 
-**Hinweis zur AGPL:**
-Diese Software ist frei verfügbar. Wenn du sie jedoch modifizierst und über ein Netzwerk (z.B. als Web-Service oder SaaS) anbietest, bist du verpflichtet, den vollständigen Quellcode deiner Version ebenfalls unter der AGPL offenzulegen.
-Dies stellt sicher, dass `euer` ein Gemeinschaftsprojekt bleibt und nicht proprietär vereinnahmt wird.
+**Hinweis zur AGPL & Plugin-Ausnahme:**
+`euer` ist freie Open-Source-Software. Erweiterungsmodule und Plugins (wie `euer-datev` oder `euer-invoice`), die über die offizielle Plugin-Schnittstelle (`euer.commands`) angebunden werden, fallen unter die ausdrückliche **Plugin-Ausnahme (AGPLv3 Section 7)** und müssen nicht unter der AGPL stehen. Sie können unter beliebigen eigenen Lizenzbedingungen betrieben und vertrieben werden.
+
+Modifikationen am Quellcode von `euer` selbst unterliegen der AGPLv3 und müssen bei Weitergabe oder Bereitstellung über ein Netzwerk offengelegt werden. Dies stellt sicher, dass der Kern von `euer` frei und auditierbar bleibt.
 
 ---
 

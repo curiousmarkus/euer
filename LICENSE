@@ -659,3 +659,26 @@ specific requirements.
 if any, to sign a "copyright disclaimer" for the program, if necessary.
 For more information on this, and how to apply and follow the GNU AGPL, see
 <https://www.gnu.org/licenses/>.
+
+----------------------------------------------------------------------
+
+Additional Permission under GNU AGPL version 3 section 7 (Plugin Exception)
+
+As a special exception, the copyright holders of "euer" grant permission to link,
+combine, or execute "euer" with independent software modules (including but not limited
+to plugins loaded dynamically via the Python entry point mechanism "euer.commands",
+or communicating through standard CLI subprocess interfaces) and to convey the resulting
+work, regardless of the license terms of those independent modules, provided that:
+
+1. The independent module communicates with "euer" solely through the documented
+   plugin interfaces (entry points under group "euer.commands") or through standard
+   command-line invocation.
+2. The independent module does not alter, replace, or copy internal source code of
+   "euer" itself, other than invoking its documented public CLI and service interfaces.
+3. The terms of the GNU Affero General Public License v3 continue to apply in all
+   respects to all parts of "euer" itself.
+
+An independent module linked or combined under this exception is not considered a
+modified or derivative work of "euer", and the copyleft provisions of AGPLv3 (including
+Section 13) do not extend to the independent module itself or require its source code
+to be disclosed.
