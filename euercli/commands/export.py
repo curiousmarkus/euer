@@ -2,9 +2,11 @@ import csv
 import json
 import os
 import shutil
+import sqlite3
 import sys
 import tempfile
 import uuid
+from contextlib import closing
 from datetime import datetime
 from pathlib import Path
 
@@ -24,6 +26,7 @@ from ..services.export import (
     compute_file_metadata,
     create_manifest,
     format_versioned_dir_name,
+    publish_export,
     verify_manifest,
 )
 from ..utils import format_rc_type
@@ -39,7 +42,17 @@ except ImportError:
 
 def cmd_export(args):
     """Exportiert Daten als CSV oder XLSX."""
-    config = load_config()
+    try:
+        _cmd_export(args)
+    except (OSError, sqlite3.Error, ValueError, ValidationError) as exc:
+        print(f"Fehler beim Export: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+
+def _cmd_export(args):
+    """Steuert Export und Manifestprüfung mit aufrufbezogener Fehlerbehandlung."""
+    explicit_verify = bool(getattr(args, "verify", None))
+    config = {} if explicit_verify else load_config()
     config_export_dir = get_export_dir(config)
 
     if args.output:
@@ -61,7 +74,9 @@ def cmd_export(args):
                 )
                 sys.exit(1)
             candidates = [
-                p for p in output_dir.iterdir() if p.is_dir() and (p / "manifest.json").exists()
+                p
+                for p in output_dir.iterdir()
+                if p.name.startswith("export_") and p.is_dir() and (p / "manifest.json").is_file()
             ]
             if not candidates:
                 print(
@@ -70,7 +85,7 @@ def cmd_export(args):
                     file=sys.stderr,
                 )
                 sys.exit(1)
-            candidates.sort(key=lambda p: p.name, reverse=True)
+            candidates.sort(key=lambda p: (p / "manifest.json").stat().st_mtime_ns, reverse=True)
             verify_path = candidates[0]
         else:
             verify_path = Path(target_str)
@@ -81,7 +96,7 @@ def cmd_export(args):
             for err in errors:
                 print(f"  ❌ {err}", file=sys.stderr)
             print(
-                "\nHinweis: Exportdateien wurden nach der Erstellung verändert oder gelöscht.",
+                "\nHinweis: Manifest und Exportdateien auf fehlende oder ungültige Angaben prüfen.",
                 file=sys.stderr,
             )
             sys.exit(1)
@@ -96,7 +111,7 @@ def cmd_export(args):
             print(f"  Erzeugungszeit: {manifest.get('created_at', '-')}")
             print(f"  euer-Version: {manifest.get('euer_version', '-')}")
             db_info = manifest.get("database", {})
-            if "snapshot_sha256" in db_info:
+            if isinstance(db_info, dict) and "snapshot_sha256" in db_info:
                 print(f"  DB-Snapshot (SHA-256): {db_info['snapshot_sha256']}")
         sys.exit(0)
 
@@ -149,12 +164,10 @@ def cmd_export(args):
             sys.exit(1)
 
     db_path = Path(args.db)
-    conn = get_db_connection(db_path)
 
     try:
         ledger_accounts = get_ledger_accounts(config)
     except ValidationError as exc:
-        conn.close()
         print(f"Fehler: {exc.message}", file=sys.stderr)
         sys.exit(1)
     ledger_account_numbers = {
@@ -183,75 +196,77 @@ def cmd_export(args):
         sacheinlagen_filter = "WHERE e.deleted_at IS NULL AND e.is_private_paid = 1"
         sacheinlagen_params = ()
 
-    has_private_transfers = (
-        conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='private_transfers'"
-        ).fetchone()
-        is not None
-    )
-    expense_columns = {
-        row["name"] for row in conn.execute("PRAGMA table_info(expenses)").fetchall()
-    }
-    has_private_expense_cols = {
-        "is_private_paid",
-        "private_classification",
-    }.issubset(expense_columns)
+    with closing(get_db_connection(db_path, read_only=True)) as conn:
+        # Eine Lesetransaktion bindet alle Abfragen und das Backup an denselben Stand.
+        conn.execute("BEGIN")
+        has_private_transfers = (
+            conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='private_transfers'"
+            ).fetchone()
+            is not None
+        )
+        expense_columns = {
+            row["name"] for row in conn.execute("PRAGMA table_info(expenses)").fetchall()
+        }
+        has_private_expense_cols = {
+            "is_private_paid",
+            "private_classification",
+        }.issubset(expense_columns)
 
-    # Ausgaben laden
-    expenses = conn.execute(
-        f"""SELECT e.receipt_name, e.payment_date, e.invoice_date, e.invoice_number, e.vendor,
-                  c.name as category, c.eur_key,
-                  e.amount_eur, e.account, e.ledger_account, e.foreign_amount, e.notes,
-                  e.rc_type, e.vat_input, e.vat_output, e.vat_rate, e.vat_code,
-                  e.entertainment_tip_eur, e.entertainment_vat_status
-           FROM expenses e
-           LEFT JOIN categories c ON e.category_id = c.id
-           {year_filter}
-           ORDER BY COALESCE(e.payment_date, e.invoice_date), e.id""",
-        year_params,
-    ).fetchall()
-
-    # Einnahmen laden
-    income = conn.execute(
-        f"""SELECT i.receipt_name, i.payment_date, i.invoice_date, i.invoice_number, i.source,
-                  c.name as category, c.eur_key,
-                  i.amount_eur, i.account, i.ledger_account, i.foreign_amount, i.notes,
-                  i.vat_output, i.vat_rate, i.vat_code
-           FROM income i
-           LEFT JOIN categories c ON i.category_id = c.id
-           {income_filter}
-           ORDER BY COALESCE(i.payment_date, i.invoice_date), i.id""",
-        income_params,
-    ).fetchall()
-
-    if has_private_transfers:
-        private_transfers = conn.execute(
-            f"""SELECT p.id, p.date, p.type, p.amount_eur, p.description,
-                      p.notes, p.related_expense_id
-               FROM private_transfers p
-               {private_filter}
-               ORDER BY p.date, p.id""",
-            private_params,
-        ).fetchall()
-    else:
-        private_transfers = []
-
-    if has_private_expense_cols:
-        sacheinlagen = conn.execute(
-            f"""SELECT e.id, e.payment_date, e.invoice_date, e.vendor,
-                      c.name as category, e.amount_eur,
-                      e.account, e.private_classification
+        # Ausgaben laden
+        expenses = conn.execute(
+            f"""SELECT e.receipt_name, e.payment_date, e.invoice_date, e.invoice_number, e.vendor,
+                      c.name as category, c.eur_key,
+                      e.amount_eur, e.account, e.ledger_account, e.foreign_amount, e.notes,
+                      e.rc_type, e.vat_input, e.vat_output, e.vat_rate, e.vat_code,
+                      e.entertainment_tip_eur, e.entertainment_vat_status
                FROM expenses e
                LEFT JOIN categories c ON e.category_id = c.id
-               {sacheinlagen_filter}
+               {year_filter}
                ORDER BY COALESCE(e.payment_date, e.invoice_date), e.id""",
-            sacheinlagen_params,
+            year_params,
         ).fetchall()
-    else:
-        sacheinlagen = []
 
-    db_snapshot_hash = compute_db_snapshot_hash(conn) if is_versioned else ""
-    conn.close()
+        # Einnahmen laden
+        income = conn.execute(
+            f"""SELECT i.receipt_name, i.payment_date, i.invoice_date, i.invoice_number, i.source,
+                      c.name as category, c.eur_key,
+                      i.amount_eur, i.account, i.ledger_account, i.foreign_amount, i.notes,
+                      i.vat_output, i.vat_rate, i.vat_code
+               FROM income i
+               LEFT JOIN categories c ON i.category_id = c.id
+               {income_filter}
+               ORDER BY COALESCE(i.payment_date, i.invoice_date), i.id""",
+            income_params,
+        ).fetchall()
+
+        if has_private_transfers:
+            private_transfers = conn.execute(
+                f"""SELECT p.id, p.date, p.type, p.amount_eur, p.description,
+                          p.notes, p.related_expense_id
+                   FROM private_transfers p
+                   {private_filter}
+                   ORDER BY p.date, p.id""",
+                private_params,
+            ).fetchall()
+        else:
+            private_transfers = []
+
+        if has_private_expense_cols:
+            sacheinlagen = conn.execute(
+                f"""SELECT e.id, e.payment_date, e.invoice_date, e.vendor,
+                          c.name as category, e.amount_eur,
+                          e.account, e.private_classification
+                   FROM expenses e
+                   LEFT JOIN categories c ON e.category_id = c.id
+                   {sacheinlagen_filter}
+                   ORDER BY COALESCE(e.payment_date, e.invoice_date), e.id""",
+                sacheinlagen_params,
+            ).fetchall()
+        else:
+            sacheinlagen = []
+
+        db_snapshot_hash = compute_db_snapshot_hash(conn) if is_versioned else ""
 
     def category_label(name: str | None, category_key: str | None) -> str:
         if not name:
@@ -643,7 +658,7 @@ def cmd_export(args):
             tax_mode = config.get("tax", {}).get("mode", "small_business")
             manifest_data = create_manifest(
                 euer_version=VERSION,
-                created_at=now.isoformat(timespec="seconds"),
+                created_at=now.isoformat(timespec="microseconds"),
                 report_year=year,
                 tax_mode=tax_mode,
                 export_format=args.format,
@@ -659,7 +674,7 @@ def cmd_export(args):
                 raise FileExistsError(
                     f"Versionierter Exportordner existiert bereits: {versioned_target_dir}"
                 )
-            os.rename(tmp_stage_dir, versioned_target_dir)
+            publish_export(tmp_stage_dir, versioned_target_dir)
             print(f"Versionierter Export erfolgreich erstellt: {versioned_target_dir}")
             print(f"Manifest: {versioned_target_dir / 'manifest.json'}")
             for p in generated_files:

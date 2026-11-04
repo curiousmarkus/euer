@@ -32,8 +32,9 @@ class ExportGuardrailsTestCase(BaseCLITestCase):
             db=str(self.db_path), output=str(export_dir), year=None, format="csv", force=True
         )
         with patch("euercli.commands.export.os.replace", side_effect=fail_second_install):
-            with self.assertRaises(OSError):
+            with self.assertRaises(SystemExit) as ctx:
                 cmd_export(args)
+            self.assertEqual(1, ctx.exception.code)
         self.assertEqual(before, {p.name: p.read_bytes() for p in export_dir.iterdir()})
 
     def test_export_aborts_when_files_exist_without_force(self):

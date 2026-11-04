@@ -51,5 +51,30 @@ Der Modus ist keine rechtlich revisionssichere Archivierung.
 
 ## Dokumentation nach Implementierung
 
-`docs/USER_GUIDE.md`, `docs/USER_JOURNEY.md`, `docs/FAQ.md`,
+`docs/skills/euer-buchhaltung/references/cli_reference.md`, `docs/USER_JOURNEY.md`,
 `docs/skills/euer-buchhaltung/SKILL.md` und `docs/RELEASE_NOTES.md`.
+
+Die ursprünglich genannten `docs/USER_GUIDE.md` und `docs/FAQ.md` existieren
+im Repository nicht; ihre Exportanleitung liegt in der CLI-Referenz.
+
+## Abnahmematrix (Review)
+
+Die Fälle laufen in `tests/test_export_versioned.py` (Klasse
+`VersionedExportTestCase`), sofern nicht anders genannt.
+
+| Fall | Nachweis |
+|------|----------|
+| CSV, Parameter, Größen, Prüfsummen, Zeilenzahlen | `test_versioned_export_creates_folder_and_valid_manifest` |
+| Zwei Läufe innerhalb derselben Sekunde mit Zeitzone | `test_two_exports_in_same_second_have_distinct_directories` |
+| Vorhandenes Ziel, auch mit `--force` und spätem Konkurrenzzugriff | `test_versioned_export_aborts_on_collision_without_overwriting`, `test_late_collision_preserves_empty_target_and_removes_staging`, `test_dangling_symlink_target_is_not_replaced_even_with_force` |
+| Fehlendes XLSX-Extra | `test_missing_xlsx_extra_creates_no_output` |
+| Fehler während Erstellung | `test_versioned_export_error_during_creation_leaves_no_folder`, `test_output_file_instead_of_directory_is_a_cli_error` |
+| Aktive WAL-Daten und paralleler Writer; Export und Hash desselben Standes | `test_wal_writer_cannot_change_export_snapshot_or_hash` |
+| Nachträgliche Änderung / Löschung | `test_versioned_export_verify_detects_tampered_file`, `test_versioned_export_verify_detects_missing_file` |
+| Fehlende Prüfdaten, ungültige Pfade, Verzeichnis statt Datei | `test_verify_rejects_invalid_file_metadata_and_unreadable_files` |
+| Automatische Auswahl des letzten abgeschlossenen Laufs über Jahresgrenzen | `test_verify_without_path_uses_latest_completed_run_across_years` |
+| Prüfung ohne DB, Skill-Bestätigung und gültige Config | `test_verify_works_without_database_skill_or_project_config` |
+| XLSX ohne Zeilenzahl, erfolgreiche Prüfung | `test_versioned_export_xlsx` |
+| Standardexport: Schutz, explizites Überschreiben und Rollback | `tests/test_export_guardrails.py` |
+
+Diese Regressionstests sind keine plattformübergreifende Release-Abnahme.

@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import re
 import sqlite3
+import sys
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -80,8 +83,44 @@ def create_manifest(
 def format_versioned_dir_name(year: int | None, now: datetime, version: str) -> str:
     """Erzeugt einen eindeutigen, dateisystem-kompatiblen Ordnernamen."""
     year_str = str(year) if year is not None else "all"
-    ts_str = now.strftime("%Y%m%dT%H%M%S%z")
+    ts_str = now.strftime("%Y%m%dT%H%M%S%f%z")
     return f"export_{year_str}_{ts_str}_v{version}"
+
+
+def publish_export(staging_dir: Path, target_dir: Path) -> None:
+    """Verschiebt den Lauf atomar, ohne auch ein leeres Ziel zu ersetzen.
+
+    Fehlt die Dateisystem-Unterstützung, wird sicher abgebrochen.
+    """
+    if sys.platform == "win32":
+        os.rename(staging_dir, target_dir)  # Windows ersetzt bestehende Ziele niemals.
+        return
+
+    import ctypes
+    import errno
+
+    libc = ctypes.CDLL(None, use_errno=True)
+    source, target = os.fsencode(staging_dir), os.fsencode(target_dir)
+    if sys.platform == "darwin" and hasattr(libc, "renamex_np"):
+        rename = libc.renamex_np
+        rename.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_uint]
+        arguments = (source, target, 0x00000004)  # RENAME_EXCL
+    elif sys.platform.startswith("linux") and hasattr(libc, "renameat2"):
+        rename = libc.renameat2
+        rename.argtypes = [
+            ctypes.c_int,
+            ctypes.c_char_p,
+            ctypes.c_int,
+            ctypes.c_char_p,
+            ctypes.c_uint,
+        ]
+        arguments = (-100, source, -100, target, 1)  # AT_FDCWD, RENAME_NOREPLACE
+    else:
+        raise OSError(errno.ENOTSUP, "Atomarer Export ohne Überschreiben nicht unterstützt")
+    rename.restype = ctypes.c_int
+    if rename(*arguments) != 0:
+        error = ctypes.get_errno()
+        raise OSError(error, os.strerror(error), str(target_dir))
 
 
 def verify_manifest(target_path: Path) -> tuple[bool, list[str], dict[str, Any] | None]:
@@ -100,7 +139,7 @@ def verify_manifest(target_path: Path) -> tuple[bool, list[str], dict[str, Any] 
     try:
         manifest_text = manifest_path.read_text(encoding="utf-8")
         manifest = json.loads(manifest_text)
-    except Exception as exc:
+    except (OSError, UnicodeError, ValueError) as exc:
         return False, [f"Manifest konnte nicht gelesen werden: {exc}"], None
 
     if not isinstance(manifest, dict):
@@ -120,6 +159,7 @@ def verify_manifest(target_path: Path) -> tuple[bool, list[str], dict[str, Any] 
 
     base_dir = manifest_path.parent
     errors: list[str] = []
+    seen_paths: set[str] = set()
 
     for item in files_list:
         if not isinstance(item, dict):
@@ -131,20 +171,48 @@ def verify_manifest(target_path: Path) -> tuple[bool, list[str], dict[str, Any] 
             errors.append("Dateieintrag ohne relativen Pfad.")
             continue
 
-        file_path = base_dir / rel_path
-        if not file_path.exists():
+        relative = Path(rel_path)
+        if relative.is_absolute() or ".." in relative.parts or "\\" in rel_path:
+            errors.append(f"Ungültiger relativer Dateipfad: {rel_path}")
+            continue
+        if rel_path in seen_paths:
+            errors.append(f"Doppelter Dateieintrag: {rel_path}")
+            continue
+        seen_paths.add(rel_path)
+
+        expected_size = item.get("size_bytes")
+        expected_hash = item.get("sha256")
+        if type(expected_size) is not int or expected_size < 0:
+            errors.append(f"Ungültige oder fehlende Bytegröße für {rel_path}")
+        if not isinstance(expected_hash, str) or not re.fullmatch(r"[0-9a-f]{64}", expected_hash):
+            errors.append(f"Ungültige oder fehlende SHA-256-Prüfsumme für {rel_path}")
+        expected_lines = item.get("line_count")
+        if "line_count" in item and (
+            relative.suffix.lower() != ".csv"
+            or type(expected_lines) is not int
+            or expected_lines < 0
+        ):
+            errors.append(f"Ungültige Zeilenzahl für {rel_path}")
+
+        file_path = base_dir / relative
+        try:
+            if not file_path.resolve().is_relative_to(base_dir.resolve()):
+                errors.append(f"Dateipfad außerhalb des Exportordners: {rel_path}")
+                continue
+            content_bytes = file_path.read_bytes()
+        except FileNotFoundError:
             errors.append(f"Exportdatei fehlt: {rel_path}")
             continue
+        except (OSError, ValueError, RuntimeError) as exc:
+            errors.append(f"Exportdatei nicht lesbar: {rel_path}: {exc}")
+            continue
 
-        content_bytes = file_path.read_bytes()
-        expected_size = item.get("size_bytes")
         if expected_size is not None and len(content_bytes) != expected_size:
             errors.append(
                 f"Dateigröße weicht ab für {rel_path}: erwartet {expected_size} Bytes, "
                 f"gefunden {len(content_bytes)} Bytes"
             )
 
-        expected_hash = item.get("sha256")
         actual_hash = hashlib.sha256(content_bytes).hexdigest()
         if expected_hash and actual_hash != expected_hash:
             errors.append(
@@ -152,7 +220,6 @@ def verify_manifest(target_path: Path) -> tuple[bool, list[str], dict[str, Any] 
                 f"berechnet {actual_hash}"
             )
 
-        expected_lines = item.get("line_count")
         if expected_lines is not None:
             text = content_bytes.decode("utf-8-sig", errors="replace")
             actual_lines = len(text.splitlines())

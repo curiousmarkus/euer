@@ -46,7 +46,7 @@ Ersteinrichtung (interaktiv oder --set KEY VALUE)
 |---|---|
 | `--set` | Setzt einen Config-Wert direkt (z.B. tax.mode small_business) |
 
-**Beispiel:** `euer setup --set skill.version "1.4.0"`
+**Beispiel:** `euer setup --set skill.version "1.4.1"`
 
 ### euer import
 
@@ -664,6 +664,11 @@ Exportiert Daten
 
 **Beispiel:** `euer export --year 2026 --versioned`
 
+`--verify PFAD` benötigt weder Datenbank noch Skill-Bestätigung. PFAD bezeichnet
+entweder den Exportordner oder seine `manifest.json`. Ohne PFAD wird anhand des
+Änderungszeitpunkts der Manifestdatei der zuletzt geschriebene Lauf im
+Ausgabeverzeichnis gewählt; für einen bestimmten Lauf immer PFAD angeben.
+
 Ohne `--year` werden alle Jahre exportiert; Standardformat ist CSV, XLSX
 benötigt `openpyxl`. Der Export schreibt Ausgaben, Einnahmen, direkte
 Privatvorgänge und aus privat bezahlten Ausgaben abgeleitete Sacheinlagen.
@@ -671,11 +676,20 @@ Vorhandene Zieldateien blockieren den Standardexport; `--force` überschreibt si
 erst nach Prüfung des Zielordners. Gelöschte Buchungen bleiben ausgeschlossen.
 
 Mit `--versioned` wird ein dedizierter, zeitgestempelter Ordner (inklusive
-Zeitzone und euer-Version) angelegt, der alle Exportdateien sowie eine
+Mikrosekunden, Zeitzone und euer-Version) angelegt, der alle Exportdateien sowie eine
 `manifest.json` mit SHA-256-Prüfsummen, DB-Snapshot-Hash und Bytegrößen
 enthält. Vorhandene Ordner werden niemals überschrieben; bei Kollision bricht
-der Befehl ab. Mit `euer export --verify [PFAD]` kann die technische Unversehrtheit
-eines versionierten Exportlaufs nachträglich überprüft werden. Ein Export ist
+der Befehl ab, auch mit `--force`. Der Lauf wird atomar veröffentlicht;
+unterstützt das Dateisystem kein Verschieben ohne Überschreiben, erfolgt ein
+Abbruch ohne abgeschlossenen Lauf. Alle Exportdateien und der gespeicherte
+DB-Snapshot-Hash stammen aus demselben lesenden Datenstand, auch bei aktivem WAL.
+CSV-`line_count` zählt Textzeilen einschließlich Kopfzeile; mehrzeilige Felder
+können mehrere Textzeilen enthalten. XLSX-Dateien erhalten keine Zeilenzahl.
+Mit `euer export --verify [PFAD]` kann die technische Unversehrtheit
+eines versionierten Exportlaufs nachträglich überprüft werden. Fehlende oder
+ungültige Prüfdaten und nicht lesbare Dateien führen zu Exit-Code 1. Die Prüfung
+belegt weder steuerliche Richtigkeit noch Vollständigkeit der Buchhaltung;
+Dateien und Manifest können gemeinsam geändert oder gelöscht werden. Ein Export ist
 weder vollständiges SQLite-Backup noch rechtlich revisionssicheres Archiv.
 
 ### euer summary

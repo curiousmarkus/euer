@@ -2,7 +2,7 @@
 name: euer-buchhaltung
 description: "Nutze diesen Skill für deutsche EÜR-Buchhaltung mit euer: Rechnungen und Belege buchen, Kontoauszüge einlesen und abgleichen, Einnahmen, Ausgaben und Privatvorgänge erfassen, Buchungen korrigieren, Belege prüfen, EÜR und UStVA auswerten oder die Buchhaltung einrichten. Gilt auch für allgemeine Agenten ohne separate Agenten-Rolle."
 metadata:
-  version: "1.4.0"
+  version: "1.4.1"
 ---
 
 # EÜR Buchhaltung
@@ -24,7 +24,7 @@ gehören in das persönliche Mandanten-Dossier (`AGENTS.md`), nicht in den Skill
 
 Nach einem Update lies die neue `SKILL.md` und benötigte Referenzen oder beginne
 eine neue Sitzung. Bestätige **erst danach** die Version aus deiner tatsächlich
-geladenen `SKILL.md` mit `euer setup --set skill.version "1.4.0"`.
+geladenen `SKILL.md` mit `euer setup --set skill.version "1.4.1"`.
 Die Bestätigung ist eine Selbstauskunft. Bei fehlenden Update-Rechten informiere
 den Nutzer; `--ignore-skill-version` ermöglicht einen einzelnen CLI-Aufruf.
 
@@ -103,6 +103,14 @@ den Nutzer; `--ignore-skill-version` ermöglicht einen einzelnen CLI-Aufruf.
 
 Für privat bezahlte Ausgaben, Ausgleichszahlungen, Bewirtung, Prepaid,
 Cashback und andere Sonderfälle lies vor der Buchung die jeweilige Fachregel.
+
+### Exporte prüfen und weitergeben
+
+Für getrennt aufbewahrte Exportläufe nutze `euer export --year YYYY --versioned`
+und prüfe anschließend den ausgegebenen Ordner mit `euer export --verify PFAD`.
+Gib den Lauf erst bei Exit-Code 0 weiter; kläre Prüfungsfehler anhand der
+[Exportreferenz](references/cli_reference.md#euer-export). Die Prüfung vergleicht
+Dateien mit dem lokalen Manifest und ersetzt die fachliche Kontrolle nicht.
 
 ### Jahresabschluss & Übergabe an Steuerberatung (DATEV)
 

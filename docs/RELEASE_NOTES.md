@@ -8,7 +8,7 @@ Für Installationen ab 0.8.1 ergänzen sie die normale Update-Sequenz aus der
 pipx upgrade euer
 euer doctor
 # Skill vollständig aus dem Bundle-Pfad installieren und neu laden
-euer setup --set skill.version "1.4.0"
+euer setup --set skill.version "1.4.1"
 euer init
 euer incomplete list
 euer summary --year 2026
@@ -38,6 +38,30 @@ Bei jedem neuen Release steht der konkrete Handlungsbedarf für Skill, Rolle,
 Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
 „Agenten-Dateien“. Die wiederkehrende Prozedur beschreibt der
 [Installationsreferenz](skills/euer-buchhaltung/references/installation_and_setup.md#agenten-dateien-aktualisieren).
+
+## Unveröffentlicht
+
+- **Versionierter Export:** CSV/XLSX und Manifesthash beziehen sich auch bei
+  parallelen Schreibzugriffen auf denselben lesenden DB-Snapshot. Ordnernamen
+  enthalten Mikrosekunden; auch ein während der Erstellung angelegtes Ziel
+  wird niemals ersetzt. Unterstützt das Dateisystem kein atomares Verschieben
+  ohne Überschreiben, bricht der Lauf mit einer Fehlermeldung ab.
+- **Manifestprüfung:** `euer export --verify PFAD` funktioniert ohne Datenbank,
+  Projekt-Config oder Skill-Bestätigung. Fehlende/ungültige Prüfsummen und
+  Bytegrößen sowie nicht lesbare Dateien führen zu einem Prüfungsfehler.
+  Ohne PFAD wird der zuletzt geschriebene Export im Ausgabeverzeichnis geprüft.
+
+**Upgrade:** Keine DB-Migration erforderlich. Für den nächsten Patch-Release
+vorgesehen. Bereits weitergegebene Exporte bleiben unverändert. Bei Exporten
+mit Version 0.16.0, die während paralleler Buchungen entstanden sind, den Lauf
+bei Bedarf neu erstellen; die Dateiprüfung kann deren Snapshot-Konsistenz
+nachträglich nicht belegen.
+
+**Agenten-Dateien:** Skill 1.4.0 → 1.4.1: Vollständiges Bundle einschließlich
+Referenzen ersetzen, neu laden und mit
+`euer setup --set skill.version "1.4.1"` bestätigen. Vor der Weitergabe eines
+versionierten Exports die Manifestprüfung gemäß CLI-Referenz ausführen.
+Persönliche Mandanten-Dossiers benötigen keine Änderung.
 
 ## 0.16.0
 

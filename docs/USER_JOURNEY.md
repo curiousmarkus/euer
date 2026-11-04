@@ -428,7 +428,9 @@ euer export --year 2026 --format csv --versioned
 `--versioned` legt einen dedizierten, zeitgestempelten Ordner mit `manifest.json`
 an, der die SHA-256-Prüfsummen der Exportdateien sowie den DB-Snapshot-Hash
 festhält und versehentliches Überschreiben verhindert. Mit
-`euer export --verify PFAD` kann die Dateiunversehrtheit später kontrolliert werden.
+`euer export --verify PFAD` kann die Dateiunversehrtheit später auch ohne die
+ursprüngliche Datenbank kontrolliert werden. PFAD ist der ausgegebene Exportordner
+oder seine `manifest.json`; vor einer Weitergabe muss die Prüfung erfolgreich sein.
 
 Auch beim Jahresabschluss ist ein leerer `receipt unbooked`-Scan nur ein
 Zuordnungscheck der berücksichtigten Dateien, kein Nachweis für vollständige

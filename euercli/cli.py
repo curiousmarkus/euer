@@ -921,10 +921,12 @@ def main(argv: list[str] | None = None) -> None:
             and any(option in (external_args or []) for option in {"-h", "--help", "--version"})
         )
     )
+    export_verify = args.command == "export" and args.verify is not None
     exempt = (
         args.command in {"doctor", "config"}
         or (args.command == "setup" and args.set is not None and args.set[0] == "skill.version")
         or datev_info_only
+        or export_verify
     )
     if not exempt:
         skill = skill_status()
@@ -962,6 +964,9 @@ def main(argv: list[str] | None = None) -> None:
                 )
                 parser.exit(1)
             parser.exit(1, message + "\n")
+    if export_verify:
+        args.func(args)
+        return
     if datev_info_only:
         if external:
             forwarded = list(external_args or [])

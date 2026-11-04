@@ -443,7 +443,7 @@ Offene Change Requests werden innerhalb der jeweiligen Spec dokumentiert.
 | 018 | Bewirtungsaufwendungen, Vorsteuer und EÜR-Zuordnung (inkl. Review-Korrekturen) | Implementiert |
 | 019 | `euer doctor` (Umgebungs- und Pre-Flight-Diagnose) | Implementiert |
 | 020 | Transparente und sichere DB-Migrationen | Implementiert |
-| 021 | Versionierte Exportläufe mit Manifest | Implementiert |
+| 021 | Versionierte Exportläufe mit Manifest (inkl. Snapshot- und Kollisionsschutz) | Implementiert |
 | 022 | Versionierter Skill als primäre Dokumentation und Bestätigung in der Config | Implementiert |
 | 023 | Begründungen und Annahmen an Buchungen und Privatvorgängen, Audit-Historie und Vollständigkeitsfilter | Offen |
 | 024 | Versionierter Regelkatalog und `--rule` als alternative Nachweisgrundlage | Offen |
