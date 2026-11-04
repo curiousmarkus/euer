@@ -39,7 +39,7 @@ Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
 „Agenten-Dateien“. Die wiederkehrende Prozedur beschreibt der
 [Installationsreferenz](skills/euer-buchhaltung/references/installation_and_setup.md#agenten-dateien-aktualisieren).
 
-## Unveröffentlicht
+## 0.16.0
 
 - **Versionierter Export mit Manifest (Spec 021):** Neuer optionaler Modus
   `euer export --versioned` legt einen eindeutigen, zeitgestempelten Unterordner
