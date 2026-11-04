@@ -39,7 +39,7 @@ Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
 „Agenten-Dateien“. Die wiederkehrende Prozedur beschreibt der
 [Installationsreferenz](skills/euer-buchhaltung/references/installation_and_setup.md#agenten-dateien-aktualisieren).
 
-## 0.16.1
+## 0.16.2
 
 - **Versionierter Export:** CSV/XLSX und Manifesthash beziehen sich auch bei
   parallelen Schreibzugriffen auf denselben lesenden DB-Snapshot. Ordnernamen
@@ -50,6 +50,8 @@ Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
   Projekt-Config oder Skill-Bestätigung. Fehlende/ungültige Prüfsummen und
   Bytegrößen sowie nicht lesbare Dateien führen zu einem Prüfungsfehler.
   Ohne PFAD wird der zuletzt geschriebene Export im Ausgabeverzeichnis geprüft.
+- **Plattform-Kompatibilität:** UTF-8-Encoding und Dateisystem-/SQLite-Bereinigung
+  unter Windows gehärtet.
 
 **Upgrade:** Keine DB-Migration erforderlich. Für den nächsten Patch-Release
 vorgesehen. Bereits weitergegebene Exporte bleiben unverändert. Bei Exporten
