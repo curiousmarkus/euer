@@ -41,6 +41,16 @@ Agenten-Adapter und Mandanten-Dossier direkt im Versionsabschnitt unter
 
 ## Unveröffentlicht
 
+- **Versionierter Export mit Manifest (Spec 021):** Neuer optionaler Modus
+  `euer export --versioned` legt einen eindeutigen, zeitgestempelten Unterordner
+  im Exportverzeichnis an (z. B. `export_2026_20261104T210000+0100_v0.16.0`).
+  Der Ordner enthält alle Exportdateien sowie eine `manifest.json` mit
+  SHA-256-Prüfsummen, Bytegrößen, Zeilenzahlen (für CSV), Parametern und dem
+  kryptografischen Hash des transaktionalen DB-Snapshots (auch bei aktivem WAL).
+  Kollidierende Ordner werden niemals überschrieben; die Erstellung erfolgt atomar
+  über ein Staging-Verzeichnis. Mit `euer export --verify [PFAD]` kann die
+  technische Unversehrtheit der Dateien nachträglich gegen das Manifest geprüft
+  werden (keine GoBD- oder Steuerprüfung).
 - **Import zählt Vorkommen:** Zwei identische Zeilen in einer CSV-/JSONL-Datei
   werden als zwei Vorgänge erhalten. Vorhandene aktive Buchungen decken jeweils
   höchstens eine Importzeile ab; ein Wiederimport derselben Datei überspringt

@@ -422,8 +422,13 @@ euer receipt check --year 2026
 euer receipt unbooked --year 2026 --format json
 euer summary --year 2026 --include-private
 euer private-summary --year 2026
-euer export --year 2026 --format csv --output exports/2026
+euer export --year 2026 --format csv --versioned
 ```
+
+`--versioned` legt einen dedizierten, zeitgestempelten Ordner mit `manifest.json`
+an, der die SHA-256-Prüfsummen der Exportdateien sowie den DB-Snapshot-Hash
+festhält und versehentliches Überschreiben verhindert. Mit
+`euer export --verify PFAD` kann die Dateiunversehrtheit später kontrolliert werden.
 
 Auch beim Jahresabschluss ist ein leerer `receipt unbooked`-Scan nur ein
 Zuordnungscheck der berücksichtigten Dateien, kein Nachweis für vollständige

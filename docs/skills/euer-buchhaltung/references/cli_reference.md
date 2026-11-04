@@ -648,7 +648,7 @@ Papierkorb endgültig leeren
 Exportiert Daten
 
 **Syntax:** `euer export [-h] [--year YEAR] [--format {csv,xlsx}] [--output OUTPUT]
-                [--force]`
+                [--force] [--versioned] [--verify [PFAD]]`
 
 **Voraussetzung:** Passende Skill-Bestätigung und, außer bei Einrichtung/Diagnose, eine vorhandene Datenbank.
 **Ausgabe:** Deutschsprachige Bestätigung und Exportdateien (CSV oder XLSX); Fehler auf stderr.
@@ -659,16 +659,24 @@ Exportiert Daten
 | `--format` | Exportformat (`csv` oder `xlsx`) |
 | `--output` | Ausgabeverzeichnis (Config `exports.directory` oder `./exports`) |
 | `--force` | Bestehende Exportdateien überschreiben |
+| `--versioned` | Versionierten Exportlauf mit Manifest in separatem Ordner erstellen |
+| `--verify` | Versionierten Exportlauf anhand des Manifests auf Unversehrtheit prüfen |
 
-**Beispiel:** `euer export --year 2026`
+**Beispiel:** `euer export --year 2026 --versioned`
 
 Ohne `--year` werden alle Jahre exportiert; Standardformat ist CSV, XLSX
 benötigt `openpyxl`. Der Export schreibt Ausgaben, Einnahmen, direkte
 Privatvorgänge und aus privat bezahlten Ausgaben abgeleitete Sacheinlagen.
-Vorhandene Zieldateien blockieren den Export; `--force` überschreibt sie
+Vorhandene Zieldateien blockieren den Standardexport; `--force` überschreibt sie
 erst nach Prüfung des Zielordners. Gelöschte Buchungen bleiben ausgeschlossen.
-Der Dateisatz wird nicht als Ganzes atomar ersetzt. Ein Export ist weder
-vollständiges SQLite-Backup noch rechtlich revisionssicheres Archiv.
+
+Mit `--versioned` wird ein dedizierter, zeitgestempelter Ordner (inklusive
+Zeitzone und euer-Version) angelegt, der alle Exportdateien sowie eine
+`manifest.json` mit SHA-256-Prüfsummen, DB-Snapshot-Hash und Bytegrößen
+enthält. Vorhandene Ordner werden niemals überschrieben; bei Kollision bricht
+der Befehl ab. Mit `euer export --verify [PFAD]` kann die technische Unversehrtheit
+eines versionierten Exportlaufs nachträglich überprüft werden. Ein Export ist
+weder vollständiges SQLite-Backup noch rechtlich revisionssicheres Archiv.
 
 ### euer summary
 

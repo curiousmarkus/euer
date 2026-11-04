@@ -712,6 +712,19 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Bestehende Exportdateien überschreiben",
     )
+    export_parser.add_argument(
+        "--versioned",
+        action="store_true",
+        help="Versionierten Exportlauf mit Manifest in separatem Ordner erstellen",
+    )
+    export_parser.add_argument(
+        "--verify",
+        nargs="?",
+        const="",
+        default=None,
+        metavar="PFAD",
+        help="Versionierten Exportlauf anhand des Manifests auf Unversehrtheit prüfen",
+    )
     export_parser.set_defaults(func=cmd_export)
 
     # --- summary ---

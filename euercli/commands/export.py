@@ -1,9 +1,14 @@
 import csv
+import json
 import os
+import shutil
 import sys
+import tempfile
 import uuid
+from datetime import datetime
 from pathlib import Path
 
+from .. import VERSION
 from ..config import get_export_dir, get_ledger_accounts, load_config
 from ..constants import DEFAULT_EXPORT_DIR
 from ..db import get_db_connection
@@ -13,6 +18,13 @@ from ..services.eur import (
     get_category_display_name,
     get_category_eur_line,
     is_entertainment_category,
+)
+from ..services.export import (
+    compute_db_snapshot_hash,
+    compute_file_metadata,
+    create_manifest,
+    format_versioned_dir_name,
+    verify_manifest,
 )
 from ..utils import format_rc_type
 
@@ -27,11 +39,118 @@ except ImportError:
 
 def cmd_export(args):
     """Exportiert Daten als CSV oder XLSX."""
+    config = load_config()
+    config_export_dir = get_export_dir(config)
+
+    if args.output:
+        output_dir = Path(args.output)
+    elif config_export_dir:
+        output_dir = Path(config_export_dir)
+    else:
+        output_dir = DEFAULT_EXPORT_DIR
+
+    # Modus: Manifestprüfung (--verify)
+    if getattr(args, "verify", None) is not None:
+        target_str = args.verify.strip() if isinstance(args.verify, str) else ""
+        if not target_str:
+            if not output_dir.exists():
+                print(
+                    f"Fehler: Ausgabeverzeichnis {output_dir} existiert nicht.\n"
+                    "Bitte Pfad angeben: euer export --verify PFAD",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+            candidates = [
+                p for p in output_dir.iterdir() if p.is_dir() and (p / "manifest.json").exists()
+            ]
+            if not candidates:
+                print(
+                    f"Fehler: Kein versionierter Exportordner mit manifest.json in {output_dir} gefunden.\n"
+                    "Bitte Pfad angeben: euer export --verify PFAD",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+            candidates.sort(key=lambda p: p.name, reverse=True)
+            verify_path = candidates[0]
+        else:
+            verify_path = Path(target_str)
+
+        is_valid, errors, manifest = verify_manifest(verify_path)
+        if not is_valid:
+            print("Fehler bei der Manifestprüfung:", file=sys.stderr)
+            for err in errors:
+                print(f"  ❌ {err}", file=sys.stderr)
+            print(
+                "\nHinweis: Exportdateien wurden nach der Erstellung verändert oder gelöscht.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+        base_dir = verify_path if verify_path.is_dir() else verify_path.parent
+        files_count = len(manifest.get("files", [])) if manifest else 0
+        print(
+            f"✓ Manifestprüfung erfolgreich: Alle {files_count} Dateien stimmen mit dem Manifest überein."
+        )
+        print(f"  Ordner: {base_dir}")
+        if manifest:
+            print(f"  Erzeugungszeit: {manifest.get('created_at', '-')}")
+            print(f"  euer-Version: {manifest.get('euer_version', '-')}")
+            db_info = manifest.get("database", {})
+            if "snapshot_sha256" in db_info:
+                print(f"  DB-Snapshot (SHA-256): {db_info['snapshot_sha256']}")
+        sys.exit(0)
+
+    is_versioned = bool(getattr(args, "versioned", False))
+    if is_versioned and args.format == "xlsx" and not HAS_OPENPYXL:
+        print(
+            "Fehler: openpyxl nicht installiert. Bitte 'pip install openpyxl'.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    year = args.year
+    now = datetime.now().astimezone()
+    versioned_dir_name = format_versioned_dir_name(year, now, VERSION) if is_versioned else None
+    versioned_target_dir = (output_dir / versioned_dir_name) if versioned_dir_name else None
+
+    if is_versioned and versioned_target_dir.exists():
+        print(
+            f"Fehler: Versionierter Exportordner existiert bereits: {versioned_target_dir}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    exp_suffix = f"_{year}" if year is not None else ""
+    if not is_versioned:
+        output_dir.mkdir(exist_ok=True)
+        if args.format == "csv":
+            planned_targets = [
+                output_dir / f"EÜR{exp_suffix}_Ausgaben.csv",
+                output_dir / f"EÜR{exp_suffix}_Einnahmen.csv",
+                output_dir / f"EÜR{exp_suffix}_PrivateTransfers.csv",
+                output_dir / f"EÜR{exp_suffix}_Sacheinlagen.csv",
+            ]
+        else:
+            planned_targets = [
+                output_dir / f"EÜR{exp_suffix}_Ausgaben.xlsx",
+                output_dir / f"EÜR{exp_suffix}_Einnahmen.xlsx",
+                output_dir / f"EÜR{exp_suffix}_Privatvorgaenge.xlsx",
+            ]
+
+        existing_files = [p for p in planned_targets if p.exists()]
+        if existing_files and not getattr(args, "force", False):
+            print("Fehler: Zieldatei(en) existieren bereits:", file=sys.stderr)
+            for p in existing_files:
+                print(f"  - {p}", file=sys.stderr)
+            print(
+                "Bitte '--force' angeben, um bestehende Exportdateien zu überschreiben.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
     db_path = Path(args.db)
     conn = get_db_connection(db_path)
 
-    config = load_config()
-    config_export_dir = get_export_dir(config)
     try:
         ledger_accounts = get_ledger_accounts(config)
     except ValidationError as exc:
@@ -41,43 +160,6 @@ def cmd_export(args):
     ledger_account_numbers = {
         account.key.lower(): account.account_number or "" for account in ledger_accounts
     }
-
-    if args.output:
-        output_dir = Path(args.output)
-    elif config_export_dir:
-        output_dir = Path(config_export_dir)
-    else:
-        output_dir = DEFAULT_EXPORT_DIR
-
-    output_dir.mkdir(exist_ok=True)
-
-    year = args.year
-    exp_suffix = f"_{year}" if year is not None else ""
-    if args.format == "csv":
-        planned_targets = [
-            output_dir / f"EÜR{exp_suffix}_Ausgaben.csv",
-            output_dir / f"EÜR{exp_suffix}_Einnahmen.csv",
-            output_dir / f"EÜR{exp_suffix}_PrivateTransfers.csv",
-            output_dir / f"EÜR{exp_suffix}_Sacheinlagen.csv",
-        ]
-    else:
-        planned_targets = [
-            output_dir / f"EÜR{exp_suffix}_Ausgaben.xlsx",
-            output_dir / f"EÜR{exp_suffix}_Einnahmen.xlsx",
-            output_dir / f"EÜR{exp_suffix}_Privatvorgaenge.xlsx",
-        ]
-
-    existing_files = [p for p in planned_targets if p.exists()]
-    if existing_files and not getattr(args, "force", False):
-        conn.close()
-        print("Fehler: Zieldatei(en) existieren bereits:", file=sys.stderr)
-        for p in existing_files:
-            print(f"  - {p}", file=sys.stderr)
-        print(
-            "Bitte '--force' angeben, um bestehende Exportdateien zu überschreiben.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
 
     if year is not None:
         year_filter = "WHERE e.deleted_at IS NULL AND strftime('%Y', COALESCE(e.payment_date, e.invoice_date)) = ?"
@@ -168,6 +250,7 @@ def cmd_export(args):
     else:
         sacheinlagen = []
 
+    db_snapshot_hash = compute_db_snapshot_hash(conn) if is_versioned else ""
     conn.close()
 
     def category_label(name: str | None, category_key: str | None) -> str:
@@ -205,8 +288,16 @@ def cmd_export(args):
         )
 
     staging_files: list[tuple[Path, Path]] = []
+    tmp_stage_dir: Path | None = None
+    if is_versioned:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        tmp_stage_dir = Path(tempfile.mkdtemp(dir=output_dir, prefix=".versioned_stage_"))
 
-    def make_staging_path(target: Path) -> Path:
+    def make_target_path(filename: str) -> Path:
+        if is_versioned:
+            assert tmp_stage_dir is not None
+            return tmp_stage_dir / filename
+        target = output_dir / filename
         tmp = target.with_name(f".{target.name}.tmp.{uuid.uuid4().hex[:8]}")
         staging_files.append((tmp, target))
         return tmp
@@ -215,8 +306,7 @@ def cmd_export(args):
         if args.format == "csv":
             # CSV Export
             exp_suffix = f"_{year}" if year is not None else ""
-            exp_path = output_dir / f"EÜR{exp_suffix}_Ausgaben.csv"
-            exp_tmp = make_staging_path(exp_path)
+            exp_tmp = make_target_path(f"EÜR{exp_suffix}_Ausgaben.csv")
             with open(exp_tmp, "w", newline="", encoding="utf-8-sig") as f:
                 writer = csv.writer(f)
                 writer.writerow(
@@ -271,8 +361,7 @@ def cmd_export(args):
                         ]
                     )
 
-            inc_path = output_dir / f"EÜR{exp_suffix}_Einnahmen.csv"
-            inc_tmp = make_staging_path(inc_path)
+            inc_tmp = make_target_path(f"EÜR{exp_suffix}_Einnahmen.csv")
             with open(inc_tmp, "w", newline="", encoding="utf-8-sig") as f:
                 writer = csv.writer(f)
                 writer.writerow(
@@ -316,8 +405,7 @@ def cmd_export(args):
                         ]
                     )
 
-            private_path = output_dir / f"EÜR{exp_suffix}_PrivateTransfers.csv"
-            private_tmp = make_staging_path(private_path)
+            private_tmp = make_target_path(f"EÜR{exp_suffix}_PrivateTransfers.csv")
             with open(private_tmp, "w", newline="", encoding="utf-8-sig") as f:
                 writer = csv.writer(f)
                 writer.writerow(
@@ -344,8 +432,7 @@ def cmd_export(args):
                         ]
                     )
 
-            sache_path = output_dir / f"EÜR{exp_suffix}_Sacheinlagen.csv"
-            sache_tmp = make_staging_path(sache_path)
+            sache_tmp = make_target_path(f"EÜR{exp_suffix}_Sacheinlagen.csv")
             with open(sache_tmp, "w", newline="", encoding="utf-8-sig") as f:
                 writer = csv.writer(f)
                 writer.writerow(
@@ -385,8 +472,7 @@ def cmd_export(args):
 
             # Ausgaben
             exp_suffix = f"_{year}" if year is not None else ""
-            exp_path = output_dir / f"EÜR{exp_suffix}_Ausgaben.xlsx"
-            exp_tmp = make_staging_path(exp_path)
+            exp_tmp = make_target_path(f"EÜR{exp_suffix}_Ausgaben.xlsx")
             wb = openpyxl.Workbook()
             ws = wb.active
             ws.title = "Ausgaben"
@@ -447,8 +533,7 @@ def cmd_export(args):
             wb.save(exp_tmp)
 
             # Einnahmen
-            inc_path = output_dir / f"EÜR{exp_suffix}_Einnahmen.xlsx"
-            inc_tmp = make_staging_path(inc_path)
+            inc_tmp = make_target_path(f"EÜR{exp_suffix}_Einnahmen.xlsx")
             wb = openpyxl.Workbook()
             ws = wb.active
             ws.title = "Einnahmen"
@@ -494,8 +579,7 @@ def cmd_export(args):
                 )
             wb.save(inc_tmp)
 
-            private_path = output_dir / f"EÜR{exp_suffix}_Privatvorgaenge.xlsx"
-            private_tmp = make_staging_path(private_path)
+            private_tmp = make_target_path(f"EÜR{exp_suffix}_Privatvorgaenge.xlsx")
             wb = openpyxl.Workbook()
             ws = wb.active
             ws.title = "PrivateTransfers"
@@ -551,32 +635,64 @@ def cmd_export(args):
                 )
             wb.save(private_tmp)
 
-        # Individual renames are atomic; restore earlier files if a later rename fails.
-        previous: list[tuple[Path, Path | None]] = []
-        try:
-            for tmp_path, final_path in staging_files:
-                if final_path.exists() and not getattr(args, "force", False):
-                    raise FileExistsError(f"Zieldatei existiert bereits: {final_path}")
-                saved = None
-                if final_path.exists():
-                    saved = final_path.with_name(f".{final_path.name}.old.{uuid.uuid4().hex}")
-                    os.replace(final_path, saved)
-                previous.append((final_path, saved))
-                os.replace(tmp_path, final_path)
-        except Exception:
-            for final_path, saved in reversed(previous):
-                if saved is None:
-                    final_path.unlink(missing_ok=True)
-                else:
-                    os.replace(saved, final_path)
-            raise
-        for _, saved in previous:
-            if saved is not None:
-                saved.unlink()
-        for _, final_path in staging_files:
-            print(f"Exportiert: {final_path}")
+        if is_versioned:
+            assert tmp_stage_dir is not None
+            assert versioned_target_dir is not None
+            generated_files = sorted([p for p in tmp_stage_dir.iterdir() if p.is_file()])
+            files_meta = [compute_file_metadata(p) for p in generated_files]
+            tax_mode = config.get("tax", {}).get("mode", "small_business")
+            manifest_data = create_manifest(
+                euer_version=VERSION,
+                created_at=now.isoformat(timespec="seconds"),
+                report_year=year,
+                tax_mode=tax_mode,
+                export_format=args.format,
+                db_snapshot_hash=db_snapshot_hash,
+                files_metadata=files_meta,
+            )
+            manifest_file = tmp_stage_dir / "manifest.json"
+            manifest_file.write_text(
+                json.dumps(manifest_data, indent=2, ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
+            if versioned_target_dir.exists():
+                raise FileExistsError(
+                    f"Versionierter Exportordner existiert bereits: {versioned_target_dir}"
+                )
+            os.rename(tmp_stage_dir, versioned_target_dir)
+            print(f"Versionierter Export erfolgreich erstellt: {versioned_target_dir}")
+            print(f"Manifest: {versioned_target_dir / 'manifest.json'}")
+            for p in generated_files:
+                print(f"  - {p.name}")
+        else:
+            # Individual renames are atomic; restore earlier files if a later rename fails.
+            previous: list[tuple[Path, Path | None]] = []
+            try:
+                for tmp_path, final_path in staging_files:
+                    if final_path.exists() and not getattr(args, "force", False):
+                        raise FileExistsError(f"Zieldatei existiert bereits: {final_path}")
+                    saved = None
+                    if final_path.exists():
+                        saved = final_path.with_name(f".{final_path.name}.old.{uuid.uuid4().hex}")
+                        os.replace(final_path, saved)
+                    previous.append((final_path, saved))
+                    os.replace(tmp_path, final_path)
+            except Exception:
+                for final_path, saved in reversed(previous):
+                    if saved is None:
+                        final_path.unlink(missing_ok=True)
+                    else:
+                        os.replace(saved, final_path)
+                raise
+            for _, saved in previous:
+                if saved is not None:
+                    saved.unlink()
+            for _, final_path in staging_files:
+                print(f"Exportiert: {final_path}")
 
     finally:
+        if tmp_stage_dir is not None and tmp_stage_dir.exists():
+            shutil.rmtree(tmp_stage_dir, ignore_errors=True)
         for tmp_path, _ in staging_files:
             if tmp_path.exists():
                 try:
