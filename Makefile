@@ -1,4 +1,4 @@
-.PHONY: build bump-major bump-minor bump-patch clean coverage format install install-pipx lint release-check release-verify test
+.PHONY: build bump-major bump-minor bump-patch clean coverage format install install-pipx lint release-check release-ci-status release-verify test
 
 VENV := .venv
 PYTHON := $(VENV)/bin/python
@@ -52,6 +52,10 @@ release-check:
 release-verify: lint test build
 	$(PYTHON) -m scripts.verify_artifacts dist
 	$(PYTHON) -c 'from pathlib import Path; from scripts.release_check import validate_tag, extract_release_notes; validate_tag("v$(VERSION)"); extract_release_notes(Path("docs/RELEASE_NOTES.md"), "$(VERSION)")'
+
+# Status des CI-Laufs auf main vor dem Taggen prüfen
+release-ci-status:
+	@gh run list --branch main --limit 1 --workflow CI
 
 # Versioning
 bump-patch:

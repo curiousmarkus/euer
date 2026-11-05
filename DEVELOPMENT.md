@@ -561,20 +561,22 @@ Es kann auch bequem über `make bump-patch` (bzw. `bump-minor`, `bump-major`) au
    git commit -am "chore(release): prepare v${release_version}"
    ```
 
-8. **Zuerst `main` pushen, dann den Tag:**
+8. **2-Phasen-Release einhalten: Erst `main` pushen und CI abwarten, dann taggen:**
 
    ```bash
    git push origin main
+   # CI-Lauf auf main abwarten bis alle Runner (Ubuntu, macOS, Windows) grün sind:
+   gh run watch $(gh run list --branch main --limit 1 --workflow CI --json databaseId --jq '.[0].databaseId')
+   # Erst nach grünem CI-Lauf den Tag erstellen und pushen:
    git tag -a "v${release_version}" -m "Release v${release_version}"
    git push origin "v${release_version}"
    ```
 
    > [!WARNING]
-   > Das Pushen von `main` vor dem Tag ist zwingend erforderlich, da GitHub Actions
-   > prüft, ob der Tag-Commit bereits Teil von `origin/main` ist (`validate_main_ancestry`).
    > Da GitHub-Tags (`refs/tags/v*`) geschützt sind, kann ein einmal gepushter Tag weder
    > gelöscht noch force-gepusht werden. Ein Fehlschlag nach Tag-Erstellung erfordert
-   > einen neuen PATCH-Bump!
+   > einen neuen PATCH-Bump! Das Abwarten des grünen CI-Laufs auf `main` vor dem Tag-Push
+   > verhindert verbrannte Versionsnummern durch Matrix-Fehler.
 
    Das Pushen des geschützten Tags ist die einzige reguläre manuelle Veröffentlichung.
    Die Pipeline validiert den Tag, baut Wheel und sdist genau einmal, prüft dieselben

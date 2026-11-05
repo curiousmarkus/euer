@@ -59,6 +59,24 @@ Dieses Dokument beschreibt den verbindlichen Release-Prozess für `euer`. Es ric
   4. `docs/templates/onboarding-prompt.md`
 - Die CLI prüft beim Start über `euercli/skill.py`, ob der installierte Skill zur erwarteten Version passt.
 
+### F. Encoding & Zeichensatz unter Windows (`PYTHONUTF8`, `CP1252`)
+- **Problem:** Windows verwendet in Standardkonfigurationen für Datei- und Subprozess-IO `CP1252` statt UTF-8. Umlaute (`EÜR`, `äöü`) in Dateipfaden, CLI-Ausgaben oder Testprüfungen werden fehlerhaft dekodiert (`EÃœR`) oder führen zu Testabbrüchen (`AssertionError`).
+- **Lösung:**
+  1. Alle `open()`-Aufrufe müssen ein explizites `encoding="utf-8"` enthalten (überwacht durch die Ruff-Linter-Regel `PLW1514`).
+  2. Datei-I/O via `Path.read_text()` und `Path.write_text()` muss stets `encoding="utf-8"` übergeben.
+  3. CLI-Subprozesse in Tests müssen `encoding="utf-8"` verwenden (`subprocess.run(..., text=True, encoding="utf-8")`).
+  4. In CI-Workflows (`ci.yml`, `release.yml`) und in `BaseCLITestCase` ist global `PYTHONUTF8: "1"` gesetzt.
+
+### G. Offene SQLite-Verbindungen & File-Locks unter Windows (`WinError 32`)
+- **Problem:** Unter Windows können geöffnete Dateien (insbesondere SQLite-Datenbanken und WAL-Dateien) nicht gelöscht werden. Schließt ein Test Verbindungen nicht explizit vor dem Ende der Methode, wirft `tempfile.TemporaryDirectory.cleanup()` in `tearDown()` einen `PermissionError: [WinError 32]`, da `tearDown()` in Python unittest *vor* den mit `addCleanup()` registrierten Callbacks läuft.
+- **Lösung:**
+  1. Datenbank- und Reader-/Writer-Verbindungen in Tests immer deterministisch im `finally:`-Block oder über `closing()` schließen und Trace-Callbacks abmelden (`reader.set_trace_callback(None)`).
+  2. `BaseCLITestCase` initialisiert `tempfile.TemporaryDirectory(ignore_cleanup_errors=True)` und fängt `PermissionError` im Teardown ab.
+
+### H. C-Extension-Typen niemals monkeypatchen (Python 3.15+)
+- **Problem:** Builtin- und C-Extension-Typen (wie `os.DirEntry`) besitzen ab neueren CPython-Versionen keine veränderlichen Attribute mehr. Ein Versuch via `patch("os.DirEntry.is_file")` scheitert mit `TypeError: cannot set 'is_file' attribute of immutable type 'posix.DirEntry'`.
+- **Lösung:** Statt interner C-Typen stets die übergeordneten Python-Schnittstellen mocken (z. B. `patch("os.scandir")` mit einem Mock-Kontextmanager).
+
 ---
 
 ## 3. Pre-Flight Checkliste (Vor dem Release)
@@ -107,7 +125,11 @@ Vor dem Erstellen eines Release-Tags müssen folgende Schritte vollständig durc
 
 ---
 
-## 4. Release durchführen (Schritt-für-Schritt)
+## 4. Release durchführen (Schritt-für-Schritt: 2-Phasen-Release)
+
+> [!CAUTION]
+> **Das 2-Phasen-Release-Prinzip ist zwingend einzuhalten!**  
+> GitHub-Tags (`refs/tags/v*`) sind durch Repository-Rulesets geschützt und können weder gelöscht noch force-gepusht werden. Ein Fehler in der Release-CI (z. B. auf einem Windows-Matrix-Runner) blockiert die Version dauerhaft. Daher wird das Tag erst erstellt und gepusht, wenn `main` auf GitHub Actions nachweislich grün ist!
 
 ### Schritt 1: Release-Commit erstellen
 ```bash
@@ -120,14 +142,23 @@ git commit -am "chore(release): prepare v${release_version}"
 git push origin main
 ```
 > [!IMPORTANT]
-> **Dieser Schritt muss VOR dem Pushen des Tags erfolgen!** Die GitHub Action prüft `origin/main`. Wenn der Release-Commit dort fehlt, bricht der Release-Workflow ab.
+> **Dieser Schritt muss VOR dem Tagging erfolgen!** Der Release-Commit muss sich auf `origin/main` befinden.
 
-### Schritt 3: Annotierten Tag erstellen
+### Schritt 3: CI-Lauf auf `main` abwarten und verifizieren (Pre-Flight Gate)
+```bash
+# Warten bis die vollständige CI-Matrix auf main (Ubuntu, macOS, Windows) erfolgreich grün ist:
+gh run list --branch main --limit 1 --workflow CI
+gh run watch $(gh run list --branch main --limit 1 --workflow CI --json databaseId --jq '.[0].databaseId')
+```
+> [!IMPORTANT]
+> Erst fortfahren, wenn alle Matrix-Jobs des CI-Workflows auf `main` den Status `success` haben!
+
+### Schritt 4: Annotierten Tag erstellen
 ```bash
 git tag -a "v${release_version}" -m "Release v${release_version}"
 ```
 
-### Schritt 4: Tag zu GitHub pushen
+### Schritt 5: Tag zu GitHub pushen
 ```bash
 git push origin "v${release_version}"
 ```
